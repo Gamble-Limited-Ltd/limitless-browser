@@ -24,7 +24,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
 ## Deploy (stage 5, local only; no public route until stage 7)
 - Prod stack: `./deploy.sh [sha]` (clean tree, builds from `git archive`, compose project `limitless-browser`, web on `127.0.0.1:8580`, smoke test, `.last-deploy-hash`). Rollback: `./deploy.sh <previous sha>`. Needs `~/limitless-gate` and gitignored `deploy/gate.env`.
 - Local test with a stub gate: `deploy/dev-up.sh` (`DEV_ALLOW=1` allows, `DEV_ALLOW=403` shows invite, default asks sign-in); stop with `docker compose -p limitless-browser down`.
-- Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, vendor/, fonts/, theme/, legal/, favicon.svg, version.json; gzip + brotli).
+- Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, vendor/, fonts/, theme/, legal/, favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html` (see Start page, update notice below).
 - Served ungated: `/legal/`, `/theme/` (themes.css, fonts, marks, brand stamp), `/favicon.svg`, `/auth/*`. Everything else, including `/wisp/` and `version.json`, goes through `auth_request`. Details: `docs/HOSTING-AND-PERFORMANCE.md` section 5.
 - Theme CSS is generated: edit `scripts/gen-themes.py`, rerun. Fonts: `scripts/fetch-fonts.py`.
 
@@ -67,3 +67,21 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
 - **Contrast (Boss, 2026-10-19):** body text and text on accent meet 4.5:1 in every theme. To get there the light
   accents of fancy, minimal, retro (`#2171dc`, `#1e74d9`) and ledger (`#7e6318`) and soft light's muted text (`#61718b`)
   were darkened slightly from the picked values. Keep 4.5:1 when adding or editing a theme.
+
+## Start page, update notice, What's new (stages 4 and 5, 2026-10-19)
+- **Start page** (`#newtab`, markup in `index.html`, theme rules in `theme/chrome.css` section 10): brand (`svg.lb-mk` + `.lb-word`),
+  `.nt-orn` rule (shown by luxury, fancy, GLL themes), `#ntDate` greeting (`Good morning, Monday 19 October`; en and en-US use the day-month
+  order, other locales their own), `#ntTime` clock (`#ntTimeText` + `#ntTimeSuffix`; 24 h from the Settings switch `limitless:24hrclock:v1`,
+  else from the locale, helper `lbUse24h()`), `.nt-search` (engine selector `#ntEngine` inside the field, `#ntSearch`, `#ntSearchBtn` as the
+  "Enter" hint), `#ntFavorites` tiles (max 6, favorites system, letter fallback until the icon loads, delete shows on hover or focus),
+  `.nt-foot` with the stamp (`.lb-stamp-d`/`.lb-stamp-l` by resolved mode; mono greys it). The wallpaper button is hidden without a skin
+  (its code stays for skins); the GitHub button is gone. Skins that render their own new-tab page hide `.nt-content` as before.
+- **Update notice:** `window.LB_BUILD_SHA` is `'dev'` in the source. `scripts/build-static.sh` rewrites it in the dist copy only and writes the same
+  sha to `version.json`. `window.LB_checkForUpdate()` fetches `version.json` (no-store); a different sha shows `#lbUpdateBanner` (Reload, What's new,
+  dismiss `#lbUpdateDismiss`), `security: true` changes the wording, dismiss leaves `#lbUpdatePill` in the toolbar until reload. Polls at start (3 s),
+  every 15 min and on `visibilitychange` (throttled to 1 min). Never reloads by itself. `dev`, `file://` or no `version.json`: silently skipped.
+  Tests set `window.LB_BUILD_SHA` with `addInitScript` and intercept `/version.json`.
+- **What's new:** `limitless://whats-new` is registered in `SKIN_PAGES` and renders `/CHANGELOG.md` (nginx: gated, `no-cache`, `text/markdown`)
+  with a tiny safe renderer (headings, lists, paragraphs, `[text](url)` links to http(s) or limitless://; all DOM via `textContent`, links open inside the
+  proxy). Linked from the banner, the About page, and typed in the address bar. Keep `CHANGELOG.md` plain: no bold, code or tables (shown literally).
+- About links Privacy and Terms open `/legal/privacy.html` and `/legal/terms.html` in a normal new tab (outside the proxy).

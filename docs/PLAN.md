@@ -133,10 +133,17 @@ console clean, Playwright smoke green.
      themed relay notice, privacy toggles in layout A, Orbit/Lens/Wordmark marks. Upstream skins still override the
      themes. Open: on/acc contrast below 4.5:1 in four light themes and muted text in Soft light (see CLAUDE.md, theme
      engine), so the approved palette is unchanged. Test: `tests/e2e/themes.spec.js`. Keep all credits.
-4. **Start page.** Limitless new-tab page: search, shortcuts, GLL stamp.
+4. **Start page.** **Done 2026-10-19:** `limitless://newtab` (no skin) is the Limitless start page: mark and wordmark, greeting
+   with date, large clock, search field with the engine selector inside it, up to 6 shortcut tiles on the favorites system,
+   footer with "Private browsing proxy" and the GLL product stamp; per-theme character in `theme/chrome.css` section 10.
+   Dropped: the GitHub button (source link lives in About) and the custom wallpaper button (hidden without a skin; the
+   code stays for skins). Upstream skins keep their own new-tab pages. Test: `tests/e2e/startpage.spec.js`.
 5. **Hosting.** `deploy/` compose project `limitless-browser`, baked nginx image on `127.0.0.1:8580`,
    brotli/gzip_static, caching rules, `version.json` + update banner, in-app legal pages, relay container
    with egress blocks and caps. Local only, no public route.
+   In-app parts done 2026-10-19: update notice (banner, pill, `window.LB_checkForUpdate()`, `LB_BUILD_SHA` stamped by
+   `build-static.sh`), `limitless://whats-new` rendering `/CHANGELOG.md`, Privacy and Terms links in About. Test:
+   `tests/e2e/update.spec.js`.
    Progress 2026-10-19: hosting files built and tested locally with a stub gate (`deploy/`, `deploy.sh`, `scripts/build-static.sh`, `theme/`, `legal/`, relay image builds). Open: legal text review by Boss, host egress rules not applied, real gate and relay run together untested.
 6. **Gate.** Check service (private repo), GATE client registration (Boss runs the `manage.sh` command),
    OIDC callback + direct sign-in, invite page, 60 s access cache, `/wisp/` revocation, rate limits.

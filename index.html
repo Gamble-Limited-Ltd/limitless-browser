@@ -2364,45 +2364,32 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            padding: 24px;
-            text-align: center
+            justify-content: safe center;
+            padding: 24px 24px 76px;
+            text-align: center;
+            overflow-y: auto;
         }
-
-        .nt-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px;
-            pointer-events: none;
-        }
-
-        .nt-time,
-        .nt-date {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--tx);
-            letter-spacing: 0.02em;
-        }
-
         .nt-brand {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            color: var(--ac);
-            font-weight: 700;
-            font-size: 4.5rem;
-            letter-spacing: 0.02em;
-            margin-bottom: -15px;
-            margin-top: 40px;
+            gap: 12px;
+            color: var(--tx);
             line-height: 1;
         }
-
+        .nt-brand .lb-mark { width: 40px; height: 40px; display: block; }
+        .lb-word { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+        .nt-orn { display: none; }
+        .nt-date { margin-top: 22px; font-size: 15px; color: var(--tx3); letter-spacing: 0.01em; }
+        .nt-time {
+            margin-top: 4px;
+            font-size: 68px;
+            line-height: 1;
+            font-weight: 500;
+            color: var(--tx);
+            font-variant-numeric: tabular-nums;
+        }
+        .nt-time small { font-size: 0.28em; margin-left: 6px; color: var(--tx3); letter-spacing: 0.06em; font-weight: 500; }
         @keyframes lb-letter {
             0%   { opacity: 0; transform: translateX(-28px) skewX(-12deg); filter: blur(6px); }
             60%  { opacity: 1; transform: translateX(3px)  skewX(2deg);   filter: blur(0px); }
@@ -2422,70 +2409,64 @@
         .lb-word       { animation: lb-letter 0.65s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
         .lb-badge-anim { animation: lb-badge  0.5s  ease-out               0.90s both; }
 
-        .nt-brand i {
-            font-size: 4.05rem;
-        }
-
-        .nt-brand .lb-mark {
-            width: 4.05rem;
-            height: 4.05rem;
-            vertical-align: middle;
-            margin-right: 6px;
-        }
-
         .nt-search {
             display: flex;
-            gap: 10px;
             align-items: center;
+            gap: 12px;
             position: relative;
-            width: min(700px, 100%);
-            margin-top: 40px;
+            width: min(560px, 100%);
+            height: 52px;
+            margin-top: 22px;
+            padding: 0 12px 0 18px;
+            background: var(--bg1);
+            border: 1px solid var(--bd);
+            border-radius: var(--radius-lg);
+            color: var(--tx3);
+            transition: border-color .15s, box-shadow .15s;
         }
-
+        .nt-search:focus-within { border-color: var(--ac); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac) 18%, transparent); }
+        .nt-search-ic { flex: none; }
+        .nt-search input {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            border: 0;
+            background: transparent;
+            color: var(--tx);
+            padding: 0;
+            outline: none;
+            font-size: 15px;
+            font-family: inherit;
+        }
+        .nt-search input::placeholder { color: var(--tx3); }
         .nt-search-engine {
             position: relative;
-            height: 44px;
-            margin-right: -3px;
-            padding: 0 14px 0 18px;
-            border-radius: 22px;
-            border: 1px solid rgba(var(--ov), .2);
-            background: rgba(20, 24, 30, .85);
-            color: var(--tx);
+            flex: none;
+            height: 30px;
+            padding: 0 10px;
+            border-radius: var(--radius-md);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--tx2);
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 13px;
+            gap: 7px;
+            font-size: 12px;
             font-weight: 500;
-            transition: all .2s;
+            transition: background .15s, border-color .15s;
             white-space: nowrap;
         }
-
-        .nt-search-engine:hover {
-            border-color: rgba(157, 229, 255, .4);
-            background: rgba(20, 24, 30, .95);
+        .nt-search-engine:hover, .nt-search-engine.open { background: var(--surface); border-color: var(--bd); }
+        .nt-search-engine:focus-visible, #ntSearchBtn:focus-visible, .nt-fav-box:focus-visible, .nt-fav-add:focus-visible, .nt-fav-delete:focus-visible {
+            outline: 2px solid var(--ac); outline-offset: 2px;
         }
-
-        .nt-search-engine i {
-            font-size: 11px;
-            color: var(--tx2);
-            transition: transform .25s ease;
-        }
-
-        .nt-search-engine.open {
-            border-color: rgba(157, 229, 255, .5);
-            background: rgba(20, 24, 30, 1);
-        }
-
-        .nt-search-engine.open i {
-            transform: rotate(180deg);
-            color: var(--ac);
-        }
-
+        .nt-search-engine i { font-size: 9px; color: var(--tx3); transition: transform .25s ease; }
+        .nt-search-engine.open i { transform: rotate(180deg); color: var(--ac); }
         .nt-engine-dropdown {
             position: absolute;
             top: calc(100% + 8px);
-            left: 0;
+            right: 0;
             min-width: 132px;
             width: auto;
             background: var(--bg1);
@@ -2504,60 +2485,19 @@
             transform-origin: top center;
         }
 
-        .nt-search input {
-            flex: 1;
-            height: 44px;
-            border-radius: var(--radius-full);
-            border: 1px solid transparent;
-            background: rgba(13, 15, 18, .75);
-            color: var(--tx);
-            padding: 0 16px;
-            outline: none;
-            font-size: 14px;
-            transition: border-color .15s, background .15s;
-        }
-
-        .nt-search input:focus {
-            border-color: var(--ac);
-            background: rgba(13, 15, 18, .9)
-        }
-
-        .nt-search input::placeholder {
-            color: var(--tx3)
-        }
-
-        .nt-search button {
-            height: 44px;
-            padding: 0 24px;
-            border-radius: var(--radius-full);
-            border: none;
-            background: var(--ac);
-            color: #0b1015;
-            font-weight: 600;
+        #ntSearchBtn {
+            flex: none;
+            font: inherit;
+            font-size: 11px;
+            color: var(--tx3);
+            background: transparent;
+            border: 1px solid var(--bd);
+            border-radius: 5px;
+            padding: 3px 7px;
             cursor: pointer;
-            transition: background .12s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
+            line-height: 1.2;
         }
-
-        .nt-search button:hover {
-            background: var(--ac2)
-        }
-
-        .nt-search button i {
-            font-size: 14px;
-            display: inline-block;
-            transition: transform .22s cubic-bezier(.34,1.56,.64,1);
-            will-change: transform;
-        }
-
-        .nt-search button:hover i {
-            transform: translateX(3px);
-            transition: transform .18s ease;
-        }
-
+        #ntSearchBtn:hover { color: var(--ac); border-color: var(--ac); }
         .nt-row {
             display: flex;
             gap: 8px;
@@ -2565,7 +2505,6 @@
             flex-wrap: wrap;
             margin-top: 12px
         }
-
         .nt-chip {
             padding: 8px 14px;
             border-radius: var(--radius-full);
@@ -2579,140 +2518,113 @@
             align-items: center;
             gap: 6px;
         }
-
-        .nt-chip i {
-            font-size: 12px
-        }
-
-        .nt-chip:hover {
-            color: var(--tx);
-            background: rgba(var(--ov), .12)
-        }
-
+        .nt-chip i { font-size: 12px }
+        .nt-chip:hover { color: var(--tx); background: rgba(var(--ov), .12) }
         .nt-favorites {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
-            max-width: 720px;
-            margin-top: 24px;
-            padding-bottom: 40px;
+            gap: 18px;
+            width: 642px;
+            max-width: 100%;
+            margin-top: 28px;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
         }
-
         .nt-fav-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .nt-fav-box {
-            aspect-ratio: 1;
-            min-height: 90px;
-            width: 100%;
-            border-radius: 12px;
-            border: 1px solid var(--bd);
-            background: rgba(13, 15, 18, .6);
-            color: var(--tx);
-            text-decoration: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             gap: 8px;
-            transition: background .12s, border-color .12s;
+            align-items: center;
+            width: 92px;
+        }
+        .nt-fav-box {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--bd);
+            background: var(--bg1);
+            color: var(--ac);
+            text-decoration: none;
+            display: grid;
+            place-items: center;
+            transition: background .12s, border-color .12s, transform .12s;
             position: relative;
-            padding: 8px;
+            padding: 0;
         }
-
-        .nt-fav-box:hover {
-            background: rgba(157, 229, 255, .15);
-            border-color: var(--ac);
-        }
-
-        .nt-fav-box img {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-        }
-
+        .nt-fav-box:hover { border-color: var(--ac); transform: translateY(-1px); }
+        .nt-fav-box img { width: 26px; height: 26px; border-radius: 6px; }
+        .nt-fav-initial { font-size: 20px; font-weight: 600; line-height: 1; }
         .nt-fav-title {
-            font-size: 11px;
+            font-size: 12px;
             text-align: center;
-            padding: 0 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 100%;
-            color: var(--tx2);
+            color: var(--tx3);
         }
-
         .nt-fav-delete {
             position: absolute;
-            top: 4px;
-            right: 5px;
-            width: 24px;
-            height: 24px;
+            top: -7px;
+            right: -7px;
+            width: 22px;
+            height: 22px;
             display: none;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background: rgba(0, 0, 0, .6);
+            background: var(--bg1);
             color: var(--err);
-            border: none;
+            border: 1px solid var(--bd);
             cursor: pointer;
-            font-size: 11px;
-            transition: opacity .15s, background .15s;
+            font-size: 10px;
             z-index: 10;
             padding: 0;
         }
-
         .nt-fav-wrapper:hover .nt-fav-delete,
-        .nt-fav-delete:hover {
-            display: flex;
-        }
-
-        .nt-fav-delete:hover {
-            background: rgba(0, 0, 0, .85);
-        }
-
-        .nt-fav-delete i {
-            font-size: 10px;
-        }
-
+        .nt-fav-wrapper:focus-within .nt-fav-delete { display: flex; }
         .nt-fav-add {
-            aspect-ratio: 1;
-            min-height: 90px;
-            width: 100%;
-            border-radius: 12px;
-            border: 2px dashed rgba(var(--ov), .3);
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-lg);
+            border: 1px dashed var(--bd2);
             background: transparent;
-            color: var(--tx2);
+            color: var(--tx3);
             cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: border-color .12s, color .12s;
+        }
+        .nt-fav-add:hover:not(.disabled) { border-color: var(--ac); color: var(--ac); }
+        .nt-fav-add.disabled { opacity: 0.4; cursor: not-allowed; }
+        .nt-fav-add i { font-size: 18px; }
+        .nt-foot {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 46px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            transition: background .12s, border-color .12s, color .12s;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-top: 1px solid var(--bd);
+            color: var(--tx3);
+            font-size: 11.5px;
         }
-
-        .nt-fav-add:hover:not(.disabled) {
-            background: rgba(var(--ov), .08);
-            border-color: var(--ac);
-            color: var(--ac);
+        .nt-foot-r { display: inline-flex; align-items: center; }
+        .nt-foot-r img { height: 26px; width: auto; }
+        @media (max-width: 760px) {
+            .nt-favorites { width: 304px; gap: 16px 14px; }
+            .nt-time { font-size: 56px; }
         }
-
-        .nt-fav-add.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            border-color: rgba(var(--ov), .15);
+        @media (max-height: 620px) {
+            .nt-time { font-size: 48px; }
+            .nt-date { margin-top: 12px; }
+            .nt-search { margin-top: 14px; }
+            .nt-favorites { margin-top: 16px; gap: 12px 18px; }
         }
-
-        .nt-fav-add i {
-            font-size: 24px;
+        @media (prefers-reduced-motion: reduce) {
+            .lb-icon-anim, .lb-word, .lb-badge-anim, .nt-fav-box, .nt-search, .nt-search-engine i { animation: none !important; transition: none !important; }
         }
-
-        
         .context-menu {
             position: fixed;
             background: var(--bg2);
@@ -3921,40 +3833,18 @@
         /* Allowlist in settings — uses textarea like the filter list */
 
         
-        .nt-search-engine {
-            width: fit-content;
-            min-width: 110px;
-            height: 100%;
-            border-right: 1px solid var(--bd);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 14px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--tx);
-            background: rgba(var(--ov), 0.03);
-            transition: background .15s;
-            user-select: none;
-            position: relative;
-            gap: 10px;
-        }
-
-        .nt-search-engine:hover {
-            background: rgba(var(--ov), 0.08);
-        }
-
         .nt-engine-dropdown {
             position: absolute;
-            top: calc(100% + 8px);
-            left: 0;
+            top: calc(100% + 10px);
+            left: auto;
             right: 0;
-            width: 100%;
+            width: max-content;
+            min-width: 150px;
             background: var(--bg2);
             border: 1px solid var(--bd);
-            border-radius: 12px;
-            padding: 8px;
+            border-radius: var(--radius-lg);
+            padding: 6px;
+            text-align: left;
             display: none;
             flex-direction: column;
             gap: 4px;
@@ -3973,9 +3863,9 @@
             text-align: left;
             background: transparent;
             border: 1px solid transparent;
-            padding: 12px 14px;
+            padding: 9px 12px;
             color: var(--tx2);
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             border-radius: 8px;
             cursor: pointer;
@@ -4698,8 +4588,8 @@
         #skinHoverCard .hc-url { font-size: 11.5px; color: #9fb0b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* ── Chrome NTP (dark, reference-exact) ── */
-        #newtab.skin-ntp .nt-content, #newtab.skin-ntp #lbCredit,
-        #newtab.skin-ntp .nt-wallpaper-btn, #newtab.skin-ntp #ntGithubBtn { display: none !important; }
+        #newtab.skin-ntp .nt-content,
+        #newtab.skin-ntp .nt-wallpaper-btn { display: none !important; }
         #newtab.skin-ntp .nt-overlay { display: none; }
         #skinNTP { display: none; position: absolute; inset: 0; z-index: 5; overflow: auto; }
         #newtab.skin-ntp #skinNTP { display: block; }
@@ -5815,49 +5705,23 @@
                     <div class="nt-bg" id="ntBg"></div>
                     <div class="nt-overlay"></div>
                     
-                    <button class="nt-wallpaper-btn" id="ntGithubBtn" title="View on GitHub"
-                        style="left:76px;right:auto;">
-                        <i class="fab fa-github"></i>
-                    </button>
                     <button class="nt-wallpaper-btn" id="ntWallpaperBtn" title="Change background"
                         style="left:20px;right:auto;">
                         <i class="fas fa-image"></i>
                     </button>
 
-                    
-                    <div id="lbCredit"
-                        style="position:absolute; bottom:20px; right:24px; z-index:10; color:rgba(255,255,255,1); font-size:18px; font-weight:600; font-family:var(--ui); display:flex; align-items:center; gap:5px; pointer-events:none; user-select:none; text-shadow:0 1px 4px rgba(0,0,0,0.6); letter-spacing:0.02em;">
-                        A Gamble Limited Ltd. product
-                    </div>
-
                     <div class="nt-content">
-                        <div class="nt-header">
-                            <div class="nt-date" id="ntDate">-</div>
-                            <div class="nt-time" id="ntTime" style="display:flex;align-items:center;gap:12px;">--:-- <i id="ntTimeIcon" class="fas fa-moon" style="font-size:0.85em;color:var(--ac);"></i></div>
+                        <div class="nt-brand">
+                            <svg class="lb-icon-anim lb-mark lb-mk" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>
+                            <span class="lb-word">Limitless Browser</span>
                         </div>
-                        <div class="nt-brand" style="position:relative;">
-                            <svg class="lb-icon-anim lb-mark lb-mk" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>
-                            <span class="lb-word" style="font-size:0.55em; letter-spacing:0.02em; display:inline-block; vertical-align:middle;">Limitless Browser</span>
-                            <span class="lb-badge-anim" style="
-                                font-size: 11px;
-                                font-weight: 700;
-                                letter-spacing: 0.05em;
-                                color: var(--ac);
-                                background: rgba(157,229,255,0.10);
-                                border: 1px solid rgba(157,229,255,0.35);
-                                border-radius: 6px;
-                                padding: 2px 7px;
-                                margin-left: 10px;
-                                vertical-align: middle;
-                                line-height: 1.4;
-                                font-family: var(--mono);
-                                position: relative;
-                                top: -16px;
-                                margin-left: -3px;
-                            " id="ntVersion">v0.1.0</span>
-                        </div>
+                        <i class="nt-orn" aria-hidden="true"></i>
+                        <div class="nt-date" id="ntDate">-</div>
+                        <div class="nt-time" id="ntTime"><span id="ntTimeText">--:--</span><small id="ntTimeSuffix"></small></div>
                         <div class="nt-search">
-                            <div class="nt-search-engine" id="ntEngine">
+                            <svg class="nt-search-ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                            <input id="ntSearch" placeholder="Search the web or type an address" aria-label="Search the web or type an address" autocomplete="off" autofocus>
+                            <div class="nt-search-engine" id="ntEngine" role="button" tabindex="0" aria-haspopup="listbox" aria-label="Search engine">
                                 <span id="ntEngineLabel">Brave</span>
                                 <i class="fas fa-chevron-down"></i>
                                 <div class="nt-engine-dropdown" id="ntEngineDropdown">
@@ -5867,10 +5731,13 @@
                                     <button data-engine="custom">Custom</button>
                                 </div>
                             </div>
-                            <input id="ntSearch" placeholder="Search or enter address" autocomplete="off">
-                            <button id="ntSearchBtn"><i class="fas fa-arrow-right"></i></button>
+                            <button id="ntSearchBtn" type="button" title="Search" aria-label="Search"><span>Enter</span></button>
                         </div>
                         <div class="nt-favorites" id="ntFavorites"></div>
+                        <div class="nt-foot">
+                            <span class="nt-foot-l">Private browsing proxy</span>
+                            <span class="nt-foot-r"><img class="lb-stamp-d" alt="A Gamble Limited Ltd. product" height="26" src="theme/brand/portfolio-stamp-product-dark.svg"><img class="lb-stamp-l" alt="A Gamble Limited Ltd. product" height="26" src="theme/brand/portfolio-stamp-product-light.svg"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -7190,6 +7057,7 @@
                                                 <div>Based on GUST 2.0 (08515a7) by Nautilus Labs, modified by Gamble Limited Ltd.</div>
                                                 <div>Limitless Browser is free software under the GNU AGPLv3.</div>
                                                 <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;">
+                                                    <a href="#" id="lbAboutWhatsNew" style="color:var(--ac);text-decoration:none;">What's new</a>
                                                     <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none;">Source code</a>
                                                     <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser/issues" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none;">Report an issue</a>
                                                     <a href="/legal/privacy.html" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none;">Privacy</a>
@@ -10937,6 +10805,8 @@ window._libcurlReady = true;
                         ? '<i class="fas fa-earth-americas"></i>'
                         : isSettingsPage(tab.url)
                             ? '<i class="fas fa-gear"></i>'
+                            : tab.url === 'limitless://whats-new'
+                            ? '<i class="fas fa-wand-magic-sparkles"></i>'
                             : (isInvalidInternal(tab.url) || tab.hasError)
                                 ? '<i class="fas fa-circle-xmark" style="color: var(--err);"></i>'
                                 : `<img data-favicon-url="${faviconFor(tab.url)}" style="display: none; width: 16px; height: 16px; border-radius: 3px; margin: 0 1px;" /><i class="fas fa-globe"></i>`;
@@ -11988,33 +11858,31 @@ window._libcurlReady = true;
                 });
             }
 
+            function lbUse24h() {
+                const pref = ls.getItem('limitless:24hrclock:v1');
+                if (pref === 'true') return true;
+                if (pref === 'false') return false;
+                try { return !new Intl.DateTimeFormat(navigator.language || 'en-GB', { hour: 'numeric' }).resolvedOptions().hour12; } catch (_) { return true; }
+            }
+
             function updateClock() {
-                try {
-                } catch(e) {}
                 const now = new Date();
                 const h = now.getHours();
+                const loc = (navigator.language || 'en-GB');
+                // 24 h follows the Settings switch when it was ever set, else the locale.
+                const use24hr = lbUse24h();
                 const mm = String(now.getMinutes()).padStart(2, "0");
-                const use24hr = ls.getItem('limitless:24hrclock:v1') === 'true';
-                if (use24hr) {
-                    if (ntTime) ntTime.childNodes[0].textContent = `${String(h).padStart(2, '0')}:${mm} `;
-                } else {
-                    const h12 = h % 12 || 12;
-                    const ampm = h < 12 ? "AM" : "PM";
-                    if (ntTime) ntTime.childNodes[0].textContent = `${h12}:${mm} ${ampm} `;
-                }
-                const iconEl = document.getElementById('ntTimeIcon');
-                if (iconEl) {
-                    const isDay = h >= 6 && h < 20;
-                    iconEl.className = isDay ? 'fas fa-sun' : 'fas fa-moon';
-                    iconEl.style.color = 'var(--ac)';
-                }
+                const txt = $("ntTimeText"), suf = $("ntTimeSuffix");
+                if (txt) txt.textContent = use24hr ? `${String(h).padStart(2, '0')}:${mm}` : `${h % 12 || 12}:${mm}`;
+                if (suf) suf.textContent = use24hr ? '' : (h < 12 ? 'AM' : 'PM');
                 if (ntDate) {
-                    ntDate.textContent = now.toLocaleDateString(undefined, {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric"
-                    });
+                    const part = h < 12 ? 'morning' : (h < 18 ? 'afternoon' : 'evening');
+                    let when;
+                    try {
+                        // Day then month ("Monday 19 October") for en-GB style locales, the locale's own order otherwise.
+                        when = now.toLocaleDateString(/^en(-US|$)/i.test(loc) ? 'en-GB' : loc, { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
+                    } catch (_) { when = now.toDateString(); }
+                    ntDate.textContent = `Good ${part}, ${when}`;
                 }
             }
 
@@ -12101,7 +11969,7 @@ window._libcurlReady = true;
                         a.href = "#";
                         a.title = fav.url;
                         a.innerHTML = `
-                            <img alt="" data-favicon-url="${faviconFor(fav.url)}" src="">
+                            <img alt="" data-favicon-url="${faviconFor(fav.url)}">
                             <button class="nt-fav-delete" title="Remove favorite">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -12109,6 +11977,15 @@ window._libcurlReady = true;
 
                         const favImg = a.querySelector('img[data-favicon-url]');
                         if (favImg) {
+                            // Initial letter shows until the icon has really loaded (also covers offline and failed icons).
+                            const initial = document.createElement('span');
+                            initial.className = 'nt-fav-initial';
+                            initial.setAttribute('aria-hidden', 'true');
+                            initial.textContent = (name.trim()[0] || '?').toUpperCase();
+                            favImg.style.display = 'none';
+                            a.insertBefore(initial, favImg);
+                            favImg.addEventListener('load', () => { initial.remove(); favImg.style.display = ''; });
+                            favImg.addEventListener('error', () => { favImg.style.display = 'none'; });
                             resolveFaviconSrc(favImg.getAttribute('data-favicon-url')).then(src => { if (src) favImg.src = src; }).catch(() => {});
                         }
 
@@ -12141,6 +12018,7 @@ window._libcurlReady = true;
                     } catch (_) { }
                 }
 
+                if (favorites.length < 6) {
                 const addWrapper = document.createElement("div");
                 addWrapper.className = "nt-fav-wrapper";
 
@@ -12148,29 +12026,30 @@ window._libcurlReady = true;
                 addBtn.className = "nt-fav-add";
                 addBtn.id = "ntFavAddBtn";
                 addBtn.type = "button";
-                addBtn.title = "Add favorite";
+                addBtn.title = "Add a shortcut";
 
-                if (favorites.length >= 5) {
+                if (favorites.length >= 6) {
                     addBtn.classList.add("disabled");
-                    addBtn.title = "Maximum 5 favorites";
+                    addBtn.title = "Maximum 6 shortcuts";
                     addBtn.disabled = true;
                 }
 
                 addBtn.innerHTML = "<i class=\"fas fa-plus\"></i>";
                 addBtn.addEventListener("click", (e) => {
                     e.preventDefault();
-                    if (favorites.length < 5) {
+                    if (favorites.length < 6) {
                         showAddFavoriteModal();
                     }
                 });
 
                 const addLabel = document.createElement("span");
                 addLabel.className = "nt-fav-title";
-                addLabel.textContent = "Add Favorite";
+                addLabel.textContent = "Add";
 
                 addWrapper.appendChild(addBtn);
                 addWrapper.appendChild(addLabel);
                 ntFavorites.appendChild(addWrapper);
+                }
             }
 
             let _lbAnimLocked = false;
@@ -12226,6 +12105,141 @@ window._libcurlReady = true;
                 setStatus('idle', 'Ready');
             }
 
+
+            // ---- Update notice and What's new (stage 4/5) ----
+            // LB_BUILD_SHA is stamped by scripts/build-static.sh into the dist copy only. 'dev' (source tree, file://,
+            // python server) or a missing version.json means the check is silently skipped. Never reloads by itself.
+            window.LB_BUILD_SHA = window.LB_BUILD_SHA || 'dev'; // @LB_BUILD_SHA@
+            const LB_WHATS_NEW = 'limitless://whats-new';
+            const lbUpd = { info: null, dismissed: false, last: 0, banner: null, pill: null };
+            function lbUpdateEls() {
+                if (lbUpd.banner) return;
+                const ub = document.createElement('div');
+                ub.className = 'lb-ub'; ub.id = 'lbUpdateBanner'; ub.setAttribute('role', 'status');
+                const dot = document.createElement('i'); dot.className = 'lb-ub-dot';
+                const msg = document.createElement('span'); msg.className = 'lb-ub-msg';
+                const b = document.createElement('b'); msg.appendChild(b);
+                const rest = document.createElement('span'); msg.appendChild(rest);
+                const wn = document.createElement('button'); wn.type = 'button'; wn.className = 'lb-ub-link'; wn.id = 'lbUpdateWhatsNew'; wn.textContent = "What's new";
+                const gap = document.createElement('span'); gap.className = 'lb-ub-gap';
+                const rl = document.createElement('button'); rl.type = 'button'; rl.className = 'lb-ub-btn'; rl.id = 'lbUpdateReload'; rl.textContent = 'Reload';
+                const x = document.createElement('button'); x.type = 'button'; x.className = 'lb-ub-x'; x.id = 'lbUpdateDismiss'; x.setAttribute('aria-label', 'Dismiss'); x.title = 'Dismiss';
+                x.innerHTML = '<i class="fas fa-xmark"></i>';
+                ub.append(dot, msg, wn, gap, rl, x);
+                const mainEl = document.querySelector('main');
+                if (mainEl && mainEl.parentNode) mainEl.parentNode.insertBefore(ub, mainEl);
+                const pill = document.createElement('button');
+                pill.type = 'button'; pill.className = 'lb-up-pill'; pill.id = 'lbUpdatePill';
+                const pd = document.createElement('i'); pd.className = 'lb-ub-dot';
+                const pt = document.createElement('span'); pt.textContent = 'Update available';
+                pill.append(pd, pt);
+                const themeBtn = $('lbThemeBtn');
+                if (themeBtn && themeBtn.parentNode) themeBtn.parentNode.insertBefore(pill, themeBtn);
+                lbUpd.banner = ub; lbUpd.pill = pill; lbUpd.msgB = b; lbUpd.msgRest = rest;
+                wn.onclick = () => go(LB_WHATS_NEW, true);
+                rl.onclick = () => location.reload();
+                x.onclick = () => { lbUpd.dismissed = true; lbUpdateRender(); };
+                pill.onclick = () => { lbUpd.dismissed = false; lbUpdateRender(); };
+            }
+            function lbUpdateRender() {
+                if (!lbUpd.info) return;
+                lbUpdateEls();
+                const sec = !!lbUpd.info.security;
+                lbUpd.msgB.textContent = sec ? 'Security update' : 'Update available';
+                lbUpd.msgRest.textContent = sec ? ' A security update for Limitless Browser is ready. Reload soon.' : ' A new version of Limitless Browser is ready.';
+                lbUpd.banner.classList.toggle('show', !lbUpd.dismissed);
+                lbUpd.pill.classList.toggle('show', lbUpd.dismissed);
+                if (lbUpd.pill) lbUpd.pill.firstChild.nextSibling.textContent = sec ? 'Security update' : 'Update available';
+            }
+            async function lbCheckForUpdate(opts) {
+                const own = window.LB_BUILD_SHA;
+                if (!own || own === 'dev') return null;
+                if (location.protocol !== 'http:' && location.protocol !== 'https:') return null;
+                lbUpd.last = Date.now();
+                try {
+                    const r = await fetch(new URL('version.json', location.href).href, { cache: 'no-store', credentials: 'same-origin' });
+                    if (!r.ok) return null;
+                    const j = await r.json();
+                    if (!j || typeof j.sha !== 'string' || !j.sha || j.sha === own) return null;
+                    if (!lbUpd.info || lbUpd.info.sha !== j.sha) lbUpd.dismissed = false;
+                    lbUpd.info = { sha: j.sha, version: j.version || '', security: j.security === true };
+                    lbUpdateRender();
+                    return lbUpd.info;
+                } catch (_) { return null; }
+            }
+            window.LB_checkForUpdate = lbCheckForUpdate;
+            setTimeout(lbCheckForUpdate, 3000);
+            setInterval(lbCheckForUpdate, 15 * 60 * 1000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && Date.now() - lbUpd.last > 60 * 1000) lbCheckForUpdate();
+            });
+
+            // What's new: renders /CHANGELOG.md with a tiny safe markdown subset (headings, lists, paragraphs, links).
+            // Everything is built with createElement/textContent, never innerHTML. Links open inside the proxy.
+            function lbMdInline(parent, text) {
+                const re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+                let last = 0, m;
+                while ((m = re.exec(text))) {
+                    if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+                    if (/^(https?:\/\/|limitless:\/\/)/i.test(m[2])) {
+                        const a = document.createElement('a');
+                        a.href = '#'; a.textContent = m[1]; a.title = m[2];
+                        const target = m[2];
+                        a.addEventListener('click', (e) => { e.preventDefault(); go(target, true); });
+                        parent.appendChild(a);
+                    } else parent.appendChild(document.createTextNode(m[0]));
+                    last = re.lastIndex;
+                }
+                if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+            }
+            function lbRenderMarkdown(md) {
+                const root = document.createElement('div');
+                let ul = null, para = [];
+                const flush = () => { if (para.length) { const p = document.createElement('p'); lbMdInline(p, para.join(' ')); root.appendChild(p); para = []; } };
+                for (const raw of String(md).replace(/\r/g, '').split('\n')) {
+                    const line = raw.trimEnd();
+                    let m;
+                    if ((m = /^(#{1,3})\s+(.*)$/.exec(line))) {
+                        flush(); ul = null;
+                        const h = document.createElement('h' + m[1].length); lbMdInline(h, m[2]); root.appendChild(h);
+                    } else if ((m = /^\s*[-*]\s+(.*)$/.exec(line))) {
+                        flush();
+                        if (!ul) { ul = document.createElement('ul'); root.appendChild(ul); }
+                        const li = document.createElement('li'); lbMdInline(li, m[1]); ul.appendChild(li);
+                    } else if (!line.trim()) { flush(); ul = null; }
+                    else { ul = null; para.push(line.trim()); }
+                }
+                flush();
+                return root;
+            }
+            {
+                const wnEl = document.createElement('div');
+                wnEl.className = 'lb-wn'; wnEl.id = 'lbWhatsNew';
+                newtab.parentElement.appendChild(wnEl);
+                let wnToken = 0;
+                const wnState = (t) => { const d = document.createElement('div'); d.className = 'lb-wn-in'; const p = document.createElement('p'); p.className = 'lb-wn-state'; p.textContent = t; d.appendChild(p); wnEl.replaceChildren(d); };
+                SKIN_PAGES[LB_WHATS_NEW] = {
+                    title: "What's new",
+                    open: async () => {
+                        wnEl.classList.add('show');
+                        const my = ++wnToken;
+                        wnState('Loading');
+                        try {
+                            const r = await fetch(new URL('CHANGELOG.md', location.href).href, { cache: 'no-store', credentials: 'same-origin' });
+                            if (!r.ok) throw new Error('http ' + r.status);
+                            const txt = await r.text();
+                            if (my !== wnToken) return;
+                            const inner = document.createElement('div'); inner.className = 'lb-wn-in';
+                            inner.appendChild(lbRenderMarkdown(txt));
+                            wnEl.replaceChildren(inner);
+                        } catch (_) { if (my === wnToken) wnState('The change log could not be loaded. Try again in a moment.'); }
+                    },
+                    close: () => wnEl.classList.remove('show')
+                };
+                const aboutWn = $('lbAboutWhatsNew');
+                if (aboutWn) aboutWn.addEventListener('click', (e) => { e.preventDefault(); go(LB_WHATS_NEW, true); });
+            }
+
             function showNewTab(push = true) {
                 if (!newtab) return;
                 _netStall = 0;
@@ -12247,6 +12261,7 @@ window._libcurlReady = true;
                 loadSavedWallpaper();
                 renderFavorites();
                 playLbAnimation();
+                try { if (!document.querySelector('.overlay-err-btn:focus')) setTimeout(() => { const q = $("ntSearch"); if (q && newtab.classList.contains("active") && !document.querySelector('.bookmark-modal[style*="flex"]')) q.focus({ preventScroll: true }); }, 60); } catch (_) { }
                 if (push) {
                     hist = hist.slice(0, histIdx + 1);
                     hist.push(HOME_INTERNAL);
@@ -19698,6 +19713,10 @@ _VIEWER_DL_JS +
                     ntEngine.classList.toggle('open');
                     ntEngineDropdown.classList.toggle('open');
                 };
+                ntEngine.addEventListener('keydown', (e) => {
+                    if (e.target === ntEngine && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ntEngine.click(); }
+                    else if (e.key === 'Escape') { ntEngine.classList.remove('open'); ntEngineDropdown.classList.remove('open'); ntEngine.focus(); }
+                });
 
                 ntEngineDropdown.querySelectorAll('button').forEach(btn => {
                     if (btn.dataset.engine === selectedEngine) {
@@ -19735,8 +19754,6 @@ _VIEWER_DL_JS +
             ntSearch.onkeydown = (e) => {
                 if (e.key === "Enter") ntSearchBtn.click();
             };
-            const ntGithubBtn = $("ntGithubBtn");
-            if (ntGithubBtn) ntGithubBtn.onclick = () => window.open("https://github.com/Gamble-Limited-Ltd/limitless-browser", "_blank", "noopener,noreferrer");
 
             ntWallpaperBtn.onclick = () => {
                 $("wallpaperUrlInput").value = "";
@@ -19798,7 +19815,7 @@ _VIEWER_DL_JS +
                 let url = (urlEl.value || "").trim();
                 if (!url) return;
 
-                if (favorites.length >= 5) {
+                if (favorites.length >= 6) {
                     hideAddFavoriteModal();
                     return;
                 }
@@ -20633,7 +20650,7 @@ _VIEWER_DL_JS +
                 const clock24Switch = $("settings24hrSwitch");
                 if (clock24Switch) {
                     const key24 = 'limitless:24hrclock:v1';
-                    const is24 = ls.getItem(key24) === 'true';
+                    const is24 = lbUse24h();
                     clock24Switch.classList.toggle("on", is24);
                     clock24Switch.onclick = () => {
                         const nowOn = clock24Switch.classList.toggle("on");
@@ -21518,26 +21535,10 @@ _VIEWER_DL_JS +
                     target: '#ntFavAddBtn',
                     icon: '<i class="fas fa-star"></i>',
                     title: 'Add Favorite',
-                    body: 'Pin your most-visited sites as favorites on the new tab page for instant access. You can add up to 5.',
+                    body: 'Pin your most-visited sites as favorites on the new tab page for instant access. You can add up to 6.',
                     pos: 'below',
                     requiresNewTab: true,
                     targetFallback: '.nt-fav-add'
-                },
-                {
-                    target: '#ntWallpaperBtn',
-                    icon: '<i class="fas fa-image"></i>',
-                    title: 'Change Wallpaper',
-                    body: 'Customize the new tab page background. Upload any image, use a random stock image, paste an image URL, or reset to the default gradient.',
-                    pos: 'above',
-                    requiresNewTab: true
-                },
-                {
-                    target: '#ntGithubBtn',
-                    icon: '<i class="fab fa-github"></i>',
-                    title: 'GitHub',
-                    body: 'Limitless Browser is open source (AGPLv3). Click to view the source code or report an issue.',
-                    pos: 'above',
-                    requiresNewTab: true
                 },
                 {
                     target: null,

@@ -16,7 +16,7 @@ rm -rf "$OUT" "$OUTBR"
 mkdir -p "$OUT" "$OUTBR"
 
 # What the web tier serves. Optional entries are skipped with a notice while other work lands.
-REQUIRED=(index.html patcher.html legal theme favicon.svg)
+REQUIRED=(index.html patcher.html legal theme favicon.svg CHANGELOG.md)
 OPTIONAL=(vendor fonts)
 for p in "${REQUIRED[@]}"; do
   [ -e "$SRC/$p" ] || { echo "build-static: missing required $p in $SRC" >&2; exit 1; }
@@ -25,6 +25,12 @@ done
 for p in "${OPTIONAL[@]}"; do
   if [ -e "$SRC/$p" ]; then cp -a "$SRC/$p" "$OUT/"; else echo "build-static: note, $p/ not present yet, skipped"; fi
 done
+
+# Stamp the build's own sha into the dist copy of index.html (never the source) so the app can tell when
+# version.json names a newer build. The marker line in index.html is `... || 'dev'; // @LB_BUILD_SHA@`.
+if [[ ! "$SHA" =~ ^[0-9A-Za-z._-]+$ ]]; then echo "build-static: unsafe sha '$SHA'" >&2; exit 1; fi
+sed -i "/@LB_BUILD_SHA@/ s/|| 'dev';/|| '$SHA';/" "$OUT/index.html"
+grep -q "|| '$SHA'; // @LB_BUILD_SHA@" "$OUT/index.html" || { echo "build-static: could not stamp the build sha into index.html" >&2; exit 1; }
 
 VERSION=0.1.0
 if [ -f "$SRC/package.json" ]; then

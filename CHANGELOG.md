@@ -10,4 +10,4 @@ What changed, in plain language. Newest first.
 - Our own relay for connections, instead of public ones.
 - Removed the Discord client, the new-tab widgets, the AI assistant and translate.
 - Faster loading: pages are sent compressed, and fonts and icons are hosted with the app.
-- A notice appears when a new version is available.
+- A notice appears when a new version is available, with a What's new page that lists the changes.

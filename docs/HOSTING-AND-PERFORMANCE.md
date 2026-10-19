@@ -19,8 +19,15 @@ epoxy-server relay, staged hybrid frontend. Stage plan: `PLAN.md` stages 5 and 7
 - AGPL s13: the served app links to the GLL source repo. Check before the first public deploy.
 - Headers: COOP/COEP only if libcurl.js/WASM needs them (test); CSP only after testing, since the proxy
   injects scripts.
-- **Updates:** each build writes `version.json` (version, sha, date, optional `security: true`). The app polls
-  it and shows "Update available, reload" with a What's new link from `CHANGELOG.md`. It never reloads itself.
+- **Updates (as built, 2026-10-19):** `scripts/build-static.sh <sha>` writes `version.json`
+  (`{version, sha, date, security}`; set `security` to `true` by hand for a security release) and stamps the same sha
+  into the dist copy of `index.html` (`window.LB_BUILD_SHA`, marker `// @LB_BUILD_SHA@`; the source keeps `'dev'`).
+  The app fetches `version.json` (same origin, gated, `cache: 'no-store'`) 3 s after start, every 15 minutes, and when the
+  tab becomes visible again (at most once a minute). A different sha shows a banner under the toolbar ("Update
+  available" or "Security update", What's new link, Reload, dismiss); dismissing leaves a pill in the toolbar until the
+  page is reloaded. It never reloads itself. `dev` builds, `file://` and a missing `version.json` skip the check silently.
+  What's new (`limitless://whats-new`) renders `/CHANGELOG.md`, which the build copies into dist and nginx serves gated,
+  `no-cache`, `text/markdown; charset=utf-8`.
 - Release procedure (lanes, watch periods) applies from `0.1.1`; `0.1.0` is the launch.
 
 - **Invite only (2026-10-17):** this host is never public ungated. nginx applies `auth_request` to every
@@ -113,3 +120,23 @@ Files: `deploy/docker-compose.yml` (+ `docker-compose.dev.yml`, `dev-up.sh`, `de
   per connection = 6.25 Mbit/s; with the gate's 8-sockets-per-user cap that is at most 50 Mbit/s per user, download direction only (nginx `limit_rate`
   does not throttle client uploads), and untested on upgraded WebSocket connections. A real per-user meter in the gate is still open.
 - **Gate image:** compose has a `/healthz` healthcheck (needs `wget` in the gate image, otherwise change it) and an optional `GATE_BACKCHANNEL_URL` in `deploy/gate.env`.
+
+### Rehearsal (stage 7 prep)
+An end-to-end check of the real stack (nginx `web`, the real `gate` from `~/limitless-gate`, the epoxy `relay`)
+against a MOCK GATE, all on this VM and never public. Run `npm run test:stack` (same as `deploy/rehearsal/run.sh`;
+extra arguments go to Playwright, `KEEP=1` leaves the stack up). It takes about 3 minutes, most of it one wait for
+the gate's 60 s access cache.
+- What it does: builds the static tree with `scripts/build-static.sh`, builds the four images (tag `rehearsal`),
+  generates a throwaway `gate.env` in a temp dir (plain-http `PUBLIC_ORIGIN`, so the cookie is `lb_session`),
+  starts compose project `limitless-browser-rehearsal` (web `127.0.0.1:8590`, mock `127.0.0.1:8591`, subnets
+  `10.89.80-84.0/24`), runs `tests/stack/rehearsal.spec.js` (config `playwright.stack.config.js`, so `npm test`
+  stays fast), and tears everything down on exit, also on failure. It never touches project `limitless-browser`.
+- The mock (`~/limitless-gate/test-support/mock-gate/`) is published at the same URL the gate uses as issuer; the gate
+  reaches it over the compose network through `GATE_BACKCHANNEL_URL`.
+- Covers: `/legal/` ungated; sign-in page themed with the stamp; `/index.html`, `/version.json`, `/patcher.html` and
+  `/wisp/` refused without a session; redirect and direct sign-in; wrong password; invite-only page; sign out and
+  CSRF origin check; revocation (HTML 403, WISP socket cut, invite page with the email); GATE outage ("GLL ID is
+  unavailable."); a real public page loading through gate and relay; the relay refusing loopback, RFC1918,
+  link-local metadata and port 25 (with a positive control). The relay tests skip, with a reason, if the VM has no
+  outbound internet.
+- Not covered: Cloudflare Tunnel and Access, TLS and `__Host-` cookies (the rehearsal is plain http), the real GATE.
