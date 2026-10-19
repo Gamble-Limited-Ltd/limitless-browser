@@ -19,15 +19,15 @@ font, `--lb-fm` mono font (GLL themes: DM Mono; others fall back to `ui-monospac
 | luxury | Luxury (default) | dark | #070a10 | #0e131c | #eae6dc | #8d93a0 | #232a38 | #BDFFFF | #4DA6FF | #07101a | |
 | luxury | | light | #eeece6 | #f8f6f1 | #11161f | #666b75 | #cfcbc0 | #1a5fae | #4DA6FF | #ffffff | |
 | fancy | Fancy | dark | #0e1230 | #171c44 | #eef2ff | #9aa6d6 | #2c3470 | #4DA6FF | #BDFFFF | #05112a | #b69cff |
-| fancy | | light | #f3f6ff | #ffffff | #1a1f4a | #5d6699 | #d6dcf5 | #2f7be0 | #BDFFFF | #ffffff | #8a63ee |
+| fancy | | light | #f3f6ff | #ffffff | #1a1f4a | #5d6699 | #d6dcf5 | #2171dc | #BDFFFF | #ffffff | #8a63ee |
 | minimal | Minimal | dark | #0c0d0f | #141517 | #f4f4f5 | #8a8d93 | #232528 | #4DA6FF | #BDFFFF | #04101c | |
-| minimal | | light | #fcfcfd | #f3f4f6 | #101114 | #6b6f76 | #e4e6ea | #1f78e0 | #BDFFFF | #ffffff | |
+| minimal | | light | #fcfcfd | #f3f4f6 | #101114 | #6b6f76 | #e4e6ea | #1e74d9 | #BDFFFF | #ffffff | |
 | soft | Soft | dark | #1a2238 | #232d49 | #eaf1ff | #9fb0d0 | #34405f | #8cc4ff | #BDFFFF | #10213c | #f4b8d8 |
-| soft | | light | #f2f7ff | #ffffff | #2b3a55 | #6d7d99 | #dfe8f7 | #4DA6FF | #BDFFFF | #12304f | #ffc9e1 |
+| soft | | light | #f2f7ff | #ffffff | #2b3a55 | #61718b | #dfe8f7 | #4DA6FF | #BDFFFF | #12304f | #ffc9e1 |
 | retro | Retro | dark | #0b1a2a | #10263c | #BDFFFF | #6fa4c2 | #4DA6FF | #4DA6FF | #BDFFFF | #04121f | #ffcc66 |
-| retro | | light | #e9eef2 | #f8fbfd | #1d2433 | #58627a | #1d2433 | #2f7be0 | #BDFFFF | #ffffff | #ff8a5c |
+| retro | | light | #e9eef2 | #f8fbfd | #1d2433 | #58627a | #1d2433 | #2171dc | #BDFFFF | #ffffff | #ff8a5c |
 | ledger | Gilded Ledger | dark | #0b0912 | #131020 | #f0e8d0 | #aaa18a | #3b3322 | #c9a84c | #e2c87a | #0b0912 | #1b1729 |
-| ledger | | light | #f0e8d0 | #f7f2e2 | #1b1626 | #5c5545 | #d3c79f | #8f701b | #6b520f | #f0e8d0 | #e6dcbd |
+| ledger | | light | #f0e8d0 | #f7f2e2 | #1b1626 | #5c5545 | #d3c79f | #7e6318 | #6b520f | #f0e8d0 | #e6dcbd |
 | mono | GLL Monochrome | dark | #0d0d0d | #171717 | #f2f2f2 | #9a9a9a | #2e2e2e | #f2f2f2 | #bdbdbd | #0d0d0d | #1f1f1f |
 | mono | | light | #f4f4f2 | #ffffff | #141414 | #6a6a6a | #d8d8d8 | #141414 | #555555 | #ffffff | #ededeb |
 | vault | Vault | dark only | #000000 | #0b0912 | #ffffff | #d7ceb4 | #c9a84c | #e2c87a | #c9a84c | #000000 | #0b0912 |

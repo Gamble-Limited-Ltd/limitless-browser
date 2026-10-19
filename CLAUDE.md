@@ -64,5 +64,6 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   splash rules to `theme/chrome.css` under `[data-lb-theme="<id>"]`, and a case in `tests/e2e/themes.spec.js`.
 - **Marks:** `<symbol id="lb-mk-orbit|lens|wordmark">` in `#lbMarks`, colored by `--lb-acc`/`--lb-acc2`. An `svg.lb-mk` holds
   three `<use>` children and CSS on `html[data-lb-mark]` shows one. The favicon stays Orbit.
-- **Known contrast gaps (palette is approved, not changed):** text on accent (`--lb-on` on `--lb-acc`) is below 4.5:1 in
-  fancy light (4.2), minimal light (4.4), retro light (4.2) and ledger light (3.8); muted text in soft light (3.9 on bg, 4.2 on surf).
+- **Contrast (Boss, 2026-10-19):** body text and text on accent meet 4.5:1 in every theme. To get there the light
+  accents of fancy, minimal, retro (`#2171dc`, `#1e74d9`) and ledger (`#7e6318`) and soft light's muted text (`#61718b`)
+  were darkened slightly from the picked values. Keep 4.5:1 when adding or editing a theme.
