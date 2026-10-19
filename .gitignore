@@ -5,3 +5,4 @@ deploy/web/dist/
 deploy/web/dist-br/
 deploy/gate.env
 .last-deploy-hash
+test-results-stack/

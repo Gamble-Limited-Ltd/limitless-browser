@@ -1,0 +1,89 @@
+# Launch rehearsal stack (Stage 7 prep): the REAL web (nginx), gate (check service) and relay (epoxy),
+# against a MOCK GATE. Local only: everything publishes on 127.0.0.1. Driven by deploy/rehearsal/run.sh.
+# Compose project name: limitless-browser-rehearsal. Never the production project `limitless-browser`.
+# Same service definitions as ../docker-compose.yml, with distinct image tags, subnets and host ports.
+name: limitless-browser-rehearsal
+
+services:
+  web:
+    image: limitless-web:rehearsal
+    build:
+      context: ../web
+    ports:
+      - "127.0.0.1:${REHEARSAL_WEB_PORT:-8590}:80"
+    networks: [lb_edge, lb_internal]
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+
+  gate:
+    image: limitless-gate:rehearsal
+    build:
+      context: ${GATE_CONTEXT:-../../../limitless-gate}
+    env_file:
+      - ${REHEARSAL_GATE_ENV:?set by run.sh}
+    environment:
+      PORT: "8080"
+      RELAY_URL: ws://relay:4000/
+    volumes:
+      - gate-data:/data
+    networks: [lb_internal, lb_relay, lb_gate_out]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    depends_on: [relay, mock-gate]
+
+  relay:
+    image: limitless-relay:rehearsal
+    build:
+      context: ../relay
+    networks: [lb_relay, lb_egress]
+    dns: [1.1.1.1, 9.9.9.9]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    mem_limit: 512m
+    cpus: 2
+
+  # Stand-in for GATE. Published on the host at the SAME URL the gate uses as its issuer, so the browser and
+  # the id token agree; the gate itself reaches it through GATE_BACKCHANNEL_URL (http://mock-gate:PORT).
+  mock-gate:
+    image: limitless-mock-gate:rehearsal
+    build:
+      context: ${GATE_CONTEXT:-../../../limitless-gate}/test-support/mock-gate
+    ports:
+      - "127.0.0.1:${REHEARSAL_MOCK_PORT:-8591}:${REHEARSAL_MOCK_PORT:-8591}"
+    environment:
+      PORT: "${REHEARSAL_MOCK_PORT:-8591}"
+      ISSUER: http://127.0.0.1:${REHEARSAL_MOCK_PORT:-8591}
+      CLIENT_ID: limitless-browser
+      CLIENT_SECRET: ${REHEARSAL_CLIENT_SECRET:?set by run.sh}
+      REDIRECT_URI: http://127.0.0.1:${REHEARSAL_WEB_PORT:-8590}/auth/callback
+    networks: [lb_gate_out]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  lb_internal:
+    internal: true
+    ipam: { config: [{ subnet: 10.89.80.0/24 }] }
+  lb_relay:
+    internal: true
+    ipam: { config: [{ subnet: 10.89.81.0/24 }] }
+  lb_egress:
+    ipam: { config: [{ subnet: 10.89.82.0/24 }] }
+  lb_edge:
+    ipam: { config: [{ subnet: 10.89.84.0/24 }] }
+  lb_gate_out:
+    ipam: { config: [{ subnet: 10.89.83.0/24 }] }
+
+volumes:
+  gate-data:

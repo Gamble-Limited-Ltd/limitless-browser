@@ -5,7 +5,8 @@
   "description": "Limitless Browser, a private browsing proxy by Gamble Limited Ltd.",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:stack": "deploy/rehearsal/run.sh"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0"
