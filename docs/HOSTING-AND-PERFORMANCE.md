@@ -32,8 +32,12 @@ epoxy-server relay, staged hybrid frontend. Stage plan: `PLAN.md` stages 5 and 7
    and the brotli module (or precompressed files served with the right headers). `index.html` (3.8 MB) should
    drop to roughly a quarter. `index.html` and `version.json`: `no-cache` + ETag. Hashed assets: long
    `immutable`. HTTP/2 at Cloudflare.
-2. **Self-host third-party assets (launch, decided).** Fonts (JetBrains Mono, Space Grotesk), Font Awesome
-   (upstream mixes 6.7.2 and 6.5.1: pick one), PDF.js 4.2.67, iso-639-1. Keep each license notice in `NOTICE`.
+2. **Self-host third-party assets (launch, decided). Done 2026-10-19.** Fonts (JetBrains Mono, Space Grotesk)
+   in `fonts/` with `fonts/fonts.css` (`font-display: swap`), Font Awesome **6.7.2 Free** (chosen over 6.5.1) in
+   `vendor/fontawesome/6.7.2/`, PDF.js 4.2.67 in `vendor/pdfjs/4.2.67/`, iso-639-1 2.1.11 in
+   `vendor/iso-639-1/2.1.11/`; each library's license file sits next to it. `index.html` and the Patcher use
+   relative paths; documents the app generates (error page, PDF viewer, viewers) use absolute URLs built from
+   the page URL, since `blob:`/`srcdoc:` documents cannot resolve relative paths. Still to do: list the licenses in `NOTICE`.
    Removing the Discord client, new-tab widgets, AI and translate (`PLAN.md`) also removes their third-party calls.
 3. **Own WISP relay (launch, decided: epoxy-server).** See 2b.
 4. **Frontend: staged hybrid (decided).**
@@ -72,5 +76,40 @@ Measure before/after (transfer size, load time, time to interactive) and record 
 
 ## 4. Open items
 - Cap numbers and enforcement point.
-- Brotli in the nginx image (module vs precompressed files).
+- Brotli: decided, precompressed trees (section 5).
 - Cloudflare's terms for relaying arbitrary traffic.
+
+## 5. What is built (stage 5, 2026-10-19)
+Files: `deploy/docker-compose.yml` (+ `docker-compose.dev.yml`, `dev-up.sh`, `dev/stub-gate.conf.template`), `deploy/web/` (Dockerfile,
+`nginx.conf`, `snippets/`, `errors/`), `deploy/relay/` (Dockerfile, `config.toml`, `egress-rules.sh`), `deploy.sh`,
+`scripts/build-static.sh`, `scripts/gen-themes.py`, `scripts/fetch-fonts.py`, `theme/`, `legal/`, `favicon.svg`.
+- **Networks** (fixed subnets): `lb_internal` (internal, web and gate, 10.88.80.0/24), `lb_relay` (internal, gate and relay, .81),
+  `lb_egress` (relay only, .82), `lb_gate_out` (gate only, for GLL ID over HTTPS, .83), `lb_edge` (web only, .84: Docker cannot publish a
+  port from an internal-only network). Only `web` publishes a port, `127.0.0.1:8580`.
+- **nginx** fails closed: `auth_request /_gate/check` at server level, switched off only for `/legal/`, `/theme/`, `/favicon.svg`, `/auth/`.
+  401 gives the gate's sign-in page for HTML requests, 403 the invite page, otherwise the bare status. If the gate is down the answer is
+  a 5xx with a static page (verified: the app is never served). No access logs (privacy page says so; Boss to confirm). Real IP from
+  `CF-Connecting-IP` only for peers in 127.0.0.1 / Docker ranges.
+- **Compression decision:** no brotli module in the official nginx image. `build-static.sh` writes `dist/` (raw + `.gz`, `gzip_static`) and
+  `dist-br/` (same names, brotli q11, from the `brotli` CLI or Node's zlib). nginx chooses the root from `Accept-Encoding` and adds
+  `Content-Encoding: br` by extension (html, js, mjs, css, wasm, svg, json). Measured index.html (3,634,079 B): gzip 1,196,734 B (33%), br 978,191 B (27%).
+- **Caching:** index.html, GUST-Patcher.html, version.json, themes.css: `no-cache` + ETag. `vendor/`: 1 year immutable (versioned paths).
+  `fonts/`, `theme/fonts/`: 1 year (names not versioned, so not immutable).
+- **Relay:** epoxy-server 2.0.0, MercuryWorkshop/epoxy-tls commit `0c11678d72a636c3a4bc723db87e03e7b888eaf9` (2026-03-21), built unmodified
+  with a dated nightly (`nightly-2026-03-20`), `speed-limit` feature, distroless `cc-debian12:nonroot`, read-only rootfs, cap_drop ALL, image 47 MB.
+  **License: AGPL-3.0** (`server/LICENSE`; copied into the image). We run it unmodified in its own container and link to our source; if we ever patch it,
+  the patch must be published. Options used (`deploy/relay/config.toml`): `allow_non_global=false` (blocks 0/8, RFC1918, CGNAT, link-local, reserved,
+  IPv6 ULA, checked on the resolved address), `allow_loopback=false`, `allow_multicast=false`, `resolve_ipv6=false`, `allow_udp=false`,
+  `block_ports` for SMTP (25, 465, 587), IRC (6660-6669, 6697), torrent (6881-6889, 6969), public `dns_servers`, `log_level=warn`.
+  epoxy-server has no per-user limits (only per-connection `read_limit`/`write_limit`, left unlimited), so caps stay in the gate as planned.
+- **Egress rules:** container-level only so far (internal networks, own egress bridge, public DNS, no capabilities). Host-level rules are
+  written in `deploy/relay/egress-rules.sh` (dry run by default) and are NOT applied; Boss reviews and runs `sudo deploy/relay/egress-rules.sh --apply`.
+- **Local test results:** see the stage 5 report in the session log; stub gate verified for 401, 403, 200, gate-down, br and gzip.
+- **Client IP:** nginx overwrites `X-Real-IP` and `X-Forwarded-For` with `$remote_addr` (after `CF-Connecting-IP` is resolved) on `/auth/`,
+  `/_gate/check` and `/wisp/`, never `$proxy_add_x_forwarded_for`, because the gate trusts them. Only nginx can reach the gate (internal networks).
+- **GLL ID outage:** `/_gate/check` may answer 401 with `X-LB-Reason: unavailable`; nginx then shows `/auth/unavailable` instead of `/auth/signin`
+  (verified with the stub).
+- **Bandwidth cap is not enforced per user yet.** Neither the gate nor epoxy-server meters it. Stopgap on `/wisp/`: `limit_rate 781250` (bytes/s)
+  per connection = 6.25 Mbit/s; with the gate's 8-sockets-per-user cap that is at most 50 Mbit/s per user, download direction only (nginx `limit_rate`
+  does not throttle client uploads), and untested on upgraded WebSocket connections. A real per-user meter in the gate is still open.
+- **Gate image:** compose has a `/healthz` healthcheck (needs `wget` in the gate image, otherwise change it) and an optional `GATE_BACKCHANNEL_URL` in `deploy/gate.env`.

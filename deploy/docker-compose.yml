@@ -1,0 +1,100 @@
+# Limitless Browser. Compose project name: limitless-browser. Contract: docs/ACCESS-CONTROL.md section 9.
+#   web   nginx, the only published service, 127.0.0.1:8580 (Cloudflare Tunnel -> here, set up at stage 7)
+#   gate  check service (private repo ~/limitless-gate): sessions, GATE sign-in, /wisp/ -> relay
+#   relay epoxy-server, reachable only from gate, egress through its own filtered network
+# Never bind anything to 0.0.0.0 on the host. Touch only this project's containers.
+name: limitless-browser
+
+services:
+  web:
+    image: limitless-web:${WEB_SHA:-dev}
+    build:
+      context: ./web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8580:80"
+    networks: [lb_edge, lb_internal]
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    logging:
+      driver: local
+      options: { max-size: "5m", max-file: "2" }
+
+  gate:
+    image: limitless-gate:${GATE_SHA:-dev}
+    build:
+      context: ${GATE_CONTEXT:-../../limitless-gate}
+    restart: unless-stopped
+    env_file:
+      - path: ./gate.env          # gitignored; secrets (GATE client secret, session key). Not in git.
+        required: false
+    environment:
+      # Names the gate is expected to honour (align with ~/limitless-gate if they differ).
+      PORT: "8080"
+      # Optional, leave unset unless needed: GATE_BACKCHANNEL_URL (set it in gate.env)
+      RELAY_URL: ws://relay:4000/
+    volumes:
+      - gate-data:/data
+    networks: [lb_internal, lb_relay, lb_gate_out]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    depends_on: [relay]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: local
+      options: { max-size: "5m", max-file: "2" }
+
+  relay:
+    image: limitless-relay:${RELAY_SHA:-dev}
+    build:
+      context: ./relay
+    restart: unless-stopped
+    networks: [lb_relay, lb_egress]
+    # Container-level egress hardening (host-level iptables rules are also recommended: relay/egress-rules.sh).
+    # Public resolvers: the relay never asks Docker's embedded DNS, so container names do not resolve.
+    dns: [1.1.1.1, 9.9.9.9]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    mem_limit: 512m
+    cpus: 2
+    logging:
+      driver: local
+      options: { max-size: "2m", max-file: "2" }
+
+networks:
+  # web <-> gate. No outside access at all.
+  lb_internal:
+    internal: true
+    ipam: { config: [{ subnet: 10.88.80.0/24 }] }
+  # gate <-> relay. No outside access at all.
+  lb_relay:
+    internal: true
+    ipam: { config: [{ subnet: 10.88.81.0/24 }] }
+  # relay's only way out. Nothing else attaches here. Fixed subnet so egress-rules.sh can match it.
+  lb_egress:
+    ipam: { config: [{ subnet: 10.88.82.0/24 }] }
+  # Docker cannot publish a port from an internal-only network, so web also sits on this otherwise empty bridge.
+  lb_edge:
+    ipam: { config: [{ subnet: 10.88.84.0/24 }] }
+  # gate reaches GLL ID (id.taps-holdings.org) over HTTPS from here. Nothing else attaches.
+  lb_gate_out:
+    ipam: { config: [{ subnet: 10.88.83.0/24 }] }
+
+volumes:
+  gate-data:

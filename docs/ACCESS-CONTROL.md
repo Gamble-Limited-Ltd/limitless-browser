@@ -25,9 +25,9 @@ use the tool. Everyone else, signed in or not, sees an "invite only" page and is
 ## 3. Request flow
 1. Request to `https://limitless.taps-holdings.org/`. nginx `auth_request` asks the check service.
 2. No Limitless session: sign-in page offering GATE redirect sign-in or direct sign-in.
-   - Redirect: check service starts OIDC at `id.taps-holdings.org/authorize` (state, nonce, PKCE S256).
+   - Redirect: check service starts OIDC at `id.taps-holdings.org/oidc/authorize` (state, nonce, PKCE S256).
      GATE needs a "Continue" click (no silent `prompt=none` sign-in in GATE v1). Callback exchanges the code
-     at `/token`, verifies the ES256 id token against GATE's JWKS, stores `sub`, sets the Limitless cookie.
+     at `/oidc/token`, verifies the ES256 id token against GATE's JWKS, stores `sub`, sets the Limitless cookie.
    - Direct: check service calls GATE's direct sign-in API server to server with its client credentials.
    - GATE returns `error=access_denied` for unapproved users at sign-in: the callback shows the invite page.
 3. Valid session: the check service calls `/oidc/access-check` (`client_secret_basic`, body `{sub}`) when its
@@ -91,3 +91,19 @@ built in parallel.
   open sockets and bytes per user, parses WISP CONNECT frames to cap streams (64) and refuse blocked ports, cuts
   sockets within 60 s of revocation and after a maximum lifetime (1 h; the client reconnects).
 - `version.json` is gated like the app and served `no-cache`.
+
+## 10. As built (2026-10-19, `~/limitless-gate` 7c787d1)
+- All GATE endpoints are under `/oidc/` (`/oidc/authorize`, `/oidc/token`, `/oidc/jwks`, `/oidc/access-check`,
+  `/oidc/direct/login`, `/oidc/logout`). Client auth is `client_secret_basic` only. Id tokens ES256, 5 min.
+- GATE redirects after logout only with an `id_token_hint`, which the gate does not keep, so "Switch account" ends
+  the Limitless session and restarts sign-in with `prompt=login`; GATE's own session is left alone.
+- A revoked session is kept, marked denied, until its 7-day end (the invite page needs the email); it grants
+  nothing. If Boss approves the person later, the next check lets them in without a new sign-in.
+- GATE unreachable: new sign-ins fail closed (unavailable page); existing sessions get at most 5 minutes of grace
+  since the last good check, then `/_gate/check` returns 401 with `X-LB-Reason: unavailable`.
+- WISP refusals: blocked ports CLOSE 0x48, cap refusals 0x49, malformed CONNECT 0x41. Per-user bandwidth is not
+  enforced by the gate; nginx `limit_rate` per socket is a stopgap (`HOSTING-AND-PERFORMANCE.md` section 5).
+- Boss's GATE commands (stage 6/7): `./manage.sh clients add limitless-browser --name "Limitless Browser"
+  --redirect https://limitless.taps-holdings.org/auth/callback --post-logout https://limitless.taps-holdings.org/
+  --requires-approval`, then `./manage.sh clients direct limitless-browser on`, then
+  `./manage.sh apps approve limitless-browser <loginName|email>`.

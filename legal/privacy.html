@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-lb-theme="luxury" data-lb-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy - Limitless Browser</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme/fonts.css">
+<link rel="stylesheet" href="/theme/themes.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--lb-bg);color:var(--lb-fg);font:300 17px/1.65 var(--lb-fb)}
+main{max-width:46rem;margin:0 auto;padding:2.5rem 1rem 4rem}
+header.top{display:flex;align-items:center;gap:.75rem;margin-bottom:2rem}
+header.top img{width:36px;height:36px}
+header.top a{color:var(--lb-fg);text-decoration:none;font:400 .8rem var(--lb-fb);letter-spacing:.3em;text-transform:uppercase}
+h1,h2{font-family:var(--lb-fd);font-weight:500;line-height:1.25}
+h1{font-size:2rem;margin:.2em 0 .1em}
+h2{font-size:1.25rem;margin:2.2rem 0 .4rem;padding-top:1rem;border-top:1px solid var(--lb-line)}
+a{color:var(--lb-acc)}
+.draft{border:1px solid var(--lb-acc2);padding:.75rem 1rem;margin:0 0 1.5rem;color:var(--lb-fg);background:var(--lb-surf);font-weight:400}
+.meta{color:var(--lb-mut);margin:0 0 1rem}
+.note{color:var(--lb-mut);font-size:.9rem}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:1rem 0}
+th,td{border:1px solid var(--lb-line);padding:.5rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--lb-surf);font-weight:500}
+.tbl{overflow-x:auto}
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--lb-line);color:var(--lb-mut);font-size:.85rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center}
+footer img{height:28px;width:auto}
+</style>
+</head>
+<body>
+<main>
+<header class="top"><img src="/theme/marks/orbit.svg" alt=""><a href="/legal/">Limitless Browser</a></header>
+<p class="draft">Draft, pending Boss's review. This text is not final and is not yet in force.</p>
+<h1>Privacy Policy</h1>
+<p class="meta">Gamble Limited Ltd.<br>Effective date: [to be set when Boss approves this document]</p>
+
+<h2>Summary</h2>
+<ul>
+<li>Limitless Browser is invite only. You sign in with GLL ID, and we keep only what we need to know who you are and to stop abuse.</li>
+<li>We do not keep logs of the sites you visit or of what you send and receive, and we do not tie any such record to your account.</li>
+<li>The relay that carries your traffic can see which host and port you connect to. It cannot read the content of encrypted (HTTPS) connections.</li>
+<li>Your tabs, cookies jar and settings stay in your browser's storage on your device.</li>
+<li>Third-party fallback relays are off by default, are not run by Gamble Limited Ltd., and are not covered by this policy.</li>
+<li>We do not sell data. We have nothing worth selling and no wish to start.</li>
+</ul>
+<p class="note">This summary helps you read the policy. Only the formal text below counts.</p>
+
+<h2>&sect; 1: The Service</h2>
+<p>Limitless Browser (the "Service") is a private browsing proxy at limitless.taps-holdings.org. It is run by Gamble Limited Ltd. ("we", "us"). "Gamble Limited Ltd." is the name under which this project operates; the Terms of Use of the company website explain what that means. This policy covers the Service only. It does not cover the company website, any game, GLL ID itself, or any website you visit through the Service.</p>
+
+<h2>&sect; 2: Who Can Use the Service</h2>
+<p>The Service is invite only. To use it you must sign in through GLL ID, and the account must have been approved for Limitless Browser. If you are not approved, you see a page that says the Service is invite only, and you are not sent the app or the relay. Only the legal pages, the theme files (styles, fonts and logos) and the icon are served without a sign-in.</p>
+
+<h2>&sect; 3: Data We Hold</h2>
+<div class="tbl"><table>
+<thead><tr><th>Data</th><th>Where it comes from</th><th>Why</th><th>Retention</th></tr></thead>
+<tbody>
+<tr><td>GLL ID account identifier</td><td>GLL ID, when you sign in</td><td>To recognise your account and check that it is approved. Approvals are tied to this identifier, so a change of email does not lose the approval.</td><td>While your account is approved or has a session. [exact period to be confirmed]</td></tr>
+<tr><td>Email address</td><td>GLL ID, when you sign in</td><td>To show you which account you are signed in with, and to identify you to the operator.</td><td>[retention period to be confirmed]</td></tr>
+<tr><td>Session times (when a session starts, is checked and ends)</td><td>Our check service</td><td>To keep your session valid (7 days, then you sign in again) and to cut it off when access is withdrawn.</td><td>[retention period to be confirmed]</td></tr>
+<tr><td>Usage counters: bytes transferred, number of open relay connections and streams, per account</td><td>Our check service</td><td>To apply fair-use limits. Counters hold amounts only, not which sites were involved.</td><td>Short. [retention period to be confirmed]</td></tr>
+<tr><td>Counts of sign-in outcomes (allowed and denied)</td><td>Our check service</td><td>To see that sign-in works and to spot attacks. Counts, not a list of people.</td><td>[retention period to be confirmed]</td></tr>
+<tr><td>IP address and request details</td><td>Your connection, passed on by Cloudflare</td><td>To deliver the Service and to rate-limit connection attempts. [whether any IP address is stored, and for how long, to be confirmed]</td><td>[retention period to be confirmed]</td></tr>
+<tr><td>Abuse events: rate-limit hits, blocked targets, abuse reports</td><td>The relay and the check service</td><td>To protect the Service and other people from abuse. These are events and counters, not routine logs.</td><td>Short. [retention period to be confirmed]</td></tr>
+</tbody></table></div>
+<p>We do not keep routine logs of destinations or of the content of your traffic, and we do not keep any destination or content log tied to your account. The web server in front of the Service is set up not to write routine access logs. [Boss to confirm before launch.]</p>
+
+<h2>&sect; 4: How We Use the Data</h2>
+<p>We use the data in &sect; 3 to check who may use the Service, to run it, to apply limits, to keep it safe from abuse, and to answer questions you send us. We do not use it for advertising or profiling, and we do not sell it.</p>
+
+<h2>&sect; 5: The Relay</h2>
+<p>The Service reaches websites through a relay that Gamble Limited Ltd. runs. Your browser opens one connection to the relay, and the relay makes the real connections to the sites you visit. To do that, the relay sees the host name or address and the port of each connection you ask for. For HTTPS sites, the relay carries encrypted traffic and cannot read it. Anything that is not encrypted, such as a plain HTTP site, can be read by anyone along the path, including the relay.</p>
+<p>The relay refuses connections to private and internal addresses and to some ports (mail, IRC and common file-sharing ports). It does not write a routine record of what it connects to. See &sect; 3 for the abuse events we keep.</p>
+
+<h2>&sect; 6: Third-Party Fallback Relays</h2>
+<p>If our relay cannot be reached, the app can offer third-party relays instead. They are off by default and you must turn them on yourself, on each device. Gamble Limited Ltd. does not run them. Their operators can see what the relay sees (see &sect; 5), and our limits, logging rules and this policy do not cover them. You can turn them off again in settings.</p>
+
+<h2>&sect; 7: Data in Your Browser</h2>
+<p>The browser part of the Service keeps your tabs, cookies jar, settings and similar data in your browser's own storage on your device. It is not sent to us. It is lost if you clear site data, use a private window or change device. [If sync or other storage features are added later, this policy will be updated before they start.]</p>
+
+<h2>&sect; 8: GLL ID and Cloudflare</h2>
+<p>Sign-in is handled by GLL ID (id.taps-holdings.org), another service of Gamble Limited Ltd. Its own documents describe what it holds about your account. The Service receives only what it needs (your account identifier and email address, and whether you are approved).</p>
+<p>Traffic to the Service passes through Cloudflare, which ends the encrypted connection on our behalf and processes your IP address and request details under its own terms and privacy policy.</p>
+
+<h2>&sect; 9: Cookies</h2>
+<p>The Service sets one session cookie after you sign in. It is limited to this site, is not readable by page scripts, is sent only over secure connections, and lasts 7 days. It is not used for tracking or advertising. Cloudflare may set a cookie that is strictly necessary for security under its own policy.</p>
+
+<h2>&sect; 10: Sharing</h2>
+<p>We do not sell or rent your data. We share it only with the services needed to run the Service (Cloudflare, and GLL ID for sign-in), and when the law requires it. [Boss to confirm the wording on legal requests.]</p>
+
+<h2>&sect; 11: Your Rights</h2>
+<p>You may ask what we hold about you, ask us to fix it, ask us to delete it, or object to our use of it. Write to gamblelimitedsupport@taps-holdings.org with "PRIVACY" at the start of the subject line. We answer within thirty (30) days. We may need to check that the request comes from the account holder. Data held by Cloudflare, by GLL ID, by a fallback relay operator or by a website you visit is outside this policy; contact that party.</p>
+
+<h2>&sect; 12: Children</h2>
+<p>[Age requirements for the Service to be confirmed.]</p>
+
+<h2>&sect; 13: Changes</h2>
+<p>We may change this policy. We will change the effective date at the top. If we add a feature that collects new data, we will update this policy before the feature starts.</p>
+
+<h2>&sect; 14: Open Source</h2>
+<p>The source code of Limitless Browser is at <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser">github.com/Gamble-Limited-Ltd/limitless-browser</a> under the GNU Affero General Public License, version 3. The relay software is epoxy-server by Mercury Workshop, also under that license.</p>
+
+<h2>&sect; 15: Contact</h2>
+<p>Privacy requests: gamblelimitedsupport@taps-holdings.org. Abuse reports: [abuse contact address to be confirmed].</p>
+<footer>
+<span>Gamble Limited Ltd. &middot; <a href="/legal/">Legal</a> &middot; <a href="/legal/privacy.html">Privacy</a> &middot; <a href="/legal/terms.html">Terms</a> &middot; <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser">Source (AGPLv3)</a></span>
+<picture><source srcset="/theme/brand/portfolio-stamp-product-dark.svg" media="(prefers-color-scheme: dark)"><img src="/theme/brand/portfolio-stamp-product-light.svg" alt=""></picture>
+</footer>
+</main>
+</body>
+</html>

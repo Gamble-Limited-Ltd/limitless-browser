@@ -1,3 +1,7 @@
 node_modules/
 test-results/
 playwright-report/
+deploy/web/dist/
+deploy/web/dist-br/
+deploy/gate.env
+.last-deploy-hash

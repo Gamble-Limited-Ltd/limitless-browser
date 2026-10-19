@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Limitless Browser">
+  <style>.c1{fill:var(--lb-acc,#BDFFFF)}.c2{fill:var(--lb-acc2,#4DA6FF)}</style>
+  <rect class="c1" x="20" y="8" width="11" height="46" rx="5.5" stroke="none"/>
+  <circle class="c2" cx="45" cy="48" r="6.5" stroke="none"/>
+</svg>

@@ -1,0 +1,15 @@
+# Stub for the private check service, DEV ONLY. Returns ${LB_STUB_CHECK} for /_gate/check.
+server {
+  listen 8080;
+  location = /_gate/check {
+    add_header X-LB-User "dev-user" always;
+    add_header X-LB-Email "dev@example.invalid" always;
+    add_header X-LB-Reason "${LB_STUB_REASON}" always;
+    return ${LB_STUB_CHECK};
+  }
+  location = /auth/signin  { default_type text/html; return 200 '<!doctype html><title>stub sign-in</title><p>STUB-SIGNIN: sign in with GLL ID (dev stub)</p>'; }
+  location = /auth/unavailable { default_type text/html; return 200 '<!doctype html><p>STUB-UNAVAILABLE</p>'; }
+  location = /auth/invite  { default_type text/html; return 200 '<!doctype html><title>stub invite</title><p>STUB-INVITE: Limitless Browser is invite only.</p>'; }
+  location ^~ /wisp/ { return 501; }
+  location / { return 404; }
+}

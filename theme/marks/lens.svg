@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Limitless Browser">
+  <style>.c1{stroke:var(--lb-acc,#BDFFFF)}.c2{fill:var(--lb-acc2,#4DA6FF)}</style>
+  <path class="c2" d="M32 15.9A18 18 0 0 1 32 48.1A18 18 0 0 1 32 15.9Z" fill-opacity=".45" stroke="none"/>
+  <circle class="c1" cx="24" cy="32" r="18" stroke-width="5"/>
+  <circle class="c1" cx="40" cy="32" r="18" stroke-width="5"/>
+</svg>
