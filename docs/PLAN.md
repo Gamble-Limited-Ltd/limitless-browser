@@ -1,6 +1,6 @@
 # Limitless Browser: master plan
 
-Status: planning. Decisions from Boss's planning Q&A on 2026-10-18 unless dated otherwise. Nothing is built yet.
+Status: 0.1.0 live since 2026-10-19 (`7067718`). Release procedure applies from 0.1.1. Decisions from Boss's planning Q&A on 2026-10-18 unless dated otherwise.
 Detail lives in the topic docs: `REBRAND-PLAN.md` (names, credits, license), `ACCESS-CONTROL.md` (GATE gate),
 `HOSTING-AND-PERFORMANCE.md` (deploy, relay, speed). This file is the index and the stage plan.
 
@@ -147,7 +147,9 @@ console clean, Playwright smoke green.
    Progress 2026-10-19: hosting files built and tested locally with a stub gate (`deploy/`, `deploy.sh`, `scripts/build-static.sh`, `theme/`, `legal/`, relay image builds). Open: legal text review by Boss, host egress rules not applied, real gate and relay run together untested.
 6. **Gate.** Check service (private repo), GATE client registration (Boss runs the `manage.sh` command),
    OIDC callback + direct sign-in, invite page, 60 s access cache, `/wisp/` revocation, rate limits.
-7. **Launch rehearsal and launch.** Full smoke on the gated stack, Cloudflare Tunnel route for
+7. **Launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss).** Rehearsal 15/15 on the full stack (`npm run test:stack`).
+   Still open from this stage: gll-shared/gll-site listings, OWNER_SUB, pushes. Original scope:
+   **Launch rehearsal and launch.** Full smoke on the gated stack, Cloudflare Tunnel route for
    `limitless.taps-holdings.org` (Boss runs it), approve first users, then fix the gll-shared and gll-site
    listings (Boss's OK) and redeploy the site.
 
