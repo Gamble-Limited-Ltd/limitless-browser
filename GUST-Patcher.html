@@ -4,9 +4,8 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>GUST Patcher</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<link rel="stylesheet" href="fonts/fonts.css"/>
+<link rel="stylesheet" href="vendor/fontawesome/6.7.2/css/all.min.css"/>
 <style>
 :root {
   --bg0: #0d0f12;
@@ -869,8 +868,8 @@ button,input,select,textarea{font:inherit}
 </div>
 <script>
 let sourceHTML = '', sourceLoaded = false;
-const RAW_URL = 'https://raw.githubusercontent.com/nautilus-os/GUST/refs/heads/main/index.html';
-const GH_URL  = 'https://github.com/nautilus-os/GUST/raw/refs/heads/main/index.html';
+// The patcher builds from our own copy of the app, served from the same origin (behind the gate).
+const SOURCE_URL = './index.html';
 
 // Default checked state for all patches (all checked by default)
 function resetCheckboxesToDefault() {
@@ -1099,13 +1098,9 @@ async function fetchSource() {
   sourceLoaded = false;
   resetCheckboxesToDefault();
 
-  // Attempt order: raw.githubusercontent (most reliable, direct HTML),
-  // then CORS proxies that return raw content not the GitHub HTML page
+  // Same-origin copy only: no third-party fetches.
   const attempts = [
-    {label:'Fetching from GitHub Raw...',       url: RAW_URL,  opts: {headers:{'Accept':'text/html,application/xhtml+xml'}}},
-    {label:'Fetching via jsDelivr CDN...',       url: 'https://cdn.jsdelivr.net/gh/nautilus-os/GUST@main/index.html', opts:{}},
-    {label:'Fetching via codetabs proxy...',     url: 'https://api.codetabs.com/v1/proxy/?quest=' + RAW_URL, opts:{}},
-    {label:'Fetching via allorigins...',         url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(RAW_URL), opts:{}},
+    {label:'Loading app source...', url: SOURCE_URL, opts:{}},
   ];
   for (const a of attempts) {
     try {
@@ -2093,10 +2088,10 @@ function downloadBaseGUST() {
   // Source not loaded yet — fetch directly
   const btn = document.getElementById('presetBaseBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching…'; }
-  fetch('https://cdn.jsdelivr.net/gh/nautilus-os/GUST@main/index.html', {cache:'no-store'})
+  fetch(SOURCE_URL, {cache:'no-store'})
     .then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(text => { triggerDownload(text, 'GUST.html'); })
-    .catch(() => { window.open('https://github.com/nautilus-os/GUST/raw/refs/heads/main/index.html','_blank'); })
+    .catch(err => { console.warn('[GUST Patcher] base download failed:', err.message); })
     .finally(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Download Base GUST'; } });
 }
 
