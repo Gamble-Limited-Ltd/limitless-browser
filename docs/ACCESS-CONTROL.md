@@ -1,0 +1,74 @@
+# Limitless Browser access control (draft)
+
+Status: planning only. Invite only decided by Boss 2026-10-17; details decided 2026-10-18. Nothing is built here.
+GATE side checked 2026-10-18 (read-only): GATE v1 is live since 2026-10-17 and already provides what this
+needs. Stage plan: `PLAN.md` stage 6.
+
+## 1. Goal
+Limitless Browser is **invite only**. Sign-in through GLL ID (GATE) is required. Only users Boss approves can
+use the tool. Everyone else, signed in or not, sees an "invite only" page and is never sent the app or the relay.
+
+## 2. Decisions
+| Topic | Decision |
+|---|---|
+| Enforcement | Server-side at the nginx container on `127.0.0.1:8580` via `auth_request`. Client-side JS checks are only for UX, never protection. |
+| Scope of the check | Every location (`index.html`, assets, Patcher, `/wisp/` WebSocket upgrade) except `/legal/` (static privacy and terms, no app code) and the auth callback paths. HTML routes get the invite or sign-in page; assets and `/wisp/` get 401/403. |
+| Check service | Small **proprietary** service, Node 24 + Hono (GATE's stack), own private repo (proposal `limitless-gate`) and container. Talks to GATE only over HTTP, never embeds Limitless or GATE code, so it is not AGPL. |
+| Sign-in | GATE OIDC redirect flow (auth code + PKCE) **and** GATE direct sign-in (`/oidc/direct/*`, see `~/gll-id/docs/DIRECT-SIGNIN.md`), the way HT does it, so users can sign in from a Limitless page. |
+| Session | Own Limitless session cookie, `__Host-` prefixed, HttpOnly, Secure, SameSite=Lax, host `limitless.taps-holdings.org`. Lifetime 7 days, then a fresh GATE sign-in. |
+| Allowlist | GATE per-app access for client `limitless-browser` (`OAuthClient.requiresApproval`, `AppAccess` rows). Keyed by GATE account id (an email change keeps the approval). Boss approves in GATE's `/admin` Apps page or `./manage.sh apps approve limitless-browser <loginName|email>`. |
+| Email rule | Follow GATE as is: kmlhs.org accounts plus owner-approved exceptions. GATE also denies suspended and unverified accounts; all of those see the invite page. |
+| Revocation | Access re-checked with `POST /oidc/access-check` at most every 60 s per session (GATE's threat model says cache at most 60 s). Open `/wisp/` connections are cut within about 60 s. |
+| Unapproved users | Plain invite-only page: "Limitless Browser is invite only.", the signed-in email, sign-out and switch-account buttons, GLL stamp. No request form, no waitlist. |
+| Approved users inviting others | No. |
+
+## 3. Request flow
+1. Request to `https://limitless.taps-holdings.org/`. nginx `auth_request` asks the check service.
+2. No Limitless session: sign-in page offering GATE redirect sign-in or direct sign-in.
+   - Redirect: check service starts OIDC at `id.taps-holdings.org/authorize` (state, nonce, PKCE S256).
+     GATE needs a "Continue" click (no silent `prompt=none` sign-in in GATE v1). Callback exchanges the code
+     at `/token`, verifies the ES256 id token against GATE's JWKS, stores `sub`, sets the Limitless cookie.
+   - Direct: check service calls GATE's direct sign-in API server to server with its client credentials.
+   - GATE returns `error=access_denied` for unapproved users at sign-in: the callback shows the invite page.
+3. Valid session: the check service calls `/oidc/access-check` (`client_secret_basic`, body `{sub}`) when its
+   60 s cache entry is stale. `allowed: false` shows the invite page (`no-store`) and ends the session.
+4. Approved: the app is served. `/wisp/` handshakes are checked the same way. The check service tracks open
+   relay sessions per user so a revoked user's connections are closed at the next 60 s check, and relay
+   connections have a maximum lifetime after which the client reconnects through the check.
+5. GATE access tokens last 5 min and GATE v1 issues no refresh tokens, so the check service never relies on
+   GATE tokens after sign-in; it relies on its own session plus `access-check`.
+
+## 4. GATE side (what exists, what Boss runs)
+Already in GATE v1: `requiresApproval` per client, `AppAccess` table, owner admin UI and CLIs, `access-check`,
+direct sign-in contract. To do, by Boss (exact commands pasted into chat at stage 6):
+- Register the client: `./manage.sh clients add limitless-browser --name "Limitless Browser" --redirect https://limitless.taps-holdings.org/auth/callback --post-logout https://limitless.taps-holdings.org/`
+  then switch on approval and direct sign-in for it (exact flags to be confirmed against `~/gll-id` at the time).
+- Approve the first users.
+- If anything in `~/gll-id` itself must change (docs naming the new host, enabling direct sign-in for this
+  client), that is a separate edit needing Boss's OK each time.
+
+## 5. Abuse limits (decided: conservative)
+- Per-user caps, proposal: 64 concurrent relay streams, about 50 Mbit/s, 20 GB/day soft cap; SMTP, IRC and
+  common torrent ports blocked; per-IP handshake rate limit on the check service and `/wisp/`.
+- Boss's account: near-unlimited caps.
+- Owner kill switch per user in the check service (instant, separate from GATE revocation).
+- How caps are enforced depends on epoxy-server's options (check at build); fallback is a small wrapper or
+  nginx limits keyed by the user id header the check service returns.
+
+## 6. Changes to this repo (when work starts)
+- `deploy/nginx.conf` with `auth_request` on every location except `/legal/` and the auth paths, the invite
+  page and sign-in page in the Limitless look with the GLL stamp.
+- Landing and invite copy stays neutral ("private browsing proxy") and does not name or imply affiliation with
+  GUST or Nautilus Labs beyond the factual credit in About and `NOTICE`.
+- AGPL s13: approved users get the source link in the app. The invite page and `/legal/` serve no AGPL code.
+
+## 7. Privacy note
+Signing in ties usage to an identity. Relay logging stays abuse-only (see `HOSTING-AND-PERFORMANCE.md`): no
+destination or content logs keyed to accounts. Usage counters for caps are per user (bytes and stream counts
+only) with short retention. The check service logs auth outcomes (allowed/denied counts). The in-app privacy
+page states all of this.
+
+## 8. Open items
+- Exact cap numbers and enforcement point (section 5). Abuse contact address.
+- Check service repo name and whether it later also hosts sync and admin APIs (`PLAN.md` section 4).
+- Exact GATE flags for approval and direct sign-in on this client.
