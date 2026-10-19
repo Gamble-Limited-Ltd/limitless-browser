@@ -27,6 +27,53 @@
     <title>Limitless Browser</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="fonts/fonts.css" />
+    <script>
+    /* Limitless theme boot: runs before first paint. Reads limitless:theme:v1 directly (not through the per-instance
+       ls wrapper) because the gate's auth pages read the same un-prefixed key. JSON {theme, mode, mark}. */
+    (function () {
+        var THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault'];
+        var MARKS = ['orbit', 'lens', 'wordmark'], MODES = ['light', 'dark', 'auto'], KEY = 'limitless:theme:v1';
+        var st = { theme: 'luxury', mode: 'auto', mark: 'orbit' };
+        try {
+            var j = JSON.parse(localStorage.getItem(KEY) || 'null');
+            if (j && typeof j === 'object') {
+                if (THEMES.indexOf(j.theme) >= 0) st.theme = j.theme;
+                if (MODES.indexOf(j.mode) >= 0) st.mode = j.mode;
+                if (MARKS.indexOf(j.mark) >= 0) st.mark = j.mark;
+            }
+        } catch (e) {}
+        var mq = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;
+        function resolve() {
+            if (st.theme === 'vault') return 'dark';
+            if (st.mode === 'auto') return mq && mq.matches ? 'light' : 'dark';
+            return st.mode;
+        }
+        function apply() {
+            var r = document.documentElement;
+            r.setAttribute('data-lb-theme', st.theme);
+            r.setAttribute('data-lb-mode', resolve());
+            r.setAttribute('data-lb-mark', st.mark);
+            document.dispatchEvent(new CustomEvent('lb-theme-change'));
+        }
+        window.LBTheme = {
+            THEMES: THEMES, MARKS: MARKS, MODES: MODES,
+            get: function () { return { theme: st.theme, mode: st.mode, mark: st.mark, resolved: resolve() }; },
+            set: function (p) {
+                if (p.theme && THEMES.indexOf(p.theme) >= 0) st.theme = p.theme;
+                if (p.mode && MODES.indexOf(p.mode) >= 0) st.mode = p.mode;
+                if (p.mark && MARKS.indexOf(p.mark) >= 0) st.mark = p.mark;
+                try { localStorage.setItem(KEY, JSON.stringify({ theme: st.theme, mode: st.mode, mark: st.mark })); } catch (e) {}
+                apply();
+            },
+            resolveFor: function (theme) { return theme === 'vault' ? 'dark' : resolve(); }
+        };
+        if (mq) { var cb = function () { if (st.mode === 'auto') apply(); }; if (mq.addEventListener) mq.addEventListener('change', cb); else if (mq.addListener) mq.addListener(cb); }
+        apply();
+    })();
+    </script>
+    <link rel="stylesheet" href="theme/fonts.css" />
+    <link rel="stylesheet" href="theme/themes.css" />
+    <link rel="stylesheet" href="theme/chrome.css" />
     <link rel="stylesheet" href="vendor/fontawesome/6.7.2/css/all.min.css" />
     <script src="vendor/iso-639-1/2.1.11/index.js" defer
         onload="window._iso639Ready=true;"
@@ -42,8 +89,8 @@
             --bg2: #1c2026;
             --bg3: #252b33;
             --bg-elevated: #161a1f;
-            --surface: rgba(255, 255, 255, .08);
-            --surface2: rgba(255, 255, 255, .14);
+            --surface: rgba(var(--ov), .08);
+            --surface2: rgba(var(--ov), .14);
             --bd: #4f5963;
             --bd2: #5a6370;
             --tx: #f0f4f8;
@@ -61,6 +108,7 @@
             --shadow-sm: 0 1px 3px rgba(0, 0, 0, .35);
             --shadow-md: 0 8px 24px rgba(0, 0, 0, .45);
             --ui-lh: 1.5;
+            --ov: 255, 255, 255; /* overlay tint: white on dark, ink on light (theme/chrome.css) */
             --ui: 'Space Grotesk', 'Segoe UI', sans-serif;
             --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
         }
@@ -720,7 +768,7 @@
             flex: 1;
             min-width: 0;
             background: var(--bg3);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(var(--ov), 0.06);
             border-radius: 12px;
             padding: 0 10px;
             height: 36px;
@@ -1376,7 +1424,7 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: rgba(255, 255, 255, .08);
+            background: rgba(var(--ov), .08);
             overflow: hidden;
             z-index: 5;
             transition: opacity .2s;
@@ -1473,7 +1521,7 @@
         .overlay .spinner {
             width: 32px;
             height: 32px;
-            border: 3px solid rgba(255, 255, 255, .1);
+            border: 3px solid rgba(var(--ov), .1);
             border-top-color: var(--ac);
             border-radius: 50%;
             animation: spin 1s linear infinite
@@ -1648,7 +1696,7 @@
             padding: 6px 12px;
             border-radius: 6px;
             font-size: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(var(--ov), 0.1);
             backdrop-filter: blur(8px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             pointer-events: none;
@@ -1723,8 +1771,8 @@
             background: repeating-linear-gradient(to bottom,
                     transparent,
                     transparent 2px,
-                    rgba(255, 255, 255, 0.3) 2px,
-                    rgba(255, 255, 255, 0.3) 3px);
+                    rgba(var(--ov), 0.3) 2px,
+                    rgba(var(--ov), 0.3) 3px);
         }
 
         .elements-head {
@@ -1962,7 +2010,7 @@
             margin-left: 8px;
             list-style: none;
             padding: 0;
-            border-left: 1px solid rgba(255, 255, 255, 0.07);
+            border-left: 1px solid rgba(var(--ov), 0.07);
             display: none;
         }
 
@@ -2157,7 +2205,7 @@
         }
 
         .log-entry:hover {
-            background: rgba(255,255,255,0.04);
+            background: rgba(var(--ov), 0.04);
         }
 
         .log-ts {
@@ -2178,7 +2226,7 @@
             flex-shrink: 0;
             font-size: 9px;
             font-weight: 600;
-            background: rgba(255,255,255,0.08);
+            background: rgba(var(--ov), 0.08);
             color: var(--tx3);
             border-radius: 4px;
             padding: 0 5px;
@@ -2400,7 +2448,7 @@
             margin-right: -3px;
             padding: 0 14px 0 18px;
             border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, .2);
+            border: 1px solid rgba(var(--ov), .2);
             background: rgba(20, 24, 30, .85);
             color: var(--tx);
             cursor: pointer;
@@ -2521,7 +2569,7 @@
         .nt-chip {
             padding: 8px 14px;
             border-radius: var(--radius-full);
-            border: 1px solid rgba(255, 255, 255, .18);
+            border: 1px solid rgba(var(--ov), .18);
             background: rgba(13, 15, 18, .6);
             color: var(--tx2);
             cursor: pointer;
@@ -2538,7 +2586,7 @@
 
         .nt-chip:hover {
             color: var(--tx);
-            background: rgba(255, 255, 255, .12)
+            background: rgba(var(--ov), .12)
         }
 
         .nt-favorites {
@@ -2638,7 +2686,7 @@
             min-height: 90px;
             width: 100%;
             border-radius: 12px;
-            border: 2px dashed rgba(255, 255, 255, .3);
+            border: 2px dashed rgba(var(--ov), .3);
             background: transparent;
             color: var(--tx2);
             cursor: pointer;
@@ -2649,7 +2697,7 @@
         }
 
         .nt-fav-add:hover:not(.disabled) {
-            background: rgba(255, 255, 255, .08);
+            background: rgba(var(--ov), .08);
             border-color: var(--ac);
             color: var(--ac);
         }
@@ -2657,7 +2705,7 @@
         .nt-fav-add.disabled {
             opacity: 0.4;
             cursor: not-allowed;
-            border-color: rgba(255, 255, 255, .15);
+            border-color: rgba(var(--ov), .15);
         }
 
         .nt-fav-add i {
@@ -3886,7 +3934,7 @@
             font-size: 14px;
             font-weight: 500;
             color: var(--tx);
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(var(--ov), 0.03);
             transition: background .15s;
             user-select: none;
             position: relative;
@@ -3894,7 +3942,7 @@
         }
 
         .nt-search-engine:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(var(--ov), 0.08);
         }
 
         .nt-engine-dropdown {
@@ -5614,6 +5662,12 @@
             </div>
         </div>
     </noscript>
+    <svg id="lbMarks" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <!-- Marks (docs/DESIGN.md section 3). Colored by the active theme; html[data-lb-mark] picks which one an svg.lb-mk shows (its three <use> children). -->
+        <symbol id="lb-mk-orbit" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" style="fill:var(--lb-acc2,#BDFFFF)" stroke="none"/></g></symbol>
+        <symbol id="lb-mk-lens" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 15.9A18 18 0 0 1 32 48.1A18 18 0 0 1 32 15.9Z" style="fill:var(--lb-acc2,#BDFFFF)" fill-opacity=".45" stroke="none"/><circle cx="24" cy="32" r="18" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="5"/><circle cx="40" cy="32" r="18" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="5"/></g></symbol>
+        <symbol id="lb-mk-wordmark" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="8" width="11" height="46" rx="5.5" style="fill:var(--lb-acc,#4DA6FF)" stroke="none"/><circle cx="45" cy="48" r="6.5" style="fill:var(--lb-acc2,#BDFFFF)" stroke="none"/></g></symbol>
+    </svg>
     <div class="app">
         <div class="titlebar">
             <div class="tab-strip-wrapper">
@@ -5701,6 +5755,9 @@
             <button class="ext-puzzle-btn" id="extPuzzleBtn" title="Extensions">
                 <i class="fas fa-puzzle-piece"></i>
             </button>
+            <button class="tool-btn" id="lbThemeBtn" title="Theme..." aria-haspopup="dialog" aria-expanded="false">
+                <i class="fas fa-palette"></i>
+            </button>
             <button class="tool-btn" id="settingsBtn" title="Settings">
                 <i class="fas fa-gear"></i>
             </button>
@@ -5779,7 +5836,7 @@
                             <div class="nt-time" id="ntTime" style="display:flex;align-items:center;gap:12px;">--:-- <i id="ntTimeIcon" class="fas fa-moon" style="font-size:0.85em;color:var(--ac);"></i></div>
                         </div>
                         <div class="nt-brand" style="position:relative;">
-                            <svg class="lb-icon-anim lb-mark" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="#4DA6FF" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" fill="#BDFFFF" stroke="none"/></svg>
+                            <svg class="lb-icon-anim lb-mark lb-mk" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>
                             <span class="lb-word" style="font-size:0.55em; letter-spacing:0.02em; display:inline-block; vertical-align:middle;">Limitless Browser</span>
                             <span class="lb-badge-anim" style="
                                 font-size: 11px;
@@ -6077,16 +6134,16 @@
                 
                 <div class="newtab" id="settingsPage" style="display:none;">
                     <div class="nt-bg"
-                        style="background: linear-gradient(135deg, #0d0f12 0%, #1a1f2e 50%, #0d0f12 100%);"></div>
+                        style="background: var(--bg0);"></div>
                     <div class="nt-overlay"
-                        style="background: linear-gradient(180deg, rgba(20,23,27,0.85), rgba(13,15,18,0.95));">
+                        style="background: color-mix(in srgb, var(--bg0) 92%, transparent);">
                     </div>
                     
                     <div style="position:relative; height:100%; display:flex; flex-direction:row;">
 
                         
                         <div
-                            style="width:200px; min-width:200px; height:100%; background:rgba(13,15,18,0.7); border-right:1px solid var(--bd); display:flex; flex-direction:column; padding:24px 0; backdrop-filter:blur(8px); overflow:hidden; min-height:0;">
+                            style="width:200px; min-width:200px; height:100%; background:color-mix(in srgb, var(--bg0) 70%, transparent); border-right:1px solid var(--bd); display:flex; flex-direction:column; padding:24px 0; backdrop-filter:blur(8px); overflow:hidden; min-height:0;">
 
 
                             <nav style="display:flex; flex-direction:column; gap:2px; padding:0 12px; height:100%; min-height:0;">
@@ -6150,7 +6207,7 @@
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-shield-halved"></i> Relays</div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-route"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Allow third-party relays</div>
                                                 <div class="settings-hint">Off by default. Limitless uses its own relay. Third-party relays are not run by Gamble Limited Ltd. Changing this reloads the page.</div>
@@ -6165,7 +6222,7 @@
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-diagram-project"></i> WISP Pool (Round-Robin)</div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-diagram-project"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Enable pool round-robin</div>
                                                 <div class="settings-hint">Rotate across a benchmarked pool of public WISP servers for faster loads. Servers that fail for a site are skipped for that site; faster servers are picked more often.</div>
@@ -6231,7 +6288,7 @@
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-ban"></i> WebRTC Blocking</div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-ban"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Block WebRTC connections</div>
                                                 <div class="settings-hint">Prevents sites from establishing direct peer-to-peer connections that bypass the WISP tunnel and could expose your real IP address. Off by default — may break video calls and real-time apps.</div>
@@ -6246,7 +6303,7 @@
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-shield-halved"></i> Smart Request Headers</div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-user-secret"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Spoof Sec-Fetch &amp; Referer headers</div>
                                                 <div class="settings-hint">Synthesize correct <code>Sec-Fetch-Site</code>, <code>Sec-Fetch-Mode</code>, <code>Sec-Fetch-Dest</code>, and <code>Referer</code> headers based on request context. Fixes CDNs and APIs that reject requests with incorrect fetch metadata.</div>
@@ -6291,7 +6348,7 @@
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-spell-check"></i> Spellcheck <span style="font-size:10px;font-weight:700;color:#ff4444;margin-left:4px;">[broken]</span></div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-spell-check"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Enable spellcheck</div>
                                                 <div class="settings-hint">Check spelling in text fields and textareas (e.g. search bar, forms).</div>
@@ -6307,7 +6364,7 @@
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-image"></i> Tab Favicons</div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-image"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Proxy favicons through WISP</div>
                                                 <div class="settings-hint">Fetch tab favicons through the WISP server instead of Google's favicon service. More private, but slightly slower.</div>
@@ -6326,7 +6383,7 @@
                                     <div class="settings-card-head"><i class="fas fa-shield-halved"></i> Privacy &
                                         Blocking</div>
                                     <div class="settings-card-body">
-                                        <div class="settings-switch-row">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-shield-halved"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Ad & Tracker Blocking</div>
                                                 <div class="settings-hint">Blocks analytics, ads, and tracking
@@ -6448,6 +6505,31 @@
 
                             
                             <div class="settings-section" data-section="appearance" style="display:none;">
+                                <div class="settings-card" id="lbThemeCard">
+                                    <div class="settings-card-head"><i class="fas fa-palette"></i> Theme</div>
+                                    <div class="settings-card-body">
+                                        <div class="settings-hint" style="margin-bottom:14px;">Colors, fonts and shapes for the whole window. Changes apply right away and are saved on this device. A browser skin, if you pick one, overrides the theme.</div>
+                                        <div class="lb-tgrid" id="lbThemeGrid" role="group" aria-label="Theme"></div>
+                                        <div class="lb-group-label">GLL</div>
+                                        <div class="lb-tgrid" id="lbThemeGridGll" role="group" aria-label="GLL themes"></div>
+                                        <div class="lb-row-set" style="margin-top:18px;">
+                                            <div>
+                                                <div class="settings-switch-label">Light or dark</div>
+                                                <div class="lb-note" id="lbModeNote">Auto follows your system.</div>
+                                            </div>
+                                            <div class="lb-seg" id="lbModeSeg" role="group" aria-label="Light or dark">
+                                                <button type="button" data-mode="light" aria-pressed="false">Light</button>
+                                                <button type="button" data-mode="dark" aria-pressed="false">Dark</button>
+                                                <button type="button" data-mode="auto" aria-pressed="false">Auto</button>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top:18px;">
+                                            <div class="settings-switch-label" style="margin-bottom:8px;">Mark</div>
+                                            <div class="lb-mgrid" id="lbMarkGrid" role="group" aria-label="Mark"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-text-width"></i> Font Size
                                     </div>
@@ -7461,6 +7543,18 @@
                 <div class="overlay splash" id="overlay">
                     <div class="spinner"></div>
                     <div id="overlayText">Initializing...</div>
+                </div>
+                <div class="lb-splash" id="lbSplash" aria-hidden="true">
+                    <div class="lb-sp-frame"><div class="lb-sp-in">
+                        <svg class="lb-mk lb-sp-mark" viewBox="0 0 64 64" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>
+                        <div class="lb-sp-word">Limitless</div>
+                        <i class="lb-sp-rule"></i>
+                        <div class="lb-sp-status">Connecting to relay</div>
+                        <div class="lb-sp-bar"><i></i></div>
+                        <div class="lb-sp-dots"><i></i><i></i><i></i></div>
+                    </div></div>
+                    <img class="lb-sp-stamp d" alt="" src="theme/brand/portfolio-stamp-product-dark.svg">
+                    <img class="lb-sp-stamp l" alt="" src="theme/brand/portfolio-stamp-product-light.svg">
                 </div>
                 <div id="elemHighlightOverlay" style="
                     display:none;
@@ -9440,18 +9534,24 @@ window._libcurlReady = true;
             // 'unknown' until the startup probe of our own relay finishes (and always on file://).
             let _lbRelayOurs = 'unknown';
             window.LB_relayStatus = function () { return { ours: _lbRelayOurs, fallbackAllowed: LB_fallbackAllowed }; };
-            // Minimal plain notice; the themed relay notice UI comes in a later stage.
+            // Themed relay notice (docs/DESIGN.md section 4). Enabling is remembered per device; undo it in Settings > Connection.
             function LB_showRelayNotice() {
                 if (document.getElementById('lbRelayNotice') || !document.body) return;
                 const m = document.createElement('div');
-                m.className = 'bookmark-modal'; m.id = 'lbRelayNotice'; m.style.display = 'flex'; m.style.zIndex = '2147483000';
-                m.innerHTML = '<div class="bookmark-modal-content"><h3>Relay not reachable</h3>' +
-                    '<div class="settings-hint" style="margin-bottom:14px;line-height:1.5;">Our relay is not reachable right now. You can use third-party relays, which are not run by Gamble Limited Ltd.</div>' +
-                    '<div class="bookmark-modal-buttons"><button class="bookmark-modal-btn secondary" id="lbRelayNo">Not now</button>' +
-                    '<button class="bookmark-modal-btn primary" id="lbRelayYes">Enable</button></div></div>';
+                m.className = 'lb-notice-wrap'; m.id = 'lbRelayNotice';
+                m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lbRelayHead');
+                m.innerHTML = '<div class="lb-notice"><span class="lb-tag">Relay notice</span>' +
+                    '<h3 id="lbRelayHead">Our relay is not reachable right now.</h3>' +
+                    '<p>You can use third-party relays, which are not run by Gamble Limited Ltd.</p>' +
+                    '<div class="lb-notice-btns"><button type="button" class="lb-btn" id="lbRelayNo">Not now</button>' +
+                    '<button type="button" class="lb-btn p" id="lbRelayYes">Enable</button></div></div>';
                 document.body.appendChild(m);
-                m.querySelector('#lbRelayNo').onclick = () => m.remove();
+                const close = () => { m.remove(); document.removeEventListener('keydown', onKey, true); };
+                const onKey = (e) => { if (e.key === 'Escape') close(); };
+                document.addEventListener('keydown', onKey, true);
+                m.querySelector('#lbRelayNo').onclick = close;
                 m.querySelector('#lbRelayYes').onclick = () => { try { ls.setItem(LB_RELAY_FALLBACK_KEY, '1'); } catch (_) {} location.reload(); };
+                m.querySelector('#lbRelayYes').focus();
             }
             if (LB_OUR_WISP) {
                 probeWispLatency(LB_OUR_WISP, 5000).then(ms => {
@@ -21316,7 +21416,7 @@ _VIEWER_DL_JS +
             const tutSteps = [
                 {
                     target: null,
-                    icon: '<svg viewBox="0 0 64 64" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="#4DA6FF" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" fill="#BDFFFF" stroke="none"/></svg>',
+                    icon: '<svg class="lb-mk" viewBox="0 0 64 64" width="34" height="34" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>',
                     title: 'Welcome to Limitless Browser',
                     body: 'A private browsing proxy from Gamble Limited Ltd. This tour covers all the key controls and takes under a minute, and can be restarted anytime from Settings.',
                     pos: 'center'
@@ -26240,6 +26340,80 @@ _VIEWER_DL_JS +
         </div>
     </div>
 
+    <div class="lb-drawer" id="lbThemeDrawer" role="dialog" aria-label="Theme" aria-modal="false">
+        <h4>Theme</h4>
+        <div class="lb-dlist" id="lbDrawerList"></div>
+        <div class="lb-seg" id="lbDrawerMode" role="group" aria-label="Light or dark">
+            <button type="button" data-mode="light" aria-pressed="false">Light</button>
+            <button type="button" data-mode="dark" aria-pressed="false">Dark</button>
+            <button type="button" data-mode="auto" aria-pressed="false">Auto</button>
+        </div>
+        <div class="lb-note" id="lbDrawerNote"></div>
+    </div>
+    <script>
+    /* Theme UI: settings Appearance grid, mode control, mark picker and the quick-switch drawer. State lives in window.LBTheme (head script). */
+    (function () {
+        var T = window.LBTheme; if (!T) return;
+        var NAMES = { luxury: 'Luxury', fancy: 'Fancy', minimal: 'Minimal', soft: 'Soft', retro: 'Retro', ledger: 'Gilded Ledger', mono: 'GLL Monochrome', vault: 'Vault' };
+        var MARKN = { orbit: 'Orbit', lens: 'Lens', wordmark: 'Wordmark' };
+        var LIMITLESS = ['luxury', 'fancy', 'minimal', 'soft', 'retro'], GLL = ['ledger', 'mono', 'vault'];
+        function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+        function scope(id, extra) { return '<span class="lb-scope ' + extra + '" data-lb-theme="' + id + '" data-lb-mode="' + T.resolveFor(id) + '"><i></i><i></i><i></i></span>'; }
+        var grid = document.getElementById('lbThemeGrid'), gridG = document.getElementById('lbThemeGridGll');
+        var markGrid = document.getElementById('lbMarkGrid'), drawer = document.getElementById('lbThemeDrawer');
+        var drawerList = document.getElementById('lbDrawerList'), btn = document.getElementById('lbThemeBtn');
+        function card(id) {
+            var b = el('button', 'lb-tcard', scope(id, 'lb-tprev') + '<span class="lb-tname">' + NAMES[id] + '</span>');
+            b.type = 'button'; b.dataset.theme = id;
+            b.addEventListener('click', function () { T.set({ theme: id }); });
+            return b;
+        }
+        function build() {
+            if (grid) LIMITLESS.forEach(function (id) { grid.appendChild(card(id)); });
+            if (gridG) GLL.forEach(function (id) { gridG.appendChild(card(id)); });
+            if (markGrid) {
+                T.MARKS.forEach(function (m) {
+                    var b = el('button', 'lb-mcard', '<svg class="lb-mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#lb-mk-' + m + '"/></svg><span>' + MARKN[m] + '</span>');
+                    b.type = 'button'; b.dataset.mark = m;
+                    b.addEventListener('click', function () { T.set({ mark: m }); });
+                    markGrid.appendChild(b);
+                });
+            }
+            T.THEMES.forEach(function (id) {
+                var b = el('button', 'lb-drow', scope(id, 'lb-sw') + '<span>' + NAMES[id] + '</span>');
+                b.type = 'button'; b.dataset.theme = id;
+                b.addEventListener('click', function () { T.set({ theme: id }); });
+                drawerList.appendChild(b);
+            });
+            document.querySelectorAll('#lbModeSeg button, #lbDrawerMode button').forEach(function (b) {
+                b.addEventListener('click', function () { if (!b.disabled) T.set({ mode: b.dataset.mode }); });
+            });
+        }
+        function sync() {
+            var s = T.get();
+            document.querySelectorAll('.lb-tcard, .lb-drow').forEach(function (b) {
+                b.setAttribute('aria-pressed', b.dataset.theme === s.theme ? 'true' : 'false');
+                var sc = b.querySelector('.lb-scope'); if (sc) sc.setAttribute('data-lb-mode', T.resolveFor(b.dataset.theme));
+            });
+            document.querySelectorAll('.lb-mcard').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mark === s.mark ? 'true' : 'false'); });
+            var vault = s.theme === 'vault';
+            document.querySelectorAll('#lbModeSeg button, #lbDrawerMode button').forEach(function (b) {
+                b.setAttribute('aria-pressed', (b.dataset.mode === s.mode || (vault && b.dataset.mode === 'dark')) ? 'true' : 'false');
+                b.disabled = vault && b.dataset.mode === 'light';
+            });
+            var note = vault ? 'Vault is dark only.' : (s.mode === 'auto' ? 'Auto follows your system (now ' + s.resolved + ').' : '');
+            ['lbModeNote', 'lbDrawerNote'].forEach(function (id) { var n = document.getElementById(id); if (n) n.textContent = note; });
+        }
+        function openDrawer() { drawer.classList.add('open'); if (btn) btn.setAttribute('aria-expanded', 'true'); var f = drawer.querySelector('.lb-drow[aria-pressed="true"]') || drawer.querySelector('.lb-drow'); if (f) f.focus(); }
+        function closeDrawer(refocus) { if (!drawer.classList.contains('open')) return; drawer.classList.remove('open'); if (btn) btn.setAttribute('aria-expanded', 'false'); if (refocus && btn) btn.focus(); }
+        build(); sync();
+        document.addEventListener('lb-theme-change', sync);
+        if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); drawer.classList.contains('open') ? closeDrawer(true) : openDrawer(); });
+        document.addEventListener('mousedown', function (e) { if (drawer.classList.contains('open') && !drawer.contains(e.target) && !(btn && btn.contains(e.target))) closeDrawer(false); }, true);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(true); });
+        window.LBThemeUI = { openDrawer: openDrawer, closeDrawer: closeDrawer };
+    })();
+    </script>
 </body>
 
 </html>

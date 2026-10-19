@@ -128,7 +128,11 @@ console clean, Playwright smoke green.
      identifiers, `GustExt` to `LimitlessExt` (`window.GustExt` alias kept), `gust://` to `limitless://` (old scheme
      still accepted), `GUST-Patcher.html` to `patcher.html`, storage migration shim (see section 6), NOTICE complete.
      Test: `tests/e2e/migration.spec.js`.
-   - **3b.** Theme system, settings Appearance UI, splash, mark picker. Keep all credits.
+   - **3b. Done 2026-10-19:** theme engine (`theme/chrome.css`, head script `window.LBTheme`, key `limitless:theme:v1`),
+     settings Appearance (theme grid, Light/Dark/Auto, mark picker), theme drawer (toolbar Theme button), themed splash,
+     themed relay notice, privacy toggles in layout A, Orbit/Lens/Wordmark marks. Upstream skins still override the
+     themes. Open: on/acc contrast below 4.5:1 in four light themes and muted text in Soft light (see CLAUDE.md, theme
+     engine), so the approved palette is unchanged. Test: `tests/e2e/themes.spec.js`. Keep all credits.
 4. **Start page.** Limitless new-tab page: search, shortcuts, GLL stamp.
 5. **Hosting.** `deploy/` compose project `limitless-browser`, baked nginx image on `127.0.0.1:8580`,
    brotli/gzip_static, caching rules, `version.json` + update banner, in-app legal pages, relay container

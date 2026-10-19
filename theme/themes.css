@@ -9,56 +9,64 @@
   --lb-r: 0;
 }
 
-:root[data-lb-theme="luxury"] {
+:root[data-lb-theme="luxury"],
+.lb-scope[data-lb-theme="luxury"] {
   --lb-fd: 'Bodoni Moda', 'Didot', Georgia, serif;
   --lb-fb: 'Jost', system-ui, sans-serif;
   --lb-fm: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 0;
 }
 
-:root[data-lb-theme="fancy"] {
+:root[data-lb-theme="fancy"],
+.lb-scope[data-lb-theme="fancy"] {
   --lb-fd: 'Fraunces', Georgia, serif;
   --lb-fb: 'Outfit', system-ui, sans-serif;
   --lb-fm: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 16px;
 }
 
-:root[data-lb-theme="minimal"] {
+:root[data-lb-theme="minimal"],
+.lb-scope[data-lb-theme="minimal"] {
   --lb-fd: 'Figtree', system-ui, sans-serif;
   --lb-fb: 'Figtree', system-ui, sans-serif;
   --lb-fm: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 8px;
 }
 
-:root[data-lb-theme="soft"] {
+:root[data-lb-theme="soft"],
+.lb-scope[data-lb-theme="soft"] {
   --lb-fd: 'Quicksand', system-ui, sans-serif;
   --lb-fb: 'Nunito', system-ui, sans-serif;
   --lb-fm: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 20px;
 }
 
-:root[data-lb-theme="retro"] {
+:root[data-lb-theme="retro"],
+.lb-scope[data-lb-theme="retro"] {
   --lb-fd: 'VT323', ui-monospace, monospace;
   --lb-fb: 'IBM Plex Mono', ui-monospace, monospace;
   --lb-fm: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 0;
 }
 
-:root[data-lb-theme="ledger"] {
+:root[data-lb-theme="ledger"],
+.lb-scope[data-lb-theme="ledger"] {
   --lb-fd: 'Playfair Display', Georgia, serif;
   --lb-fb: 'DM Sans', system-ui, sans-serif;
   --lb-fm: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 2px;
 }
 
-:root[data-lb-theme="mono"] {
+:root[data-lb-theme="mono"],
+.lb-scope[data-lb-theme="mono"] {
   --lb-fd: 'Playfair Display', Georgia, serif;
   --lb-fb: 'DM Sans', system-ui, sans-serif;
   --lb-fm: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --lb-r: 2px;
 }
 
-:root[data-lb-theme="vault"] {
+:root[data-lb-theme="vault"],
+.lb-scope[data-lb-theme="vault"] {
   --lb-fd: 'Playfair Display', Georgia, serif;
   --lb-fb: 'DM Sans', system-ui, sans-serif;
   --lb-fm: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -80,7 +88,8 @@
   --lb-on: #07101a;
 }
 
-:root[data-lb-theme="luxury"][data-lb-mode="light"] {
+:root[data-lb-theme="luxury"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="luxury"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #eeece6;
   --lb-surf: #f8f6f1;
@@ -94,6 +103,7 @@
 }
 
 :root[data-lb-theme="fancy"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="fancy"][data-lb-mode="dark"],
 :root[data-lb-theme="fancy"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #0e1230;
@@ -107,7 +117,8 @@
   --lb-on: #05112a;
 }
 
-:root[data-lb-theme="fancy"][data-lb-mode="light"] {
+:root[data-lb-theme="fancy"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="fancy"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #f3f6ff;
   --lb-surf: #ffffff;
@@ -121,6 +132,7 @@
 }
 
 :root[data-lb-theme="minimal"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="minimal"][data-lb-mode="dark"],
 :root[data-lb-theme="minimal"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #0c0d0f;
@@ -134,7 +146,8 @@
   --lb-on: #04101c;
 }
 
-:root[data-lb-theme="minimal"][data-lb-mode="light"] {
+:root[data-lb-theme="minimal"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="minimal"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #fcfcfd;
   --lb-surf: #f3f4f6;
@@ -148,6 +161,7 @@
 }
 
 :root[data-lb-theme="soft"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="soft"][data-lb-mode="dark"],
 :root[data-lb-theme="soft"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #1a2238;
@@ -161,7 +175,8 @@
   --lb-on: #10213c;
 }
 
-:root[data-lb-theme="soft"][data-lb-mode="light"] {
+:root[data-lb-theme="soft"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="soft"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #f2f7ff;
   --lb-surf: #ffffff;
@@ -175,6 +190,7 @@
 }
 
 :root[data-lb-theme="retro"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="retro"][data-lb-mode="dark"],
 :root[data-lb-theme="retro"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #0b1a2a;
@@ -188,7 +204,8 @@
   --lb-on: #04121f;
 }
 
-:root[data-lb-theme="retro"][data-lb-mode="light"] {
+:root[data-lb-theme="retro"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="retro"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #e9eef2;
   --lb-surf: #f8fbfd;
@@ -202,6 +219,7 @@
 }
 
 :root[data-lb-theme="ledger"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="ledger"][data-lb-mode="dark"],
 :root[data-lb-theme="ledger"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #0b0912;
@@ -215,7 +233,8 @@
   --lb-on: #0b0912;
 }
 
-:root[data-lb-theme="ledger"][data-lb-mode="light"] {
+:root[data-lb-theme="ledger"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="ledger"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #f0e8d0;
   --lb-surf: #f7f2e2;
@@ -229,6 +248,7 @@
 }
 
 :root[data-lb-theme="mono"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="mono"][data-lb-mode="dark"],
 :root[data-lb-theme="mono"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #0d0d0d;
@@ -242,7 +262,8 @@
   --lb-on: #0d0d0d;
 }
 
-:root[data-lb-theme="mono"][data-lb-mode="light"] {
+:root[data-lb-theme="mono"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="mono"][data-lb-mode="light"] {
   color-scheme: light;
   --lb-bg: #f4f4f2;
   --lb-surf: #ffffff;
@@ -256,6 +277,7 @@
 }
 
 :root[data-lb-theme="vault"][data-lb-mode="dark"],
+.lb-scope[data-lb-theme="vault"][data-lb-mode="dark"],
 :root[data-lb-theme="vault"]:not([data-lb-mode]) {
   color-scheme: dark;
   --lb-bg: #000000;
@@ -269,7 +291,8 @@
   --lb-on: #000000;
 }
 
-:root[data-lb-theme="vault"][data-lb-mode="light"] {
+:root[data-lb-theme="vault"][data-lb-mode="light"],
+.lb-scope[data-lb-theme="vault"][data-lb-mode="light"] {
   color-scheme: dark;
   --lb-bg: #000000;
   --lb-surf: #0b0912;
