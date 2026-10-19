@@ -19,7 +19,7 @@ services:
     security_opt: ["no-new-privileges:true"]
     pids_limit: 256
 
-  gate:
+  lbgate:
     image: limitless-gate:rehearsal
     build:
       context: ${GATE_CONTEXT:-../../../limitless-gate}

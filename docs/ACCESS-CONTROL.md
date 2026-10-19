@@ -77,7 +77,7 @@ page states all of this.
 Fixed so the nginx config (`deploy/`, this repo) and the check service (`~/limitless-gate`, private) can be
 built in parallel.
 - Compose project `limitless-browser`, internal network `lb_internal`. Services: `web` (nginx, the only one
-  published, `127.0.0.1:8580`), `gate` (check service, `gate:8080`), `relay` (epoxy-server, `relay:4000`, internal
+  published, `127.0.0.1:8580`), `lbgate` (check service, `lbgate:8080`; not `gate`, which on `gll_gate` means GLL ID), `relay` (epoxy-server, `relay:4000`, internal
   only, own egress-filtered network). Never reachable from other projects' networks.
 - `GET /_gate/check` (nginx `auth_request`, internal): `200` with headers `X-LB-User` (GATE sub) and `X-LB-Email`
   when approved, `401` when there is no valid session, `403` when signed in but not approved. nginx maps 401 to

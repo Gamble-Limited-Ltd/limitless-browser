@@ -1,7 +1,7 @@
 # Local override: replace the private gate with a stub so the static app can be tested through nginx.
 # Used by deploy/dev-up.sh. LB_STUB_CHECK is 200 (allow), 401 (sign in) or 403 (invite).
 services:
-  gate:
+  lbgate:
     image: nginx:1.29-alpine
     build: !reset null
     env_file: !reset []

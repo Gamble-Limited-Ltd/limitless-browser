@@ -60,7 +60,7 @@ echo "rehearsal: starting stack"
 for i in $(seq 1 60); do
   if curl -fs -o /dev/null "http://127.0.0.1:$REHEARSAL_WEB_PORT/legal/" \
      && curl -fs -o /dev/null "http://127.0.0.1:$REHEARSAL_MOCK_PORT/healthz" \
-     && "${DC[@]}" exec -T gate wget -qO- http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
+     && "${DC[@]}" exec -T lbgate wget -qO- http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
   [ "$i" = 60 ] && { "${DC[@]}" logs --tail 40 >&2; echo "rehearsal: stack did not become ready" >&2; exit 1; }
   sleep 1
 done
@@ -69,4 +69,4 @@ echo "rehearsal: running stack tests"
 cd "$REPO"
 REHEARSAL_BASE="http://127.0.0.1:$REHEARSAL_WEB_PORT" REHEARSAL_MOCK="http://127.0.0.1:$REHEARSAL_MOCK_PORT" \
   REHEARSAL_PROJECT="$PROJECT" REHEARSAL_COMPOSE_FILE="$HERE/docker-compose.rehearsal.yml" \
-  npx playwright test -c playwright.stack.config.js "$@" || { "${DC[@]}" logs --tail 60 gate web >&2; exit 1; }
+  npx playwright test -c playwright.stack.config.js "$@" || { "${DC[@]}" logs --tail 60 lbgate web >&2; exit 1; }

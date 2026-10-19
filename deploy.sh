@@ -38,6 +38,12 @@ docker compose -p limitless-browser "${COMPOSE[@]}" up -d --remove-orphans
 
 # Smoke: legal is public; the app must NOT be served without a session.
 sleep 3
+# Smoke: the check service must reach GLL ID's back channel (catches a wrong GATE_BACKCHANNEL_URL host).
+bc="$(grep -E '^GATE_BACKCHANNEL_URL=.' "$WORK/deploy/gate.env" | cut -d= -f2- || true)"
+if [ -n "$bc" ]; then
+  docker compose -p limitless-browser "${COMPOSE[@]}" exec -T lbgate wget -qO /dev/null "$bc/oidc/jwks" \
+    || { echo "SMOKE FAIL: check service cannot reach GLL ID at $bc" >&2; exit 1; }
+fi
 base=http://127.0.0.1:8580
 code="$(curl -s -o /dev/null -w '%{http_code}' "$base/legal/")"
 [ "$code" = 200 ] || { echo "SMOKE FAIL: /legal/ returned $code" >&2; exit 1; }

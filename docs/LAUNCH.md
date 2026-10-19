@@ -50,7 +50,7 @@ access). Only switch the route on after step 3's smoke passed.
 ## 5. Owner caps (after Boss's first sign-in)
 Print the GATE account id, then add `OWNER_SUB=<id>` to `deploy/gate.env` and run `./deploy.sh` again:
 ```bash
-docker compose -p limitless-browser exec gate node -e "const {DatabaseSync}=require('node:sqlite');console.log(new DatabaseSync('/data/gate.sqlite',{readOnly:true}).prepare('select distinct sub, email from sessions').all())"
+docker compose -p limitless-browser exec lbgate node -e "const {DatabaseSync}=require('node:sqlite');console.log(new DatabaseSync('/data/gate.sqlite',{readOnly:true}).prepare('select distinct sub, email from sessions').all())"
 ```
 
 ## 6. After launch

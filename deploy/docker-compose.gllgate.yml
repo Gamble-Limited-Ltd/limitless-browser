@@ -2,7 +2,7 @@
 # server-to-server calls reach GATE as http://gate:3301 while id.taps-holdings.org sits behind Cloudflare
 # Access. Used by deploy.sh when deploy/gate.env sets GATE_BACKCHANNEL_URL. Only the gate joins it.
 services:
-  gate:
+  lbgate:
     networks: [lb_internal, lb_relay, lb_gate_out, gll_gate]
 networks:
   gll_gate:

@@ -27,7 +27,7 @@ services:
       driver: local
       options: { max-size: "5m", max-file: "2" }
 
-  gate:
+  lbgate:
     image: limitless-gate:${GATE_SHA:-dev}
     build:
       context: ${GATE_CONTEXT:-../../limitless-gate}
