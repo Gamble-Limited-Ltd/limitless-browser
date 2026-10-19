@@ -12,7 +12,7 @@ Limitless Browser is AGPL: never copy its code into proprietary GLL repos (gll-s
 Hosting (Docker nginx on 127.0.0.1:8580) and speed plan: `docs/HOSTING-AND-PERFORMANCE.md`.
 
 ## What this is
-A browser-style web proxy in static files. No build system, package.json, tests, lint or CI.
+A browser-style web proxy in static files. No build system, lint or CI. `package.json` exists only for the Playwright test harness (dev dependency, nothing ships from it).
 - `index.html` (~3.8 MB): the whole app, JS and CSS inlined, with vendored libs (acorn, libcurl.js WASM, PDF.js).
 - `GUST-Patcher.html`: standalone patcher tool page. It fetches upstream `index.html` from jsDelivr (see plan).
 - `svg/site.svg` + `svg/static/{css.css,js.js}`: stale SVG-foreignObject variant for CDN hosting. Planned for removal (`docs/PLAN.md` stage 2); do not spend effort syncing it.
@@ -22,7 +22,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
 
 ## Run / verify
 - Open `index.html` via `file://` or serve statically: `python3 -m http.server 8000` then browse to it.
-- There are no automated tests. Verify by loading the page, checking the browser console for errors, and exercising the touched feature.
+- Tests: `npm install` once, then `npm test`. Playwright (pinned `@playwright/test` 1.64.0, matches the chromium-1248 build already in `~/.cache/ms-playwright`) starts `python3 -m http.server 8599` and runs the smoke test in `tests/e2e` (app shell loads, no uncaught page errors, title set, address bar accepts input). It does not replace manual checks: also load the page, check the console, and exercise the touched feature.
 - Check CRLF vs LF before large edits (`file index.html`); commit 1a193ab was a big Windows-related rewrite.
 
 ## Rules

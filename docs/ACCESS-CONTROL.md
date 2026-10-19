@@ -70,5 +70,24 @@ page states all of this.
 
 ## 8. Open items
 - Exact cap numbers and enforcement point (section 5). Abuse contact address.
-- Check service repo name and whether it later also hosts sync and admin APIs (`PLAN.md` section 4).
+- Whether the check service (`limitless-gate`, confirmed 2026-10-19) later also hosts sync and admin APIs (`PLAN.md` section 4).
 - Exact GATE flags for approval and direct sign-in on this client.
+
+## 9. Build contract (2026-10-19, stage 5/6)
+Fixed so the nginx config (`deploy/`, this repo) and the check service (`~/limitless-gate`, private) can be
+built in parallel.
+- Compose project `limitless-browser`, internal network `lb_internal`. Services: `web` (nginx, the only one
+  published, `127.0.0.1:8580`), `gate` (check service, `gate:8080`), `relay` (epoxy-server, `relay:4000`, internal
+  only, own egress-filtered network). Never reachable from other projects' networks.
+- `GET /_gate/check` (nginx `auth_request`, internal): `200` with headers `X-LB-User` (GATE sub) and `X-LB-Email`
+  when approved, `401` when there is no valid session, `403` when signed in but not approved. nginx maps 401 to
+  the sign-in page and 403 to the invite page for HTML requests, and returns the bare status for assets.
+- Public routes proxied to `gate` without the check: `/auth/login` (start OIDC), `/auth/callback`,
+  `/auth/direct` (POST, direct sign-in), `/auth/logout` (POST), `/auth/signin` (sign-in page), `/auth/invite`,
+  `/auth/ended`, `/auth/unavailable`. Pages are server-rendered HTML in the theme look and use `/theme/` assets.
+- Ungated static paths: `/legal/` (privacy, terms), `/theme/` (theme CSS, fonts, marks, stamp: no app code),
+  `/favicon.svg`.
+- `/wisp/` is proxied to `gate`, which checks the session, then pipes the WebSocket to `relay`. The gate counts
+  open sockets and bytes per user, parses WISP CONNECT frames to cap streams (64) and refuse blocked ports, cuts
+  sockets within 60 s of revocation and after a maximum lifetime (1 h; the client reconnects).
+- `version.json` is gated like the app and served `no-cache`.

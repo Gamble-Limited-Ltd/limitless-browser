@@ -1,0 +1,72 @@
+Limitless Browser
+Copyright (c) 2026 Gamble Limited Ltd.
+
+Source code: https://github.com/Gamble-Limited-Ltd/limitless-browser
+(AGPLv3 section 13: users who interact with this software over a network can get
+the corresponding source at that address. The app also links to it.)
+
+MODIFICATION NOTICE (AGPLv3 section 5)
+--------------------------------------
+Based on GUST 2.0 (upstream commit 08515a7) by Nautilus Labs,
+https://github.com/nautilus-os/GUST
+Modified by Gamble Limited Ltd., 2026.
+
+Limitless Browser is licensed under the GNU Affero General Public License,
+version 3 (see LICENSE). It is a modified version of GUST. "GUST" and
+"Nautilus Labs" are names used here only for factual credit. This project is
+not affiliated with or endorsed by Nautilus Labs.
+
+UPSTREAM AUTHORS (GUST)
+-----------------------
+GUST was written by Nautilus Labs: lanefiedler, dinguschan, and x8rr/hvtrs,
+with contributions from other people. Commit authors in the upstream history:
+dinguschan (135 commits), CompactAI, jaysyrk, xor, dinguschan-owo, hvtrs, Jacob.
+
+TRADEMARKS AND BRAND MARKS
+--------------------------
+The GLL Portfolio Stamp and the names and marks of Gamble Limited Ltd. are
+company marks. All rights reserved. They are not licensed under the AGPLv3 for
+use as trademarks, and using them to suggest endorsement is not permitted.
+The Limitless Browser name, logo and themes are part of this project; the
+AGPLv3 applies to their source files, and the name is used for this project only.
+
+THIRD-PARTY COMPONENTS
+----------------------
+libcurl.js 0.7.4, by ading2210 (vendored inline in index.html)
+  License: GNU LGPL v3. https://github.com/ading2210/libcurl.js
+  It bundles C libraries compiled to WebAssembly (as listed in its own notice,
+  which index.html keeps in the copyright_notice string):
+    - libcurl: curl License (https://curl.se/docs/copyright.html)
+    - mbedtls: Apache License 2.0
+    - cjson: MIT License
+    - zlib: zlib License
+    - brotli: MIT License
+    - nghttp2: MIT License
+
+WISP protocol, by Mercury Workshop (https://github.com/MercuryWorkshop/wisp-protocol)
+  Used as the transport that libcurl.js speaks. Credit only; see the project for its license.
+
+PDF.js 4.2.67, by the Mozilla Foundation (https://github.com/mozilla/pdf.js)
+  License: Apache License 2.0.
+
+acorn 8.14.0, by Marijn Haverbeke and contributors (https://github.com/acornjs/acorn)
+  License: MIT.
+
+Font Awesome Free 6.5.1, by Fonticons, Inc. (https://fontawesome.com)
+  Icons: CC BY 4.0. Fonts: SIL Open Font License 1.1. Code: MIT.
+
+iso-639-1 2.1.11, by Meikidd (https://github.com/meikidd/iso-639-1)
+  License: MIT (as listed on its npm package page; not re-verified offline).
+
+FONTS (self-hosted under fonts/, SIL Open Font License 1.1)
+-----------------------------------------------------------
+Bodoni Moda, Jost, Fraunces, Outfit, Figtree, Quicksand, Nunito, VT323,
+IBM Plex Mono, Playfair Display, DM Sans, DM Mono (added for Limitless Browser),
+and JetBrains Mono, Space Grotesk (carried over from GUST).
+Each font keeps its own copyright and license; the OFL 1.1 text is at
+https://openfontlicense.org.
+
+ADDITIONAL FILES
+----------------
+Files copied in from other Gamble Limited Ltd. repositories are logged in
+docs/SHARDS.md.
