@@ -27,8 +27,14 @@ cp "$REPO/deploy/gate.env" "$WORK/deploy/gate.env"
 "$WORK/scripts/build-static.sh" "$SHA"
 
 export WEB_SHA="$SHA" RELAY_SHA="$SHA" GATE_SHA="$SHA" GATE_CONTEXT
-docker compose -p limitless-browser -f "$WORK/deploy/docker-compose.yml" build
-docker compose -p limitless-browser -f "$WORK/deploy/docker-compose.yml" up -d --remove-orphans
+COMPOSE=(-f "$WORK/deploy/docker-compose.yml")
+# GATE back channel over GATE's private network (needed while id.taps-holdings.org is behind Cloudflare Access).
+if grep -q '^GATE_BACKCHANNEL_URL=.' "$WORK/deploy/gate.env"; then
+  docker network inspect gll_gate >/dev/null 2>&1 || { echo "gll_gate network missing (start GATE with ~/gll-id/manage.sh)." >&2; exit 1; }
+  COMPOSE+=(-f "$WORK/deploy/docker-compose.gllgate.yml")
+fi
+docker compose -p limitless-browser "${COMPOSE[@]}" build
+docker compose -p limitless-browser "${COMPOSE[@]}" up -d --remove-orphans
 
 # Smoke: legal is public; the app must NOT be served without a session.
 sleep 3

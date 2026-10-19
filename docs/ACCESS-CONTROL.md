@@ -107,3 +107,7 @@ built in parallel.
   --redirect https://limitless.taps-holdings.org/auth/callback --post-logout https://limitless.taps-holdings.org/
   --requires-approval`, then `./manage.sh clients direct limitless-browser on`, then
   `./manage.sh apps approve limitless-browser <loginName|email>`.
+- GATE back channel (2026-10-19): while `id.taps-holdings.org` is behind Cloudflare Access, server-to-server calls
+  from the public host are blocked, so the gate joins GATE's private network `gll_gate` and uses
+  `GATE_BACKCHANNEL_URL=http://gate:3301` (as the games do). `deploy.sh` adds `deploy/docker-compose.gllgate.yml`
+  when `deploy/gate.env` sets that variable. Browsers still sign in at the public issuer (Boss passes Access).
