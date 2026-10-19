@@ -47,22 +47,34 @@ WISP protocol, by Mercury Workshop (https://github.com/MercuryWorkshop/wisp-prot
   Used as the transport that libcurl.js speaks. Credit only; see the project for its license.
 
 PDF.js 4.2.67, by the Mozilla Foundation (https://github.com/mozilla/pdf.js)
+  Vendored in vendor/pdfjs/4.2.67/ (license text: vendor/pdfjs/4.2.67/LICENSE).
   License: Apache License 2.0.
 
 acorn 8.14.0, by Marijn Haverbeke and contributors (https://github.com/acornjs/acorn)
   License: MIT.
 
-Font Awesome Free 6.5.1, by Fonticons, Inc. (https://fontawesome.com)
+Font Awesome Free 6.7.2, by Fonticons, Inc. (https://fontawesome.com)
+  Vendored in vendor/fontawesome/6.7.2/ (license text: vendor/fontawesome/6.7.2/LICENSE.txt).
   Icons: CC BY 4.0. Fonts: SIL Open Font License 1.1. Code: MIT.
 
-iso-639-1 2.1.11, by Meikidd (https://github.com/meikidd/iso-639-1)
-  License: MIT (as listed on its npm package page; not re-verified offline).
+iso-639-1 2.1.11, by Mei Qingguang / Meikidd (https://github.com/meikidd/iso-639-1)
+  Vendored in vendor/iso-639-1/2.1.11/ (license text: vendor/iso-639-1/2.1.11/LICENSE).
+  License: MIT (verified from the LICENSE file shipped with the package).
 
-FONTS (self-hosted under fonts/, SIL Open Font License 1.1)
------------------------------------------------------------
+RELAY (server side, not part of this repository's files)
+--------------------------------------------------------
+epoxy-server 2.0.0, by Mercury Workshop (https://github.com/MercuryWorkshop/epoxy-tls),
+  commit 0c11678d72a636c3a4bc723db87e03e7b888eaf9. License: GNU AGPL v3.
+  It is the Wisp server behind the default relay at /wisp/ and is run unmodified.
+  Its source is at the address above.
+
+FONTS (self-hosted, SIL Open Font License 1.1)
+-----------------------------------------------
+fonts/: JetBrains Mono and Space Grotesk (carried over from GUST); license texts are
+fonts/JetBrainsMono-OFL.txt and fonts/SpaceGrotesk-OFL.txt.
+theme/fonts/ (added for Limitless Browser, 12 families, each folder has its OFL.txt):
 Bodoni Moda, Jost, Fraunces, Outfit, Figtree, Quicksand, Nunito, VT323,
-IBM Plex Mono, Playfair Display, DM Sans, DM Mono (added for Limitless Browser),
-and JetBrains Mono, Space Grotesk (carried over from GUST).
+IBM Plex Mono, Playfair Display, DM Sans, DM Mono.
 Each font keeps its own copyright and license; the OFL 1.1 text is at
 https://openfontlicense.org.
 

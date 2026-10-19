@@ -16,7 +16,7 @@ rm -rf "$OUT" "$OUTBR"
 mkdir -p "$OUT" "$OUTBR"
 
 # What the web tier serves. Optional entries are skipped with a notice while other work lands.
-REQUIRED=(index.html GUST-Patcher.html legal theme favicon.svg)
+REQUIRED=(index.html patcher.html legal theme favicon.svg)
 OPTIONAL=(vendor fonts)
 for p in "${REQUIRED[@]}"; do
   [ -e "$SRC/$p" ] || { echo "build-static: missing required $p in $SRC" >&2; exit 1; }

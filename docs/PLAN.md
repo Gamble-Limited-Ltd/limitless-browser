@@ -118,14 +118,22 @@ console clean, Playwright smoke green.
 0. **Prep.** Repo rename done 2026-10-18. `NOTICE`, README rewrite with
    preserved credits, `CHANGELOG.md`, `docs/SHARDS.md`. Playwright harness and a baseline smoke test.
 1. **Design artifact.** Done 2026-10-18 (section 2b): 5 Limitless themes + 3 GLL themes, each light/dark where available; official logo Orbit, per-theme and user-selectable marks.
-2. **Trim.** Remove Discord client, new-tab widgets, AI assistant, translate, `svg/`. Self-host fonts, Font
-   Awesome, PDF.js, iso-639-1. Repoint the Patcher to our copy.
-3. **Rebrand.** Visible strings, logo, chosen themes, `gust-*` class renames, storage migration shim
-   (copy every `gust:*` key to the new prefix by prefix scan, keep old keys one release). Keep all credits.
+2. **Trim.** **Done 2026-10-19**: Discord client, new-tab widgets (deals, news feeds, picsum/Unsplash), AI
+   assistant, translate and `svg/` removed; fonts, Font Awesome 6.7.2, PDF.js and iso-639-1 self-hosted in
+   `vendor/` and `fonts/`; Patcher fetches only `./index.html`; built-in third-party relays are off by default
+   (own `/wisp/` is the default, `gust:relay-fallback:v1` turns the third-party list on).
+3. **Rebrand.** Split in two.
+   - **3a. Done 2026-10-19:** visible strings, About (version `LB_VERSION`, "Based on GUST 2.0 (08515a7)", source and
+     issue links, legal links), Orbit mark in `#4DA6FF` / `#BDFFFF` replacing the GUST letters, `gust-*` to `lb-*`
+     identifiers, `GustExt` to `LimitlessExt` (`window.GustExt` alias kept), `gust://` to `limitless://` (old scheme
+     still accepted), `GUST-Patcher.html` to `patcher.html`, storage migration shim (see section 6), NOTICE complete.
+     Test: `tests/e2e/migration.spec.js`.
+   - **3b.** Theme system, settings Appearance UI, splash, mark picker. Keep all credits.
 4. **Start page.** Limitless new-tab page: search, shortcuts, GLL stamp.
 5. **Hosting.** `deploy/` compose project `limitless-browser`, baked nginx image on `127.0.0.1:8580`,
    brotli/gzip_static, caching rules, `version.json` + update banner, in-app legal pages, relay container
    with egress blocks and caps. Local only, no public route.
+   Progress 2026-10-19: hosting files built and tested locally with a stub gate (`deploy/`, `deploy.sh`, `scripts/build-static.sh`, `theme/`, `legal/`, relay image builds). Open: legal text review by Boss, host egress rules not applied, real gate and relay run together untested.
 6. **Gate.** Check service (private repo), GATE client registration (Boss runs the `manage.sh` command),
    OIDC callback + direct sign-in, invite page, 60 s access cache, `/wisp/` revocation, rate limits.
 7. **Launch rehearsal and launch.** Full smoke on the gated stack, Cloudflare Tunnel route for
@@ -147,9 +155,16 @@ console clean, Playwright smoke green.
 - Exact per-user caps (proposal: 64 concurrent streams, about 50 Mbit/s, 20 GB/day soft cap; SMTP/IRC/torrent
   ports blocked) and how they are enforced: check whether epoxy-server supports per-user limits; if not, enforce
   in a small wrapper or at nginx keyed by user. Abuse contact address.
-- New storage key prefix (proposal `limitless:*:v1`).
-- Check service repo name (proposal `limitless-gate`) and whether it also hosts sync and admin APIs.
+- ~~New storage key prefix~~ Decided `limitless:*:v1` (stage 3a, 2026-10-19). A shim at the top of `index.html` copies
+  every `gust:*` and `gi_<id>:gust:*` key to the new prefix once (flag `limitless:migrated:v1`), rewrites `gust://`
+  inside copied values, never overwrites an existing `limitless:*` key, and keeps the old keys for one release.
+  Kept on purpose: IndexedDB `gust_extensions` (installed extensions; renaming would lose them).
+- ~~Per-session storage namespace~~ Fixed 2026-10-19: upstream's `ls` wrapper keyed data to a `gi_<random>` id in
+  sessionStorage (meant for `file://` copies), so hosted data would not survive a new tab or visit. On http(s) the id
+  is now stable per origin (`limitless:inst:v1`); a tab that already had an id adopts it once. `file://` keeps the
+  upstream behavior. Two open windows share one tab list (last write wins); slice B can refine that.
+- Whether the check service (`limitless-gate`, name confirmed by Boss 2026-10-19) also hosts sync and admin APIs.
 - Which theme defaults to which mark (Orbit everywhere unless a theme suits Lens or Wordmark better). Design picker at https://claude.ai/artifact/UaudLygUksTJaxxSccEXue (picks stored in its `picks` collection).
-- The gll-shared Portfolio Stamp art reads "A Gamble Limited Ltd. game"; Limitless is a product, so a "product" variant is needed in gll-shared (Boss's OK for that repo) or a decision to use the stamp as is.
+- ~~Stamp text~~ Decided 2026-10-19 (Boss): "A Gamble Limited Ltd. product" variant added to gll-shared v0.2.3 (local tag, push pending Boss), copied to `theme/brand/`.
 - Whether a separate VM or egress IP for the relay is needed later.
 - Cloudflare's terms for relaying arbitrary traffic and WebSocket idle timeouts.

@@ -93,7 +93,7 @@ Files: `deploy/docker-compose.yml` (+ `docker-compose.dev.yml`, `dev-up.sh`, `de
 - **Compression decision:** no brotli module in the official nginx image. `build-static.sh` writes `dist/` (raw + `.gz`, `gzip_static`) and
   `dist-br/` (same names, brotli q11, from the `brotli` CLI or Node's zlib). nginx chooses the root from `Accept-Encoding` and adds
   `Content-Encoding: br` by extension (html, js, mjs, css, wasm, svg, json). Measured index.html (3,634,079 B): gzip 1,196,734 B (33%), br 978,191 B (27%).
-- **Caching:** index.html, GUST-Patcher.html, version.json, themes.css: `no-cache` + ETag. `vendor/`: 1 year immutable (versioned paths).
+- **Caching:** index.html, patcher.html, version.json, themes.css: `no-cache` + ETag. `vendor/`: 1 year immutable (versioned paths).
   `fonts/`, `theme/fonts/`: 1 year (names not versioned, so not immutable).
 - **Relay:** epoxy-server 2.0.0, MercuryWorkshop/epoxy-tls commit `0c11678d72a636c3a4bc723db87e03e7b888eaf9` (2026-03-21), built unmodified
   with a dated nightly (`nightly-2026-03-20`), `speed-limit` feature, distroless `cc-debian12:nonroot`, read-only rootfs, cap_drop ALL, image 47 MB.
