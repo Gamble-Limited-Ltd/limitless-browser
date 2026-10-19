@@ -59,8 +59,8 @@ Colors: `c1 = --lb-acc`, `c2 = --lb-acc2` (on light Limitless themes the artifac
 - Wordmark: `<rect x="20" y="8" width="11" height="46" rx="5.5" fill="c1" stroke="none"/><circle cx="45" cy="48" r="6.5" fill="c2" stroke="none"/>`,
   shown next to the text "Limitless Browser" in the theme's display font.
 
-The GLL Portfolio Stamp sits in footers and auth screens (`brand/portfolio-stamp-{dark,light}.svg`, copied from
-gll-shared, all rights reserved per `NOTICE`). Its text reads "game"; a "product" variant is an open item (`PLAN.md` 6).
+The GLL Portfolio Stamp sits in footers and auth screens (`/theme/brand/portfolio-stamp-product-{dark,light}.svg`,
+copied from gll-shared v0.2.3, all rights reserved per `NOTICE`). It reads "A Gamble Limited Ltd. product" (Boss, 2026-10-19).
 
 ## 4. Screens
 - **Splash** (app boot): mark, wordmark, "Connecting to relay", thin progress bar, styled by the active theme.
