@@ -128,7 +128,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   block). Everything else is its own `<script>` just before the theme script, plus the `.lb-adm-*` section at the end of `theme/chrome.css`. The
   entry is the "Admin panel" link in Settings > About (`#lbAboutAdmin`), hidden until `GET /_lb/admin/api/whoami` is 200 (`window.LB_adminProbe()`,
   first run 4 s after load). Typing the URL works for anyone but shows "not available" unless whoami is 200. All data is shown with `textContent`.
-- **Leaving it:** `#lbAdmClose` (Close) and Home go to the start page; `showNewTab` calls `closeSkinPages()`, so no overlay page (admin, What's new) stays on top. Tests: "leaving the admin panel" in `tests/e2e/admin.spec.js`.
+- **Leaving it:** `#lbAdmClose` (Close) calls `window.LB_back()` (back to the previous page of the same tab, or the start page when there is none; the tab is never replaced or closed), Home goes to the start page; `showNewTab` calls `closeSkinPages()`, so no overlay page (admin, What's new) stays on top. Tests: "leaving the admin panel" in `tests/e2e/admin.spec.js`.
 - **Sections:** Users (approve by login name, last seen, today, cut off or restore, revoke with a second click), Usage (today, 30 days, live
   sockets and streams, 80 % warnings, per-user limits), Switches (pause new sign-ins, maintenance, cut off one user), Health (relay, GLL ID, live counts,
   version, counters). A write that answers `403 {error:'stepup'}` opens the password dialog (`#lbAdmStepup`) and retries once.

@@ -9123,7 +9123,7 @@ window._libcurlReady = true;
         // Runs before anything reads storage. Old keys are copied, never removed (removal is a
         // later release). Per-session keys look like "gi_<id>:gust:<name>", so the optional
         // instance prefix is kept. Existing limitless:* keys always win over old values.
-        var LB_VERSION = '0.2.1';
+        var LB_VERSION = '0.2.2';
         (function () {
             try {
                 var st = window.localStorage;
@@ -12761,6 +12761,8 @@ window._libcurlReady = true;
             window.LB_pages = SKIN_PAGES;
             window.LB_go = (u) => go(u, true);
             window.LB_home = () => showNewTab(true);
+            // Leave an overlay page the way it was entered: back to the previous page of this tab, or the start page.
+            window.LB_back = () => { if (histIdx > 0) $("back").click(); else showNewTab(true); };
 
             function showNewTab(push = true) {
                 if (!newtab) return;
@@ -26953,7 +26955,7 @@ _VIEWER_DL_JS +
         var sub = el('p', 'lb-adm-sub', ''); heading.appendChild(sub);
         top.appendChild(heading);
         var refreshBtn = btn('Refresh', '', function () { load(); });
-        var closeBtn = btn('Close', '', function () { if (window.LB_home) window.LB_home(); else page.close(); });
+        var closeBtn = btn('Close', '', function () { if (window.LB_back) window.LB_back(); else page.close(); });
         closeBtn.id = 'lbAdmClose';
         var actions = el('div', 'lb-adm-acts'); actions.append(refreshBtn, closeBtn);
         top.appendChild(actions);

@@ -236,3 +236,18 @@ test.describe('leaving the admin panel', () => {
     });
   }
 });
+
+// Hotfix 0.2.2: Close only closes the panel. The tab stays, with the page it showed before (here Settings).
+test('Close returns to the previous page in the same tab and keeps every tab', async ({ page }) => {
+  mockApi(page);
+  await boot(page);
+  await page.locator('#settingsBtn').click();
+  await expect(page.locator('#lbAboutAdmin')).toBeAttached();
+  const tabsBefore = await page.locator('.tab').count();
+  await page.evaluate(() => document.getElementById('lbAboutAdmin').click());
+  await expect(page.locator('#lbAdmin.show')).toBeVisible();
+  await page.locator('#lbAdmClose').click();
+  await expect(page.locator('#lbAdmin.show')).toBeHidden();
+  expect(await page.locator('.tab').count()).toBe(tabsBefore);
+  await expect(page.locator('#url')).toHaveValue(/limitless:\/\/settings/);
+});

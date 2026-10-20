@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 0.2.2
+
+- Fixed: Close in the admin panel now only closes the panel and takes you back to the page you were on, instead of replacing the tab with the start page.
+
 ## 0.2.1
 
 - Fixed: after the update, pages could fail with "libcurl not ready" while an older Limitless tab was still open. Limitless now starts without its cache in that case instead of waiting.
