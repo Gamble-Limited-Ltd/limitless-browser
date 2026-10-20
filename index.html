@@ -17645,6 +17645,197 @@ _VIEWER_DL_JS +
             }
             // ─────────────────────────────────────────────────────────────
 
+                    // ── location rewrite (AST) ──────────────────────────────────────
+                    // window.location is unforgeable inside the blob iframe, so SPAs
+                    // reading location.search/pathname see blob garbage (DDG re-renders
+                    // its homepage, routers 404). Every proxied script passes through
+                    // Limitless, so we rewrite its location references to the runtime's
+                    // locProxy aliases — the transparent Object.prototype.__lbLoc$
+                    // accessor for member reads (X.location, window.location, aliased
+                    // P.location alike; it yields the location proxy only when the
+                    // receiver is window/document) and __lbLoc for a bare global
+                    // `location` read/write. React Router / the history lib read
+                    // location the aliased way, so without this they get the blob:null
+                    // pathname and route-scoped data never loads.
+                    //
+                    // Parsed with acorn (vendored in <head>), NOT regex. The old regex
+                    // corrupted any `.location` sitting inside a string literal, comment,
+                    // or regex literal in a minified bundle (SyntaxError → dead site) and
+                    // missed a bare `location` passed as a value (new URL(x, location)).
+                    // The AST only ever touches real MemberExpression properties and real
+                    // global Identifier references, so both classes of bug are gone.
+                    // Unparseable source is returned untouched (never corrupted); big
+                    // bundles just parse slowly (~26ms per 130KB chunk).
+                    // ponytail: if the file binds `location` anywhere it shadows the
+                    // global, so we bail on the whole file rather than rewrite a local —
+                    // a file that both shadows AND reads the global keeps the global read
+                    // unrewritten; per-scope resolution is the upgrade if that bites.
+                    function rewriteLocationRefs(src) {
+                        if (!src || src.indexOf('location') === -1) return src;
+                        let ast;
+                        try {
+                            ast = acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true,
+                                allowAwaitOutsideFunction: true, allowHashBang: true, allowImportExportEverywhere: true });
+                        } catch (e) { return src; }
+                        let declared = false;
+                        const mark = id => { if (id && id.type === 'Identifier' && id.name === 'location') declared = true; };
+                        const pat = p => {
+                            if (!p) return;
+                            if (p.type === 'Identifier') mark(p);
+                            else if (p.type === 'ObjectPattern') p.properties.forEach(pr => pat(pr.value || pr.argument));
+                            else if (p.type === 'ArrayPattern') p.elements.forEach(pat);
+                            else if (p.type === 'AssignmentPattern') pat(p.left);
+                            else if (p.type === 'RestElement') pat(p.argument);
+                        };
+                        acorn.walk.full(ast, n => {
+                            if (n.type === 'VariableDeclarator') pat(n.id);
+                            else if (n.type === 'FunctionDeclaration' || n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression') { if (n.id) mark(n.id); n.params.forEach(pat); }
+                            else if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') { if (n.id) mark(n.id); }
+                            else if (n.type === 'CatchClause') pat(n.param);
+                            else if (n.type === 'ImportDefaultSpecifier' || n.type === 'ImportNamespaceSpecifier' || n.type === 'ImportSpecifier') mark(n.local);
+                        });
+                        if (declared) return src;
+                        const edits = [];
+                        acorn.walk.ancestor(ast, {
+                            MemberExpression(n) {
+                                const dot = !n.computed && n.property.type === 'Identifier' && n.property.name === 'location';
+                                const br = n.computed && n.property.type === 'Literal' && n.property.value === 'location';   // obj["location"] — minified/obfuscated form the dot-case missed
+                                if ((!dot && !br) || n.object.type === 'Super') return;
+                                // Receiver guard: X.__lbLoc$ on a cross-origin window throws a
+                                // SecurityError that plain X.location would not — DDG's React error
+                                // boundary caught ours and unmounted the SERP. __lbSafe substitutes
+                                // a shim for receivers whose named-property access throws.
+                                const seq = n.object.type === 'SequenceExpression';   // (a,b).location — extra parens keep it one argument
+                                edits.push({ start: n.object.start, end: n.object.start, text: seq ? '__lbSafe((' : '__lbSafe(' });
+                                // An optional link below this access (a?.b.location) short-circuits
+                                // the original to undefined; __lbSafe(undefined).__lbLoc$ would
+                                // throw TypeError, so make our access optional too.
+                                let sc = false;
+                                for (let o = n.object; o; o = o.type === 'MemberExpression' ? o.object : o.type === 'CallExpression' ? o.callee : null)
+                                    if (o.optional) { sc = true; break; }
+                                if (sc)
+                                    edits.push({ start: n.object.end, end: n.property.end, text: (seq ? '))' : ')') + (dot ? '?.__lbLoc$' : '?.["__lbLoc$"') });
+                                else {
+                                    edits.push({ start: n.object.end, end: n.object.end, text: seq ? '))' : ')' });
+                                    edits.push({ start: n.property.start, end: n.property.end, text: dot ? '__lbLoc$' : '"__lbLoc$"' });
+                                }
+                            },
+                            Identifier(n, _st, anc) {
+                                if (n.name !== 'location') return;
+                                const p = anc[anc.length - 2];
+                                if (!p) return;
+                                if (p.type === 'MemberExpression' && !p.computed && p.property === n) return;   // .location, handled above
+                                if ((p.type === 'Property' || p.type === 'PropertyDefinition' || p.type === 'MethodDefinition') && !p.computed && p.key === n) return;   // {location:…} / class member key
+                                if (p.type === 'Property' && p.shorthand) return;   // {location} shorthand — leave (rare)
+                                edits.push({ start: n.start, end: n.end, text: '__lbLoc' });
+                            },
+                            VariablePattern(n, _st, anc) {   // acorn-walk routes assignment targets here, not Identifier
+                                if (n.name !== 'location') return;
+                                const p = anc[anc.length - 2];
+                                if (p && p.type === 'AssignmentExpression' && p.left === n)   // `location = x`
+                                    edits.push({ start: n.start, end: n.end, text: '__lbLoc' });
+                            }
+                        });
+                        edits.sort((a, b) => b.start - a.start || (b.end - b.start) - (a.end - a.start));   // same-start tie: replacement before insertion, else the insert lands inside the replaced span
+                        let out = src;
+                        for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
+                        return out;
+                    }
+
+            // ── Worker rewriter (0.2.0) ──────────────────────────────────────────
+            // rewriteLocationRefs parses the whole script with acorn (about 26 ms per 130 KB) and used to block the page
+            // for every big bundle. Scripts of 16 KB or more now go to a Blob Worker built from the vendored acorn +
+            // acorn-walk script text and rewriteLocationRefs.toString(); smaller ones stay synchronous (a round trip
+            // would cost more than the parse). If the Worker cannot be created, errors, or takes more than 3 s, the
+            // rewrite is done synchronously and the worker stays off for the rest of the session. Results are memoised
+            // by content hash (bounded). window.__lbRewriteJs (dynamically injected scripts, called synchronously from the
+            // iframe) always uses the synchronous function. Off with features.worker = false in version.json.
+            const LB_RW_MIN = 16 * 1024;
+            const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
+                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0 } };
+            function lbRwHash(str) {
+                let h1 = 0x811c9dc5, h2 = 0x01000193;
+                for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 + c, 2246822519) ^ (h2 >>> 13); }
+                return str.length + ':' + (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
+            }
+            function lbRwMemoPut(key, out) {
+                lbRw.memo.set(key, out); lbRw.memoChars += out.length;
+                while (lbRw.memoChars > 24e6 || lbRw.memo.size > 200) {
+                    const k = lbRw.memo.keys().next().value; lbRw.memoChars -= lbRw.memo.get(k).length; lbRw.memo.delete(k);
+                }
+            }
+            function lbRwDisable() {
+                lbRw.disabled = true;
+                const pending = lbRw.queue.splice(0);
+                for (const slot of lbRw.pool) {
+                    try { slot.w.terminate(); } catch (_) {}
+                    if (slot.busy) { clearTimeout(slot.busy.timer); pending.push(slot.busy); slot.busy = null; }
+                }
+                lbRw.pool = [];
+                for (const t of pending) t.fail(new Error('worker disabled'));   // each caller then rewrites synchronously
+            }
+            function lbRwSource() {
+                const head = document.head.querySelector('script');   // vendored acorn + acorn-walk
+                const lib = head && head.textContent && head.textContent.indexOf('acorn') >= 0 ? head.textContent : '';
+                if (!lib) throw new Error('acorn source not found');
+                return lib + '\n' + rewriteLocationRefs.toString() + '\n' +
+                    'onmessage = function (e) { var d = e.data; try { postMessage({ id: d.id, out: rewriteLocationRefs(d.src) }); } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
+            }
+            function lbRwSpawn() {
+                const blob = new Blob([lbRwSource()], { type: 'text/javascript' });
+                const url = URL.createObjectURL(blob);
+                const w = new Worker(url);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                const slot = { w, busy: null };
+                w.onmessage = (e) => {
+                    const t = slot.busy; if (!t || e.data.id !== t.id) return;
+                    clearTimeout(t.timer); slot.busy = null;
+                    if (e.data.err) { t.fail(new Error(e.data.err)); } else { t.ok(e.data.out); }
+                    lbRwPump();
+                };
+                w.onerror = () => { const t = slot.busy; slot.busy = null; if (t) { clearTimeout(t.timer); t.fail(new Error('worker error')); } else lbRwDisable(); };
+                return slot;
+            }
+            let _lbRwSeq = 0;
+            function lbRwPump() {
+                if (lbRw.disabled) return;
+                while (lbRw.queue.length) {
+                    let slot = lbRw.pool.find(s => !s.busy);
+                    if (!slot && lbRw.pool.length < 2) { try { slot = lbRwSpawn(); lbRw.pool.push(slot); } catch (e) { lbRwDisable(); break; } }
+                    if (!slot) return;
+                    const t = lbRw.queue.shift();
+                    slot.busy = t;
+                    t.timer = setTimeout(() => { if (slot.busy === t) { slot.busy = null; t.fail(new Error('worker timeout')); } }, lbRw.timeoutMs);
+                    try { slot.w.postMessage({ id: t.id, src: t.src }); } catch (e) { clearTimeout(t.timer); slot.busy = null; t.fail(e); }
+                }
+                if (lbRw.disabled) { const q = lbRw.queue.splice(0); for (const t of q) t.fail(new Error('worker disabled')); }
+            }
+            async function rewriteJsAsync(src) {
+                if (!src || src.indexOf('location') === -1) return src;
+                if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return rewriteLocationRefs(src); }
+                const key = lbRwHash(src);
+                const hit = lbRw.memo.get(key);
+                if (hit !== undefined) { lbRw.stats.memoHits++; return hit; }
+                let out;
+                if (!lbRw.disabled && window.LB_features.worker !== false && typeof Worker !== 'undefined') {
+                    try {
+                        out = await new Promise((ok, fail) => { lbRw.queue.push({ id: ++_lbRwSeq, src, ok, fail }); lbRwPump(); });
+                        lbRw.stats.worker++;
+                    } catch (e) {
+                        lbRw.stats.fallback++;
+                        lbRwDisable();
+                        out = rewriteLocationRefs(src);
+                    }
+                } else {
+                    lbRw.stats.sync++;
+                    out = rewriteLocationRefs(src);
+                }
+                lbRwMemoPut(key, out);
+                return out;
+            }
+            window.LB_rewrite = { sync: rewriteLocationRefs, async: rewriteJsAsync, stats: () => ({ ...lbRw.stats, disabled: lbRw.disabled }),
+                get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; } };
+
             async function go(url, push = true, method = "GET", body = null, _isRetry = false) {
                 const initiatorTabId = activeTabId;
 
@@ -18419,102 +18610,6 @@ _VIEWER_DL_JS +
                     const _esmBlobCache = new Map();   // absUrl -> blobUrl (null = resolving/cycle marker)
                     const _esmInflight = new Map();    // absUrl -> Promise<blobUrl>
                     const _esmMax = Math.max(1, parseInt((() => { try { return ls.getItem('limitless:render:modulelimit'); } catch(e) { return null; } })() || '600', 10));
-                    // ── location rewrite (AST) ──────────────────────────────────────
-                    // window.location is unforgeable inside the blob iframe, so SPAs
-                    // reading location.search/pathname see blob garbage (DDG re-renders
-                    // its homepage, routers 404). Every proxied script passes through
-                    // Limitless, so we rewrite its location references to the runtime's
-                    // locProxy aliases — the transparent Object.prototype.__lbLoc$
-                    // accessor for member reads (X.location, window.location, aliased
-                    // P.location alike; it yields the location proxy only when the
-                    // receiver is window/document) and __lbLoc for a bare global
-                    // `location` read/write. React Router / the history lib read
-                    // location the aliased way, so without this they get the blob:null
-                    // pathname and route-scoped data never loads.
-                    //
-                    // Parsed with acorn (vendored in <head>), NOT regex. The old regex
-                    // corrupted any `.location` sitting inside a string literal, comment,
-                    // or regex literal in a minified bundle (SyntaxError → dead site) and
-                    // missed a bare `location` passed as a value (new URL(x, location)).
-                    // The AST only ever touches real MemberExpression properties and real
-                    // global Identifier references, so both classes of bug are gone.
-                    // Unparseable source is returned untouched (never corrupted); big
-                    // bundles just parse slowly (~26ms per 130KB chunk).
-                    // ponytail: if the file binds `location` anywhere it shadows the
-                    // global, so we bail on the whole file rather than rewrite a local —
-                    // a file that both shadows AND reads the global keeps the global read
-                    // unrewritten; per-scope resolution is the upgrade if that bites.
-                    function rewriteLocationRefs(src) {
-                        if (!src || src.indexOf('location') === -1) return src;
-                        let ast;
-                        try {
-                            ast = acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true,
-                                allowAwaitOutsideFunction: true, allowHashBang: true, allowImportExportEverywhere: true });
-                        } catch (e) { return src; }
-                        let declared = false;
-                        const mark = id => { if (id && id.type === 'Identifier' && id.name === 'location') declared = true; };
-                        const pat = p => {
-                            if (!p) return;
-                            if (p.type === 'Identifier') mark(p);
-                            else if (p.type === 'ObjectPattern') p.properties.forEach(pr => pat(pr.value || pr.argument));
-                            else if (p.type === 'ArrayPattern') p.elements.forEach(pat);
-                            else if (p.type === 'AssignmentPattern') pat(p.left);
-                            else if (p.type === 'RestElement') pat(p.argument);
-                        };
-                        acorn.walk.full(ast, n => {
-                            if (n.type === 'VariableDeclarator') pat(n.id);
-                            else if (n.type === 'FunctionDeclaration' || n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression') { if (n.id) mark(n.id); n.params.forEach(pat); }
-                            else if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') { if (n.id) mark(n.id); }
-                            else if (n.type === 'CatchClause') pat(n.param);
-                            else if (n.type === 'ImportDefaultSpecifier' || n.type === 'ImportNamespaceSpecifier' || n.type === 'ImportSpecifier') mark(n.local);
-                        });
-                        if (declared) return src;
-                        const edits = [];
-                        acorn.walk.ancestor(ast, {
-                            MemberExpression(n) {
-                                const dot = !n.computed && n.property.type === 'Identifier' && n.property.name === 'location';
-                                const br = n.computed && n.property.type === 'Literal' && n.property.value === 'location';   // obj["location"] — minified/obfuscated form the dot-case missed
-                                if ((!dot && !br) || n.object.type === 'Super') return;
-                                // Receiver guard: X.__lbLoc$ on a cross-origin window throws a
-                                // SecurityError that plain X.location would not — DDG's React error
-                                // boundary caught ours and unmounted the SERP. __lbSafe substitutes
-                                // a shim for receivers whose named-property access throws.
-                                const seq = n.object.type === 'SequenceExpression';   // (a,b).location — extra parens keep it one argument
-                                edits.push({ start: n.object.start, end: n.object.start, text: seq ? '__lbSafe((' : '__lbSafe(' });
-                                // An optional link below this access (a?.b.location) short-circuits
-                                // the original to undefined; __lbSafe(undefined).__lbLoc$ would
-                                // throw TypeError, so make our access optional too.
-                                let sc = false;
-                                for (let o = n.object; o; o = o.type === 'MemberExpression' ? o.object : o.type === 'CallExpression' ? o.callee : null)
-                                    if (o.optional) { sc = true; break; }
-                                if (sc)
-                                    edits.push({ start: n.object.end, end: n.property.end, text: (seq ? '))' : ')') + (dot ? '?.__lbLoc$' : '?.["__lbLoc$"') });
-                                else {
-                                    edits.push({ start: n.object.end, end: n.object.end, text: seq ? '))' : ')' });
-                                    edits.push({ start: n.property.start, end: n.property.end, text: dot ? '__lbLoc$' : '"__lbLoc$"' });
-                                }
-                            },
-                            Identifier(n, _st, anc) {
-                                if (n.name !== 'location') return;
-                                const p = anc[anc.length - 2];
-                                if (!p) return;
-                                if (p.type === 'MemberExpression' && !p.computed && p.property === n) return;   // .location, handled above
-                                if ((p.type === 'Property' || p.type === 'PropertyDefinition' || p.type === 'MethodDefinition') && !p.computed && p.key === n) return;   // {location:…} / class member key
-                                if (p.type === 'Property' && p.shorthand) return;   // {location} shorthand — leave (rare)
-                                edits.push({ start: n.start, end: n.end, text: '__lbLoc' });
-                            },
-                            VariablePattern(n, _st, anc) {   // acorn-walk routes assignment targets here, not Identifier
-                                if (n.name !== 'location') return;
-                                const p = anc[anc.length - 2];
-                                if (p && p.type === 'AssignmentExpression' && p.left === n)   // `location = x`
-                                    edits.push({ start: n.start, end: n.end, text: '__lbLoc' });
-                            }
-                        });
-                        edits.sort((a, b) => b.start - a.start || (b.end - b.start) - (a.end - a.start));   // same-start tie: replacement before insertion, else the insert lands inside the replaced span
-                        let out = src;
-                        for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
-                        return out;
-                    }
                     // Expose the AST rewriter to the parent-scope message handler so
                     // dynamically-injected <script src> (fetched at runtime, not in the
                     // initial HTML) get the same location rewrite. See the 'qjs' handler.
@@ -18554,7 +18649,7 @@ _VIEWER_DL_JS +
                             // failed does the real URL survive with no map entry (direct load).
                             specMap.set(spec, dep);
                         }));
-                        let out = rewriteLocationRefs(src).replace(/\bimport\.meta\.url\b/g, JSON.stringify(moduleUrl));
+                        let out = (await rewriteJsAsync(src)).replace(/\bimport\.meta\.url\b/g, JSON.stringify(moduleUrl));
                         for (const re of _esmPatterns) {
                             out = out.replace(re, (full, pre, q, spec, q2) => {
                                 const rep = specMap.get(spec);
@@ -18610,13 +18705,13 @@ _VIEWER_DL_JS +
 
                     // Inline classic scripts: rewrite location references (skip Limitless's
                     // own injected scripts and non-JS payloads like application/json).
-                    doc.querySelectorAll('script:not([src]):not([data-lb-injected])').forEach(scr => {
+                    await Promise.all([...doc.querySelectorAll('script:not([src]):not([data-lb-injected])')].map(async scr => {
                         const t = (scr.getAttribute('type') || '').toLowerCase();
                         if (t && t !== 'text/javascript' && t !== 'application/javascript' && t !== 'module') return;
                         const code = scr.textContent;
                         if (!code || code.indexOf('location') === -1) return;
-                        try { scr.textContent = rewriteLocationRefs(code); } catch {}
-                    });
+                        try { scr.textContent = await rewriteJsAsync(code); } catch {}
+                    }));
 
                     // JS - keep as external scripts to preserve defer/module semantics.
                     // Next.js / React / Vite apps commonly emit 30-80+ script tags (classic chunks
@@ -18711,7 +18806,7 @@ _VIEWER_DL_JS +
                             if (activeTabId !== initiatorTabId) return;
                             if (jsR.buf && jsR.buf.byteLength) {
                                 // Decode → rewrite location refs to __lbLoc → re-encode as UTF-8 bytes.
-                                const jsText = rewriteLocationRefs(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf)));
+                                const jsText = await rewriteJsAsync(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf)));
                                 const bytes = new TextEncoder().encode(jsText);
                                 let bin = '';
                                 const chunk = 32768;

@@ -141,3 +141,18 @@ the gate's 60 s access cache.
   link-local metadata and port 25 (with a positive control). The relay tests skip, with a reason, if the VM has no
   outbound internet.
 - Not covered: Cloudflare Tunnel and Access, TLS and `__Host-` cookies (the rehearsal is plain http), the real GATE.
+
+## 6. Browsing speed (0.2.0, slice "Faster browsing")
+Built on branch `slice/browsing`; details for the code are in `CLAUDE.md` ("Faster browsing").
+- **Sockets:** the app opens up to 4 WebSockets to `/wisp/`, using `/wisp/1/` to `/wisp/4/` (least open streams first). nginx's `location ^~ /wisp/` and the gate already
+  accept any path under `/wisp/`; no server change. Per-user bandwidth is shared across the sockets by the gate (0.1.1), so more sockets do not raise the cap, they remove
+  head-of-line blocking on one socket. Stream cap stays per user: 24 requests x 4 sockets stays under the 64-stream cap because libcurl keeps at most 6 connections per host.
+- **Requests:** 24 parallel (default), 6 per host, up to 32 by setting.
+- **Cache:** per-device IndexedDB, 200 MB, header-driven (see CLAUDE.md). Nothing is cached on the server. `version.json` and `index.html` stay `no-cache` at nginx, so a
+  `respCache` kill switch reaches every open tab within the update poll (boot read only; a reload applies it).
+- **Script rewrite:** Blob Worker for scripts of 16 KB or more. Needs no CSP change (the only CSP header is `frame-ancestors 'self'`).
+- **Kill switches:** `features` in `version.json`. To ship a release with one off: `LB_FEATURE_WORKER=false LB_FEATURE_RESPCACHE=false LB_FEATURE_OWNSOCKETS=1 ./deploy.sh`
+  (values: `true`/`false`, sockets 0 to 4; 0 and 1 mean the single plain `/wisp/` path).
+- **Measuring:** `npm run test:speed` loads 7 public sites cold and warm 3 times each in fresh browser contexts against the rehearsal stack and writes
+  `test-results/speed-<sha>.json`; `node scripts/speed-compare.mjs base.json new.json` fails on a median `load` more than 10 % and 100 ms slower. Run it on the base
+  commit and the candidate, same machine, same hour (public sites vary).

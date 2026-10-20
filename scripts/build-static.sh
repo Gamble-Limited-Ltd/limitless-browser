@@ -36,8 +36,15 @@ VERSION=0.1.0
 if [ -f "$SRC/package.json" ]; then
   VERSION="$(node -e 'try{console.log(require(process.argv[1]).version||"0.1.0")}catch(e){console.log("0.1.0")}' "$SRC/package.json")"
 fi
-printf '{"version":"%s","sha":"%s","date":"%s","security":false}\n' \
-  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT/version.json"
+# Kill switches the app reads at boot (features in version.json, see CLAUDE.md "Feature switches"). Defaults are all on.
+# To turn one off for a release, export it for the build, e.g. LB_FEATURE_WORKER=false ./deploy.sh
+FEAT_SOCKETS="${LB_FEATURE_OWNSOCKETS:-4}"
+FEAT_WORKER="${LB_FEATURE_WORKER:-true}"
+FEAT_CACHE="${LB_FEATURE_RESPCACHE:-true}"
+[[ "$FEAT_SOCKETS" =~ ^[0-4]$ ]] || { echo "build-static: LB_FEATURE_OWNSOCKETS must be 0 to 4" >&2; exit 1; }
+[[ "$FEAT_WORKER" =~ ^(true|false)$ && "$FEAT_CACHE" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER and LB_FEATURE_RESPCACHE must be true or false" >&2; exit 1; }
+printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s}}\n' \
+  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" > "$OUT/version.json"
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"

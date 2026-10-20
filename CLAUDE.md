@@ -115,3 +115,10 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   Requests carrying their own Range, conditional or Authorization headers bypass the cache. Reload drops the document entry. Switch: Settings > Resource Cache
   "Keep a cache of sites on this device" (`limitless:cache:resp:v1`, default on) or `features.respCache` false: nothing is read or written. The old HEAD/Range
   size check is gone. Test hook: `LB_cache` (`now`, `put`, `get`, `has`, `count`, `setMax`, `clearAll`, `dropMemory`), `LB_queueFetch`.
+- **Worker rewriter (F5):** `rewriteLocationRefs` now lives at module level (not inside `go()`); `rewriteJsAsync(src)` sends scripts of 16 KB or more to up to two Blob
+  Workers built from the vendored acorn + acorn-walk script text (first `<script>` of `<head>`) plus `rewriteLocationRefs.toString()`, memoised by content hash (200
+  entries / 24 M chars). Worker creation failure, a worker error or a 3 s timeout rewrites synchronously and turns workers off for the session. Awaited callers: external
+  scripts, inline classic scripts, ES module sources. `window.__lbRewriteJs` (dynamic injection, called synchronously by the iframe) stays synchronous. No CSP change needed.
+  Test hook: `LB_rewrite` (`sync`, `async`, `stats()`, `timeoutMs`).
+- **Kill switches at build time:** `scripts/build-static.sh` writes `features` into `version.json` from `LB_FEATURE_OWNSOCKETS` (0 to 4, default 4), `LB_FEATURE_WORKER` and
+  `LB_FEATURE_RESPCACHE` (`true`/`false`, default true), e.g. `LB_FEATURE_WORKER=false ./deploy.sh`. Users can also turn off the cache (Settings) and set sockets (Settings).

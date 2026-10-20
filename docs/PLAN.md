@@ -171,6 +171,9 @@ console clean, Playwright smoke green.
   24 parallel requests (6 per host), 4 own-relay sockets by default, and a multi-relay toggle that is off by default for every user and needs
   third-party relays, with a user-chosen mode (per-site, spread or race); Boss explicitly approved extending third-party relay use for this. Plus a speed
   harness. Admin panel lives inside Limitless; granting access stays manual in GATE; no notifications.
+  *Slice status (2026-10-20):* Faster browsing is built on branch `slice/browsing` (F1 parallel requests, F2 transport router and own sockets, F3 multi-relay,
+  F4 response cache, F5 Worker rewriter, F6 speed harness, kill switches in `version.json` `features`); tests green, speed numbers in the decision log below.
+  Admin panel (slice D) is on its own branch.
 - 0.3.0 = Faster startup (slice A).
 
 ## 6. Open items
@@ -190,3 +193,19 @@ console clean, Playwright smoke green.
 - ~~Stamp text~~ Decided 2026-10-19 (Boss): "A Gamble Limited Ltd. product" variant added to gll-shared v0.2.3 (local tag, push pending Boss), copied to `theme/brand/`.
 - Whether a separate VM or egress IP for the relay is needed later.
 - Cloudflare's terms for relaying arbitrary traffic and WebSocket idle timeouts.
+
+## 7. Decision log (from 0.2.0)
+- **2026-10-20, multi-relay (Boss, explicit).** Extends third-party relay use beyond the 2026-10-18 fallback decision: an optional "Use several third-party relays at
+  once" switch (off by default, for every user, locked unless "Allow third-party relays" is on) with modes Per site (default), Spread and Race. Trade-offs are shown
+  in the setting: other operators see which sites you visit, Spread can sign you out of sites or trigger bot checks, Race sends the start of a secure connection to
+  two relays. Race only applies to port 443 so that only a TLS ClientHello is ever duplicated. Needs Boss's review of the settings copy and `legal/privacy.html` (sections 5 to 7).
+- **2026-10-20, own relay sockets.** The app opens up to 4 WebSockets to its own relay by using `/wisp/N/` paths (the gate accepts any `/wisp/*`; libcurl keys WISP
+  connections on the base url). Default 4, setting 1 to 4, 1 keeps the plain `/wisp/` path. Kill switch `features.ownSockets`.
+- **2026-10-20, response cache.** Replaces the flat 24 h / 100 MB cache and the HEAD or Range size probe with header-driven freshness and conditional requests, 200 MB,
+  true LRU eviction. Consequence: HTML without explicit freshness is no longer served from the session cache, so a warm reload of such a page now asks the site again
+  (the old behaviour could show a stale page until a manual reload). Kill switch `features.respCache` plus the user switch.
+- **2026-10-20, Worker rewriter.** Scripts of 16 KB or more are parsed in a Blob Worker; any failure or a 3 s timeout falls back to the synchronous rewrite and turns the
+  worker off for the session. Kill switch `features.worker`.
+- **2026-10-20, kill switches.** `version.json` carries `features` {ownSockets, worker, respCache}, stamped by `scripts/build-static.sh` (`LB_FEATURE_OWNSOCKETS`,
+  `LB_FEATURE_WORKER`, `LB_FEATURE_RESPCACHE`), read once at boot; missing means all on.
+- **2026-10-20, speed harness.** `npm run test:speed` (stack, needs internet), medians of 3, 10 % and 100 ms regression gate via `scripts/speed-compare.mjs`.
