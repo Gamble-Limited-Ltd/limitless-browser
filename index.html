@@ -6114,13 +6114,13 @@
                                             <div style="flex:1;">
                                                 <div class="settings-switch-label">Idle threads</div>
                                                 <div class="settings-hint">Max simultaneous requests when page is loaded
-                                                    (default: 3). Lower = less background CPU.</div>
+                                                    (default: 24). Lower = less background CPU.</div>
                                             </div>
                                             <div style="display:flex;align-items:center;gap:6px;">
                                                 <button class="settings-btn-icon" id="settingsIdleMinus"
                                                     style="width:28px;height:28px;font-size:14px;">−</button>
                                                 <span id="settingsIdleVal"
-                                                    style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);min-width:20px;text-align:center;">3</span>
+                                                    style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);min-width:20px;text-align:center;">24</span>
                                                 <button class="settings-btn-icon" id="settingsIdlePlus"
                                                     style="width:28px;height:28px;font-size:14px;">+</button>
                                             </div>
@@ -6129,13 +6129,13 @@
                                             <div style="flex:1;">
                                                 <div class="settings-switch-label">Active threads</div>
                                                 <div class="settings-hint">Max simultaneous requests during page load
-                                                    (default: 6). Higher = faster loads but more CPU.</div>
+                                                    (default: 24, up to 32; at most 6 to any one site). Higher = faster loads but more CPU.</div>
                                             </div>
                                             <div style="display:flex;align-items:center;gap:6px;">
                                                 <button class="settings-btn-icon" id="settingsActiveMinus"
                                                     style="width:28px;height:28px;font-size:14px;">−</button>
                                                 <span id="settingsActiveVal"
-                                                    style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);min-width:20px;text-align:center;">6</span>
+                                                    style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);min-width:20px;text-align:center;">24</span>
                                                 <button class="settings-btn-icon" id="settingsActivePlus"
                                                     style="width:28px;height:28px;font-size:14px;">+</button>
                                             </div>
@@ -11330,8 +11330,16 @@ window._libcurlReady = true;
             let wsSeq = 0;
             const wsMap = new Map();
 
-            let MAX_CONCURRENT = (function () { try { return parseInt(ls.getItem('limitless:idlethreads:v1'), 10) || 10; } catch { return 10; } })();
-            let MAX_CONCURRENT_ACTIVE = (function () { try { return parseInt(ls.getItem('limitless:activethreads:v1'), 10) || 10; } catch { return 10; } })();
+            // F1 (0.2.0): 24 parallel requests by default, 6 per host. Saved values from earlier versions are kept.
+            const LB_CONN_DEFAULT = 24, LB_CONN_MAX = 32, LB_HOST_CONN = 6;
+            let MAX_CONCURRENT = (function () { try { return parseInt(ls.getItem('limitless:idlethreads:v1'), 10) || LB_CONN_DEFAULT; } catch { return LB_CONN_DEFAULT; } })();
+            let MAX_CONCURRENT_ACTIVE = (function () { try { return parseInt(ls.getItem('limitless:activethreads:v1'), 10) || LB_CONN_DEFAULT; } catch { return LB_CONN_DEFAULT; } })();
+            // libcurl connection limits for a session: total and keep-alive cache follow the larger of the two settings
+            // (the queue never dispatches more than that), per-host stays at 6 like a normal browser.
+            function lbApplyConnections(sess) {
+                const n = Math.max(1, Math.min(LB_CONN_MAX, Math.max(MAX_CONCURRENT, MAX_CONCURRENT_ACTIVE)));
+                try { (sess || curl).set_connections(n, n, LB_HOST_CONN); } catch (e) {}
+            }
             let _isPageLoading = false;
             let syncState = 1;
             let layoutChecksum = 0;
@@ -13703,7 +13711,7 @@ window._libcurlReady = true;
                                 await libcurl.load_wasm();
                                 libcurl.set_websocket(WISP);
                                 curl = new libcurl.HTTPSession();
-                                curl.set_connections(MAX_CONCURRENT_ACTIVE, MAX_CONCURRENT_ACTIVE, MAX_CONCURRENT_ACTIVE);
+                                lbApplyConnections(curl);
                                 reconnected = true;
                                 log('Reconnected to WISP (attempt ' + (_attempt + 1) + ')', 'ok');
                                 break;
@@ -17468,7 +17476,7 @@ _VIEWER_DL_JS +
                                 await libcurl.load_wasm();
                                 libcurl.set_websocket(_picked);
                                 curl = new libcurl.HTTPSession();
-                                curl.set_connections(MAX_CONCURRENT_ACTIVE, MAX_CONCURRENT_ACTIVE, MAX_CONCURRENT_ACTIVE);
+                                lbApplyConnections(curl);
                                 WISP = _picked;
                                 _navWispSwapped = true;
                             }
@@ -18600,7 +18608,7 @@ _VIEWER_DL_JS +
                                     await libcurl.load_wasm();
                                     libcurl.set_websocket(_cand);
                                     curl = new libcurl.HTTPSession();
-                                    curl.set_connections(MAX_CONCURRENT, MAX_CONCURRENT, MAX_CONCURRENT);
+                                    lbApplyConnections(curl);
                                 } catch (_swErr) {
                                     log(`<i class="fas fa-circle-xmark" style="color:var(--err)"></i><span style="color:var(--err)">Failed to switch to</span> <span style="color:var(--tx3)">${_candHost}: ${_swErr.message.slice(0, 55)}</span>`, 'err');
                                     markWispFailed(_cand, _navHost);
@@ -18633,7 +18641,7 @@ _VIEWER_DL_JS +
                             }
                             // Restore the sticky primary WISP for subsequent fresh navigations
                             // regardless of outcome — a successful candidate only serves this retry.
-                            try { await libcurl.load_wasm(); libcurl.set_websocket(WISP); curl = new libcurl.HTTPSession(); curl.set_connections(MAX_CONCURRENT, MAX_CONCURRENT, MAX_CONCURRENT); } catch (_re) {}
+                            try { await libcurl.load_wasm(); libcurl.set_websocket(WISP); curl = new libcurl.HTTPSession(); lbApplyConnections(curl); } catch (_re) {}
                             if (_poolSuccess) return;
                         } else if (_fbEnabled && !_fbWisp && !_poolOn) {
                             log(`<i class="fas fa-triangle-exclamation" style="color:var(--warn)"></i><span style="color:var(--warn)">Fallback enabled but no fallback WISP configured</span> — set one in Settings → Fallback`, 'warn');
@@ -18806,7 +18814,7 @@ _VIEWER_DL_JS +
                             await libcurl.load_wasm();
                             libcurl.set_websocket(_origWisp);
                             curl = new libcurl.HTTPSession();
-                            curl.set_connections(MAX_CONCURRENT, MAX_CONCURRENT, MAX_CONCURRENT);
+                            lbApplyConnections(curl);
                         } catch {}
                     }
                 }
@@ -19962,7 +19970,7 @@ _VIEWER_DL_JS +
                         } else {
                         libcurl.set_websocket(WISP);
                         curl = new libcurl.HTTPSession();
-                        curl.set_connections(MAX_CONCURRENT, MAX_CONCURRENT, MAX_CONCURRENT);
+                        lbApplyConnections(curl);
                         persistWorkingWisp(WISP);
                         log(`<i class="fas fa-circle-check" style="color:var(--ok)"></i><span style="color:var(--ok)">libcurl initialized successfully</span>`, "ok");
                         log(`Ready! (${MAX_CONCURRENT} connections, 1h cache) <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">via ${WISP.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, "ok");
@@ -20372,7 +20380,7 @@ _VIEWER_DL_JS +
                         await libcurl.load_wasm();
                         libcurl.set_websocket(val);
                         curl = new libcurl.HTTPSession();
-                        curl.set_connections(MAX_CONCURRENT, MAX_CONCURRENT, MAX_CONCURRENT);
+                        lbApplyConnections(curl);
                         log(`WISP switched to <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">${val.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, 'ok');
                     } catch (e) {
                         log('WISP reconnect failed: ' + e.message, 'err');
@@ -20434,7 +20442,7 @@ _VIEWER_DL_JS +
                 const threadsSave = $("settingsThreadsSave");
                 const threadsReset = $("settingsThreadsReset");
                 const threadsStatus = $("settingsThreadsStatus");
-                const THREAD_MIN = 1, THREAD_MAX = 18;
+                const THREAD_MIN = 1, THREAD_MAX = LB_CONN_MAX;
 
                 function updateThreadDisplays() {
                     if (idleValEl) idleValEl.textContent = _idleVal;
@@ -20457,6 +20465,7 @@ _VIEWER_DL_JS +
                     threadsSave.onclick = () => {
                         MAX_CONCURRENT = _idleVal;
                         MAX_CONCURRENT_ACTIVE = _activeVal;
+                        lbApplyConnections(curl);   // live session, no reload needed
                         try {
                             ls.setItem('limitless:idlethreads:v1', _idleVal);
                             ls.setItem('limitless:activethreads:v1', _activeVal);
@@ -20468,11 +20477,12 @@ _VIEWER_DL_JS +
                 }
                 if (threadsReset) {
                     threadsReset.onclick = () => {
-                        _idleVal = 3; _activeVal = 6;
-                        MAX_CONCURRENT = 3; MAX_CONCURRENT_ACTIVE = 6;
+                        _idleVal = LB_CONN_DEFAULT; _activeVal = LB_CONN_DEFAULT;
+                        MAX_CONCURRENT = LB_CONN_DEFAULT; MAX_CONCURRENT_ACTIVE = LB_CONN_DEFAULT;
+                        lbApplyConnections(curl);
                         updateThreadDisplays();
                         try { ls.removeItem('limitless:idlethreads:v1'); ls.removeItem('limitless:activethreads:v1'); } catch { }
-                        showStatusMsg(threadsStatus, 'Reset to defaults (idle: 3, active: 6)', 'ok');
+                        showStatusMsg(threadsStatus, 'Reset to defaults (idle: ' + LB_CONN_DEFAULT + ', active: ' + LB_CONN_DEFAULT + ')', 'ok');
                     };
                 }
                 if (blockSwitch) {
@@ -24302,7 +24312,7 @@ _VIEWER_DL_JS +
                         '<div class="gxc-card"><div class="gxc-cardhead"><i class="fa-solid fa-wifi"></i><span class="t">Network Limiter</span></div>' +
                         '<div class="gxc-sub">Caps how many parallel connections Limitless opens through the WISP proxy. Lower = lighter on your network.</div>' +
                         '<div class="gxc-presets" id="gxcNet">' +
-                        [[1, 'Slow'], [3, 'Eco'], [6, 'Normal'], [9, 'Fast'], [12, 'Unleashed']].map(p =>
+                        [[1, 'Slow'], [6, 'Eco'], [12, 'Light'], [24, 'Normal'], [32, 'Unleashed']].map(p =>
                             '<button class="gxc-preset' + (netSel === p[0] ? ' sel' : '') + '" data-n="' + p[0] + '">' + p[1] + '<br><span style="opacity:.55;font-size:10px;">' + p[0] + ' threads</span></button>').join('') +
                         '</div></div>' +
                         '<div class="gxc-card"><div class="gxc-cardhead"><i class="fa-solid fa-memory"></i><span class="t">RAM Limiter</span>' +
@@ -24329,7 +24339,7 @@ _VIEWER_DL_JS +
                     gxControl.querySelector('#gxcX').addEventListener('click', closeGXPageTab);
                     gxControl.querySelectorAll('#gxcNet .gxc-preset').forEach(b => b.addEventListener('click', () => {
                         const n = parseInt(b.dataset.n, 10);
-                        MAX_CONCURRENT = n; MAX_CONCURRENT_ACTIVE = Math.min(18, n + 3);
+                        MAX_CONCURRENT = n; MAX_CONCURRENT_ACTIVE = Math.min(LB_CONN_MAX, n + 3); lbApplyConnections(curl);
                         try { ls.setItem('limitless:idlethreads:v1', n); ls.setItem('limitless:activethreads:v1', MAX_CONCURRENT_ACTIVE); } catch (_) {}
                         gxControl.querySelectorAll('#gxcNet .gxc-preset').forEach(x => x.classList.toggle('sel', x === b));
                         gxPlay(n <= 3 ? 'LIMITER_ON' : 'LIMITER_OFF');

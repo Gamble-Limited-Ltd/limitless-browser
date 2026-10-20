@@ -85,3 +85,11 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   with a tiny safe renderer (headings, lists, paragraphs, `[text](url)` links to http(s) or limitless://; all DOM via `textContent`, links open inside the
   proxy). Linked from the banner, the About page, and typed in the address bar. Keep `CHANGELOG.md` plain: no bold, code or tables (shown literally).
 - About links Privacy and Terms open `/legal/privacy.html` and `/legal/terms.html` in a normal new tab (outside the proxy).
+
+## Faster browsing (0.2.0 slice, branch `slice/browsing`)
+- **Speed harness (F6):** `window.__lbPerf` (`start(url)`, `mark(name)`, `runs`) is always on and local; `go()` marks `firstBytes`, `dom`, `shown`, `load` in ms
+  since the navigation started. `npm run test:speed` (= `LB_SPEED=1 deploy/rehearsal/run.sh tests/stack/speed.spec.js`, needs outbound internet) loads the sites in
+  `tests/stack/speed-sites.json` cold and warm, 3 reps each in fresh contexts (`LB_SPEED_REPS`, `LB_SPEED_ONLY`, `LB_SPEED_SHA`), and writes
+  `test-results/speed-<sha>.json` (medians). `node scripts/speed-compare.mjs base.json cand.json` fails (exit 1) when a median load is more than 10 % and 100 ms slower.
+- **Parallel requests (F1):** defaults 24 idle and 24 active (stepper 1 to 32, saved values from earlier versions are kept). `lbApplyConnections(session)` calls
+  `set_connections(n, n, 6)` with n = the larger setting, and runs at every session creation and live when the stepper is saved or reset.
