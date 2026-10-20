@@ -11,6 +11,8 @@ REPO="$(cd "$HERE/../.." && pwd)"
 export REHEARSAL_WEB_PORT="${REHEARSAL_WEB_PORT:-8590}"
 export REHEARSAL_MOCK_PORT="${REHEARSAL_MOCK_PORT:-8591}"
 export GATE_CONTEXT="${GATE_CONTEXT:-$HOME/limitless-gate}"
+# The mock GATE seeds an owner user with this id; the gate treats it as OWNER_SUB (admin panel tests).
+export REHEARSAL_OWNER_SUB="00000000-0000-4000-8000-0000000000a1"
 PROJECT=limitless-browser-rehearsal
 START=$(date +%s)
 
@@ -31,6 +33,7 @@ GATE_CLIENT_ID=limitless-browser
 GATE_CLIENT_SECRET=$REHEARSAL_CLIENT_SECRET
 PUBLIC_ORIGIN=http://127.0.0.1:$REHEARSAL_WEB_PORT
 SESSION_SECRET=$(rand 48)
+OWNER_SUB=$REHEARSAL_OWNER_SUB
 ENV
 )
 

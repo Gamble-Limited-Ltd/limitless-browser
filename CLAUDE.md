@@ -86,7 +86,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   proxy). Linked from the banner, the About page, and typed in the address bar. Keep `CHANGELOG.md` plain: no bold, code or tables (shown literally).
 - About links Privacy and Terms open `/legal/privacy.html` and `/legal/terms.html` in a normal new tab (outside the proxy).
 
-## Faster browsing (0.2.0 slice, branch `slice/browsing`)
+## Faster browsing (0.2.0 slice, 0.2.0 slice)
 - **Speed harness (F6):** `window.__lbPerf` (`start(url)`, `mark(name)`, `runs`) is always on and local; `go()` marks `firstBytes`, `dom`, `shown`, `load` in ms
   since the navigation started. `npm run test:speed` (= `LB_SPEED=1 deploy/rehearsal/run.sh tests/stack/speed.spec.js`, needs outbound internet) loads the sites in
   `tests/stack/speed-sites.json` cold and warm, 3 reps each in fresh contexts (`LB_SPEED_REPS`, `LB_SPEED_ONLY`, `LB_SPEED_SHA`), and writes
@@ -122,3 +122,17 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   Test hook: `LB_rewrite` (`sync`, `async`, `stats()`, `timeoutMs`).
 - **Kill switches at build time:** `scripts/build-static.sh` writes `features` into `version.json` from `LB_FEATURE_OWNSOCKETS` (0 to 4, default 4), `LB_FEATURE_WORKER` and
   `LB_FEATURE_RESPCACHE` (`true`/`false`, default true), e.g. `LB_FEATURE_WORKER=false ./deploy.sh`. Users can also turn off the cache (Settings) and set sockets (Settings).
+## Admin panel (0.2.0, slice D)
+- **Page:** `limitless://admin`, registered into `SKIN_PAGES` through the hooks `window.LB_pages` and `window.LB_go` (added after the What's new
+  block). Everything else is its own `<script>` just before the theme script, plus the `.lb-adm-*` section at the end of `theme/chrome.css`. The
+  entry is the "Admin panel" link in Settings > About (`#lbAboutAdmin`), hidden until `GET /_lb/admin/api/whoami` is 200 (`window.LB_adminProbe()`,
+  first run 4 s after load). Typing the URL works for anyone but shows "not available" unless whoami is 200. All data is shown with `textContent`.
+- **Sections:** Users (approve by login name, last seen, today, cut off or restore, revoke with a second click), Usage (today, 30 days, live
+  sockets and streams, 80 % warnings, per-user limits), Switches (pause new sign-ins, maintenance, cut off one user), Health (relay, GLL ID, live counts,
+  version, counters). A write that answers `403 {error:'stepup'}` opens the password dialog (`#lbAdmStepup`) and retries once.
+- **Server side:** `/_lb/admin/api/*` in the check service (`~/limitless-gate` CLAUDE.md, "Admin panel API"). nginx: `location ^~ /_lb/admin/`
+  (gated, 16k body, no-store) and `X-LB-Reason: maintenance` maps to `/auth/maintenance` like `unavailable`.
+- **Kill switches:** `ADMIN_PANEL=off` in `deploy/gate.env` (every admin route 404s), `./manage.sh clients owner-api limitless-browser off` in GLL ID.
+  `OWNER_SUB` must be set in `deploy/gate.env` for the panel to work at all. `deploy.sh` passes the deployed sha to the gate as `BUILD_SHA`.
+- **Tests:** `tests/e2e/admin.spec.js` (mocked routes, all 8 themes), `tests/stack/admin.spec.js` (rehearsal: owner vs normal user, approve and revoke,
+  maintenance). The rehearsal seeds a mock owner (`owner` / `owner-pass-1`, fixed sub in `run.sh`) and sets `OWNER_SUB` to it.

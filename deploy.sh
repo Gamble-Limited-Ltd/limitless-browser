@@ -26,7 +26,7 @@ cp "$REPO/deploy/gate.env" "$WORK/deploy/gate.env"
 
 "$WORK/scripts/build-static.sh" "$SHA"
 
-export WEB_SHA="$SHA" RELAY_SHA="$SHA" GATE_SHA="$SHA" GATE_CONTEXT
+export WEB_SHA="$SHA" RELAY_SHA="$SHA" GATE_SHA="$SHA" GATE_CONTEXT  # WEB_SHA also reaches the gate as BUILD_SHA
 COMPOSE=(-f "$WORK/deploy/docker-compose.yml")
 # GATE back channel over GATE's private network (needed while id.taps-holdings.org is behind Cloudflare Access).
 if grep -q '^GATE_BACKCHANNEL_URL=.' "$WORK/deploy/gate.env"; then

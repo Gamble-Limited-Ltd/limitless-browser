@@ -40,6 +40,8 @@ services:
       PORT: "8080"
       # Optional, leave unset unless needed: GATE_BACKCHANNEL_URL (set it in gate.env)
       RELAY_URL: ws://relay:4000/
+      # Shown on the admin panel Health page (deploy.sh sets WEB_SHA to the deployed commit).
+      BUILD_SHA: ${WEB_SHA:-dev}
     volumes:
       - gate-data:/data
     networks: [lb_internal, lb_relay, lb_gate_out]

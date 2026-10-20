@@ -7111,6 +7111,7 @@
                                                 <div>Limitless Browser is free software under the GNU AGPLv3.</div>
                                                 <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;">
                                                     <a href="#" id="lbAboutWhatsNew" style="color:var(--ac);text-decoration:none;">What's new</a>
+                                                    <a href="#" id="lbAboutAdmin" hidden style="color:var(--ac);text-decoration:none;">Admin panel</a>
                                                     <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none;">Source code</a>
                                                     <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser/issues" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none;">Report an issue</a>
                                                     <a href="/legal/privacy.html" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none;">Privacy</a>
@@ -9122,7 +9123,7 @@ window._libcurlReady = true;
         // Runs before anything reads storage. Old keys are copied, never removed (removal is a
         // later release). Per-session keys look like "gi_<id>:gust:<name>", so the optional
         // instance prefix is kept. Existing limitless:* keys always win over old values.
-        var LB_VERSION = '0.1.1';
+        var LB_VERSION = '0.2.0';
         (function () {
             try {
                 var st = window.localStorage;
@@ -11145,6 +11146,8 @@ window._libcurlReady = true;
                             ? '<i class="fas fa-gear"></i>'
                             : tab.url === 'limitless://whats-new'
                             ? '<i class="fas fa-wand-magic-sparkles"></i>'
+                            : tab.url === 'limitless://admin'
+                            ? '<i class="fas fa-user-shield"></i>'
                             : (isInvalidInternal(tab.url) || tab.hasError)
                                 ? '<i class="fas fa-circle-xmark" style="color: var(--err);"></i>'
                                 : `<img data-favicon-url="${faviconFor(tab.url)}" style="display: none; width: 16px; height: 16px; border-radius: 3px; margin: 0 1px;" /><i class="fas fa-globe"></i>`;
@@ -12745,6 +12748,9 @@ window._libcurlReady = true;
                 const aboutWn = $('lbAboutWhatsNew');
                 if (aboutWn) aboutWn.addEventListener('click', (e) => { e.preventDefault(); go(LB_WHATS_NEW, true); });
             }
+            // Hooks for self-contained internal pages that live in their own script (the owner admin panel).
+            window.LB_pages = SKIN_PAGES;
+            window.LB_go = (u) => go(u, true);
 
             function showNewTab(push = true) {
                 if (!newtab) return;
@@ -26874,6 +26880,407 @@ _VIEWER_DL_JS +
         </div>
         <div class="lb-note" id="lbDrawerNote"></div>
     </div>
+    <script>
+    // Admin panel (limitless://admin). Owner only. The check service answers /_lb/admin/api/* with 404 to everyone else,
+    // so the entry stays hidden unless whoami is 200. All data is shown with textContent, never as markup.
+    (function () {
+        'use strict';
+        if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+        var PAGE = 'limitless://admin', API = '/_lb/admin/api/', GB = 1024 * 1024 * 1024;
+
+        function el(tag, cls, text) {
+            var e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (text !== undefined && text !== null) e.textContent = text;
+            return e;
+        }
+        function btn(label, cls, onclick) {
+            var b = el('button', 'lb-adm-btn' + (cls ? ' ' + cls : ''), label);
+            b.type = 'button';
+            if (onclick) b.addEventListener('click', onclick);
+            return b;
+        }
+        function fmtBytes(n) {
+            n = Number(n) || 0;
+            if (n < 1024) return n + ' B';
+            var u = ['KB', 'MB', 'GB', 'TB'], i = -1;
+            do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+            return (n >= 100 ? Math.round(n) : Math.round(n * 10) / 10) + ' ' + u[i];
+        }
+        function ago(ms) {
+            if (!ms) return 'Never';
+            var s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+            if (s < 60) return 'Just now';
+            if (s < 3600) return Math.floor(s / 60) + ' min ago';
+            if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+            return Math.floor(s / 86400) + ' d ago';
+        }
+        function dur(sec) {
+            if (sec < 3600) return Math.floor(sec / 60) + ' min';
+            if (sec < 86400) return Math.floor(sec / 3600) + ' h ' + Math.floor((sec % 3600) / 60) + ' min';
+            return Math.floor(sec / 86400) + ' d ' + Math.floor((sec % 86400) / 3600) + ' h';
+        }
+        function nameOf(u) { return u.loginName || ('Account ' + String(u.sub).slice(0, 8)); }
+
+        var ERR = {
+            not_found: 'No account with that login name.',
+            not_verified: 'That account has no verified email yet.',
+            owner_api_unavailable: 'GLL ID approvals are not reachable right now.',
+            rate_limited: 'Too many requests. Wait a moment and try again.',
+            self: 'That is not allowed for the owner account.',
+            invalid: 'That value is not valid.',
+            owner_api_error: 'GLL ID gave an unexpected answer.'
+        };
+
+        var root = el('div', 'lb-adm'); root.id = 'lbAdmin';
+        var inner = el('div', 'lb-adm-in'); root.appendChild(inner);
+        var toast = el('div', 'lb-adm-toast'); toast.setAttribute('role', 'status'); toast.setAttribute('aria-live', 'polite');
+        var secUsers = el('section', 'lb-adm-card'), secUsage = el('section', 'lb-adm-card'),
+            secSw = el('section', 'lb-adm-card'), secHealth = el('section', 'lb-adm-card');
+        var top = el('div', 'lb-adm-top');
+        var heading = el('div'); heading.appendChild(el('h1', '', 'Admin'));
+        var sub = el('p', 'lb-adm-sub', ''); heading.appendChild(sub);
+        top.appendChild(heading);
+        var refreshBtn = btn('Refresh', '', function () { load(); });
+        top.appendChild(refreshBtn);
+        inner.append(top, toast, secUsers, secUsage, secSw, secHealth);
+        var S = { who: null, users: null, usage: null, flags: null, health: null, editing: null, confirm: null };
+        var toastTimer = null, refreshTimer = null, loading = 0;
+
+        function say(text, isErr) {
+            toast.textContent = text || '';
+            toast.classList.toggle('err', !!isErr);
+            clearTimeout(toastTimer);
+            if (text) toastTimer = setTimeout(function () { toast.textContent = ''; }, 6000);
+        }
+        function errText(r) {
+            var code = r && r.json && r.json.error;
+            if (r && r.status === 0) return 'Could not reach the service.';
+            return ERR[code] || 'That did not work.';
+        }
+
+        async function api(method, path, body) {
+            var init = { method: method, credentials: 'same-origin', cache: 'no-store', headers: {} };
+            if (method !== 'GET') { init.headers['content-type'] = 'application/json'; init.body = JSON.stringify(body || {}); }
+            var r;
+            try { r = await fetch(API + path, init); } catch (_) { return { status: 0, json: {} }; }
+            var j = {};
+            try { j = await r.json(); } catch (_) {}
+            return { status: r.status, json: j || {} };
+        }
+        // A write that answers 403 stepup opens the password dialog once, then retries.
+        async function write(path, body) {
+            var r = await api('POST', path, body);
+            if (r.status === 403 && r.json.error === 'stepup') {
+                if (!(await askStepUp())) return r;
+                r = await api('POST', path, body);
+            }
+            return r;
+        }
+
+        // ---- step-up dialog ----
+        var modal = el('div', 'lb-adm-modal'); modal.id = 'lbAdmStepup';
+        var mf = el('form'); mf.setAttribute('role', 'dialog'); mf.setAttribute('aria-modal', 'true'); mf.setAttribute('aria-labelledby', 'lbAdmStepupT');
+        var mt = el('h2', '', 'Confirm it is you'); mt.id = 'lbAdmStepupT';
+        var mp = el('p', '', 'Enter the owner login name and password again. This unlocks changes for 10 minutes.');
+        function field(label, name, type, auto) {
+            var l = el('label', '', label), i = el('input'); i.name = name; i.type = type; i.autocomplete = auto; i.required = true; i.maxLength = 1024;
+            l.appendChild(i); return l;
+        }
+        var fLogin = field('Login name', 'login', 'text', 'username'), fPass = field('Password', 'password', 'password', 'current-password');
+        var mErr = el('div', 'lb-adm-err'); mErr.setAttribute('role', 'alert');
+        var mAct = el('div', 'lb-adm-act'), mCancel = btn('Cancel'), mOk = btn('Confirm', 'pri'); mOk.type = 'submit';
+        mAct.append(mCancel, mOk);
+        mf.append(mt, mp, fLogin, fPass, mErr, mAct); modal.appendChild(mf); root.appendChild(modal);
+        var stepResolve = null;
+        function closeStep(ok) {
+            modal.classList.remove('show');
+            fPass.querySelector('input').value = '';
+            var res = stepResolve; stepResolve = null;
+            if (res) res(ok);
+        }
+        mCancel.addEventListener('click', function () { closeStep(false); });
+        modal.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeStep(false); });
+        mf.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var login = fLogin.querySelector('input').value, password = fPass.querySelector('input').value;
+            mOk.disabled = true; mErr.textContent = '';
+            var r = await api('POST', 'step-up', { login: login, password: password });
+            mOk.disabled = false;
+            if (r.status === 200) { S.who = Object.assign({}, S.who, { stepup: true }); closeStep(true); return; }
+            mErr.textContent = r.status === 429 ? 'Too many tries. Wait a minute.'
+                : r.status === 503 ? 'GLL ID is not reachable. Try again in a moment.'
+                : r.status === 0 ? 'Could not reach the service.'
+                : 'That did not match the owner account.';
+            fPass.querySelector('input').value = '';
+            fPass.querySelector('input').focus();
+        });
+        function askStepUp() {
+            if (stepResolve) return Promise.resolve(false);
+            return new Promise(function (resolve) {
+                stepResolve = resolve; mErr.textContent = '';
+                modal.classList.add('show');
+                (fLogin.querySelector('input').value ? fPass : fLogin).querySelector('input').focus();
+            });
+        }
+
+        // ---- sections ----
+        function head(card, title, hint) {
+            card.replaceChildren(el('h2', '', title));
+            if (hint) card.appendChild(el('p', 'lb-adm-hint', hint));
+        }
+        function table(cols) {
+            var t = el('table'), h = el('thead'), tr = el('tr');
+            cols.forEach(function (c) { tr.appendChild(el('th', '', c)); });
+            h.appendChild(tr); t.appendChild(h);
+            var tb = el('tbody'); t.appendChild(tb);
+            var w = el('div', 'lb-adm-wrap'); w.appendChild(t);
+            return { wrap: w, body: tb };
+        }
+        function twoClick(key, label, confirmLabel, cls, run) {
+            var armed = S.confirm === key;
+            return btn(armed ? confirmLabel : label, cls, function () {
+                if (!armed) { S.confirm = key; renderAll(); setTimeout(function () { if (S.confirm === key) { S.confirm = null; renderAll(); } }, 5000); return; }
+                S.confirm = null; run();
+            });
+        }
+
+        async function doApprove(name) {
+            var r = await write('users/approve', { loginName: name });
+            if (r.status === 200) { say((r.json.created ? 'Approved ' : 'Already approved: ') + name + '.'); await load(true); }
+            else say(errText(r), true);
+        }
+        async function doKill(u, on) {
+            var r = await write('kill', { sub: u.sub, on: on });
+            if (r.status === 200) { say(on ? nameOf(u) + ' is cut off and signed out of the proxy.' : nameOf(u) + ' can use the proxy again.'); await load(true); }
+            else say(errText(r), true);
+        }
+        async function doRevoke(u) {
+            var r = await write('users/revoke', { sub: u.sub });
+            if (r.status === 200) { say('Revoked ' + nameOf(u) + '. Their connections are closed.'); await load(true); }
+            else say(errText(r), true);
+        }
+
+        function renderUsers() {
+            var d = S.users;
+            head(secUsers, 'Users', 'Who can use Limitless Browser. Approvals are kept in GLL ID.');
+            if (!d) { secUsers.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            if (d.readOnly) {
+                secUsers.appendChild(el('p', 'lb-adm-note', 'GLL ID approvals are not reachable, so this list comes from this service and is read only. Manage approvals in GLL ID admin.'));
+            } else {
+                var f = el('form', 'lb-adm-form'); f.id = 'lbAdmApprove';
+                var i = el('input'); i.id = 'lbAdmApproveName'; i.placeholder = 'Login name to approve'; i.maxLength = 64; i.autocomplete = 'off'; i.setAttribute('aria-label', 'Login name to approve');
+                var b = btn('Approve', 'pri'); b.type = 'submit'; b.id = 'lbAdmApproveBtn';
+                f.append(i, b);
+                f.addEventListener('submit', function (e) { e.preventDefault(); var v = i.value.trim(); if (v) doApprove(v); });
+                secUsers.appendChild(f);
+            }
+            var t = table(['User', 'Last seen', 'Today', '']);
+            d.users.forEach(function (u) {
+                var tr = el('tr'), nm = el('td', 'lb-adm-name', nameOf(u));
+                if (u.owner) nm.appendChild(el('span', 'lb-adm-chip', 'Owner'));
+                if (u.killed) nm.appendChild(el('span', 'lb-adm-chip err', 'Cut off'));
+                else if (u.approved === false) nm.appendChild(el('span', 'lb-adm-chip', 'Not approved'));
+                if (u.sockets > 0) nm.appendChild(el('span', 'lb-adm-chip ok', 'Online'));
+                tr.append(nm, el('td', '', ago(u.lastSeen)), el('td', '', fmtBytes(u.todayBytes)));
+                var act = el('div', 'lb-adm-act');
+                if (!u.owner) {
+                    act.appendChild(u.killed ? btn('Restore', '', function () { doKill(u, false); })
+                        : twoClick('kill:' + u.sub, 'Cut off', 'Confirm cut off', 'danger', function () { doKill(u, true); }));
+                    if (!d.readOnly && u.approved !== false) act.appendChild(twoClick('revoke:' + u.sub, 'Revoke', 'Confirm revoke', 'danger', function () { doRevoke(u); }));
+                }
+                var td = el('td'); td.appendChild(act); tr.appendChild(td);
+                t.body.appendChild(tr);
+            });
+            if (!d.users.length) secUsers.appendChild(el('p', 'lb-adm-note', 'Nobody yet.'));
+            else secUsers.appendChild(t.wrap);
+        }
+
+        async function saveLimits(row, form) {
+            function num(name, mult) {
+                var v = form.elements[name].value.trim();
+                if (v === '') return null;
+                var n = Number(v);
+                return isFinite(n) && n >= 0 ? Math.round(n * mult) : NaN;
+            }
+            var body = { sub: row.sub, bandwidthMbps: num('bandwidthMbps', 1), dailyByteCap: num('dailyGb', GB), maxSockets: num('maxSockets', 1) };
+            if ([body.bandwidthMbps, body.dailyByteCap, body.maxSockets].some(function (v) { return v !== null && !isFinite(v); })) { say('Enter numbers only, or leave a box empty for the default.', true); return; }
+            var r = await write('overrides', body);
+            if (r.status === 200) { S.editing = null; say('Limits saved for ' + (row.loginName || 'this user') + '.'); await load(true); }
+            else say(errText(r), true);
+        }
+        function limitText(r) {
+            var parts = [];
+            parts.push(r.bandwidthMbps > 0 ? r.bandwidthMbps + ' Mbit/s' : 'No speed limit');
+            parts.push(r.maxSockets + ' connections');
+            return parts.join(', ') + (r.override ? ' (custom)' : '');
+        }
+        function renderUsage() {
+            var d = S.usage;
+            head(secUsage, 'Usage', 'Data used through the proxy today and over 30 days. Limits are per user.');
+            if (!d) { secUsage.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var warns = d.rows.filter(function (r) { return r.warn.bytes || r.warn.sockets; });
+            secUsage.appendChild(el('p', 'lb-adm-note', 'Live now: ' + d.live.sockets + ' connections, ' + d.live.streams + ' streams. Default: ' +
+                (d.defaults.bandwidthMbps > 0 ? d.defaults.bandwidthMbps + ' Mbit/s' : 'no speed limit') + ', ' + fmtBytes(d.defaults.dailyByteCap) + ' a day, ' + d.defaults.maxSockets + ' connections.'));
+            if (warns.length) {
+                var w = el('p', 'lb-adm-note'); w.style.color = 'var(--warn)';
+                w.textContent = warns.length + (warns.length === 1 ? ' user is' : ' users are') + ' at 80 percent or more of a limit.';
+                secUsage.appendChild(w);
+            }
+            if (!d.rows.length) { secUsage.appendChild(el('p', 'lb-adm-note', 'No use yet.')); return; }
+            var t = table(['User', 'Today', '30 days', 'Live', 'Limits', '']);
+            d.rows.forEach(function (r) {
+                var tr = el('tr', r.warn.bytes || r.warn.sockets ? 'lb-adm-warn' : ''), nm = el('td', 'lb-adm-name', r.loginName || ('Account ' + r.sub.slice(0, 8)));
+                if (r.owner) nm.appendChild(el('span', 'lb-adm-chip', 'Owner'));
+                var today = el('td'), tv = el('span', 'lb-adm-today', fmtBytes(r.todayBytes) + (r.dailyCap > 0 ? ' of ' + fmtBytes(r.dailyCap) : ''));
+                today.appendChild(tv);
+                if (r.dailyCap > 0) { var m = el('div', 'lb-adm-meter'), bar = el('i'); bar.style.width = Math.min(100, Math.round(r.todayBytes / r.dailyCap * 100)) + '%'; m.appendChild(bar); today.appendChild(m); }
+                var live = el('td', '', r.sockets + ' / ' + r.streams + (r.warn.sockets ? ' (near the limit)' : ''));
+                tr.append(nm, today, el('td', '', fmtBytes(r.bytes30)), live, el('td', '', r.owner ? 'No limits' : limitText(r)));
+                var td = el('td'), act = el('div', 'lb-adm-act');
+                if (!r.owner) act.appendChild(btn('Limits', '', function () { S.editing = S.editing === r.sub ? null : r.sub; renderUsage(); }));
+                td.appendChild(act); tr.appendChild(td); t.body.appendChild(tr);
+                if (S.editing === r.sub) {
+                    var er = el('tr', 'lb-adm-edit'), ec = el('td'); ec.colSpan = 6;
+                    var f = el('form', 'lb-adm-form');
+                    function lab(text, name, val, ph) { var l = el('label', '', text), i = el('input'); i.name = name; i.type = 'number'; i.min = '0'; i.step = 'any'; i.placeholder = ph; if (val !== null && val !== undefined) i.value = val; l.appendChild(i); return l; }
+                    var o = r.override || {};
+                    f.append(lab('Speed (Mbit/s, 0 = no limit)', 'bandwidthMbps', o.bandwidthMbps, 'Default'),
+                        lab('Per day (GB, 0 = no cap)', 'dailyGb', o.dailyByteCap === null || o.dailyByteCap === undefined ? null : Math.round(o.dailyByteCap / GB * 100) / 100, 'Default'),
+                        lab('Connections', 'maxSockets', o.maxSockets, 'Default'));
+                    var sv = btn('Save limits', 'pri'); sv.type = 'submit';
+                    var rs = btn('Use defaults', '', function () { f.reset(); Array.prototype.forEach.call(f.elements, function (x) { if (x.name) x.value = ''; }); saveLimits(r, f); });
+                    f.append(sv, rs);
+                    f.addEventListener('submit', function (e) { e.preventDefault(); saveLimits(r, f); });
+                    ec.appendChild(f); er.appendChild(ec); t.body.appendChild(er);
+                }
+            });
+            secUsage.appendChild(t.wrap);
+        }
+
+        async function setFlag(key, value, msg) {
+            var b = {}; b[key] = value;
+            var r = await write('flags', b);
+            if (r.status === 200) { S.flags = r.json; say(msg); await load(true); }
+            else say(errText(r), true);
+        }
+        function renderSwitches() {
+            var fl = S.flags || { signinsPaused: false, maintenance: false };
+            head(secSw, 'Switches', 'Take effect at once. You are never affected by them.');
+            function row(title, desc, control) {
+                var r = el('div', 'lb-adm-switch'), t = el('div'); t.append(el('b', '', title), el('span', '', desc));
+                r.append(t, control); return r;
+            }
+            var pause = btn(fl.signinsPaused ? 'Resume sign-ins' : 'Pause sign-ins', fl.signinsPaused ? 'pri' : '', function () {
+                setFlag('signinsPaused', !fl.signinsPaused, fl.signinsPaused ? 'Sign-ins are back on.' : 'New sign-ins are paused.');
+            });
+            pause.id = 'lbAdmPause';
+            secSw.appendChild(row('New sign-ins', fl.signinsPaused ? 'Paused. People already signed in keep working.' : 'On. Approved people can sign in.', pause));
+            var maint;
+            if (fl.maintenance) maint = btn('End maintenance', 'pri', function () { setFlag('maintenance', false, 'Maintenance is over.'); });
+            else maint = twoClick('maint', 'Start maintenance', 'Confirm start', 'danger', function () { setFlag('maintenance', true, 'Maintenance is on. Everyone else is signed out of the proxy.'); });
+            maint.id = 'lbAdmMaint';
+            secSw.appendChild(row('Maintenance mode', fl.maintenance ? 'On. Everyone except you sees a maintenance page.' : 'Off. Turning it on closes everyone else\'s connections and blocks sign-ins.', maint));
+            var users = (S.users && S.users.users || []).filter(function (u) { return !u.owner; });
+            var f = el('form', 'lb-adm-form'), sel = el('select'); sel.setAttribute('aria-label', 'User to cut off'); sel.id = 'lbAdmKillSel';
+            users.forEach(function (u) { if (u.killed) return; var o = el('option', '', nameOf(u)); o.value = u.sub; sel.appendChild(o); });
+            var kb = twoClick('killsel', 'Cut off now', 'Confirm cut off', 'danger', function () {
+                var u = users.find(function (x) { return x.sub === sel.value; }); if (u) doKill(u, true);
+            });
+            kb.type = 'button';
+            var cut = users.filter(function (u) { return u.killed; });
+            var desc = el('span', '', cut.length ? 'Cut off now: ' + cut.map(nameOf).join(', ') + '. Restore them in Users.' : 'Closes their connections and blocks them until you restore them.');
+            if (sel.options.length) f.append(sel, kb); else f.appendChild(el('span', '', 'Nobody to cut off.'));
+            f.addEventListener('submit', function (e) { e.preventDefault(); });
+            var r2 = el('div', 'lb-adm-switch'), t2 = el('div'); t2.append(el('b', '', 'Cut off one user'), desc);
+            r2.append(t2, f); secSw.appendChild(r2);
+        }
+
+        function renderHealth() {
+            var h = S.health;
+            head(secHealth, 'Health');
+            if (!h) { secHealth.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var dl = el('dl');
+            function kv(k, v, cls) { var dd = el('dd'); dd.appendChild(el('span', cls ? 'lb-adm-chip ' + cls : '', v)); dl.append(el('dt', '', k), dd); }
+            kv('Relay', h.relay.ok ? 'Up' : 'Down', h.relay.ok ? 'ok' : 'err');
+            kv('GLL ID', h.gateId.ok ? 'Reachable' : 'Not reachable', h.gateId.ok ? 'ok' : 'err');
+            dl.append(el('dt', '', 'Live now'), el('dd', '', h.live.users + (h.live.users === 1 ? ' user, ' : ' users, ') + h.live.sockets + ' connections, ' + h.live.streams + ' streams'));
+            dl.append(el('dt', '', 'Version'), el('dd', '', h.version));
+            dl.append(el('dt', '', 'Running for'), el('dd', '', dur(h.uptimeSec)));
+            dl.append(el('dt', '', 'Switches'), el('dd', '', 'Sign-ins ' + (h.flags.signinsPaused ? 'paused' : 'on') + ', maintenance ' + (h.flags.maintenance ? 'on' : 'off')));
+            secHealth.appendChild(dl);
+            var keys = Object.keys(h.totals || {}).sort();
+            if (keys.length) {
+                var det = el('details'), sm = el('summary', '', 'Counters since the service started');
+                var list = el('dl');
+                keys.forEach(function (k) { list.append(el('dt', '', k), el('dd', '', String(h.totals[k]))); });
+                det.append(sm, list); secHealth.appendChild(det);
+            }
+        }
+
+        function renderAll() {
+            if (!S.who) return;
+            sub.textContent = 'Version ' + S.who.version + (S.who.stepup ? '. Changes are unlocked.' : '. You will be asked for your password before the first change.');
+            renderUsers(); renderUsage(); renderSwitches(); renderHealth();
+        }
+
+        function unavailable() {
+            inner.replaceChildren(el('h1', '', 'Admin'), el('p', 'lb-adm-note', 'The admin panel is not available.'));
+        }
+
+        async function load(quiet) {
+            var mine = ++loading;
+            var w = await api('GET', 'whoami');
+            if (w.status !== 200 || !w.json.owner) { S.who = null; unavailable(); return; }
+            if (!inner.contains(top)) inner.replaceChildren(top, toast, secUsers, secUsage, secSw, secHealth);
+            S.who = w.json;
+            var res = await Promise.all([api('GET', 'users'), api('GET', 'usage'), api('GET', 'flags'), api('GET', 'health')]);
+            if (mine !== loading) return;
+            if (res[0].status === 200) S.users = res[0].json;
+            if (res[1].status === 200) S.usage = res[1].json;
+            if (res[2].status === 200) S.flags = res[2].json;
+            if (res[3].status === 200) S.health = res[3].json;
+            if (!quiet && res.some(function (r) { return r.status !== 200; })) say('Some of this page could not be loaded.', true);
+            renderAll();
+        }
+        function busy() {
+            var a = document.activeElement;
+            return modal.classList.contains('show') || (a && root.contains(a) && /^(INPUT|SELECT)$/.test(a.tagName));
+        }
+
+        var page = {
+            title: 'Admin',
+            open: function () {
+                root.classList.add('show');
+                load();
+                clearInterval(refreshTimer);
+                refreshTimer = setInterval(function () { if (!busy() && document.visibilityState === 'visible') load(true); }, 20000);
+            },
+            close: function () { root.classList.remove('show'); clearInterval(refreshTimer); refreshTimer = null; }
+        };
+
+        function register() {
+            if (!window.LB_pages) return false;
+            var nt = document.getElementById('newtab');
+            if (!nt || !nt.parentElement) return false;
+            nt.parentElement.appendChild(root);
+            window.LB_pages[PAGE] = page;
+            return true;
+        }
+        if (!register()) window.addEventListener('load', register);
+
+        var entry = document.getElementById('lbAboutAdmin');
+        if (entry) entry.addEventListener('click', function (e) { e.preventDefault(); if (window.LB_go) window.LB_go(PAGE); });
+        async function probe() {
+            var r = await api('GET', 'whoami');
+            var ok = r.status === 200 && r.json.owner === true;
+            if (entry) entry.hidden = !ok;
+            return ok;
+        }
+        window.LB_adminProbe = probe;
+        setTimeout(probe, 4000);
+    })();
+    </script>
     <script>
     /* Theme UI: settings Appearance grid, mode control, mark picker and the quick-switch drawer. State lives in window.LBTheme (head script). */
     (function () {
