@@ -56,4 +56,4 @@ docker compose -p limitless-browser exec lbgate node -e "const {DatabaseSync}=re
 ## 6. After launch
 - Push `main` to GitHub so the in-app source link (AGPL section 13) shows the running code.
 - gll-shared v0.2.3 push; gll-site and gll-shared listings (Boss's OK per repo); vault handoff.
-- Open: legal placeholders (Boss review), host egress rules (`deploy/relay/egress-rules.sh`), abuse contact.
+- Open: host egress rules (`deploy/relay/egress-rules.sh`). Legal text final 2026-10-20 (version 2026-10-20, Boss auto-approved; abuse contact = support address with "ABUSE" subject).

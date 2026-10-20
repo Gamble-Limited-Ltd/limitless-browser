@@ -33,9 +33,8 @@ footer img{height:28px;width:auto}
 <body>
 <main>
 <header class="top"><img src="/theme/marks/orbit.svg" alt=""><a href="/legal/">Limitless Browser</a></header>
-<p class="draft">Draft, pending Boss's review. This text is not final and is not yet in force.</p>
 <h1>Privacy Policy</h1>
-<p class="meta">Gamble Limited Ltd.<br>Effective date: [to be set when Boss approves this document]</p>
+<p class="meta">Gamble Limited Ltd.<br>Effective date: 20 October 2026 (version 2026-10-20)</p>
 
 <h2>Summary</h2>
 <ul>
@@ -58,18 +57,19 @@ footer img{height:28px;width:auto}
 <div class="tbl"><table>
 <thead><tr><th>Data</th><th>Where it comes from</th><th>Why</th><th>Retention</th></tr></thead>
 <tbody>
-<tr><td>GLL ID account identifier</td><td>GLL ID, when you sign in</td><td>To recognise your account and check that it is approved. Approvals are tied to this identifier, so a change of email does not lose the approval.</td><td>While your account is approved or has a session. [exact period to be confirmed]</td></tr>
-<tr><td>Email address</td><td>GLL ID, when you sign in</td><td>To show you which account you are signed in with, and to identify you to the operator.</td><td>[retention period to be confirmed]</td></tr>
-<tr><td>Session times (when a session starts, is checked and ends)</td><td>Our check service</td><td>To keep your session valid (7 days, then you sign in again) and to cut it off when access is withdrawn.</td><td>[retention period to be confirmed]</td></tr>
-<tr><td>Usage counters: bytes transferred, number of open relay connections and streams, per account</td><td>Our check service</td><td>To apply fair-use limits. Counters hold amounts only, not which sites were involved.</td><td>Short. [retention period to be confirmed]</td></tr>
-<tr><td>Counts of sign-in outcomes (allowed and denied)</td><td>Our check service</td><td>To see that sign-in works and to spot attacks. Counts, not a list of people.</td><td>[retention period to be confirmed]</td></tr>
-<tr><td>IP address and request details</td><td>Your connection, passed on by Cloudflare</td><td>To deliver the Service and to rate-limit connection attempts. [whether any IP address is stored, and for how long, to be confirmed]</td><td>[retention period to be confirmed]</td></tr>
-<tr><td>Abuse events: rate-limit hits, blocked targets, abuse reports</td><td>The relay and the check service</td><td>To protect the Service and other people from abuse. These are events and counters, not routine logs.</td><td>Short. [retention period to be confirmed]</td></tr>
+<tr><td>GLL ID account identifier</td><td>GLL ID, when you sign in</td><td>To recognise your account and check that it is approved. Approvals are tied to this identifier, so a change of email does not lose the approval.</td><td>With your session (deleted within 10 minutes of the session ending, and a session lasts at most 7 days); with the daily usage counters (30 days); with any limit or cut-off the operator sets for your account (until it is removed); and in the record of operator actions (90 days).</td></tr>
+<tr><td>Email address</td><td>GLL ID, when you sign in</td><td>To show you which account you are signed in with, and to identify you to the operator.</td><td>With your session only: deleted within 10 minutes of the session ending (sign-out, withdrawn access, or after at most 7 days).</td></tr>
+<tr><td>Session times (when a session starts, is checked and ends)</td><td>Our check service</td><td>To keep your session valid (7 days, then you sign in again) and to cut it off when access is withdrawn.</td><td>Deleted within 10 minutes of the session ending.</td></tr>
+<tr><td>Usage counters: bytes transferred, number of open relay connections and streams, per account</td><td>Our check service</td><td>To apply fair-use limits. Counters hold amounts only, not which sites were involved.</td><td>Bytes per account per day: 30 days. Open connections and streams: in memory only, while they are open.</td></tr>
+<tr><td>Counts of sign-in outcomes (allowed and denied)</td><td>Our check service</td><td>To see that sign-in works and to spot attacks. Counts, not a list of people.</td><td>Written to the service log as totals every 10 minutes. The service log keeps at most about 10 MB and overwrites its oldest lines as it fills.</td></tr>
+<tr><td>IP address and request details</td><td>Your connection, passed on by Cloudflare</td><td>To deliver the Service and to rate-limit connection attempts. Our check service and relay use your IP address in memory only and do not store it. The web server writes no access log; a line in its error log can contain the IP address of the request that caused the error.</td><td>Rate-limit data: in memory, minutes. Error log lines: The service log keeps at most about 10 MB and overwrites its oldest lines as it fills.</td></tr>
+<tr><td>Abuse events: rate-limit hits, blocked targets, abuse reports</td><td>The relay and the check service</td><td>To protect the Service and other people from abuse. These are events and counters, not routine logs.</td><td>Counters and warnings in the service log, which keeps at most about 10 MB and overwrites its oldest lines as it fills. Abuse reports you send us: as long as needed to deal with them.</td></tr>
 </tbody></table></div>
-<p>We do not keep routine logs of destinations or of the content of your traffic, and we do not keep any destination or content log tied to your account. The web server in front of the Service is set up not to write routine access logs. [Boss to confirm before launch.]</p>
+<p>We do not keep routine logs of destinations or of the content of your traffic, and we do not keep any destination or content log tied to your account. The web server in front of the Service does not write routine access logs.</p>
 
 <h2>&sect; 4: How We Use the Data</h2>
 <p>We use the data in &sect; 3 to check who may use the Service, to run it, to apply limits, to keep it safe from abuse, and to answer questions you send us. We do not use it for advertising or profiling, and we do not sell it.</p>
+<p>The operator has an admin panel that shows, for each account, its identifier, email address, last sign-in, usage counters and any limits, and lets the operator grant or withdraw access, change limits or cut off an account. Each action in the panel is recorded with the account it concerned, for 90 days.</p>
 
 <h2>&sect; 5: The Relay</h2>
 <p>The Service reaches websites through a relay that Gamble Limited Ltd. runs. Your browser opens a few connections to the relay (up to four), and the relay makes the real connections to the sites you visit. To do that, the relay sees the host name or address and the port of each connection you ask for. For HTTPS sites, the relay carries encrypted traffic and cannot read it. Anything that is not encrypted, such as a plain HTTP site, can be read by anyone along the path, including the relay.</p>
@@ -81,7 +81,7 @@ footer img{height:28px;width:auto}
 <h2>&sect; 7: Data in Your Browser</h2>
 <p>The browser part of the Service keeps your tabs, cookies jar, settings and similar data in your browser's own storage on your device. It is not sent to us. It is lost if you clear site data, use a private window or change device.</p>
 <p>The Service also keeps a cache of page files (styles, scripts, images and pages that allow it) in your browser's storage, up to 200 MB, so repeat visits load faster. It stays on your device and is not sent to us. Files that a site marks as private or not to be stored are not kept. You can turn the cache off, or clear it, in settings.</p>
-<p>[If sync or other storage features are added later, this policy will be updated before they start.]</p>
+<p>If sync or other storage features are added later, this policy will be updated before they start.</p>
 
 <h2>&sect; 8: GLL ID and Cloudflare</h2>
 <p>Sign-in is handled by GLL ID (id.taps-holdings.org), another service of Gamble Limited Ltd. Its own documents describe what it holds about your account. The Service receives only what it needs (your account identifier and email address, and whether you are approved).</p>
@@ -91,13 +91,13 @@ footer img{height:28px;width:auto}
 <p>The Service sets one session cookie after you sign in. It is limited to this site, is not readable by page scripts, is sent only over secure connections, and lasts 7 days. It is not used for tracking or advertising. Cloudflare may set a cookie that is strictly necessary for security under its own policy.</p>
 
 <h2>&sect; 10: Sharing</h2>
-<p>We do not sell or rent your data. We share it only with the services needed to run the Service (Cloudflare, and GLL ID for sign-in), and when the law requires it. [Boss to confirm the wording on legal requests.]</p>
+<p>We do not sell or rent your data. We share it only with the services needed to run the Service (Cloudflare, and GLL ID for sign-in), and when the law requires it. We disclose data in answer to a legal request only when the request is valid and binding on us, and then only the data in &sect; 3 that we still hold at that time.</p>
 
 <h2>&sect; 11: Your Rights</h2>
 <p>You may ask what we hold about you, ask us to fix it, ask us to delete it, or object to our use of it. Write to gamblelimitedsupport@taps-holdings.org with "PRIVACY" at the start of the subject line. We answer within thirty (30) days. We may need to check that the request comes from the account holder. Data held by Cloudflare, by GLL ID, by a fallback relay operator or by a website you visit is outside this policy; contact that party.</p>
 
 <h2>&sect; 12: Children</h2>
-<p>[Age requirements for the Service to be confirmed.]</p>
+<p>The Service is for people who are 13 years old or older, the same age that GLL ID requires for an account. We do not knowingly give access to a person under 13. If you believe that a person under 13 has access, contact us (see &sect; 15) and we will withdraw the access and delete the data in &sect; 3 about that account.</p>
 
 <h2>&sect; 13: Changes</h2>
 <p>We may change this policy. We will change the effective date at the top. If we add a feature that collects new data, we will update this policy before the feature starts.</p>
@@ -106,7 +106,7 @@ footer img{height:28px;width:auto}
 <p>The source code of Limitless Browser is at <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser">github.com/Gamble-Limited-Ltd/limitless-browser</a> under the GNU Affero General Public License, version 3. The relay software is epoxy-server by Mercury Workshop, also under that license.</p>
 
 <h2>&sect; 15: Contact</h2>
-<p>Privacy requests: gamblelimitedsupport@taps-holdings.org. Abuse reports: [abuse contact address to be confirmed].</p>
+<p>Privacy requests: gamblelimitedsupport@taps-holdings.org. Abuse reports: gamblelimitedsupport@taps-holdings.org with "ABUSE" at the start of the subject line.</p>
 <footer>
 <span>Gamble Limited Ltd. &middot; <a href="/legal/">Legal</a> &middot; <a href="/legal/privacy.html">Privacy</a> &middot; <a href="/legal/terms.html">Terms</a> &middot; <a href="https://github.com/Gamble-Limited-Ltd/limitless-browser">Source (AGPLv3)</a></span>
 <picture><source srcset="/theme/brand/portfolio-stamp-product-dark.svg" media="(prefers-color-scheme: dark)"><img src="/theme/brand/portfolio-stamp-product-light.svg" alt=""></picture>

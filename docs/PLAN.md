@@ -216,3 +216,7 @@ console clean, Playwright smoke green.
   run-to-run noise over the internet), so the gate needs more runs and a threshold above the noise before it can block a release. The test bed has the relay on
   the same host, no Cloudflare and no slow link, so it cannot show the gains meant for real connections.
   Override: speed gate — Boss: ship as is; accepts about 60 ms on repeat visits to re-check pages in exchange for not showing stale pages.
+- **2026-10-20, legal text final (Boss: permission to update, auto-approved).** `legal/` Terms and Privacy are in force, version 2026-10-20: retention from the code
+  (session and email: until the session ends, at most 7 days; daily usage 30 days; operator actions 90 days; service logs rotate at about 10 MB), no stored IP
+  addresses outside error log lines, age 13 or older (as GLL ID), limits 8 connections, 64 streams, 50 Mbit/s each way, 20 GB per day, warranty, liability
+  (USD $0) and Wisconsin law as in the company site Terms, abuse reports to the support address with "ABUSE" in the subject.
