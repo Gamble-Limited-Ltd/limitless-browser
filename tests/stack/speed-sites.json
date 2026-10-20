@@ -4,6 +4,6 @@
   { "name": "mdn", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview" },
   { "name": "npr-text", "url": "https://text.npr.org/" },
   { "name": "hacker-news", "url": "https://news.ycombinator.com/" },
-  { "name": "github-repo", "url": "https://github.com/nodejs/node" },
+  { "name": "sqlite-docs", "url": "https://sqlite.org/about.html" },
   { "name": "python-docs", "url": "https://docs.python.org/3/tutorial/introduction.html" }
 ]

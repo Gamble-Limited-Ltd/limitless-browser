@@ -149,7 +149,7 @@ Built on branch `slice/browsing`; details for the code are in `CLAUDE.md` ("Fast
   head-of-line blocking on one socket. Stream cap stays per user: 24 requests x 4 sockets stays under the 64-stream cap because libcurl keeps at most 6 connections per host.
 - **Requests:** 24 parallel (default), 6 per host, up to 32 by setting.
 - **Cache:** per-device IndexedDB, 200 MB, header-driven (see CLAUDE.md). Nothing is cached on the server. `version.json` and `index.html` stay `no-cache` at nginx, so a
-  `respCache` kill switch reaches every open tab within the update poll (boot read only; a reload applies it).
+  kill switch reaches users on their next page load (the app reads `features` once at boot).
 - **Script rewrite:** Blob Worker for scripts of 16 KB or more. Needs no CSP change (the only CSP header is `frame-ancestors 'self'`).
 - **Kill switches:** `features` in `version.json`. To ship a release with one off: `LB_FEATURE_WORKER=false LB_FEATURE_RESPCACHE=false LB_FEATURE_OWNSOCKETS=1 ./deploy.sh`
   (values: `true`/`false`, sockets 0 to 4; 0 and 1 mean the single plain `/wisp/` path).

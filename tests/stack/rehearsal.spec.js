@@ -171,6 +171,20 @@ test.describe('relay', () => {
     await expect(page.frameLocator('#frame').locator('body')).toContainText('documentation examples', { timeout: 45000 });
   });
 
+  test('connections to our relay are spread over /wisp/N/ shards and version.json carries the feature switches', async ({ page }) => {
+    test.skip(!internet, 'VM has no outbound internet (https://example.com unreachable)');
+    await signInAlice(page);
+    const v = await (await page.request.get('/version.json')).json();
+    expect(v.features).toEqual({ ownSockets: 4, worker: true, respCache: true });
+    await page.locator('#url').focus();
+    await page.locator('#url').fill('https://example.com');
+    await page.keyboard.press('Enter');
+    await expect(page.frameLocator('#frame').locator('body')).toContainText('documentation examples', { timeout: 45000 });
+    const keys = await page.evaluate(() => Object.keys(libcurl.wisp.wisp_connections));
+    expect(keys.length).toBeGreaterThan(0);
+    for (const k of keys) expect(k).toMatch(/\/wisp\/[1-4]\/$/);
+  });
+
   test('internal and blocked destinations are refused', async ({ page }) => {
     test.skip(!internet, 'VM has no outbound internet; the positive control needs it');
     await signInAlice(page);
