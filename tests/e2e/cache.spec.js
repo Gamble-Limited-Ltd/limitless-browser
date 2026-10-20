@@ -19,7 +19,9 @@ const SETUP = `
       const list = window.__net.script[url] || [{ status: 404, headers: {}, body: 'nope' }];
       const n = log.filter((x) => x.url === url).length - 1;
       const r = typeof list[Math.min(n, list.length - 1)] === 'function' ? list[Math.min(n, list.length - 1)](h) : list[Math.min(n, list.length - 1)];
-      return new Response(r.status === 304 ? null : r.body, { status: r.status, headers: r.headers });
+      // not a Response: its guard would drop Set-Cookie, which libcurl.js's own response keeps
+      const bytes = new TextEncoder().encode(r.status === 304 ? '' : r.body);
+      return { status: r.status, headers: new Headers(r.headers), arrayBuffer: async () => bytes.buffer.slice(0) };
     },
   };
   window.__count = (url) => window.__net.log.filter((x) => x.url === url).length;

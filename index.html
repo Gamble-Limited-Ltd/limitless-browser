@@ -6394,6 +6394,16 @@
                                     <div class="settings-card-head"><i class="fas fa-database"></i> Resource Cache
                                     </div>
                                     <div class="settings-card-body">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-database"></i></span>
+                                            <div>
+                                                <div class="settings-switch-label">Keep a cache of sites on this device</div>
+                                                <div class="settings-hint">On by default. Saves page files (styles, scripts, images and pages that allow it) on this device, up to 200 MB, so repeat visits load faster. They stay until they expire, space runs out, or you clear them. Turn off to fetch everything fresh every time. Pages that ask not to be stored are never kept.</div>
+                                            </div>
+                                            <div class="settings-switch" id="settingsCacheSwitch">
+                                                <div class="settings-switch-track"><div class="settings-switch-thumb"></div></div>
+                                            </div>
+                                        </div>
+                                        <hr style="border:none;border-top:1px solid var(--bd);margin:12px 0 10px;">
                                         <div
                                             style="display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap;">
                                             <div>
@@ -11675,8 +11685,6 @@ window._libcurlReady = true;
             let frameBufferAlpha = 1;
             let currentTabBuffer = 0;
             let renderFlux = 1;
-            const CACHE_TTL = 24 * 60 * 60 * 1000;
-            const MAX_CACHE_SIZE = 100 * 1024 * 1024; 
             const PRIORITY = {
                 html: 0,
                 css: 1,
@@ -11964,12 +11972,28 @@ window._libcurlReady = true;
                 return PRIORITY.other;
             }
 
+            // ── On-device response cache (0.2.0) ────────────────────────────────
+            // Two layers: memCache (this session, bounded) and IndexedDB 'ProxyCache' (survives restarts, 200 MB, least
+            // recently used first). What may be stored and for how long follows the response's own headers (RFC 9111,
+            // private-cache subset), see lbCacheEvaluate. Stale entries with a validator are revalidated with
+            // If-None-Match / If-Modified-Since and a 304 serves the stored body. Settings > Resource Cache has a switch
+            // (limitless:cache:resp:v1, default on) and the respCache kill switch in version.json also turns it off:
+            // either way nothing is read and nothing is written.
             let cacheDB = null;
             let cacheSize = 0;
+            let LB_CACHE_MAX = 200 * 1024 * 1024;
+            const LB_CACHE_TOUCH_MS = 10 * 60 * 1000;   // lastAccessed is rewritten at most this often per entry
+            const LB_DAY = 24 * 60 * 60 * 1000;
+            const LB_cache = { now: () => Date.now() };  // tests move the clock here
+            function lbNow() { return LB_cache.now(); }
+            function lbCacheOn() {
+                try { if (window.LB_features && window.LB_features.respCache === false) return false; } catch (_) {}
+                return mediaPref('limitless:cache:resp:v1');
+            }
 
             async function initCache() {
                 return new Promise((resolve, reject) => {
-                    const req = indexedDB.open(_IDB_PFX + 'ProxyCache', 2);
+                    const req = indexedDB.open(_IDB_PFX + 'ProxyCache', 3);
                     req.onerror = () => reject(req.error);
                     req.onsuccess = () => {
                         cacheDB = req.result;
@@ -11978,15 +12002,12 @@ window._libcurlReady = true;
                     };
                     req.onupgradeneeded = (e) => {
                         const db = e.target.result;
-                        if (!db.objectStoreNames.contains('resources')) {
-                            const store = db.createObjectStore('resources', { keyPath: 'url' });
-                            store.createIndex('byLastAccessed', 'lastAccessed');
-                        } else {
-                            const store = e.target.transaction.objectStore('resources');
-                            if (!store.indexNames.contains('byLastAccessed')) {
-                                store.createIndex('byLastAccessed', 'lastAccessed');
-                            }
-                        }
+                        const store = db.objectStoreNames.contains('resources')
+                            ? e.target.transaction.objectStore('resources')
+                            : db.createObjectStore('resources', { keyPath: 'url' });
+                        if (!store.indexNames.contains('byLastAccessed')) store.createIndex('byLastAccessed', 'lastAccessed');
+                        // bySize lets updateCacheSize add sizes up with a key cursor instead of loading every body
+                        if (!store.indexNames.contains('bySize')) store.createIndex('bySize', 'size');
                     };
                 });
             }
@@ -11995,12 +12016,17 @@ window._libcurlReady = true;
                 _computeSyncState();
                 if (!cacheDB) return;
                 try {
-                    const tx = cacheDB.transaction('resources', 'readonly');
-                    const store = tx.objectStore('resources');
-                    const req = store.getAll();
+                    const idx = cacheDB.transaction('resources', 'readonly').objectStore('resources').index('bySize');
+                    let sum = 0;
+                    const req = idx.openKeyCursor();
                     req.onsuccess = () => {
-                        cacheSize = req.result.reduce((acc, r) => acc + (r.size || 0), 0);
-                        if (cacheSizeEl) cacheSizeEl.textContent = `Cache: ${(cacheSize / 1024 / 1024).toFixed(1)} MB`;                    };
+                        const c = req.result;
+                        if (c) { sum += Number(c.key) || 0; c.continue(); return; }
+                        cacheSize = sum;
+                        if (cacheSizeEl) cacheSizeEl.textContent = `Cache: ${(cacheSize / 1024 / 1024).toFixed(1)} MB`;
+                        const cs = $("settingsCacheSize");
+                        if (cs) cs.textContent = `Cache: ${(cacheSize / 1024 / 1024).toFixed(1)} MB`;
+                    };
                 } catch { }
             }
 
@@ -12008,95 +12034,211 @@ window._libcurlReady = true;
                 syncState = 1;
             }
 
-            async function getCached(url) {
-                if (!cacheDB) return null;
+            // ── What may be stored, and for how long ─────────────────────────────
+            function lbParseCC(v) {
+                const o = {};
+                for (const part of String(v || '').toLowerCase().split(',')) {
+                    const t = part.trim();
+                    if (!t) continue;
+                    const i = t.indexOf('=');
+                    o[i < 0 ? t : t.slice(0, i).trim()] = i < 0 ? true : t.slice(i + 1).trim().replace(/^"|"$/g, '');
+                }
+                return o;
+            }
+            function lbCacheKind(mime) {
+                const m = String(mime || '').toLowerCase();
+                if (m === 'text/html' || m === 'application/xhtml+xml') return 'html';
+                if (m === 'text/css' || /javascript|ecmascript/.test(m) || m.startsWith('font/') || m.startsWith('image/') ||
+                    m === 'application/wasm' || m === 'application/vnd.ms-fontobject' || /^application\/(x-)?font/.test(m)) return 'static';
+                return 'other';
+            }
+            // r = {status, mime, headers (lower-case keys)}; ctx = {now, hasCookie}.
+            // -> {store:false, reason} or {store:true, freshMs, etag, lastModified}
+            function lbCacheEvaluate(r, ctx) {
+                const no = (reason) => ({ store: false, reason });
+                const h = r.headers || {};
+                if (r.status !== 200) return no('status');
+                if (h['set-cookie']) return no('set-cookie');
+                const cc = lbParseCC(h['cache-control']);
+                if (cc['no-store'] || cc.private) return no('no-store/private');
+                const vary = String(h.vary || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+                if (vary.some(v => v !== 'accept-encoding')) return no('vary');
+                const kind = lbCacheKind(r.mime);
+                if (kind === 'html' && ctx.hasCookie) return no('html with cookies');
+                const etag = h.etag || null;
+                const lastModified = h['last-modified'] || null;
+                const dateH = Date.parse(h.date);
+                const date = Number.isFinite(dateH) ? dateH : ctx.now;
+                const ageMs = (parseInt(h.age, 10) || 0) * 1000;
+                let freshMs = 0, explicit = false;
+                if (typeof cc['max-age'] === 'string' && /^\d+$/.test(cc['max-age'])) {
+                    freshMs = Math.max(0, parseInt(cc['max-age'], 10) * 1000 - ageMs); explicit = true;
+                } else if (h.expires !== undefined) {
+                    const e = Date.parse(h.expires);
+                    freshMs = Number.isFinite(e) ? Math.max(0, e - date - ageMs) : 0; explicit = true;   // invalid Expires = already expired
+                }
+                if (cc['no-cache'] || (!h['cache-control'] && /no-cache/i.test(h.pragma || ''))) { freshMs = 0; explicit = true; }
+                if (!explicit) {
+                    if (kind === 'html') return no('html needs explicit freshness');
+                    const lm = Date.parse(lastModified);
+                    if (Number.isFinite(lm) && lm <= date) freshMs = Math.min((date - lm) * 0.1, LB_DAY);
+                    else if (kind === 'static') freshMs = LB_DAY;
+                    else return no('no freshness information');
+                }
+                freshMs = Math.min(freshMs, 365 * LB_DAY);
+                if (freshMs <= 0 && !etag && !lastModified) return no('stale and no validator');
+                return { store: true, freshMs, etag, lastModified };
+            }
+            function lbCacheState(e, now) {
+                if (now < e.freshUntil) return 'fresh';
+                return (e.etag || e.lastModified) ? 'stale' : 'dead';
+            }
+            // Whether this request may read or write the cache at all.
+            function lbCacheableRequest(opts) {
+                if (!lbCacheOn()) return false;
+                if (String(opts.method || 'GET').toUpperCase() !== 'GET') return false;
+                if (opts.__nocache) return false;
+                for (const k of Object.keys(opts.headers || {})) {
+                    const l = k.toLowerCase();
+                    if (l === 'range' || l === 'if-none-match' || l === 'if-modified-since' || l === 'if-match' || l === 'authorization') return false;
+                }
+                return true;
+            }
+
+            // ── IndexedDB layer ───────────────────────────────────────────────────
+            let _cacheChain = Promise.resolve();   // writes and evictions run one at a time
+            function lbCacheSerial(fn) { const p = _cacheChain.then(fn, fn); _cacheChain = p.catch(() => {}); return p; }
+
+            function getCached(url, touch = true) {
+                if (!cacheDB) return Promise.resolve(null);
                 return new Promise((resolve) => {
                     try {
-                        const tx = cacheDB.transaction('resources', 'readonly');
-                        const store = tx.objectStore('resources');
-                        const req = store.get(url);
+                        const req = cacheDB.transaction('resources', 'readonly').objectStore('resources').get(url);
                         req.onsuccess = () => {
                             const r = req.result;
-                            if (r && Date.now() - r.time < CACHE_TTL) {
-                                try {
-                                    const wtx = cacheDB.transaction('resources', 'readwrite');
-                                    wtx.objectStore('resources').put({ ...r, lastAccessed: Date.now() });
-                                } catch {}
-                                resolve(r);
-                            } else {
-                                if (r) deleteCache(url);
-                                resolve(null);
+                            if (r && touch && lbNow() - (r.lastAccessed || 0) > LB_CACHE_TOUCH_MS) {
+                                try { cacheDB.transaction('resources', 'readwrite').objectStore('resources').put({ ...r, lastAccessed: lbNow() }); } catch { }
                             }
+                            resolve(r || null);
                         };
                         req.onerror = () => resolve(null);
-                    } catch {
-                        resolve(null);
-                    }
+                    } catch { resolve(null); }
                 });
             }
-
-            async function setCache(url, data, mime, headers) {
-                if (!cacheDB) return;
-                const size = data.byteLength || 0;
-                if (size > MAX_CACHE_SIZE * 0.25) return;
-                while (cacheSize + size > MAX_CACHE_SIZE) {
-                    await evictOldest();
-                }
-
-                try {
-                    const tx = cacheDB.transaction('resources', 'readwrite');
-                    const store = tx.objectStore('resources');
-                    store.put({
-                        url,
-                        data,
-                        mime,
-                        headers,
-                        time: Date.now(),
-                        lastAccessed: Date.now(),
-                        size,
-                    });
-                    cacheSize += size;
-                    // counter kept in sync; no full IDB scan needed here
-                } catch {}
+            function setCache(url, e) {
+                return lbCacheSerial(() => new Promise((resolve) => {
+                    if (!cacheDB) return resolve();
+                    const size = e.size || (e.buf && e.buf.byteLength) || 0;
+                    if (size > LB_CACHE_MAX * 0.25) return resolve(deleteCache(url));
+                    const go = () => {
+                        try {
+                            const tx = cacheDB.transaction('resources', 'readwrite');
+                            const store = tx.objectStore('resources');
+                            const row = {
+                                url, data: e.buf, mime: e.mime, headers: e.headers, status: 200, finalUrl: e.finalUrl || url,
+                                etag: e.etag || null, lastModified: e.lastModified || null, freshUntil: e.freshUntil,
+                                time: lbNow(), lastAccessed: lbNow(), size,
+                            };
+                            let oldSize = 0;
+                            const g = store.get(url);
+                            g.onsuccess = () => { oldSize = (g.result && g.result.size) || 0; store.put(row); };
+                            tx.oncomplete = () => { cacheSize += size - oldSize; resolve(); };
+                            tx.onerror = tx.onabort = () => resolve();
+                        } catch { resolve(); }
+                    };
+                    if (cacheSize + size > LB_CACHE_MAX) evictOldest(size).then(go, go); else go();
+                }));
             }
-
-            async function deleteCache(url) {
-                if (!cacheDB) return;
-                try {
-                    const tx = cacheDB.transaction('resources', 'readwrite');
-                    tx.objectStore('resources').delete(url);
-                } catch { }
-            }
-
-            async function evictOldest() {
-                if (!cacheDB) return;
-                // Evict the oldest ~10% of entries in a single transaction
-                return new Promise(resolve => {
+            function deleteCache(url) {
+                return lbCacheSerial(() => new Promise((resolve) => {
+                    if (!cacheDB) return resolve();
                     try {
                         const tx = cacheDB.transaction('resources', 'readwrite');
                         const store = tx.objectStore('resources');
-                        const countReq = store.count();
-                        countReq.onsuccess = () => {
-                            const total = countReq.result;
-                            const toDelete = Math.max(1, Math.ceil(total * 0.1));
-                            let deleted = 0;
-                            const curReq = store.openCursor();
-                            curReq.onsuccess = () => {
-                                const cursor = curReq.result;
-                                if (cursor && deleted < toDelete) {
-                                    cacheSize -= cursor.value.size || 0;
-                                    cursor.delete();
-                                    deleted++;
-                                    cursor.continue();
-                                } else {
-                                    resolve();
-                                }
-                            };
-                            curReq.onerror = () => resolve();
+                        let oldSize = 0;
+                        const g = store.get(url);
+                        g.onsuccess = () => { oldSize = (g.result && g.result.size) || 0; if (g.result) store.delete(url); };
+                        tx.oncomplete = () => { cacheSize = Math.max(0, cacheSize - oldSize); resolve(); };
+                        tx.onerror = tx.onabort = () => resolve();
+                    } catch { resolve(); }
+                }));
+            }
+            // Delete the least recently used entries (index byLastAccessed, oldest first) until `incoming` more bytes fit
+            // under 90 % of the cap.
+            function evictOldest(incoming = 0) {
+                return new Promise((resolve) => {
+                    if (!cacheDB) return resolve();
+                    try {
+                        const tx = cacheDB.transaction('resources', 'readwrite');
+                        const req = tx.objectStore('resources').index('byLastAccessed').openCursor();
+                        const target = LB_CACHE_MAX * 0.9 - incoming;
+                        let freed = 0;
+                        req.onsuccess = () => {
+                            const c = req.result;
+                            if (!c || cacheSize - freed <= target) return;
+                            freed += c.value.size || 0;
+                            c.delete();
+                            c.continue();
                         };
-                        countReq.onerror = () => resolve();
+                        tx.oncomplete = () => { cacheSize = Math.max(0, cacheSize - freed); resolve(); };
+                        tx.onerror = tx.onabort = () => resolve();
                     } catch { resolve(); }
                 });
+            }
+            function lbCacheWipe() {
+                memCache.clear();
+                cacheSize = 0;
+                if (!cacheDB) return Promise.resolve();
+                return new Promise((resolve) => {
+                    try {
+                        const tx = cacheDB.transaction('resources', 'readwrite');
+                        tx.objectStore('resources').clear();
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = tx.onabort = () => resolve();
+                    } catch { resolve(); }
+                });
+            }
+
+            // ── Lookup / store used by queueFetch and runQueue ───────────────────
+            const rowToEntry = (r) => ({ status: 200, mime: r.mime, buf: r.data, headers: r.headers || {}, finalUrl: r.finalUrl, etag: r.etag, lastModified: r.lastModified, freshUntil: r.freshUntil || 0, size: r.size });
+            // -> null (miss) or {state: 'fresh'|'stale', entry}. Dead entries (stale, no validator) are dropped.
+            async function lbCacheLookup(url) {
+                const now = lbNow();
+                let e = memCache.get(url);
+                if (e) {
+                    const st = lbCacheState(e, now);
+                    if (st === 'dead') { memCache.delete(url); deleteCache(url); return null; }
+                    memCache.delete(url); memCache.set(url, e);   // most recently used last
+                    return { state: st, entry: e };
+                }
+                const row = await getCached(url);
+                if (!row) return null;
+                e = rowToEntry(row);
+                const st = lbCacheState(e, now);
+                if (st === 'dead') { deleteCache(url); return null; }
+                memCache.set(url, e);
+                return { state: st, entry: e };
+            }
+            function lbCacheForget(url) { memCache.delete(url); return deleteCache(url); }
+            // A 304 keeps the stored body and takes the new headers (except the ones that describe the body).
+            function lbMergeRevalidated(ent, r, url) {
+                const headers = { ...ent.headers };
+                for (const [k, v] of Object.entries(r.headers || {})) {
+                    if (k === 'content-length' || k === 'content-type' || k === 'content-encoding' || k === 'content-range' || k === 'transfer-encoding') continue;
+                    headers[k] = v;
+                }
+                return { status: 200, mime: ent.mime, buf: ent.buf, headers, finalUrl: ent.finalUrl || url, fromCache: true, revalidated: true };
+            }
+            function lbCacheStore(url, r) {
+                if (r.skipped) return;
+                if (r.status !== 200 || !r.buf || !r.buf.byteLength) { lbCacheForget(url); return; }
+                let hasCookie = false;
+                try { hasCookie = !!getCookieHeader(url); } catch (_) {}
+                const ev = lbCacheEvaluate(r, { now: lbNow(), hasCookie });
+                if (!ev.store) { lbCacheForget(url); return; }
+                const e = { status: 200, mime: r.mime, buf: r.buf, headers: r.headers, finalUrl: r.finalUrl || url, etag: ev.etag, lastModified: ev.lastModified, freshUntil: lbNow() + ev.freshMs, size: r.buf.byteLength };
+                memCache.set(url, e);
+                return setCache(url, e);
             }
 
             async function clearCache() {
@@ -12109,28 +12251,48 @@ window._libcurlReady = true;
                 try { abortAllRequests(); } catch(e) {}
                 fetching = 0;
                 try { closeAllSockets(); } catch(e) {}
-                // 3. Wipe both cache layers.
-                memCache.clear();
+                // 3. Wipe both cache layers and await the IndexedDB commit before returning.
                 inFlight.clear();
-                // 4. Wipe IndexedDB and await the commit before returning.
-                cacheSize = 0;
                 const cs = $("settingsCacheSize");
                 if (cs) cs.textContent = "Cache: 0.0 MB";
-                if (!cacheDB) { log("Cache cleared", "info"); return; }
-                try {
-                    await new Promise((resolve, reject) => {
-                        const tx = cacheDB.transaction('resources', 'readwrite');
-                        tx.objectStore('resources').clear();
-                        tx.oncomplete = resolve;
-                        tx.onerror = () => reject(tx.error);
-                        tx.onabort = () => reject(tx.error);
-                    });
-                    log("Cache cleared", "info");
-                } catch { }
+                await lbCacheWipe();
+                log("Cache cleared", "info");
             }
 
-            const memCache = new Map();
+            // Session layer: bounded by entry count and bytes, oldest first.
+            class LBMemCache extends Map {
+                constructor() { super(); this.bytes = 0; }
+                set(k, v) {
+                    if (super.has(k)) this.bytes -= (super.get(k).buf?.byteLength || 0);
+                    super.set(k, v);
+                    this.bytes += (v.buf?.byteLength || 0);
+                    while ((this.size > 600 || this.bytes > 96 * 1024 * 1024) && this.size > 1) this.delete(this.keys().next().value);
+                    return this;
+                }
+                delete(k) {
+                    if (super.has(k)) this.bytes -= (super.get(k).buf?.byteLength || 0);
+                    return super.delete(k);
+                }
+                clear() { this.bytes = 0; super.clear(); }
+            }
+            const memCache = new LBMemCache();
             const inFlight = new Map();
+
+            // Hooks for the tests (tests/e2e/cache.spec.js).
+            Object.assign(LB_cache, {
+                clearAll: () => lbCacheWipe(),
+                dropMemory: () => memCache.clear(),
+                count: () => new Promise((res) => { try { const r = cacheDB.transaction('resources', 'readonly').objectStore('resources').count(); r.onsuccess = () => res(r.result); r.onerror = () => res(-1); } catch { res(-1); } }),
+                has: (url) => getCached(url, false).then(Boolean),
+                get: (url) => getCached(url, true),
+                put: (url, buf, m) => setCache(url, { buf, mime: m.mime, headers: m.headers || {}, finalUrl: m.finalUrl, etag: m.etag, lastModified: m.lastModified, freshUntil: lbNow() + (m.freshMs || 0), size: buf.byteLength }),
+                size: () => cacheSize,
+                max: () => LB_CACHE_MAX,
+                setMax: (n) => { LB_CACHE_MAX = n; },
+                evaluate: lbCacheEvaluate,
+            });
+            window.LB_cache = LB_cache;
+            window.LB_queueFetch = (...a) => queueFetch(...a);   // test hook
 
             function setTabTitle(text) {
                 const title = text || "New Tab";
@@ -13608,37 +13770,6 @@ window._libcurlReady = true;
                 updateStats();
             }
 
-            // ── Size-validated conditional cache ────────────────────────────────
-            // Before serving a cached resource, cheaply confirm it still matches the
-            // server's current byte size: a HEAD (Content-Length), falling back to a
-            // 1-byte Range GET (Content-Range: …/TOTAL) for servers that don't answer
-            // HEAD. Size match → serve cache, skip the full download. Mismatch → drop
-            // the stale entry and refetch (which overwrites). Default on.
-            // ponytail: size ≠ content hash — a same-size edit slips through until the
-            //   24h TTL expires; upgrade to ETag/If-None-Match if that ever bites.
-            function sizeValidateEnabled() { try { return ls.getItem('limitless:cache:sizevalidate:v1') !== '0'; } catch { return true; } }
-            function shouldSizeValidate(url, opts, cached) {
-                if (opts.method && opts.method !== 'GET') return false;
-                if (opts.__sizeProbe || opts.internal) return false;
-                if (!cached || cached.size == null) return false;
-                if (cached.size < 65536) return false;   // tiny: a probe costs ~ a refetch
-                return sizeValidateEnabled();
-            }
-            async function probeRemoteSize(url, opts) {
-                const base = { headers: opts.headers, signal: opts.signal, tabId: opts.tabId, __sizeProbe: 1 };
-                try {
-                    const h = await doFetch(url, { ...base, method: 'HEAD' });
-                    const cl = h && h.headers && h.headers['content-length'];
-                    if (cl != null && cl !== '') { const n = parseInt(cl, 10); if (Number.isFinite(n)) return n; }
-                } catch (e) {}
-                try {
-                    const g = await doFetch(url, { ...base, method: 'GET', headers: { ...(opts.headers || {}), Range: 'bytes=0-0' } });
-                    const cr = g && g.headers && g.headers['content-range'];
-                    if (cr) { const m = /\/(\d+)\s*$/.exec(cr); if (m) { const n = parseInt(m[1], 10); if (Number.isFinite(n)) return n; } }
-                } catch (e) {}
-                return null;
-            }
-
             async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
@@ -13681,49 +13812,24 @@ window._libcurlReady = true;
                     }
                 } catch (e) {}
 
-                if (memCache.has(url) && opts.method !== "POST") {
-                    cachedHits++;
-                    updateStats();
-                    const _mc = memCache.get(url);
-                    memCache.delete(url);
-                    memCache.set(url, _mc);
-                    return {
-                        ..._mc,
-                        fromCache: true
-                    };
-                }
-
-                const cached = await getCached(url);
-                if (cached && opts.method !== "POST") {
-                    let serve = true;
-                    if (shouldSizeValidate(url, opts, cached)) {
-                        const remoteSize = await probeRemoteSize(url, opts);
-                        if (remoteSize != null && remoteSize !== cached.size) {
-                            // Changed on the server — evict and fall through to a full
-                            // fetch (the queue's success path re-caches the new bytes).
-                            serve = false;
-                            deleteCache(url);
-                            memCache.delete(url);
-                            log(`<i class="fas fa-rotate" style="color:var(--warn)"></i><span style="color:var(--tx3)">cache stale (${cached.size}→${remoteSize}B), refetching</span> ${url.replace(/^https?:\/\//, '').slice(0, 45)}`, 'warn');
-                        }
-                    }
-                    if (serve) {
+                // On-device cache: a fresh entry is served as is; a stale one with a validator is revalidated below
+                // (If-None-Match / If-Modified-Since); anything else goes to the network.
+                const _cacheable = lbCacheableRequest(opts);
+                if (_cacheable) {
+                    const hit = await lbCacheLookup(url);
+                    if (hit && hit.state === 'fresh') {
                         cachedHits++;
-                        memCache.set(url, {
-                            status: 200,
-                            mime: cached.mime,
-                            buf: cached.data,
-                            headers: cached.headers
-                        });
                         updateStats();
-                        return {
-                            status: 200,
-                            mime: cached.mime,
-                            buf: cached.data,
-                            headers: cached.headers,
-                            fromCache: true
-                        };
+                        const e = hit.entry;
+                        return { status: 200, mime: e.mime, buf: e.buf, headers: e.headers, finalUrl: e.finalUrl, fromCache: true };
                     }
+                    if (hit && hit.state === 'stale') {
+                        const e = hit.entry;
+                        opts = { ...opts, headers: { ...(opts.headers || {}) }, __revalidate: e };
+                        if (e.etag) opts.headers['If-None-Match'] = e.etag;
+                        if (e.lastModified) opts.headers['If-Modified-Since'] = e.lastModified;
+                    }
+                    opts = { ...opts, __lbCache: true };
                 }
 
                 if (typeof navigator === 'object' && !navigator.onLine) {
@@ -13849,26 +13955,9 @@ window._libcurlReady = true;
                     fetching++;
 
                     try {
-                        const r = await doFetchWithPoolRetry(job.url, job.opts);
-
-                        if (job.opts.method !== "POST" && r.status >= 200 && r.status < 400 && r.buf && r.buf.byteLength > 0) {
-                            const _cc = (r.headers?.['cache-control'] || '').toLowerCase();
-                            const _noStore = _cc.includes('no-store') || _cc.includes('private');
-                            if (!_noStore) {
-                                memCache.set(job.url, {
-                                    status: r.status,
-                                    mime: r.mime,
-                                    buf: r.buf,
-                                    headers: r.headers
-                                });
-                                setCache(job.url, r.buf, r.mime, r.headers);
-                            }
-
-                            if (memCache.size > 600) {
-                                const first = memCache.keys().next().value;
-                                memCache.delete(first);
-                            }
-                        }
+                        let r = await doFetchWithPoolRetry(job.url, job.opts);
+                        if (job.opts.__revalidate && r.status === 304) r = lbMergeRevalidated(job.opts.__revalidate, r, job.url);
+                        if (job.opts.__lbCache) lbCacheStore(job.url, r);
 
                         job.res(r);
                     } catch (e) {
@@ -19291,6 +19380,7 @@ _VIEWER_DL_JS +
                 }
                 if (pageUrl) {
                     memCache.clear();
+                    deleteCache(pageUrl);   // Reload asks the server for the document again
                     go(pageUrl, false);
                 }
             };
@@ -21120,6 +21210,7 @@ _VIEWER_DL_JS +
                     { id: 'webrtcBlockSwitch',   key: 'limitless:webrtc:block:v1',   defaultOn: true  },
                     { id: 'faviconProxySwitch',  key: 'limitless:favicon-proxy:v1',  defaultOn: false },
                     { id: 'settingsPoolModeSwitch', key: 'limitless:wisp:poolmode:v1', defaultOn: true },
+                    { id: 'settingsCacheSwitch',    key: 'limitless:cache:resp:v1',    defaultOn: true  },
                 ];
                 _mediaSwitches.forEach(({ id, key, defaultOn }) => {
                     const sw = $(id);

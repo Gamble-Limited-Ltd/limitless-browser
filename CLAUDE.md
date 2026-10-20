@@ -107,3 +107,11 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   `LB_swapSession`, `LB_net.curl`.
 - **Feature switches:** `window.LB_features` `{ownSockets (1-4), worker, respCache}` defaults on/4; `window.LB_featuresReady` reads `features` from `version.json`
   at boot (missing file or keys keep the defaults). Used at use time by the router, the cache and the script rewriter.
+- **Response cache (F4):** `memCache` (session, `LBMemCache`, 600 entries / 96 MB) over IndexedDB `ProxyCache` (v3, 200 MB, index `byLastAccessed` for LRU eviction,
+  index `bySize` so the size is summed with a key cursor). `lbCacheEvaluate` decides storage from the response headers: only 200 GET; never `no-store`, `private`,
+  `Set-Cookie`, or `Vary` other than `Accept-Encoding`; lifetime `max-age` > `Expires` > heuristic (10 % of age since `Last-Modified`, at most 24 h) > 24 h for
+  css/js/font/image only; HTML only with explicit freshness and never when a cookie is sent for it; `no-cache` is stored only with a validator and always revalidated.
+  Stale entries with an ETag or Last-Modified are revalidated with `If-None-Match` / `If-Modified-Since`; a 304 serves the stored body and refreshes freshness.
+  Requests carrying their own Range, conditional or Authorization headers bypass the cache. Reload drops the document entry. Switch: Settings > Resource Cache
+  "Keep a cache of sites on this device" (`limitless:cache:resp:v1`, default on) or `features.respCache` false: nothing is read or written. The old HEAD/Range
+  size check is gone. Test hook: `LB_cache` (`now`, `put`, `get`, `has`, `count`, `setMax`, `clearAll`, `dropMemory`), `LB_queueFetch`.
