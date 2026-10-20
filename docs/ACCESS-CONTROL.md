@@ -112,3 +112,22 @@ built in parallel.
   from the public host are blocked, so the gate joins GATE's private network `gll_gate` and uses
   `GATE_BACKCHANNEL_URL=http://gate:3301` (as the games do). `deploy.sh` adds `deploy/docker-compose.gllgate.yml`
   when `deploy/gate.env` sets that variable. Browsers still sign in at the public issuer (Boss passes Access).
+
+## 11. Admin panel (0.2.0, built 2026-10-21)
+- **Who:** only the owner (`OWNER_SUB` in `deploy/gate.env`). Everyone else gets 404 on `/_lb/admin/api/*`, also when `ADMIN_PANEL=off`.
+  nginx still applies `auth_request` first, so without a session the answer is 401.
+- **Step-up:** reading is allowed with the owner session. Any change needs the owner to type login name and password again (POST `step-up`,
+  which uses GLL ID direct sign-in and checks that the account is the owner); it unlocks changes for 10 minutes. Changes also need our Origin and
+  a JSON body.
+- **Owner API:** approvals are listed, approved and revoked through GLL ID's owner API (`~/gll-id/docs/OWNER-API.md`, per-client flag, `actor` =
+  `OWNER_SUB`). If it is off or unreachable, the panel lists users from the check service's own sessions and usage, read only, and says so.
+  Revoke also adds a kill row, deletes the person's sessions and closes their sockets at once, so it does not wait for the 60 s access-check cache;
+  approve lifts an earlier kill. Granting access stays a manual decision: nothing is approved automatically and nobody is notified.
+- **Per-user limits:** bandwidth (Mbit/s), bytes per day and open sockets can be overridden for one user (empty = default, 0 = no limit for the first
+  two). They apply to new sockets and new streams, and to bandwidth at once.
+- **Maintenance:** non-owners get 401 with `X-LB-Reason: maintenance` from `/_gate/check`, nginx shows `/auth/maintenance`, their sockets close, new
+  sockets and new sign-ins are refused. The owner is unaffected. **Paused sign-ins:** the callback and direct sign-in refuse non-owners; existing
+  sessions keep working.
+- **Privacy:** the audit table (`admin_audit`, 90 days) holds time, action and account ids only, never emails, names or destinations. Usage per day
+  is now kept 30 days (was 14) so the panel can show a month; the privacy page still needs a retention figure, which Boss decides.
+- **Kill switches:** `ADMIN_PANEL=off`; `./manage.sh clients owner-api limitless-browser off` (GLL ID).

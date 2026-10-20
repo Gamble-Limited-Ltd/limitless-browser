@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 0.2.0 (unreleased)
+
+- Admin panel for the owner, inside Limitless Browser (Admin panel in Settings > About). Approve and revoke people, see who is using how much, set limits for one person, cut someone off, pause new sign-ins, switch on maintenance mode, and check that everything is running. Only the owner sees it.
+
 ## 0.1.1 (unreleased)
 
 - Faster page loads: the speed limit used to apply to each connection, which slowed everything down. It is now one fair limit per account, shared across all of your connections.

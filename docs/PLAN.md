@@ -157,7 +157,7 @@ console clean, Playwright smoke green.
 - A. Frontend step 2: vendored libs (libcurl WASM, acorn, PDF.js) to hashed files with long-lived caching.
 - B. Persistence, local part (IndexedDB, toggles, clear on close).
 - C. E2E encrypted sync.
-- D. Admin dashboard (active users, usage per user, per-user kill switch) + user usage meter.
+- D. Admin dashboard (active users, usage per user, per-user kill switch) + user usage meter. **Status 2026-10-21: built for 0.2.0** on branch `slice/admin` (Browser) and `slice/admin` in `~/limitless-gate-admin` (worktree of `~/limitless-gate`); not merged, not deployed. The user usage meter is not part of it. Design in `ACCESS-CONTROL.md` section 11.
 - E. Download manager (queue, progress, pause/resume via HTTP range, retry; counts against caps).
 - G. Custom theme editor: start from any shipped theme, adjust fonts (from a fixed self-hosted list), colors, and light/dark values; saved locally, joins settings sync later. Builds on the token-per-theme design (section 2b). Effort: medium. Not in 0.1.0.
 - F. Monthly upstream cherry-pick routine (recurring, not a slice).
@@ -171,6 +171,7 @@ console clean, Playwright smoke green.
   24 parallel requests (6 per host), 4 own-relay sockets by default, and a multi-relay toggle that is off by default for every user and needs
   third-party relays, with a user-chosen mode (per-site, spread or race); Boss explicitly approved extending third-party relay use for this. Plus a speed
   harness. Admin panel lives inside Limitless; granting access stays manual in GATE; no notifications.
+  Decision log, slice D (2026-10-21): the panel is `limitless://admin`, served by the check service under `/_lb/admin/api/` for the owner only (`OWNER_SUB`), with a password step-up for changes; approvals go through the GLL ID owner API (`~/gll-id/docs/OWNER-API.md`), read only from local data when that is unavailable; usage rows are kept 30 days (were 14); kill switches: `ADMIN_PANEL=off`, `./manage.sh clients owner-api limitless-browser off`.
 - 0.3.0 = Faster startup (slice A).
 
 ## 6. Open items
