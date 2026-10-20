@@ -12110,6 +12110,14 @@ window._libcurlReady = true;
             // LB_BUILD_SHA is stamped by scripts/build-static.sh into the dist copy only. 'dev' (source tree, file://,
             // python server) or a missing version.json means the check is silently skipped. Never reloads by itself.
             window.LB_BUILD_SHA = window.LB_BUILD_SHA || 'dev'; // @LB_BUILD_SHA@
+            // Navigation timing marks for the speed harness (tests/stack/speed.spec.js). Always on, local only, no network:
+            // ms since go() started a top-level load. Marks: firstBytes (document response in), dom (parsed), shown (overlay
+            // hidden), load (iframe load event).
+            window.__lbPerf = {
+                runs: [], cur: null,
+                start(url) { const c = { url, t0: performance.now(), marks: {} }; this.cur = c; this.runs.push(c); if (this.runs.length > 60) this.runs.shift(); return c; },
+                mark(name) { const c = this.cur; if (c && c.marks[name] == null) c.marks[name] = Math.round(performance.now() - c.t0); }
+            };
             const LB_WHATS_NEW = 'limitless://whats-new';
             const lbUpd = { info: null, dismissed: false, last: 0, banner: null, pill: null };
             function lbUpdateEls() {
@@ -17338,6 +17346,7 @@ _VIEWER_DL_JS +
                 }
 
                 isErrorPage = false;
+                if (!_isRetry) window.__lbPerf.start(url);
 
                 const prevCtrl = tabAbortControllers.get(initiatorTabId);
                 if (prevCtrl) prevCtrl.abort();
@@ -17481,6 +17490,7 @@ _VIEWER_DL_JS +
                     }
 
                     const r = await queueFetch(url, opts, PRIORITY.html);
+                    window.__lbPerf.mark('firstBytes');
                     if (activeTabId !== initiatorTabId) return;
 
                     // If the server redirected us, update url to the final landing URL.
@@ -17554,6 +17564,7 @@ _VIEWER_DL_JS +
                     const html = new TextDecoder().decode(r.buf);
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, "text/html");
+                    window.__lbPerf.mark('dom');
 
                     // Was: currentDoc = doc.cloneNode(true) then activeTab.cachedDoc =
                     // currentDoc.cloneNode(true). cachedDoc was NEVER read and currentDoc
@@ -18474,6 +18485,7 @@ _VIEWER_DL_JS +
                     frame.style.opacity = '0';
                     _blobLoadPending = true;
                     frame.src = newBlobUrl;
+                    frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
                     frame.onload = () => {
                         // Re-apply mute state after new content loads
                         const loadedTab = tabs.find(t => t.id === initiatorTabId);
@@ -18497,6 +18509,7 @@ _VIEWER_DL_JS +
                         setTimeout(() => URL.revokeObjectURL(prevBlobUrl), 2000);
                     }
                     hideOverlay();
+                    window.__lbPerf.mark('shown');
                     if (document.activeElement === urlInput) urlInput.blur();
                     if (!_isRetry) {
                         log(`<i class="fas fa-circle-check" style="color:var(--ok)"></i>Loaded: ` + url + ` <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">via ${WISP.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, "ok");
