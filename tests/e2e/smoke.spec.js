@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 // Third-party hosts (CDNs, relays) may be unreachable in a sandbox.
-const isLocal = (url) => url.startsWith('http://127.0.0.1:8599/');
+const isLocal = (url) => url.startsWith(`http://127.0.0.1:${process.env.LB_E2E_PORT || '8599'}/`);
 
 test('app shell loads without uncaught errors and the address bar works', async ({ page }) => {
   const pageErrors = [];

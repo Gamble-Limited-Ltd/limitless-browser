@@ -3217,6 +3217,9 @@
             border-color: var(--ac);
         }
 
+        .settings-switch.disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+        select.settings-input:disabled { opacity: .55; cursor: not-allowed; }
+
         .locale-dropdown-trigger {
             font-family: inherit;
             width: 100%;
@@ -6082,6 +6085,46 @@
                                             <div class="settings-switch" id="settingsRelayFallbackSwitch">
                                                 <div class="settings-switch-track"><div class="settings-switch-thumb"></div></div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card">
+                                    <div class="settings-card-head"><i class="fas fa-plug"></i> Sockets to our relay</div>
+                                    <div class="settings-card-body">
+                                        <div class="settings-switch-row" style="align-items:center;">
+                                            <div style="flex:1;">
+                                                <div class="settings-switch-label">Parallel sockets</div>
+                                                <div class="settings-hint">How many separate connections Limitless opens to its own relay (default: 4). More sockets spread your traffic so one slow stream does not hold up the others. 1 uses a single socket.</div>
+                                            </div>
+                                            <div style="display:flex;align-items:center;gap:6px;">
+                                                <button class="settings-btn-icon" id="settingsSocketsMinus" style="width:28px;height:28px;font-size:14px;">−</button>
+                                                <span id="settingsSocketsVal" style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);min-width:20px;text-align:center;">4</span>
+                                                <button class="settings-btn-icon" id="settingsSocketsPlus" style="width:28px;height:28px;font-size:14px;">+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card">
+                                    <div class="settings-card-head"><i class="fas fa-shuffle"></i> Use several relays</div>
+                                    <div class="settings-card-body">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-shuffle"></i></span>
+                                            <div>
+                                                <div class="settings-switch-label">Use several third-party relays at once</div>
+                                                <div class="settings-hint" id="settingsMultiRelayNote"></div>
+                                            </div>
+                                            <div class="settings-switch" id="settingsMultiRelaySwitch" role="switch" aria-disabled="false">
+                                                <div class="settings-switch-track"><div class="settings-switch-thumb"></div></div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                                            <label class="settings-label" for="settingsMultiRelayMode" style="margin:0;">Mode</label>
+                                            <select class="settings-input" id="settingsMultiRelayMode" style="flex:0 1 220px;">
+                                                <option value="site">Per site (default)</option>
+                                                <option value="spread">Spread</option>
+                                                <option value="race">Race</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -9524,6 +9567,291 @@ window._libcurlReady = true;
                 for (let i = 0; i < ranked.length; i++) { if (r < weights[i]) return ranked[i]; r -= weights[i]; }
                 return ranked[0];
             }
+            // ── Feature switches from version.json (0.2.0) ─────────────────────
+            // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
+            // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
+            // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
+            window.LB_features = { ownSockets: 4, worker: true, respCache: true };
+            window.LB_featuresReady = (async function () {
+                if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
+                try {
+                    const ctl = new AbortController();
+                    const t = setTimeout(() => ctl.abort(), 4000);
+                    const r = await fetch(new URL('version.json', location.href).href, { cache: 'no-store', credentials: 'same-origin', signal: ctl.signal });
+                    clearTimeout(t);
+                    if (!r.ok) return window.LB_features;
+                    const j = await r.json();
+                    const f = j && j.features;
+                    if (f && typeof f === 'object') {
+                        if ('ownSockets' in f) { const n = Math.floor(Number(f.ownSockets)); window.LB_features.ownSockets = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; }
+                        if ('worker' in f) window.LB_features.worker = f.worker !== false && f.worker !== 0;
+                        if ('respCache' in f) window.LB_features.respCache = f.respCache !== false && f.respCache !== 0;
+                    }
+                } catch (_) {}
+                return window.LB_features;
+            })();
+
+            // ── Transport router (0.2.0) ────────────────────────────────────────
+            // libcurl asks its transport for one WebSocket per TCP stream, with the url `<relay base><host>:<port>`.
+            // LBTransport (set as libcurl.transport) passes that url through this router, which picks the relay:
+            //   - our own relay (/wisp/): a shard /wisp/N/ (N in 1..ownSockets, least open streams first). libcurl keys its
+            //     WISP connections on the base url, so each shard is its own WebSocket and the per-socket limits stop
+            //     capping the whole browser. The gate accepts any /wisp/* path.
+            //   - multi-relay (opt-in, needs third-party relays allowed): per-site sticky, spread, or race.
+            // Everything here is a plain object built by LB_makeRouter(deps) so it can be tested with a stub Socket.
+            function LB_makeRouter(d) {
+                const sticky = new Map();      // hostname -> relay root (multi-relay)
+                const sockets = new Map();     // final base url -> Set of live sockets
+                const rootOf = new Map();      // final base url -> relay root it came from
+                let shardCursor = 0, spreadCursor = 0;
+                const R = {
+                    pinned: null,              // set by LB_swapSession(url, {pin:true}) while a retry is on a chosen relay
+                    sticky,
+                    parse(raw) {
+                        const i = raw.lastIndexOf('/');
+                        const hp = raw.slice(i + 1);
+                        const k = hp.lastIndexOf(':');
+                        return { base: raw.slice(0, i + 1), hp, host: k < 0 ? hp : hp.slice(0, k), port: k < 0 ? '' : hp.slice(k + 1) };
+                    },
+                    multiActive() { return !!d.multiOn() && !R.pinned; },
+                    ownCount() { const n = Math.floor(Number(d.ownSockets())); return Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; },
+                    busy(base) {
+                        const s = sockets.get(base);
+                        if (!s) return 0;
+                        for (const w of [...s]) { let rs; try { rs = w.readyState; } catch (_) { rs = 3; } if (rs === 3) s.delete(w); }
+                        return s.size;
+                    },
+                    shard(root) {
+                        const n = R.ownCount();
+                        if (n <= 1) return root;
+                        let best = null, bestBusy = Infinity;
+                        for (let k = 0; k < n; k++) {
+                            const cand = root + ((shardCursor + k) % n + 1) + '/';
+                            const b = R.busy(cand);
+                            if (b < bestBusy) { best = cand; bestBusy = b; }
+                        }
+                        shardCursor = (shardCursor + 1) % n;
+                        return best;
+                    },
+                    finalBase(root) { return root && root === d.ownBase() ? R.shard(root) : root; },
+                    route(raw) {
+                        const p = R.parse(raw);
+                        let roots = [p.base];
+                        if (R.pinned) roots = [R.pinned];
+                        else if (d.multiOn()) {
+                            const mode = d.mode();
+                            const ranked = d.candidates(p.host) || [];
+                            if (ranked.length) {
+                                const st = sticky.get(p.host);
+                                if (mode === 'spread') roots = [ranked[spreadCursor++ % ranked.length]];
+                                else if (st && (ranked.includes(st) || st === p.base)) roots = [st];
+                                else if (mode === 'race' && p.port === '443' && ranked.length >= 2) roots = [ranked[0], ranked[1]];
+                                else { roots = [ranked[0]]; sticky.set(p.host, ranked[0]); }
+                            }
+                        }
+                        const bases = roots.map(R.finalBase);
+                        bases.forEach((b, i) => rootOf.set(b, roots[i]));
+                        const urls = bases.map(b => b + p.hp);
+                        return { url: urls[0], base: bases[0], host: p.host, port: p.port, race: urls.length > 1 ? urls : null, bases };
+                    },
+                    track(base, ws) { let s = sockets.get(base); if (!s) sockets.set(base, s = new Set()); s.add(ws); },
+                    untrack(base, ws) { const s = sockets.get(base); if (s) s.delete(ws); },
+                    markFailed(base, host) {
+                        const root = rootOf.get(base) || base;
+                        if (sticky.get(host) === root) sticky.delete(host);
+                        try { d.markFailed(root, host); } catch (_) {}
+                    },
+                    commit(base, host) { const root = rootOf.get(base) || base; if (d.multiOn()) sticky.set(host, root); },
+                    make(url, base, host, p) {
+                        const ws = new d.Socket(url, p);
+                        R.track(base, ws);
+                        let opened = false, failed = false;
+                        const fail = () => { R.untrack(base, ws); if (!opened && !failed && !ws.__lbQuiet) { failed = true; R.markFailed(base, host); } };
+                        ws.addEventListener('open', () => { opened = true; });
+                        ws.addEventListener('error', fail);
+                        ws.addEventListener('close', fail);
+                        return ws;
+                    },
+                    open(raw, p) {
+                        const r = R.route(raw);
+                        if (r.race) return new LBRaceSocket(R, r, p);
+                        return R.make(r.url, r.base, r.host, p);
+                    },
+                    reset() { sticky.clear(); }
+                };
+                return R;
+            }
+
+            // A socket that opens the same stream on two relays, sends to both until one of them answers, then keeps
+            // only the winner (and remembers it for the host). Only used for port 443, where the first bytes are a
+            // TLS ClientHello: nothing but the handshake is ever duplicated.
+            class LBRaceSocket extends EventTarget {
+                constructor(router, r, p) {
+                    super();
+                    this.CONNECTING = 0; this.OPEN = 1; this.CLOSING = 2; this.CLOSED = 3;
+                    this.readyState = 0;
+                    this._bt = 'blob';
+                    this.onopen = () => {}; this.onerror = () => {}; this.onmessage = () => {}; this.onclose = () => {};
+                    this._router = router; this._host = r.host; this._sent = []; this._winner = null; this._opened = false; this._closed = false;
+                    this._inner = r.race.map((url, i) => {
+                        const rec = { ws: null, base: r.bases[i], open: false, dead: false };
+                        const ws = router.make(url, rec.base, r.host, p);
+                        rec.ws = ws;
+                        try { ws.binaryType = this._bt; } catch (_) {}
+                        ws.addEventListener('open', () => this._onInnerOpen(rec));
+                        ws.addEventListener('message', (e) => this._onInnerMessage(rec, e));
+                        const gone = () => this._onInnerGone(rec);
+                        ws.addEventListener('error', gone);
+                        ws.addEventListener('close', gone);
+                        return rec;
+                    });
+                }
+                get binaryType() { return this._bt; }
+                set binaryType(v) { this._bt = v; for (const r of this._inner) { try { r.ws.binaryType = v; } catch (_) {} } }
+                get protocol() { return 'binary'; }
+                get extensions() { return ''; }
+                get bufferedAmount() { let n = 0; for (const r of this._inner) { if (!r.dead) { try { n += r.ws.bufferedAmount || 0; } catch (_) {} } } return n; }
+                _fire(type, ev) { const h = this['on' + type]; try { h && h.call(this, ev); } catch (e) { console.error(e); } this.dispatchEvent(ev); }
+                _onInnerOpen(rec) {
+                    if (this._closed || rec.dead) return;
+                    rec.open = true;
+                    if (!this._winner) for (const c of this._sent) { try { rec.ws.send(c); } catch (_) {} }
+                    if (!this._opened) { this._opened = true; this.readyState = 1; this._fire('open', new Event('open')); }
+                }
+                _onInnerMessage(rec, e) {
+                    if (this._closed || rec.dead) return;
+                    if (!this._winner) {
+                        this._winner = rec;
+                        this._sent = [];
+                        for (const o of this._inner) if (o !== rec) { o.dead = true; o.ws.__lbQuiet = true; try { o.ws.close(); } catch (_) {} }
+                        this._router.commit(rec.base, this._host);
+                    }
+                    if (this._winner !== rec) return;
+                    this._fire('message', new MessageEvent('message', { data: e.data }));
+                }
+                _onInnerGone(rec) {
+                    if (rec.dead) return;
+                    rec.dead = true;
+                    if (this._closed) return;
+                    if (this._winner === rec || !this._inner.some(o => !o.dead)) {
+                        const wasOpen = this._opened;
+                        this._closed = true; this.readyState = 3;
+                        if (!wasOpen) this._fire('error', new Event('error'));
+                        this._fire('close', new CloseEvent('close', { code: 1006 }));
+                    }
+                }
+                send(data) {
+                    if (this._closed) throw 'websocket is not ready';
+                    if (!this._winner) {
+                        let copy = data;
+                        try { copy = data instanceof ArrayBuffer ? data.slice(0) : ArrayBuffer.isView(data) ? new Uint8Array(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)) : data; } catch (_) {}
+                        this._sent.push(copy);
+                        for (const r of this._inner) if (r.open && !r.dead) { try { r.ws.send(data); } catch (_) {} }
+                    } else {
+                        this._winner.ws.send(data);
+                    }
+                }
+                close() {
+                    if (this._closed) return;
+                    this._closed = true; this.readyState = 3;
+                    for (const r of this._inner) { r.dead = true; r.ws.__lbQuiet = true; try { r.ws.close(); } catch (_) {} }
+                    this._fire('close', new CloseEvent('close', { code: 1000 }));
+                }
+            }
+
+            const LB_OWN_SOCKETS_KEY = 'limitless:ownsockets:v1';
+            const LB_MULTI_KEY = 'limitless:multirelay:v1';
+            const LB_MULTI_MODE_KEY = 'limitless:multirelay-mode:v1';
+            function lbOwnSocketsSetting() { try { const n = parseInt(ls.getItem(LB_OWN_SOCKETS_KEY), 10); return n >= 1 && n <= 4 ? n : 4; } catch { return 4; } }
+            function lbMultiMode() { try { const m = ls.getItem(LB_MULTI_MODE_KEY); return m === 'spread' || m === 'race' ? m : 'site'; } catch { return 'site'; } }
+            const LB_router = LB_makeRouter({
+                ownBase: () => LB_OUR_WISP,
+                ownSockets: () => (LB_OUR_WISP ? Math.min(lbOwnSocketsSetting(), window.LB_features.ownSockets) : 1),
+                // Multi-relay needs third-party relays to be allowed; the switch is locked in Settings otherwise.
+                multiOn: () => { try { return LB_fallbackAllowed && ls.getItem(LB_MULTI_KEY) === '1'; } catch { return false; } },
+                mode: lbMultiMode,
+                candidates: (host) => rankPoolCandidates(host, null),
+                markFailed: markWispFailed,
+                get Socket() { return libcurl.wisp.WispWebSocket; },
+            });
+            window.LB_makeRouter = LB_makeRouter;
+            window.LB_router = LB_router;
+            class LBTransport {
+                constructor(url, protocols) { return LB_router.open(url, protocols); }
+            }
+            libcurl.transport = LBTransport;
+
+            // One place that swaps the libcurl session: points libcurl at `url`, creates the new session, applies the
+            // connection limits, and closes the old one once it has no requests in flight (the old code leaked every one).
+            async function LB_swapSession(url, opts) {
+                await libcurl.load_wasm();
+                libcurl.set_websocket(url);
+                LB_router.pinned = opts && opts.pin ? url : null;
+                const old = curl;
+                const next = new libcurl.HTTPSession();
+                lbApplyConnections(next);
+                curl = next;
+                if (old && old !== next) {
+                    const t0 = Date.now();
+                    (function retire() {
+                        let idle = true;
+                        try { idle = !old.active_requests; } catch (_) {}
+                        if (idle || Date.now() - t0 > 60000) { try { old.close(); } catch (_) {} return; }
+                        setTimeout(retire, 500);
+                    })();
+                }
+                return next;
+            }
+            window.LB_swapSession = LB_swapSession;
+            window.LB_net = { get curl() { return curl; }, set curl(v) { curl = v; } };   // test hook
+
+            // Settings > Connection: sockets to our relay, multi-relay switch and mode.
+            (function () {
+                const val = document.getElementById('settingsSocketsVal');
+                const minus = document.getElementById('settingsSocketsMinus'), plus = document.getElementById('settingsSocketsPlus');
+                const render = () => {
+                    const n = lbOwnSocketsSetting();
+                    if (val) val.textContent = String(n);
+                    if (minus) minus.disabled = n <= 1;
+                    if (plus) plus.disabled = n >= 4;
+                };
+                const set = (n) => { try { ls.setItem(LB_OWN_SOCKETS_KEY, String(Math.max(1, Math.min(4, n)))); } catch (_) {} render(); };
+                if (minus) minus.addEventListener('click', () => set(lbOwnSocketsSetting() - 1));
+                if (plus) plus.addEventListener('click', () => set(lbOwnSocketsSetting() + 1));
+                render();
+
+                const sw = document.getElementById('settingsMultiRelaySwitch');
+                const mode = document.getElementById('settingsMultiRelayMode');
+                const note = document.getElementById('settingsMultiRelayNote');
+                if (!sw || !mode) return;
+                const locked = !LB_fallbackAllowed;
+                const on = () => { try { return ls.getItem(LB_MULTI_KEY) === '1'; } catch { return false; } };
+                const paint = () => {
+                    sw.classList.toggle('disabled', locked);
+                    sw.setAttribute('aria-disabled', locked ? 'true' : 'false');
+                    sw.classList.toggle('on', !locked && on());
+                    mode.disabled = locked;
+                    mode.value = lbMultiMode();
+                };
+                const lockedNote = 'Locked. Turn on "Allow third-party relays" above first; this feature spreads your connections over those relays. ';
+                const unlockedNote = 'These relays are run by other operators, not by Gamble Limited Ltd. A relay can see which sites you visit, though not what is inside secure (https) connections. ' +
+                    'Per site keeps each site on one relay. Spread sends each connection through a different relay, which can sign you out of sites or trigger bot checks. ' +
+                    'Race starts a secure connection on two relays at once and keeps the faster one, so the first bytes go to both.';
+                if (note) note.textContent = (locked ? lockedNote : '') + unlockedNote;
+                sw.addEventListener('click', () => {
+                    if (locked) return;
+                    try { ls.setItem(LB_MULTI_KEY, on() ? '0' : '1'); } catch (_) {}
+                    LB_router.reset();
+                    paint();
+                });
+                mode.addEventListener('change', () => {
+                    if (locked) return;
+                    try { ls.setItem(LB_MULTI_MODE_KEY, mode.value); } catch (_) {}
+                    LB_router.reset();
+                });
+                paint();
+            })();
+
             const $ = s => document.getElementById(s);
             const frame = $('frame');
             // Self-hosted assets. Documents we generate (blob:/srcdoc:) need absolute URLs.
@@ -13708,10 +14036,7 @@ window._libcurlReady = true;
                                 const _delay = _attempt === 0 ? 300 : _attempt === 1 ? 800 : 2000;
                                 await new Promise(r => setTimeout(r, _delay));
                                 if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-                                await libcurl.load_wasm();
-                                libcurl.set_websocket(WISP);
-                                curl = new libcurl.HTTPSession();
-                                lbApplyConnections(curl);
+                                await LB_swapSession(WISP);
                                 reconnected = true;
                                 log('Reconnected to WISP (attempt ' + (_attempt + 1) + ')', 'ok');
                                 break;
@@ -13847,11 +14172,13 @@ window._libcurlReady = true;
                     tmpCurl = new libcurl.HTTPSession();
                     tmpCurl.set_connections(2, 2, 2);
                     curl = tmpCurl;
+                    LB_router.pinned = cand;   // the router must honour this relay even when multi-relay is on
                     return await doFetch(url, opts);
                 } catch {
                     return { status: 404, mime: 'text/plain', buf: new ArrayBuffer(0), headers: {} };
                 } finally {
                     curl = prevCurl;
+                    LB_router.pinned = null;
                     try { tmpCurl?.close(); } catch {}
                     try { await libcurl.load_wasm(); libcurl.set_websocket(prevWisp); } catch {}
                 }
@@ -17468,15 +17795,13 @@ _VIEWER_DL_JS +
                 let _navWispSwapped = false;
                 if (!_isRetry && typeof curl !== 'undefined' && curl) {
                     try {
-                        const _poolOn = poolModeOn();
+                        // With the multi-relay router on, relay choice happens per connection there; the per-page pick is a no-op.
+                        const _poolOn = poolModeOn() && !LB_router.multiActive();
                         if (_poolOn) {
                             const _navHost = new URL(url).hostname;
                             const _picked = pickPoolWisp(_navHost);
                             if (_picked && _picked !== WISP) {
-                                await libcurl.load_wasm();
-                                libcurl.set_websocket(_picked);
-                                curl = new libcurl.HTTPSession();
-                                lbApplyConnections(curl);
+                                await LB_swapSession(_picked);
                                 WISP = _picked;
                                 _navWispSwapped = true;
                             }
@@ -18605,10 +18930,7 @@ _VIEWER_DL_JS +
                                 log(`<i class="fas fa-rotate-left" style="color:var(--warn)"></i><span style="color:var(--warn)">Switching WISP</span> <span style="color:var(--tx3);font-family:var(--mono)">${_candHost}</span>`, 'warn');
 
                                 try {
-                                    await libcurl.load_wasm();
-                                    libcurl.set_websocket(_cand);
-                                    curl = new libcurl.HTTPSession();
-                                    lbApplyConnections(curl);
+                                    await LB_swapSession(_cand, { pin: true });
                                 } catch (_swErr) {
                                     log(`<i class="fas fa-circle-xmark" style="color:var(--err)"></i><span style="color:var(--err)">Failed to switch to</span> <span style="color:var(--tx3)">${_candHost}: ${_swErr.message.slice(0, 55)}</span>`, 'err');
                                     markWispFailed(_cand, _navHost);
@@ -18641,7 +18963,7 @@ _VIEWER_DL_JS +
                             }
                             // Restore the sticky primary WISP for subsequent fresh navigations
                             // regardless of outcome — a successful candidate only serves this retry.
-                            try { await libcurl.load_wasm(); libcurl.set_websocket(WISP); curl = new libcurl.HTTPSession(); lbApplyConnections(curl); } catch (_re) {}
+                            try { await LB_swapSession(WISP); } catch (_re) {}
                             if (_poolSuccess) return;
                         } else if (_fbEnabled && !_fbWisp && !_poolOn) {
                             log(`<i class="fas fa-triangle-exclamation" style="color:var(--warn)"></i><span style="color:var(--warn)">Fallback enabled but no fallback WISP configured</span> — set one in Settings → Fallback`, 'warn');
@@ -18811,10 +19133,7 @@ _VIEWER_DL_JS +
                     if (_navWispSwapped && !_isRetry && WISP !== _origWisp) {
                         try {
                             WISP = _origWisp;
-                            await libcurl.load_wasm();
-                            libcurl.set_websocket(_origWisp);
-                            curl = new libcurl.HTTPSession();
-                            lbApplyConnections(curl);
+                            await LB_swapSession(_origWisp);
                         } catch {}
                     }
                 }
@@ -19968,9 +20287,7 @@ _VIEWER_DL_JS +
                             // Opened from file:// (no same-origin relay) and third-party relays are off.
                             log('No relay is available for this origin. Browsing is unavailable until a relay is set in Settings.', 'warn');
                         } else {
-                        libcurl.set_websocket(WISP);
-                        curl = new libcurl.HTTPSession();
-                        lbApplyConnections(curl);
+                        await LB_swapSession(WISP);
                         persistWorkingWisp(WISP);
                         log(`<i class="fas fa-circle-check" style="color:var(--ok)"></i><span style="color:var(--ok)">libcurl initialized successfully</span>`, "ok");
                         log(`Ready! (${MAX_CONCURRENT} connections, 1h cache) <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">via ${WISP.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, "ok");
@@ -20377,10 +20694,7 @@ _VIEWER_DL_JS +
                 async function applyWispUrl(val) {
                     WISP = val;
                     try {
-                        await libcurl.load_wasm();
-                        libcurl.set_websocket(val);
-                        curl = new libcurl.HTTPSession();
-                        lbApplyConnections(curl);
+                        await LB_swapSession(val);
                         log(`WISP switched to <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">${val.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, 'ok');
                     } catch (e) {
                         log('WISP reconnect failed: ' + e.message, 'err');

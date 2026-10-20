@@ -93,3 +93,17 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   `test-results/speed-<sha>.json` (medians). `node scripts/speed-compare.mjs base.json cand.json` fails (exit 1) when a median load is more than 10 % and 100 ms slower.
 - **Parallel requests (F1):** defaults 24 idle and 24 active (stepper 1 to 32, saved values from earlier versions are kept). `lbApplyConnections(session)` calls
   `set_connections(n, n, 6)` with n = the larger setting, and runs at every session creation and live when the stepper is saved or reset.
+- **Transport router (F2):** `LBTransport` is set as `libcurl.transport`; libcurl calls it with `<relay base><host>:<port>` for every TCP stream and it returns
+  `LB_router.open(url)` (`LB_makeRouter(deps)`, a plain object, so tests use a stub Socket; real instance `window.LB_router`). Our relay `/wisp/` becomes
+  `/wisp/N/`, N in 1..ownSockets (Settings > Connection "Sockets to our relay", `limitless:ownsockets:v1`, default 4; 1 keeps plain `/wisp/`), least open streams
+  first. libcurl keys its WISP connections on the base url, so each shard is its own WebSocket; the gate accepts any `/wisp/*`. Custom or third-party bases pass
+  through untouched unless multi-relay is on. `LB_swapSession(url, {pin})` is the only place a libcurl session is replaced: it applies the connection limits
+  and closes the old `HTTPSession` once it has no requests in flight (60 s cap). `pin` makes the router honour that relay (retry chain, 404 retry).
+- **Multi-relay (F3):** off by default, needs `limitless:relay-fallback:v1` (the switch and mode select are disabled and say so otherwise). Keys
+  `limitless:multirelay:v1` (`1`) and `limitless:multirelay-mode:v1` (`site` default, `spread`, `race`). Candidates come from `rankPoolCandidates` (health,
+  cooldown, latency). Per site: host -> relay map (sticky). Spread: round robin per connection. Race (port 443 only, so only a TLS ClientHello is duplicated):
+  `LBRaceSocket` opens the stream on the top two, sends to both until the first data arrives, closes the other and records the host. Failures call
+  `markWispFailed` and drop the sticky entry. While multi-relay is active the per-page pool pick in `go()` is skipped. Test hooks: `LB_router`, `LB_makeRouter`,
+  `LB_swapSession`, `LB_net.curl`.
+- **Feature switches:** `window.LB_features` `{ownSockets (1-4), worker, respCache}` defaults on/4; `window.LB_featuresReady` reads `features` from `version.json`
+  at boot (missing file or keys keep the defaults). Used at use time by the router, the cache and the script rewriter.
