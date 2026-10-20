@@ -116,9 +116,10 @@ Files: `deploy/docker-compose.yml` (+ `docker-compose.dev.yml`, `dev-up.sh`, `de
   `/_gate/check` and `/wisp/`, never `$proxy_add_x_forwarded_for`, because the gate trusts them. Only nginx can reach the gate (internal networks).
 - **GLL ID outage:** `/_gate/check` may answer 401 with `X-LB-Reason: unavailable`; nginx then shows `/auth/unavailable` instead of `/auth/signin`
   (verified with the stub).
-- **Bandwidth cap is not enforced per user yet.** Neither the gate nor epoxy-server meters it. Stopgap on `/wisp/`: `limit_rate 781250` (bytes/s)
-  per connection = 6.25 Mbit/s; with the gate's 8-sockets-per-user cap that is at most 50 Mbit/s per user, download direction only (nginx `limit_rate`
-  does not throttle client uploads), and untested on upgraded WebSocket connections. A real per-user meter in the gate is still open.
+- **Bandwidth cap (0.1.1):** enforced in the check service, not nginx. One token bucket per user and direction (burst 256 KiB), shared by all of
+  the user's sockets: 50 Mbit/s up and 50 Mbit/s down by default. When a user is over the rate the gate pauses reading from that socket (real
+  TCP backpressure, no dropped frames and no close). Set `BANDWIDTH_MBPS` in the gate environment to change it; `0` turns it off. The owner
+  (`OWNER_SUB`) is exempt. The earlier nginx `limit_rate` (per socket, which capped a single multiplexed socket at 6.25 Mbit/s) was removed.
 - **Gate image:** compose has a `/healthz` healthcheck (needs `wget` in the gate image, otherwise change it) and an optional `GATE_BACKCHANNEL_URL` in `deploy/gate.env`.
 
 ### Rehearsal (stage 7 prep)

@@ -88,7 +88,7 @@ test.describe('update notice', () => {
     const wn = page.locator('#lbWhatsNew');
     await expect(wn).toBeVisible();
     await expect(wn.locator('h1')).toHaveText('Changelog');
-    await expect(wn.locator('h2').first()).toContainText('0.1.0');
+    await expect(wn.locator('h2').first()).toContainText(/^\d+\.\d+\.\d+/);
     await expect(wn.locator('li').first()).toBeVisible();
     expect(errors, errors.join('\n')).toEqual([]);
   });

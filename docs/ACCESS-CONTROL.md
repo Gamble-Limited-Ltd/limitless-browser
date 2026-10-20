@@ -101,8 +101,9 @@ built in parallel.
   nothing. If Boss approves the person later, the next check lets them in without a new sign-in.
 - GATE unreachable: new sign-ins fail closed (unavailable page); existing sessions get at most 5 minutes of grace
   since the last good check, then `/_gate/check` returns 401 with `X-LB-Reason: unavailable`.
-- WISP refusals: blocked ports CLOSE 0x48, cap refusals 0x49, malformed CONNECT 0x41. Per-user bandwidth is not
-  enforced by the gate; nginx `limit_rate` per socket is a stopgap (`HOSTING-AND-PERFORMANCE.md` section 5).
+- WISP refusals: blocked ports CLOSE 0x48, cap refusals 0x49, malformed CONNECT 0x41. Per-user bandwidth is
+  enforced by the gate (0.1.1): 50 Mbit/s per user and direction across all sockets, owner exempt, kill switch
+  `BANDWIDTH_MBPS=0` (`HOSTING-AND-PERFORMANCE.md` section 5).
 - Boss's GATE commands (stage 6/7): `./manage.sh clients add limitless-browser --name "Limitless Browser"
   --redirect https://limitless.taps-holdings.org/auth/callback --post-logout https://limitless.taps-holdings.org/
   --requires-approval`, then `./manage.sh clients direct limitless-browser on`, then

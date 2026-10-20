@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 0.1.1 (unreleased)
+
+- Faster page loads: the speed limit used to apply to each connection, which slowed everything down. It is now one fair limit per account, shared across all of your connections.
+
 ## 0.1.0 (unreleased)
 
 - New Limitless look, with eight themes, each in light and dark (Vault is dark only). Pick a theme, light or dark, and a mark in Settings > Appearance, or from the Theme button in the toolbar.

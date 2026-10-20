@@ -164,6 +164,15 @@ console clean, Playwright smoke green.
 - Later ideas, not yet approved: PWA, feedback button, What's new panel, bookmark collections, tab sync,
   second relay region, ad-block list updates, command palette, reader mode.
 
+**Release plan (Boss, decided 2026-10-20)**
+- 0.1.1 (Patch): real per-user bandwidth cap in the check service (50 Mbit/s per user and direction across all sockets, owner exempt,
+  `BANDWIDTH_MBPS`, backpressure instead of closing). Replaces the nginx `limit_rate` stopgap, which capped the single multiplexed socket at 6.25 Mbit/s.
+- 0.2.0 = Faster browsing + Admin panel (slice D). Faster browsing: on-device response cache (200 MB, with a toggle), Worker rewriter,
+  24 parallel requests (6 per host), 4 own-relay sockets by default, and a multi-relay toggle that is off by default for every user and needs
+  third-party relays, with a user-chosen mode (per-site, spread or race); Boss explicitly approved extending third-party relay use for this. Plus a speed
+  harness. Admin panel lives inside Limitless; granting access stays manual in GATE; no notifications.
+- 0.3.0 = Faster startup (slice A).
+
 ## 6. Open items
 - Exact per-user caps (proposal: 64 concurrent streams, about 50 Mbit/s, 20 GB/day soft cap; SMTP/IRC/torrent
   ports blocked) and how they are enforced: check whether epoxy-server supports per-user limits; if not, enforce
