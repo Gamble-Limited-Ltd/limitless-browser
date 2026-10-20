@@ -403,6 +403,7 @@ html[data-lb-theme="vault"]:not([data-skin]) {
 .lb-adm td.lb-adm-name { color: var(--tx); font-weight: 600; word-break: break-word; }
 .lb-adm tr:last-child td { border-bottom: 0; }
 .lb-adm-act { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.lb-adm-acts { display: flex; gap: 8px; }
 .lb-adm-btn { height: 28px; padding: 0 12px; border-radius: var(--radius-md); border: 1px solid var(--bd); background: transparent; color: var(--tx); font: 500 12.5px var(--ui); cursor: pointer; white-space: nowrap; }
 .lb-adm-btn:hover { background: var(--bg2); }
 .lb-adm-btn.pri { background: var(--ac); border-color: var(--ac); color: var(--lb-on, #000); font-weight: 600; }

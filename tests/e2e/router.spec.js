@@ -36,8 +36,8 @@ const SETUP = `
   };
 `;
 
-async function setup(page, init) {
-  const errors = await boot(page, init ? { init } : {});
+async function setup(page, init, opts = {}) {
+  const errors = await boot(page, { ...(init ? { init } : {}), ...opts });
   await page.evaluate(SETUP);
   return errors;
 }
@@ -243,7 +243,9 @@ test.describe('multi-relay setting', () => {
   });
 
   test('unlocked once third-party relays are allowed; the switch and mode are stored', async ({ page }) => {
-    await setup(page, () => { try { localStorage.setItem('limitless:inst:v1', 'gi_t'); localStorage.setItem('gi_t:limitless:relay-fallback:v1', '1'); } catch (_) {} });
+    test.setTimeout(90000);
+    // Third-party relays on: boot first benchmarks the real relay pool (capped at 25 s), so the tour shows late.
+    await setup(page, () => { try { localStorage.setItem('limitless:inst:v1', 'gi_t'); localStorage.setItem('gi_t:limitless:relay-fallback:v1', '1'); } catch (_) {} }, { tourTimeout: 35000 });
     const s = await page.evaluate(() => {
       const sw = document.getElementById('settingsMultiRelaySwitch');
       const mode = document.getElementById('settingsMultiRelayMode');

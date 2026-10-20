@@ -2,7 +2,12 @@
 
 What changed, in plain language. Newest first.
 
-## 0.2.0 (unreleased)
+## 0.2.1
+
+- Fixed: after the update, pages could fail with "libcurl not ready" while an older Limitless tab was still open. Limitless now starts without its cache in that case instead of waiting.
+- Fixed: the admin panel now has a Close button and goes away when you press Home.
+
+## 0.2.0
 
 - Faster page loads: the speed limit used to apply to each connection, which slowed everything down. It is now one fair limit per account, shared across all of your connections.
 - Faster browsing: up to 24 requests run at the same time (at most 6 to any one site), instead of 10. You can change this in Settings > Connection.

@@ -9123,7 +9123,7 @@ window._libcurlReady = true;
         // Runs before anything reads storage. Old keys are copied, never removed (removal is a
         // later release). Per-session keys look like "gi_<id>:gust:<name>", so the optional
         // instance prefix is kept. Existing limitless:* keys always win over old values.
-        var LB_VERSION = '0.2.0';
+        var LB_VERSION = '0.2.1';
         (function () {
             try {
                 var st = window.localStorage;
@@ -11997,11 +11997,20 @@ window._libcurlReady = true;
             async function initCache() {
                 return new Promise((resolve, reject) => {
                     const req = indexedDB.open(_IDB_PFX + 'ProxyCache', 3);
-                    req.onerror = () => reject(req.error);
+                    // Boot must never wait on the cache. An older tab can hold the previous version open and block
+                    // the upgrade (0.1.0 never closes it); then start without a cache and pick it up if it opens later.
+                    let settled = false;
+                    const done = () => { if (!settled) { settled = true; resolve(); } };
+                    const giveUp = setTimeout(() => { log('Resource cache unavailable for now (another tab may hold it); continuing without it', 'warn'); done(); }, 3000);
+                    req.onblocked = () => { clearTimeout(giveUp); log('Resource cache upgrade is waiting for an older tab; continuing without the cache', 'warn'); done(); };
+                    req.onerror = () => { clearTimeout(giveUp); done(); };
                     req.onsuccess = () => {
+                        clearTimeout(giveUp);
                         cacheDB = req.result;
+                        // Let a newer version upgrade instead of blocking it the way 0.1.0 does.
+                        cacheDB.onversionchange = () => { try { cacheDB.close(); } catch (_) {} cacheDB = null; };
                         updateCacheSize();
-                        resolve();
+                        done();
                     };
                     req.onupgradeneeded = (e) => {
                         const db = e.target.result;
@@ -12751,12 +12760,14 @@ window._libcurlReady = true;
             // Hooks for self-contained internal pages that live in their own script (the owner admin panel).
             window.LB_pages = SKIN_PAGES;
             window.LB_go = (u) => go(u, true);
+            window.LB_home = () => showNewTab(true);
 
             function showNewTab(push = true) {
                 if (!newtab) return;
                 _netStall = 0;
                 _dropCount = 0;
                 hideSettingsPage();
+                closeSkinPages();   // overlay pages (admin, What's new) must not stay on top of the start page
                 newtab.classList.add("active");
                 frame.style.display = "none";
                 overlay.classList.add("hidden");
@@ -26942,7 +26953,10 @@ _VIEWER_DL_JS +
         var sub = el('p', 'lb-adm-sub', ''); heading.appendChild(sub);
         top.appendChild(heading);
         var refreshBtn = btn('Refresh', '', function () { load(); });
-        top.appendChild(refreshBtn);
+        var closeBtn = btn('Close', '', function () { if (window.LB_home) window.LB_home(); else page.close(); });
+        closeBtn.id = 'lbAdmClose';
+        var actions = el('div', 'lb-adm-acts'); actions.append(refreshBtn, closeBtn);
+        top.appendChild(actions);
         inner.append(top, toast, secUsers, secUsage, secSw, secHealth);
         var S = { who: null, users: null, usage: null, flags: null, health: null, editing: null, confirm: null };
         var toastTimer = null, refreshTimer = null, loading = 0;

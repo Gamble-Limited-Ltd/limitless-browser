@@ -107,6 +107,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   `LB_swapSession`, `LB_net.curl`.
 - **Feature switches:** `window.LB_features` `{ownSockets (1-4), worker, respCache}` defaults on/4; `window.LB_featuresReady` reads `features` from `version.json`
   at boot (missing file or keys keep the defaults). Used at use time by the router, the cache and the script rewriter.
+- **Cache open never blocks boot (0.2.1):** `initCache` resolves after 3 s, on `onblocked` or on error and boot continues without `cacheDB` (it is picked up if the open succeeds later); the open handle closes itself on `versionchange`. A 0.1.0 tab held version 2 open, so 0.2.0 hung before the libcurl session existed ("libcurl not ready"). Test `tests/e2e/idb-upgrade.spec.js`. Bump the `ProxyCache` version only with this in mind.
 - **Response cache (F4):** `memCache` (session, `LBMemCache`, 600 entries / 96 MB) over IndexedDB `ProxyCache` (v3, 200 MB, index `byLastAccessed` for LRU eviction,
   index `bySize` so the size is summed with a key cursor). `lbCacheEvaluate` decides storage from the response headers: only 200 GET; never `no-store`, `private`,
   `Set-Cookie`, or `Vary` other than `Accept-Encoding`; lifetime `max-age` > `Expires` > heuristic (10 % of age since `Last-Modified`, at most 24 h) > 24 h for
@@ -127,6 +128,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   block). Everything else is its own `<script>` just before the theme script, plus the `.lb-adm-*` section at the end of `theme/chrome.css`. The
   entry is the "Admin panel" link in Settings > About (`#lbAboutAdmin`), hidden until `GET /_lb/admin/api/whoami` is 200 (`window.LB_adminProbe()`,
   first run 4 s after load). Typing the URL works for anyone but shows "not available" unless whoami is 200. All data is shown with `textContent`.
+- **Leaving it:** `#lbAdmClose` (Close) and Home go to the start page; `showNewTab` calls `closeSkinPages()`, so no overlay page (admin, What's new) stays on top. Tests: "leaving the admin panel" in `tests/e2e/admin.spec.js`.
 - **Sections:** Users (approve by login name, last seen, today, cut off or restore, revoke with a second click), Usage (today, 30 days, live
   sockets and streams, 80 % warnings, per-user limits), Switches (pause new sign-ins, maintenance, cut off one user), Health (relay, GLL ID, live counts,
   version, counters). A write that answers `403 {error:'stepup'}` opens the password dialog (`#lbAdmStepup`) and retries once.

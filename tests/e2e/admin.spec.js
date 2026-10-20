@@ -213,3 +213,26 @@ test.describe('admin page', () => {
     }
   }
 });
+
+// Hotfix 0.2.1: the panel is an overlay page; every way of leaving it must hide it, and it has its own Close button.
+test.describe('leaving the admin panel', () => {
+  const shown = (page) => page.locator('#lbAdmin.show');
+  for (const [name, leave] of [
+    ['the Close button', (page) => page.locator('#lbAdmClose').click()],
+    ['Home', (page) => page.locator('#home').click()],
+    ['a new tab', (page) => page.locator('#newTab').click()],
+    ['Settings', (page) => page.locator('#settingsBtn').click()],
+    ['closing its tab', (page) => page.evaluate(() => { const t = document.querySelector('.tab.active .tab-close, .tab.active [class*="close"]'); t.click(); })],
+  ]) {
+    test(`${name} hides it`, async ({ page }) => {
+      mockApi(page);
+      await boot(page);
+      await page.evaluate(() => window.LB_go('limitless://whats-new'));   // a second tab-scoped page in history
+      await page.evaluate(() => document.querySelector('#newTab').click());
+      await openAdmin(page);
+      await expect(shown(page)).toBeVisible();
+      await leave(page);
+      await expect(shown(page)).toBeHidden();
+    });
+  }
+});
