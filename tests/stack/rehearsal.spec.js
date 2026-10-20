@@ -252,7 +252,12 @@ test.describe('revocation', () => {
     await expect(page.getByRole('heading', { name: /invite only/i })).toBeVisible();
     await expect(page.locator('.chip')).toContainText('alice@rehearsal.test');
 
-    // Bob's next navigation: invite page with his email; sign out works.
+    // Bob's next navigation: invite page with his email; sign out works. His session is trusted for one cache
+    // period after sign-in, and the cut above can land early in that period (it follows the 60 s recheck timer),
+    // so wait for his verdict to turn rather than assuming it already has.
+    await expect
+      .poll(async () => (await bob.request.get('/index.html', { headers: { accept: 'text/html' } })).status(), { timeout: 90000 })
+      .toBe(403);
     await bob.goto('/');
     await expect(bob.getByRole('heading', { name: /invite only/i })).toBeVisible();
     await expect(bob.locator('.chip')).toContainText('bob@rehearsal.test');

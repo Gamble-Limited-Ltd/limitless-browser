@@ -210,3 +210,9 @@ console clean, Playwright smoke green.
 - **2026-10-20, kill switches.** `version.json` carries `features` {ownSockets, worker, respCache}, stamped by `scripts/build-static.sh` (`LB_FEATURE_OWNSOCKETS`,
   `LB_FEATURE_WORKER`, `LB_FEATURE_RESPCACHE`), read once at boot; missing means all on.
 - **2026-10-20, speed harness.** `npm run test:speed` (stack, needs internet), medians of 3, 10 % and 100 ms regression gate via `scripts/speed-compare.mjs`.
+- **2026-10-20, 0.2.0 speed gate (release record).** Measured on the rehearsal stack against `bb2473f` (0.1.1 plus the harness only), 7 runs per site:
+  cold loads within noise; warm loads of small pages that ask to be re-checked about 50 to 80 ms slower in every variant (the cache now revalidates instead of showing
+  a copy up to 24 h old); turning off the Worker or using one socket changed nothing measurable. Base against itself also failed the gate at 3 runs (about 15 %
+  run-to-run noise over the internet), so the gate needs more runs and a threshold above the noise before it can block a release. The test bed has the relay on
+  the same host, no Cloudflare and no slow link, so it cannot show the gains meant for real connections.
+  Override: speed gate — Boss: ship as is; accepts about 60 ms on repeat visits to re-check pages in exchange for not showing stale pages.
