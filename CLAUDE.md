@@ -1,48 +1,86 @@
-# CLAUDE.md
+# CLAUDE.md: Limitless Browser
 
-Fork of GUST (Nautilus Labs, AGPLv3), being rebranded for Gamble Limited Ltd. (GLL).
-**Master plan, decisions and implementation stages: `docs/PLAN.md`** (planning Q&A 2026-10-18). Rebrand details: `docs/REBRAND-PLAN.md`. Read both before touching names, credits, license text or features.
+## Purpose
+Fork of GUST (Nautilus Labs, AGPLv3), rebranded for Gamble Limited Ltd. (GLL) as **Limitless Browser** (decided
+2026-10-17, replaces "GLL Lens"): a browser-style web proxy in static files. Own Limitless look plus the GLL Portfolio
+Stamp, not the full Gilded Ledger chrome. Copy neutral: "private browsing proxy".
+**Master plan, decisions and stages: `docs/PLAN.md`** (planning Q&A 2026-10-18). Rebrand details: `docs/REBRAND-PLAN.md`.
+Read both before touching names, credits, license text or features.
+- **State (checked 2026-11-02):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
+  `e42ee36` = `main`, `LB_VERSION` 0.2.2.
+- Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are
+  cherry-picked by hand; the fork was in step with `upstream/main` 08515a7 as of 2026-10-18.
+- **Invite only (decided 2026-10-17):** sign-in through GLL ID (GATE) is required and only users Boss approves get in.
+  Everyone else sees an "invite only" page. Enforced server-side at nginx (`auth_request`, covering the app and
+  `/wisp/`), not in client JS. Approvals live in GATE as per-app access (client `limitless-browser`). The check service
+  is `~/limitless-gate` (own private repo): OIDC + direct sign-in and `/oidc/access-check`. Only `/legal/` is served
+  ungated. Full design: `docs/ACCESS-CONTROL.md`. **Never ship a public, ungated deploy.**
+- Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser` 2026-10-18; GitHub redirects the old URL), `upstream` = nautilus-os/GUST.
 
-Product name is **Limitless Browser** (decided 2026-10-17, replaces "GLL Lens"). Own Limitless look plus the GLL Portfolio Stamp, not the full Gilded Ledger chrome. Public host **`limitless.taps-holdings.org`** (decided 2026-10-18, replaces `gll-browser.taps-holdings.org`). Copy neutral: "private browsing proxy".
-Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are cherry-picked by hand; the fork is in step with `upstream/main` 08515a7 as of 2026-10-18.
-Limitless Browser is AGPL: never copy its code into proprietary GLL repos (gll-shared, gll-id); copying GLL brand assets in is fine with a `docs/SHARDS.md` log.
-
-**Invite only (decided 2026-10-17):** sign-in through GLL ID (GATE) is required and only users Boss approves get in. Everyone else sees an "invite only" page. Enforced server-side at nginx (`auth_request`, covering the app and `/wisp/`), not in client JS. Approvals live in GATE as per-app access (client `limitless-browser`). GATE v1 is live (2026-10-17); a small proprietary check service (own private repo) does OIDC + direct sign-in and `/oidc/access-check`. Only `/legal/` is served ungated. Full design: `docs/ACCESS-CONTROL.md`. Never ship a public, ungated deploy.
-
-Hosting (Docker nginx on 127.0.0.1:8580) and speed plan: `docs/HOSTING-AND-PERFORMANCE.md`.
-
-## What this is
-A browser-style web proxy in static files. No build system, lint or CI. `package.json` exists only for the Playwright test harness (dev dependency, nothing ships from it).
-- `index.html` (~3.6 MB): the whole app, JS and CSS inlined, with vendored libs (acorn, libcurl.js WASM). Third-party assets are self-hosted (below); no CDN or font-service requests remain.
-- `patcher.html` (renamed from `GUST-Patcher.html`, 2026-10-19): standalone patcher tool page. Its patch definitions match identifiers and storage keys in `index.html`; when you rename code there, update them too. It fetches only our own same-origin `./index.html` (no third-party fallbacks); served behind the gate.
-- `vendor/` and `fonts/` (stage 2, 2026-10-19): self-hosted third-party assets, each with its license file: `vendor/fontawesome/6.7.2/` (Font Awesome Free; upstream mixed 6.7.2 and 6.5.1, we standardised on 6.7.2), `vendor/pdfjs/4.2.67/`, `vendor/iso-639-1/2.1.11/`, `fonts/` (JetBrains Mono, Space Grotesk, `fonts/fonts.css`). `svg/` (stale CDN variant) was removed. Documents the app generates (error page, viewers) must use the absolute `LB_FA`, `LB_PDFJS`, `LB_FONTS_CSS` URLs, not relative paths.
-- Relays (stage 2): default relay is our own same-origin `/wisp/` (`ws:`/`wss:` from the page protocol; none on `file://`). The 13-entry third-party pool plus the `mages.io` fallback stay in the code but are used only when "Allow third-party relays" is on (`gust:relay-fallback:v1` = `1`, settings: Connection, reloads the page). `window.LB_relayStatus()` returns `{ours:'ok'|'down'|'unknown', fallbackAllowed}`; if our relay fails the startup probe a plain notice offers to enable third-party relays (themed UI comes in a later stage).
-- `README.md`, `LICENSE` (AGPLv3, unmodified template).
-
-Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser` 2026-10-18; GitHub redirects the old URL), `upstream` = nautilus-os/GUST.
-
-## Deploy (stage 5, local only; no public route until stage 7)
-- Prod stack: `./deploy.sh [sha]` (clean tree, builds from `git archive`, compose project `limitless-browser`, web on `127.0.0.1:8580`, smoke test, `.last-deploy-hash`). Rollback: `./deploy.sh <previous sha>`. Needs `~/limitless-gate` and gitignored `deploy/gate.env`.
+## Run / dev
+No build system, lint or CI. `package.json` exists only for the Playwright test harness (nothing ships from it).
+- `index.html` (~3.6 MB): the whole app, JS and CSS inlined, with vendored libs (acorn, libcurl.js WASM). No CDN or font-service requests remain.
+- `patcher.html` (renamed from `GUST-Patcher.html`, 2026-10-19): standalone patcher page. Its patch definitions match
+  identifiers and storage keys in `index.html`; when you rename code there, update them too. It fetches only our own
+  same-origin `./index.html`; served behind the gate.
+- `vendor/` and `fonts/` (stage 2): self-hosted third-party assets, each with its license file:
+  `vendor/fontawesome/6.7.2/` (standardised on 6.7.2), `vendor/pdfjs/4.2.67/`, `vendor/iso-639-1/2.1.11/`, `fonts/`
+  (JetBrains Mono, Space Grotesk, `fonts/fonts.css`). Documents the app generates (error page, viewers) must use the
+  absolute `LB_FA`, `LB_PDFJS`, `LB_FONTS_CSS` URLs, not relative paths.
+- Relays (stage 2): default relay is our own same-origin `/wisp/` (`ws:`/`wss:` from the page protocol; none on
+  `file://`). The 13-entry third-party pool plus the `mages.io` fallback stay in the code but are used only when "Allow
+  third-party relays" is on (`gust:relay-fallback:v1` = `1`, settings: Connection, reloads the page).
+  `window.LB_relayStatus()` returns `{ours:'ok'|'down'|'unknown', fallbackAllowed}`; if our relay fails the startup
+  probe a plain notice offers to enable third-party relays.
+- Open `index.html` via `file://` or serve statically: `python3 -m http.server 8000`.
 - Local test with a stub gate: `deploy/dev-up.sh` (`DEV_ALLOW=1` allows, `DEV_ALLOW=403` shows invite, default asks sign-in); stop with `docker compose -p limitless-browser down`.
-- Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, vendor/, fonts/, theme/, legal/, favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html` (see Start page, update notice below).
-- Served ungated: `/legal/`, `/theme/` (themes.css, fonts, marks, brand stamp), `/favicon.svg`, `/auth/*`. Everything else, including `/wisp/` and `version.json`, goes through `auth_request`. Details: `docs/HOSTING-AND-PERFORMANCE.md` section 5.
+
+## Ports and prod
+Prod: compose project `limitless-browser`, web (nginx) on `127.0.0.1:8580`, host `limitless.taps-holdings.org` (not
+rotated). Hosting and speed plan: `docs/HOSTING-AND-PERFORMANCE.md`. Served ungated: `/legal/`, `/theme/` (themes.css,
+fonts, marks, brand stamp), `/favicon.svg`, `/auth/*`. Everything else, including `/wisp/` and `version.json`, goes
+through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwright).
+
+## Test / build
+- `npm install` once, then `npm test`. Playwright (pinned `@playwright/test` 1.64.0, matches the chromium-1248 build
+  in `~/.cache/ms-playwright`) starts `python3 -m http.server 8599` and runs the smoke test in `tests/e2e` (app shell
+  loads, no uncaught page errors, title set, address bar accepts input). It does not replace manual checks: also load
+  the page, check the console, and exercise the touched feature.
+- Full-stack rehearsal: `npm run test:stack` (`deploy/rehearsal/run.sh`).
+- Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, vendor/, fonts/, theme/, legal/,
+  favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html`.
 - Theme CSS is generated: edit `scripts/gen-themes.py`, rerun. Fonts: `scripts/fetch-fonts.py`.
+- Not offloaded to buildpc (no `.nvmrc`; stack tests unverified there).
 
-## Run / verify
-- Open `index.html` via `file://` or serve statically: `python3 -m http.server 8000` then browse to it.
-- Tests: `npm install` once, then `npm test`. Playwright (pinned `@playwright/test` 1.64.0, matches the chromium-1248 build already in `~/.cache/ms-playwright`) starts `python3 -m http.server 8599` and runs the smoke test in `tests/e2e` (app shell loads, no uncaught page errors, title set, address bar accepts input). It does not replace manual checks: also load the page, check the console, and exercise the touched feature.
-- Check CRLF vs LF before large edits (`file index.html`); commit 1a193ab was a big Windows-related rewrite.
+## Deploy / release
+- `./deploy.sh [sha]` (Boss runs it): clean tree, builds from `git archive`, compose project `limitless-browser`, smoke
+  test, writes `.last-deploy-hash`. Rollback: `./deploy.sh <previous sha>`. Needs `~/limitless-gate` and the gitignored
+  `deploy/gate.env`. Follow `~/.claude/docs/release-procedure.md`.
 
-## Rules
+## Rules unique to this repo
 - `index.html` is huge. Never Read it whole; use Grep with line numbers, then Read small ranges. Prefer targeted Edit over rewrites.
-- AGPLv3 stays. Never remove upstream credits, the libcurl.js LGPL notice, or the third-party license string (`copyright_notice` in `index.html`). Add GLL notices, do not replace theirs.
-- localStorage keys are `limitless:*:v1` (renamed from `gust:*:v1` in stage 3a) and are user data. The app stores most keys as `gi_<id>:limitless:...`; on http(s) the id is stable per origin (`limitless:inst:v1`, test `tests/e2e/persistence.spec.js`), on `file://` it is per tab (upstream). A shim in the first script of `index.html` copies old `gust:*` and `gi_<id>:gust:*` keys once (flag `limitless:migrated:v1`), keeps the old keys for one release, and never overwrites existing new keys; test: `tests/e2e/migration.spec.js`. `gust_ai_ctx` (removed AI assistant) is deleted on load. IndexedDB `gust_extensions` keeps its old name on purpose (renaming would lose installed extensions). Do not rename a key again without a migration.
-- Code identifiers use the `lb-` / `lb` prefix (CSS classes, `data-lb-*`, `__lbLoc`), internal pages are `limitless://` (`gust://` is still accepted as an alias in `normUrl`), the extension API is `LimitlessExt` (`window.GustExt` alias kept), and the version lives in one constant `LB_VERSION`. Remaining `gust` strings are only the shim, aliases and credits.
+- AGPLv3 stays (`LICENSE` is the unmodified template). Never remove upstream credits, the libcurl.js LGPL notice, or the third-party license string
+  (`copyright_notice` in `index.html`). Add GLL notices, do not replace theirs. Never copy this repo's code into
+  proprietary GLL repos (gll-shared, gll-id, limitless-gate); copying GLL brand assets in is fine with a `docs/SHARDS.md` log.
+- localStorage keys are `limitless:*:v1` (renamed from `gust:*:v1` in stage 3a) and are user data. The app stores most
+  keys as `gi_<id>:limitless:...`; on http(s) the id is stable per origin (`limitless:inst:v1`, test
+  `tests/e2e/persistence.spec.js`), on `file://` it is per tab (upstream). A shim in the first script of `index.html`
+  copies old `gust:*` and `gi_<id>:gust:*` keys once (flag `limitless:migrated:v1`), keeps the old keys for one release,
+  and never overwrites existing new keys; test: `tests/e2e/migration.spec.js`. `gust_ai_ctx` (removed AI assistant) is
+  deleted on load. IndexedDB `gust_extensions` keeps its old name on purpose (renaming would lose installed
+  extensions). Do not rename a key again without a migration.
+- Code identifiers use the `lb-` / `lb` prefix (CSS classes, `data-lb-*`, `__lbLoc`), internal pages are
+  `limitless://` (`gust://` is still accepted as an alias in `normUrl`), the extension API is `LimitlessExt`
+  (`window.GustExt` alias kept), and the version lives in one constant `LB_VERSION`. Remaining `gust` strings are only
+  the shim, aliases and credits.
 - Do not imply affiliation with GUST or Nautilus Labs beyond factual credit.
 - Do not add or extend filter-evasion or detection-evasion features without Boss's explicit decision.
-- Writing style for docs and UI copy: no em dashes, no invented facts.
-- Commit only when asked. Keep docs (this file, the plan) updated in the same commit as the change.
-- The company site (`~/gll-site`) and the global CLAUDE.md describe cross-project rules; follow them if this project ships.
+- Docs and UI copy: no em dashes, no invented facts. Keep docs (this file, the plan) updated in the same commit as the change.
+- Commit only when asked (stricter than the global git rule).
+
+## Known gotchas
+- Check CRLF vs LF before large edits (`file index.html`); commit 1a193ab was a big Windows-related rewrite.
+- Feature notes below (theme engine, start page, faster browsing, admin panel) describe how the inlined code fits together.
 
 ## Theme engine (stage 3b)
 - **Setting:** `localStorage['limitless:theme:v1']` = JSON `{theme, mode, mark}` (defaults `luxury`, `auto`, `orbit`). Written
@@ -86,7 +124,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   proxy). Linked from the banner, the About page, and typed in the address bar. Keep `CHANGELOG.md` plain: no bold, code or tables (shown literally).
 - About links Privacy and Terms open `/legal/privacy.html` and `/legal/terms.html` in a normal new tab (outside the proxy).
 
-## Faster browsing (0.2.0 slice, 0.2.0 slice)
+## Faster browsing (0.2.0 slice)
 - **Speed harness (F6):** `window.__lbPerf` (`start(url)`, `mark(name)`, `runs`) is always on and local; `go()` marks `firstBytes`, `dom`, `shown`, `load` in ms
   since the navigation started. `npm run test:speed` (= `LB_SPEED=1 deploy/rehearsal/run.sh tests/stack/speed.spec.js`, needs outbound internet) loads the sites in
   `tests/stack/speed-sites.json` cold and warm, 3 reps each in fresh contexts (`LB_SPEED_REPS`, `LB_SPEED_ONLY`, `LB_SPEED_SHA`), and writes
@@ -123,6 +161,7 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   Test hook: `LB_rewrite` (`sync`, `async`, `stats()`, `timeoutMs`).
 - **Kill switches at build time:** `scripts/build-static.sh` writes `features` into `version.json` from `LB_FEATURE_OWNSOCKETS` (0 to 4, default 4), `LB_FEATURE_WORKER` and
   `LB_FEATURE_RESPCACHE` (`true`/`false`, default true), e.g. `LB_FEATURE_WORKER=false ./deploy.sh`. Users can also turn off the cache (Settings) and set sockets (Settings).
+
 ## Admin panel (0.2.0, slice D)
 - **Page:** `limitless://admin`, registered into `SKIN_PAGES` through the hooks `window.LB_pages` and `window.LB_go` (added after the What's new
   block). Everything else is its own `<script>` just before the theme script, plus the `.lb-adm-*` section at the end of `theme/chrome.css`. The
@@ -138,3 +177,5 @@ Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser`
   `OWNER_SUB` must be set in `deploy/gate.env` for the panel to work at all. `deploy.sh` passes the deployed sha to the gate as `BUILD_SHA`.
 - **Tests:** `tests/e2e/admin.spec.js` (mocked routes, all 8 themes), `tests/stack/admin.spec.js` (rehearsal: owner vs normal user, approve and revoke,
   maintenance). The rehearsal seeds a mock owner (`owner` / `owner-pass-1`, fixed sub in `run.sh`) and sets `OWNER_SUB` to it.
+
+Last verified: 2026-11-02
