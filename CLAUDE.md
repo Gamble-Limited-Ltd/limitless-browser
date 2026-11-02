@@ -178,4 +178,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 - **Tests:** `tests/e2e/admin.spec.js` (mocked routes, all 8 themes), `tests/stack/admin.spec.js` (rehearsal: owner vs normal user, approve and revoke,
   maintenance). The rehearsal seeds a mock owner (`owner` / `owner-pass-1`, fixed sub in `run.sh`) and sets `OWNER_SUB` to it.
 
-Last verified: 2026-11-02
+## Legal v2 dark launch (2026-11-01, contract in ~/gll-planning/legal-hall/PLAN.md)
+`LEGAL_VERSION` (YYYY-MM-DD) on the `web` container, from `deploy/.env` (gitignored; compose pass-through, empty default). nginx cannot read env, so `deploy/web/legal-v2.sh` (an nginx `docker-entrypoint.d` script) writes `/tmp/legal-v2.conf` at container start, included by the `/legal/` location. Unset, empty or invalid: empty file, `/legal/` exactly as before. Set: `/legal/terms(.html)` and `/legal/privacy(.html)` 302 to `https://hall.taps-holdings.org/legal/terms|privacy`; `/legal/` itself stays served (it holds the AGPL source link). No consent storage here: GATE sign-in is acceptance. Go-live: put `LEGAL_VERSION=<date>` in `deploy/.env` and `docker compose -p limitless-browser -f deploy/docker-compose.yml up -d web` (recreate, no rebuild); gate side is `LEGAL_VERSION` in `deploy/gate.env`. Test: `npm run test:legal` (throwaway nginx container).
+
+Last verified: 2026-11-08

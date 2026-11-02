@@ -13,6 +13,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8580:80"
+    environment:
+      # Legal v2 dark launch: empty = today's /legal/. Set YYYY-MM-DD in deploy/.env to send terms/privacy to HALL.
+      LEGAL_VERSION: ${LEGAL_VERSION:-}
     networks: [lb_edge, lb_internal]
     read_only: true
     tmpfs:

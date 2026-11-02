@@ -6,6 +6,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "test": "playwright test",
+    "test:legal": "tests/legal-v2/run.sh",
     "test:stack": "deploy/rehearsal/run.sh",
     "test:speed": "LB_SPEED=1 deploy/rehearsal/run.sh tests/stack/speed.spec.js",
     "speed:compare": "node scripts/speed-compare.mjs"
