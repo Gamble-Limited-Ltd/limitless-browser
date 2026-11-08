@@ -23,6 +23,8 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 git archive "$SHA" | tar -x -C "$WORK"
 cp "$REPO/deploy/gate.env" "$WORK/deploy/gate.env"
+# deploy/.env (gitignored, optional) feeds compose interpolation, e.g. LEGAL_VERSION for web
+[ -f "$REPO/deploy/.env" ] && cp "$REPO/deploy/.env" "$WORK/deploy/.env"
 
 "$WORK/scripts/build-static.sh" "$SHA"
 
