@@ -7,7 +7,7 @@ Stamp, not the full Gilded Ledger chrome. Copy neutral: "private browsing proxy"
 **Master plan, decisions and stages: `docs/PLAN.md`** (planning Q&A 2026-10-18). Rebrand details: `docs/REBRAND-PLAN.md`.
 Read both before touching names, credits, license text or features.
 - **State (checked 2026-11-02):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
-  `e42ee36` = `main`, `LB_VERSION` 0.2.2.
+  `e42ee36` = `main`, `LB_VERSION` 0.2.2 (0.2.3 on `feat/legal-v2`, dark legal v2, not deployed).
 - Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are
   cherry-picked by hand; the fork was in step with `upstream/main` 08515a7 as of 2026-10-18.
 - **Invite only (decided 2026-10-17):** sign-in through GLL ID (GATE) is required and only users Boss approves get in.
