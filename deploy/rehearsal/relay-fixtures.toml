@@ -1,0 +1,63 @@
+# TEST-ONLY relay config for the speed/fixture rehearsal (deploy/rehearsal/run.sh with LB_SPEED=1). NEVER used in prod:
+# prod keeps deploy/relay/config.toml with allow_non_global = false (asserted by tests/e2e/relay-config.spec.js).
+# Same as prod except: allow_non_global = true so the fixture container (10.89.85.0/24, lb_fixture) is reachable, and
+# block_hosts refuses every other private, loopback and link-local address literal (the fixture subnet is the only
+# exception). Hostnames that resolve to private addresses are not caught here: acceptable for a local throwaway stack.
+# epoxy-server config for Limitless Browser. Every key is from server/src/config.rs at the pinned commit
+# (the parser uses deny_unknown_fields, so a wrong key stops the server at start).
+# Reached only by the gate over the internal lb_relay network; never published.
+
+[server]
+bind = ["tcp", "0.0.0.0:4000"]
+transport = "websocket"
+# IPv6 off: the IPv4 checks below are complete, the IPv6 ones in epoxy-server miss fe80::/10.
+resolve_ipv6 = false
+tcp_nodelay = true
+use_real_ip_headers = false
+non_ws_response = "Limitless relay"
+max_message_size = 65536
+# Abuse-only logging: warnings and errors only, no per-connection destination lines.
+log_level = "warn"
+
+[wisp]
+allow_wsproxy = false
+wisp_v2 = true
+extensions = []
+# Per-connection speed limits (bytes per second) are compiled in (speed-limit feature) and default to
+# unlimited. Per-user caps live in the gate. Proposal for a hard relay-side ceiling: 6250000 (50 Mbit/s).
+# read_limit = 6250000.0
+# write_limit = 6250000.0
+
+[stream]
+# No UDP: libcurl.js does not need it, and it removes a large abuse surface (DNS amplification and so on).
+allow_udp = false
+allow_wsproxy_udp = false
+# Public resolvers, so the Docker embedded resolver (container names) is never consulted.
+dns_servers = ["1.1.1.1", "9.9.9.9"]
+
+# Destination checks run on the RESOLVED address, so DNS rebinding to an internal address is caught.
+allow_direct_ip = true
+allow_loopback = false
+allow_multicast = false
+# allow_non_global = false rejects everything that is not globally routable: 0.0.0.0/8, RFC1918, CGNAT
+# 100.64.0.0/10, loopback, link-local 169.254.0.0/16 (cloud metadata), 192.0.0.0/24, documentation
+# ranges, benchmarking 198.18.0.0/15, reserved 240.0.0.0/4, broadcast, and IPv6 ULA.
+allow_global = true
+allow_non_global = true
+block_hosts = [
+  '^(0|127)\.',
+  '^169\.254\.',
+  '^192\.168\.',
+  '^172\.(1[6-9]|2[0-9]|3[01])\.',
+  '^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.',
+  '^10\.([0-9]|[1-7][0-9]|8[0-8]|9[0-9]|1[0-9][0-9]|2[0-9][0-9])\.',
+  '^10\.89\.([0-9]|[1-7][0-9]|8[0-4]|8[6-9]|9[0-9]|1[0-9][0-9]|2[0-9][0-9])\.',
+]
+
+# Ports blocked per docs/ACCESS-CONTROL.md section 5: SMTP, IRC, common torrent ports.
+# Format is [low, high], inclusive.
+block_ports = [
+  [25, 25], [465, 465], [587, 587],
+  [6660, 6669], [6697, 6697],
+  [6881, 6889], [6969, 6969],
+]

@@ -11,7 +11,16 @@ module.exports = defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', testIgnore: /chromebook\.spec\.js/, use: { ...devices['Desktop Chrome'] } },
+    // Chromebook profile (docs/1.0/TESTING.md section 2): 1366x768, 4x CPU, 10/5 Mbit/s, 40 ms RTT, applied by
+    // tests/lib/profile.js. Only chromebook.spec.js runs here; the speed harness runs both projects.
+    {
+      name: 'chromebook',
+      testMatch: /chromebook\.spec\.js/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' },
+    },
+  ],
   webServer: {
     command: `python3 -m http.server ${PORT} --bind 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}/index.html`,
