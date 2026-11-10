@@ -1,4 +1,9 @@
 [
+  { "name": "fx-news", "url": "http://10.89.85.10:8080/news", "fixture": true, "micro": true },
+  { "name": "fx-app", "url": "http://10.89.85.10:8080/app", "fixture": true },
+  { "name": "fx-slow", "url": "http://10.89.85.10:8080/slow", "fixture": true },
+  { "name": "fx-article", "url": "http://10.89.85.10:8080/article", "fixture": true },
+  { "name": "fx-frames", "url": "http://10.89.85.10:8080/frames", "fixture": true },
   { "name": "example", "url": "https://example.com/" },
   { "name": "wikipedia", "url": "https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol" },
   { "name": "mdn", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview" },

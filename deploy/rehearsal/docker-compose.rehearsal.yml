@@ -43,8 +43,11 @@ services:
     image: limitless-relay:rehearsal
     build:
       context: ../relay
-    networks: [lb_relay, lb_egress]
+    networks: [lb_relay, lb_egress, lb_fixture]
     dns: [1.1.1.1, 9.9.9.9]
+    # Default = the prod config (same file the image bakes in). The speed run (LB_SPEED=1) swaps in relay-fixtures.toml.
+    volumes:
+      - ${REHEARSAL_RELAY_CONFIG:-../relay/config.toml}:/etc/epoxy/config.toml:ro
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
@@ -74,7 +77,29 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
+  # Speed fixtures (tests/fixtures/sites): only with COMPOSE_PROFILES=fixtures (run.sh sets it when LB_SPEED=1).
+  # On an internal network shared only with the relay; addressed by IP because the relay resolves names through public DNS.
+  fixtures:
+    image: node:24-bookworm-slim
+    profiles: [fixtures]
+    command: ["node", "/app/server.js"]
+    environment:
+      PORT: "8080"
+    volumes:
+      - ../../tests/fixtures/sites:/app:ro
+    networks:
+      lb_fixture:
+        ipv4_address: 10.89.85.10
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 256m
+
 networks:
+  lb_fixture:
+    internal: true
+    ipam: { config: [{ subnet: 10.89.85.0/24 }] }
   lb_internal:
     internal: true
     ipam: { config: [{ subnet: 10.89.80.0/24 }] }

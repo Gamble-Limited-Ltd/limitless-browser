@@ -14,5 +14,13 @@ module.exports = defineConfig({
     baseURL: process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Chromebook profile (tests/lib/profile.js): only the speed harness runs under it.
+    {
+      name: 'chromebook',
+      testMatch: /speed\.spec\.js/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' },
+    },
+  ],
 });
