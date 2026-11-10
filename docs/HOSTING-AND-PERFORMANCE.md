@@ -153,6 +153,17 @@ Built on branch `slice/browsing`; details for the code are in `CLAUDE.md` ("Fast
 - **Script rewrite:** Blob Worker for scripts of 16 KB or more. Needs no CSP change (the only CSP header is `frame-ancestors 'self'`).
 - **Kill switches:** `features` in `version.json`. To ship a release with one off: `LB_FEATURE_WORKER=false LB_FEATURE_RESPCACHE=false LB_FEATURE_OWNSOCKETS=1 ./deploy.sh`
   (values: `true`/`false`, sockets 0 to 4; 0 and 1 mean the single plain `/wisp/` path).
-- **Measuring:** `npm run test:speed` loads 7 public sites cold and warm 3 times each in fresh browser contexts against the rehearsal stack and writes
-  `test-results/speed-<sha>.json`; `node scripts/speed-compare.mjs base.json new.json` fails on a median `load` more than 10 % and 100 ms slower. Run it on the base
-  commit and the candidate, same machine, same hour (public sites vary).
+- **Measuring:** `npm run test:speed` runs under two Playwright projects, `chromium` (unthrottled) and `chromebook` (1366x768, 4x CPU, 10/5 Mbit/s, 40 ms RTT).
+  It starts the fixture sites container (`tests/fixtures/sites`, 10.89.85.10 on the internal `lb_fixture` network) and gives the rehearsal relay the test-only
+  `deploy/rehearsal/relay-fixtures.toml` (prod `config.toml` keeps `allow_non_global = false`; `tests/e2e/relay-config.spec.js` asserts it). Fixtures run 7 reps,
+  public sites 3 (`LB_SPEED_REPS`, `LB_SPEED_PUBLIC_REPS`). Per page: firstBytes, dom, shown, load, transfer bytes, long tasks while scrolling; plus boot timings
+  and DOMParser/rewrite time. Output `test-results/speed-<sha>-<project>.json`; `node scripts/speed-compare.mjs base.json new.json` compares medians and fails only
+  for fixture pages and boot (more than 10 % and 100 ms slower). Public sites are reported, not gated. Run base and candidate on the same machine, same hour.
+  The 0.2.3 baseline is in `docs/1.0/BASELINE.md`.
+
+### Home link (measured 2026-11-10)
+The home upload rate is the ceiling for all members together (`docs/1.0/RELAY.md` 2.1). Measured from the VM with curl against speed.cloudflare.com at 15:07 to 15:42 Chicago (not a quiet hour), 3 runs each, no personal data:
+download 104 Mbit/s median (104, 114, 102; 25 MB bodies, the 100 MB request is now refused with HTTP 403), upload 21 Mbit/s median (22, 21 and one outlier at 2.5;
+three further runs gave 22 Mbit/s each; 25 MB bodies, one stream), TCP connect to Cloudflare 30 ms median, time to first byte 154 ms. So the upload ceiling for all members
+together is about 21 Mbit/s on one stream, below one member's 50 Mbit/s cap; suggested `TOTAL_UPLINK_MBPS` is about 18 until a multi-stream test shows more. Repeat monthly.
+Details in `docs/1.0/BASELINE.md`.
