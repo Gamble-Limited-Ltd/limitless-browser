@@ -84,7 +84,7 @@ Measure before/after (transfer size, load time, time to interactive) and record 
 ## 4. Open items
 - Cap numbers and enforcement point.
 - Brotli: decided, precompressed trees (section 5).
-- Cloudflare's terms for relaying arbitrary traffic. **Checked 2026-11-10, waiting on Boss:** the Self-Serve
+- Cloudflare's terms for relaying arbitrary traffic. **Checked 2026-11-10. Boss decided (2026-11-10): option 1, accept the risk for now; alternatives to be thought through before 1.0 ships (`docs/1.0/PLAN.md` section 7).** the Self-Serve
   Subscription Agreement (https://www.cloudflare.com/terms/, updated 2025-09-12) section 2.2.1(j): unless Cloudflare
   permits it in writing, you will not "use the Services to provide a virtual private network or other similar proxy
   services". It covers all Services, so Tunnel too. `/wisp/` carries members' TCP through the tunnel, which reads as

@@ -39,6 +39,12 @@ Service Inventory. No personal data is sent. Repeat monthly (one line in the Wor
   relay + DNS, website, rewrite + render.
 
 ## 3. S4: server tuning (wave 2, each item needs Boss's go when applied)
+
+**3.0 Tunnel terms study (first S4 item, decided before 1.0 ships).** Cloudflare SSA 2.2.1(j) covers `/wisp/` on the
+tunnel (`R1-WORKERS-RESULT.md` addendum; Boss accepted the risk for now on 2026-11-10). Think each alternative through
+with cost, privacy (home IP exposure), the free-only rule, latency and effort: `/wisp/` off Cloudflare (port forward,
+other free tunnels and their terms), a separate account and domain, written permission, Proton egress (section 5).
+One page to Boss with a recommendation; any port, tunnel or DNS change needs Boss.
 3.1 **nginx auth cache.** `proxy_cache` on `location = /_gate/check` keyed on the session cookie + host, 5 s validity,
 only for 200 answers (never 401/403). Saves one gate round trip on every app file and every new WISP socket.
 Revocation is unaffected in practice: revoke already deletes sessions and closes sockets at once (0.2.0), and the access

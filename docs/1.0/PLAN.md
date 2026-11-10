@@ -156,6 +156,9 @@ Answered by Boss on 2026-11-10 (second question round):
 8. Invite email sender: the existing **gamblelimitedsupport@taps-holdings.org** (check the Resend domain set-up at S5).
 9. Host changes: Claude prepares and tests them on the rehearsal stack, then **pastes the exact commands** when S4 lands;
    Boss runs the host parts; container config ships with the 1.0 deploy.
+10. Cloudflare SSA 2.2.1(j) (no proxy services) covers the existing tunnel carrying `/wisp/` (`R1-WORKERS-RESULT.md`
+   addendum). Boss: **accept the risk for now**; the alternatives (move `/wisp/` off Cloudflare, separate account and domain,
+   written permission) get a proper study during S4, decided before 1.0 ships because 1.0 raises traffic.
 Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
 
 Last verified: 2026-11-10
