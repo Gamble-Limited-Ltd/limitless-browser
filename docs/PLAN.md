@@ -176,6 +176,9 @@ console clean, Playwright smoke green.
   Admin panel (slice D) is on its own branch.
   Decision log, slice D (2026-10-21): the panel is `limitless://admin`, served by the check service under `/_lb/admin/api/` for the owner only (`OWNER_SUB`), with a password step-up for changes; approvals go through the GLL ID owner API (`~/gll-id/docs/OWNER-API.md`), read only from local data when that is unavailable; usage rows are kept 30 days (were 14); kill switches: `ADMIN_PANEL=off`, `./manage.sh clients owner-api limitless-browser off`.
 - 0.3.0 = Faster startup (slice A).
+- **Superseded 2026-11-10 (Boss):** the next release is **1.0.0** (Major lane): speed (pages, startup, server path),
+  membership (invites, numbers, tiers, ceremony, certificate), UI and admin together. Slice A is folded into it as S2.
+  Plan: `docs/1.0/PLAN.md` and the topic files next to it.
 
 ## 6. Open items
 - Exact per-user caps (proposal: 64 concurrent streams, about 50 Mbit/s, 20 GB/day soft cap; SMTP/IRC/torrent
