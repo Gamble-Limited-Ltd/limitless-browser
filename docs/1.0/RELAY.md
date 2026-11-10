@@ -95,7 +95,7 @@ Recommendation: decide after 2.1 and the prototype. If chosen, Proton is the qui
   no loopback) stay as they are. Host egress rules in `deploy/relay/egress-rules.sh` remain a separate Boss step.
 - Daily cap 20 GiB per user stays (admin override per user).
 
-## 7. R1: Cloudflare Workers relay prototype (research, throwaway)
+## 7. R1: Cloudflare Workers relay prototype (DROPPED 2026-11-10, Cloudflare SSA 2.2.1(j); see R1-WORKERS-RESULT.md)
 Goal: decide whether a free off-home relay is reasonable. Nothing here touches production.
 - **Build:** a Worker implementing a minimal WISP v1 server over a WebSocket, opening TCP with `connect()` from
   `cloudflare:sockets`. Auth: the gate issues a short-lived signed token (HMAC-SHA256, 5 min, member sub + expiry); the

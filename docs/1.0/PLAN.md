@@ -66,7 +66,7 @@ At most **2 feature slices in flight** for this project (and 3 across the portfo
 | 4 | **S6 UI** | Browser, theme | Toolbar and menu, tabs, settings, splash, notices, errors, icons, Prime theme, Vault lock, tour | `UI.md` |
 | 4 | **S7 Admin** | gate, Browser | Members, profiles, queue, charts, hops, audit viewer, reports, broadcast notices | `ADMIN.md` |
 | 5 | **S8 Downloads panel** | Browser | Queue, progress, pause/resume, retry, counts against caps | `SPEED.md` 6 |
-| any | **R1 Cloudflare Workers relay prototype** (throwaway research) | scratch | Measure and report; no production change | `RELAY.md` 7 |
+| any | **R1 Cloudflare Workers relay prototype**: **dropped** (Boss, 2026-11-10): Cloudflare SSA 2.2.1(j) forbids proxy services on Workers | none | Result in `R1-WORKERS-RESULT.md` | `RELAY.md` 7 |
 | any | **Rules round** (questions, then text) | docs | Charter and full Rules wording | `RULES-DRAFT.md` |
 
 Why this order: speed is the priority and needs a baseline first; S1 and S2 touch different parts of `index.html`
@@ -156,6 +156,6 @@ Answered by Boss on 2026-11-10 (second question round):
 8. Invite email sender: the existing **gamblelimitedsupport@taps-holdings.org** (check the Resend domain set-up at S5).
 9. Host changes: Claude prepares and tests them on the rehearsal stack, then **pastes the exact commands** when S4 lands;
    Boss runs the host parts; container config ships with the 1.0 deploy.
-Still open: none blocking. Exit IP is decided after T0 and R1.
+Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
 
 Last verified: 2026-11-10
