@@ -148,7 +148,9 @@ Answered by Boss on 2026-11-10 (second question round):
 2. Exit IP: **decide after measuring** (home upload test and the Workers prototype). Home IP until then.
 3. Numbers: existing members take **001 upward** by join order; reserved list **007, 100, 777** (only numbers still
    free; if join order lands an existing member on 007 they keep it).
-4. Tier perks: **50 / 75 / 100 Mbit/s** and **1 / 2 / 3 nominations a month**, fair-share weights 1 / 1.5 / 2.
+4. Tier perks: **1 / 2 / 3 nominations a month**, fair-share weights 1 / 1.5 / 2. The 50 / 75 / 100 Mbit/s caps were dropped after T0
+   measured about 21 Mbit/s home upload (Boss, 2026-11-10): tiers are shares of the total. A brainstorm on making the
+   whole link faster comes later (with the S4 tunnel study).
 5. Rules round: done the same day; decisions in `RULES-DRAFT.md`.
 6. Email exceptions: **kmlhs.org accounts only**. No GLL ID change. Invites refuse other email domains.
 7. Privacy text: **Boss pre-approved** Claude's text for this release ("auto approve your work, when work begins").

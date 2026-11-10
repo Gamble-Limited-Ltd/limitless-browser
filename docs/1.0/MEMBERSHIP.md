@@ -80,7 +80,7 @@ an exception Boss added by hand in GLL ID still works, because approval goes by 
 ## 5. Tiers (values confirmed by Boss, 2026-11-10)
 | | Ordinal | Cardinal | Prime |
 |---|---|---|---|
-| Bandwidth cap (each way) | 50 Mbit/s | 75 Mbit/s | 100 Mbit/s |
+| Bandwidth | share of the total (no fixed Mbit/s perk; Boss 2026-11-10, home upload is about 21 Mbit/s) | same, larger share | same, largest share |
 | Fair-share weight under load (`RELAY.md` 3.5) | 1 | 1.5 | 2 |
 | Nominations per month | 1 | 2 | 3 |
 | Themes | all except Vault and Prime | + Vault | + Vault + Prime theme |

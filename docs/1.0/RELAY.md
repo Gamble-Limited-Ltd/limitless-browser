@@ -73,8 +73,9 @@ better throughput to far or lossy sites and members on school Wi-Fi. Exact comma
 - When demand exceeds it: weighted max-min sharing across active members, recomputed every 250 ms on top of the existing
   per-user token buckets (`src/bandwidth.ts`). Weights: owner first (served before anyone, still under the total),
   Prime 2, Cardinal 1.5, Ordinal 1, warned 1, suspended 0 (no access anyway).
-- Per-member caps by tier (confirmed by Boss 2026-11-10, `MEMBERSHIP.md` 5): Ordinal 50 Mbit/s, Cardinal 75, Prime 100; owner
-  unlimited (as today). Per-user overrides in admin still win.
+- Per-member caps by tier: **replaced 2026-11-10 (Boss)**. The home upload measured about 21 Mbit/s (`BASELINE.md`), so fixed
+  50 / 75 / 100 Mbit/s perks cannot be met. Tiers get fair-share weights only (above) of the total (`TOTAL_UPLINK_MBPS` about 18);
+  owner unlimited (as today). Per-user overrides in admin still win. Ways to raise the total get their own brainstorm later.
 - Unit tests in `src/tests/bandwidth.test.ts`: two members share fairly, weights hold, owner first, caps unchanged when
   under the total.
 
