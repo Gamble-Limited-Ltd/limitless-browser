@@ -13,6 +13,7 @@ This file is the index, the order of work and the ship gates. Detail lives in th
 | `UI.md` | Chrome, tabs, settings, splash, notices, errors, icons, Prime theme, tier marks |
 | `ADMIN.md` | Admin panel additions and the gate API behind them |
 | `TESTING.md` | Harness upgrades, test layers, gates for the Major lane, Boss's Chromebook checklist |
+| `design/` | Design reference for dev: `design-room.html` (snapshot of the picker artifact, open in a browser; names in it are examples) and `picks.json` (Boss's 30 picks with notes). Build from the `fav` picks and apply the notes. |
 
 ## 1. What 1.0 is
 One release, version **1.0.0**, **Major lane** (Boss, 2026-11-10: speed and membership ship together). It contains:
@@ -60,7 +61,7 @@ At most **2 feature slices in flight** for this project (and 3 across the portfo
 | 1 | **S2 Startup** | Browser | WASM, acorn, PDF.js and skins CSS out of `index.html`; service worker shell; lazy subsystems | `SPEED.md` 3 |
 | 2 | **S3 Client speed extras** | Browser | Tab sleeping, rewrite cache, cached rewritten pages, worker CSS rewrite, instant Back, warm favourites | `SPEED.md` 4 |
 | 2 | **S4 Server path** | Browser deploy, gate | Per-hop timing, nginx auth cache, relay DNS cache, BBR, relay resources, fair share + tier weights, dependency review | `RELAY.md` |
-| 3 | **D2 Design round 2** (artifact, not code) | none | Refine the winners: Crimson Prime theme, rings marks, certificate A with corner QR, typed number entry, splash and settings fixes | `UI.md` 9 |
+| 3 | **D2 Design round 2**: **dropped** (Boss, 2026-11-10: the design room is done). S5/S6 build from `design/picks.json` and apply its notes (corner QR, typed number, name before number) directly | none | Crimson Prime theme, rings marks, certificate A with corner QR, typed number entry, splash and settings fixes | `UI.md` 9, `design/` |
 | 3 | **S5 Membership** | gate, Browser | Data model, invites, ceremony, numbers, tiers, standing, PDF, verify page, nominations | `MEMBERSHIP.md` |
 | 4 | **S6 UI** | Browser, theme | Toolbar and menu, tabs, settings, splash, notices, errors, icons, Prime theme, Vault lock, tour | `UI.md` |
 | 4 | **S7 Admin** | gate, Browser | Members, profiles, queue, charts, hops, audit viewer, reports, broadcast notices | `ADMIN.md` |

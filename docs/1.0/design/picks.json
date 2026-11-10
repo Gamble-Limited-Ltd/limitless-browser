@@ -1,0 +1,182 @@
+{
+ "admin-charts": {
+  "at": 1794342570294,
+  "note": "",
+  "pick": "fav",
+  "title": "Live and 30 days"
+ },
+ "admin-hops": {
+  "at": 1794342573344,
+  "note": "",
+  "pick": "fav",
+  "title": "Health: where the time goes"
+ },
+ "admin-members": {
+  "at": 1794342564606,
+  "note": "",
+  "pick": "fav",
+  "title": "Members and profile"
+ },
+ "admin-queue": {
+  "at": 1794342569127,
+  "note": "",
+  "pick": "fav",
+  "title": "Invites and nominations"
+ },
+ "bulletin-engraved": {
+  "at": 1794342532209,
+  "note": "",
+  "pick": "fav",
+  "title": "Broadcast notice"
+ },
+ "cer-invite-a": {
+  "at": 1794342400465,
+  "note": "",
+  "pick": "fav",
+  "title": "Invitation card"
+ },
+ "cer-number-a": {
+  "at": 1794342410268,
+  "note": "You should type in a number, not select.",
+  "pick": "maybe",
+  "title": "Choose your number"
+ },
+ "cer-sign-a": {
+  "at": 1794342413752,
+  "note": "",
+  "pick": "fav",
+  "title": "Read and sign the charter"
+ },
+ "cert-charter": {
+  "at": 1794342485858,
+  "note": "",
+  "pick": "fav",
+  "title": "Signed charter"
+ },
+ "cert-layout-a": {
+  "at": 1794342462399,
+  "note": "Your going to have to fix the qr code, make it small in the corner or something. ",
+  "pick": "fav",
+  "title": "A. Centred classic"
+ },
+ "cert-layout-b": {
+  "at": 1794342444990,
+  "note": "",
+  "pick": "no",
+  "title": "B. Ledger"
+ },
+ "cert-letter": {
+  "at": 1794342484726,
+  "note": "",
+  "pick": "fav",
+  "title": "Personal letter"
+ },
+ "cert-prime": {
+  "at": 1794342495596,
+  "note": "Again, fix the qr code.",
+  "pick": "fav",
+  "title": "Prime certificate"
+ },
+ "chrome-classic": {
+  "at": 1794342526052,
+  "note": "",
+  "pick": "fav",
+  "title": "Classic tabs"
+ },
+ "chrome-vertical": {
+  "at": 1794342526917,
+  "note": "",
+  "pick": "fav",
+  "title": "Vertical tabs"
+ },
+ "error-calm": {
+  "at": 1794342547744,
+  "note": "",
+  "pick": "fav",
+  "title": "Error page"
+ },
+ "marks-core": {
+  "at": 1794342382528,
+  "note": "",
+  "pick": "no",
+  "title": "Core"
+ },
+ "marks-moons": {
+  "at": 1794342380588,
+  "note": "",
+  "pick": "no",
+  "title": "Moons"
+ },
+ "marks-rings": {
+  "at": 1794342363934,
+  "note": "",
+  "pick": "fav",
+  "title": "Rings"
+ },
+ "notice-formal": {
+  "at": 1794342516110,
+  "note": "",
+  "pick": "fav",
+  "title": "Formal notice"
+ },
+ "notice-letter": {
+  "at": 1794342517262,
+  "note": "",
+  "pick": "fav",
+  "title": "Letter from the Director"
+ },
+ "prime-crimson": {
+  "at": 1794342347763,
+  "note": "",
+  "pick": "fav",
+  "title": "Crimson and obsidian"
+ },
+ "prime-garnet": {
+  "at": 1794342372425,
+  "note": "",
+  "pick": "no",
+  "title": "Garnet glass"
+ },
+ "prime-oxblood": {
+  "at": 1794342375615,
+  "note": "",
+  "pick": "no",
+  "title": "Oxblood and ice"
+ },
+ "prime-platinum": {
+  "at": 1794342350197,
+  "note": "",
+  "pick": "maybe",
+  "title": "Obsidian and platinum"
+ },
+ "reveal-engrave-script": {
+  "at": 1794342425023,
+  "note": "",
+  "pick": "no",
+  "title": "Engrave, script numerals"
+ },
+ "reveal-engrave-serif": {
+  "at": 1794342426022,
+  "note": "",
+  "pick": "fav",
+  "title": "Engrave, serif numerals"
+ },
+ "reveal-seal": {
+  "at": 1794342423935,
+  "note": "",
+  "pick": "maybe",
+  "title": "Engrave inside the seal"
+ },
+ "settings-6": {
+  "at": 1794342558127,
+  "note": "Your name should be before your number. ",
+  "pick": "fav",
+  "title": "Settings in six groups"
+ },
+ "splash-member": {
+  "at": 1794342542281,
+  "note": "Should show name, then small number text as footer",
+  "pick": "fav",
+  "title": "Splash"
+ }
+}
