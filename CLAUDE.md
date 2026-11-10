@@ -6,8 +6,8 @@ Fork of GUST (Nautilus Labs, AGPLv3), rebranded for Gamble Limited Ltd. (GLL) as
 Stamp, not the full Gilded Ledger chrome. Copy neutral: "private browsing proxy".
 **Master plan, decisions and stages: `docs/PLAN.md`** (planning Q&A 2026-10-18). Rebrand details: `docs/REBRAND-PLAN.md`.
 Read both before touching names, credits, license text or features.
-- **State (checked 2026-11-02):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
-  `e42ee36` = `main`, `LB_VERSION` 0.2.2 (0.2.3 on `feat/legal-v2`, dark legal v2, not deployed).
+- **State (checked 2026-11-09):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
+  `c88ce5e` (0.2.3, legal v2, `LEGAL_VERSION=2026-11-08`, deployed by Boss 2026-11-08; the hash was written by hand on 2026-11-09, see Deploy).
 - Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are
   cherry-picked by hand; the fork was in step with `upstream/main` 08515a7 as of 2026-10-18.
 - **Invite only (decided 2026-10-17):** sign-in through GLL ID (GATE) is required and only users Boss approves get in.
@@ -53,8 +53,10 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 - Not offloaded to buildpc (no `.nvmrc`; stack tests unverified there).
 
 ## Deploy / release
-- `./deploy.sh [sha]` (Boss runs it): clean tree, builds from `git archive`, compose project `limitless-browser`, smoke
-  test, writes `.last-deploy-hash`. Rollback: `./deploy.sh <previous sha>`. Needs `~/limitless-gate` and the gitignored
+- `./deploy.sh [sha]` (Boss runs it): clean tree, builds from `git archive`, compose project `limitless-browser`, writes
+  `.last-deploy-hash` as soon as the containers are up (the daily rotation's preflight compares the lbgate image to it), then smoke
+  tests with 30 s retries; a smoke failure prints the rollback command. Before 2026-11-09 the hash came after the smoke, and a
+  failed smoke on 2026-11-08 left it stale and blocked the 06:00 rotation. After a deploy: `~/gll-planning/rotation/rotate.sh check`. Rollback: `./deploy.sh <previous sha>`. Needs `~/limitless-gate` and the gitignored
   `deploy/gate.env`. Follow `~/.claude/docs/release-procedure.md`.
 
 ## Rules unique to this repo
@@ -181,4 +183,4 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 ## Legal v2 dark launch (2026-11-01, contract in ~/gll-planning/legal-hall/PLAN.md)
 `LEGAL_VERSION` (YYYY-MM-DD) on the `web` container, from `deploy/.env` (gitignored; compose pass-through, empty default). nginx cannot read env, so `deploy/web/legal-v2.sh` (an nginx `docker-entrypoint.d` script) writes `/tmp/legal-v2.conf` at container start, included by the `/legal/` location. Unset, empty or invalid: empty file, `/legal/` exactly as before. Set: `/legal/terms(.html)` and `/legal/privacy(.html)` 302 to `https://hall.taps-holdings.org/legal/terms|privacy`; `/legal/` itself stays served (it holds the AGPL source link). No consent storage here: GATE sign-in is acceptance. Go-live: put `LEGAL_VERSION=<date>` in `deploy/.env` and `docker compose -p limitless-browser -f deploy/docker-compose.yml up -d web` (recreate, no rebuild); gate side is `LEGAL_VERSION` in `deploy/gate.env`. Test: `npm run test:legal` (throwaway nginx container).
 
-Last verified: 2026-11-08
+Last verified: 2026-11-09
