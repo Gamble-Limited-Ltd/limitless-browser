@@ -84,7 +84,15 @@ Measure before/after (transfer size, load time, time to interactive) and record 
 ## 4. Open items
 - Cap numbers and enforcement point.
 - Brotli: decided, precompressed trees (section 5).
-- Cloudflare's terms for relaying arbitrary traffic.
+- Cloudflare's terms for relaying arbitrary traffic. **Checked 2026-11-10, waiting on Boss:** the Self-Serve
+  Subscription Agreement (https://www.cloudflare.com/terms/, updated 2025-09-12) section 2.2.1(j): unless Cloudflare
+  permits it in writing, you will not "use the Services to provide a virtual private network or other similar proxy
+  services". It covers all Services, so Tunnel too. `/wisp/` carries members' TCP through the tunnel, which reads as
+  exactly that. Section 8: a breach of 2.2 allows immediate suspension of all or part of the account (the same account
+  serves every GLL hostname and Access). The CDN service terms (Free/Pro/Business) also allow limits when video or a
+  disproportionate share of large files goes through the CDN. No tunnel-specific carve-out found (the Zero Trust
+  terms page did not render without JS). This is a reading of public text, not legal advice. Options for Boss are in
+  `docs/1.0/R1-WORKERS-RESULT.md` (tunnel addendum).
 
 ## 5. What is built (stage 5, 2026-10-19)
 Files: `deploy/docker-compose.yml` (+ `docker-compose.dev.yml`, `dev-up.sh`, `dev/stub-gate.conf.template`), `deploy/web/` (Dockerfile,

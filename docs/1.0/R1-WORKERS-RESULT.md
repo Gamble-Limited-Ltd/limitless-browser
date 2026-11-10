@@ -48,3 +48,18 @@ Recommended instead: skip R1; use the Proton egress option in `RELAY.md` section
 cheap VPS relay if Boss ever allows a paid service.
 
 Last verified: 2026-11-10
+
+## Addendum 2026-11-10: the existing Cloudflare Tunnel
+Boss asked whether today's setup falls under the same clause. SSA 2.2.1(j) applies to all Services, not only Workers,
+so the tunnel route for `limitless.taps-holdings.org` (which carries `/wisp/`, members' TCP) reads as a breach too.
+Section 8 lets Cloudflare suspend all or part of the account at once for a 2.2 breach; that account also carries GATE,
+HALL, Status, the games and Access. The CDN terms add a separate limit on video and large files on free plans.
+Mitigating facts (not a defence): invite only, a handful of members, traffic is opaque WSS. Not legal advice.
+Options for Boss:
+1. Accept the risk as it is (status quo since launch, 2026-10-19). Log the decision.
+2. Keep the app (static files, auth) on the tunnel and move only `/wisp/` to a non-Cloudflare path (direct port
+   forward on the home IP or another free tunnel whose terms allow it). Exposes the home IP or adds a provider; needs
+   its own terms check, and port/tunnel changes need Boss.
+3. Move Limitless to its own Cloudflare account and domain so a suspension cannot reach the other GLL services. Still
+   a breach on that account; it only limits the blast radius.
+4. Ask Cloudflare for written permission.
