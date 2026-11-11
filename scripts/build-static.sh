@@ -52,10 +52,14 @@ FEAT_SOCKETS="${LB_FEATURE_OWNSOCKETS:-4}"
 FEAT_WORKER="${LB_FEATURE_WORKER:-true}"
 FEAT_CACHE="${LB_FEATURE_RESPCACHE:-true}"
 FEAT_SW="${LB_FEATURE_SW:-true}"
+FEAT_PIPELINE="${LB_FEATURE_PIPELINE:-true}"
+FEAT_LAZYIMG="${LB_FEATURE_LAZYIMG:-true}"
 [[ "$FEAT_SOCKETS" =~ ^[0-4]$ ]] || { echo "build-static: LB_FEATURE_OWNSOCKETS must be 0 to 4" >&2; exit 1; }
-[[ "$FEAT_WORKER" =~ ^(true|false)$ && "$FEAT_CACHE" =~ ^(true|false)$ && "$FEAT_SW" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE and LB_FEATURE_SW must be true or false" >&2; exit 1; }
-printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s}}\n' \
-  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" > "$OUT/version.json"
+for v in "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG"; do
+  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE and LB_FEATURE_LAZYIMG must be true or false" >&2; exit 1; }
+done
+printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s}}\n' \
+  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" > "$OUT/version.json"
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"

@@ -52,6 +52,10 @@ limit 100. The bandwidth meter in the menu shows "Data saver on".
 chain, module graph) checking order, that `shown` happens before a 5 s image finishes, and that script execution order is
 unchanged. Speed harness before/after on the fixture set (`TESTING.md`).
 
+**S1 status (built on `slice/1.0-s1`, 2026-11-10).** Done: 2.1 (kick-off of all fetches, `qf` shared promises, CSS stage in parallel; F-i was a non-issue, `queueFetch` already shares in-flight GETs), 2.2, 2.3 (24 image pre-warm, runtime rect-based lazy promotion), 2.4 (determinate bar, no overlay or frame blanking when a page is showing), 2.5 (Save-Data header, no pre-warm, margin 50 %, preload none, no autoplay, limit 100), 2.6 (`tests/e2e/pipeline.spec.js`). Kill switches `pipeline`, `lazyImg`. Not built: the "Data saver on" label in the bandwidth meter (no meter exists yet); CSS `@import` chains still resolve one after another inside a stylesheet.
+Speed, medians of 7 vs the regenerated 0.2.3 baseline (`docs/1.0/baseline/`), Chromebook profile: fx-news warm shown 689 to 599 ms (-13 %, target -40 % NOT met; warm shown is dominated by script rewriting, S3 4.3/4.5), fx-news cold shown 3656 to 2720 ms, fx-news warm load 4426 to 1535 ms; fx-slow cold shown 8354 to 3343 ms (page no longer waits for the 5 s image; the 2 s script still gates it). Gate: chromium passes; on chromebook fx-frames warm shown read 554 to 686 ms once, a re-run side by side gave 618 (0.2.3) vs 607 ms (S1), so noise.
+
+
 ## 3. S2: startup (wave 1)
 Goal: a repeat open on a Chromebook reaches a usable start page in well under a second; a cold open downloads about half
 of today's bytes.

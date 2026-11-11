@@ -5,6 +5,10 @@ What changed, in plain language. Newest first.
 ## Unreleased 1.0.0
 
 - Limitless now opens much faster, especially the second time: the big parts of the app are separate files that your browser keeps, so a repeat visit has a lot less to download and read.
+- Pages now appear as soon as their text, styles and scripts are ready. Images keep loading after the page is shown, so one slow picture no longer holds the whole page back.
+- The page you were on stays visible and usable while the next one loads. A thin progress bar under the address bar shows how far the load has come, instead of covering the page.
+- Pictures far down a page now load only when you scroll close to them, which saves time and data.
+- New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
 
 ## 0.2.3
 
