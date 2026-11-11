@@ -100,33 +100,31 @@ async function tryOnce(browser, testInfo, site) {
   } finally { await ctx.close(); }
 }
 
+// One test per site so Playwright can run several at once (--workers=3). Each writes test-results/sites-<sha>/<name>.json;
+// scripts/sites-merge.mjs joins them into test-results/sites-<sha>.json (npm run test:sites does both).
 test.describe('real sites', () => {
   test.skip(process.env.LB_SITES !== '1', 'set LB_SITES=1 (and run through deploy/rehearsal/run.sh)');
+  test.describe.configure({ mode: 'parallel' });
 
-  test('list', async ({ browser }, testInfo) => {
-    test.setTimeout(6 * 60 * 60 * 1000);
-    const out = { sha: sha(), date: new Date().toISOString(), reps: REPS, project: testInfo.project.name, sites: {} };
-    for (const site of SITES) {
-      if (ONLY && !ONLY.includes(site.name)) continue;
+  for (const site of SITES) {
+    if (ONLY && !ONLY.includes(site.name)) continue;
+    test(site.name, async ({ browser }, testInfo) => {
+      test.setTimeout(30 * 60 * 1000);
       const runs = [];
       for (let i = 0; i < REPS; i++) runs.push(await tryOnce(browser, testInfo, site));
       const ok = runs.filter((r) => r.loaded);
       const fails = runs.filter((r) => !r.loaded);
       const cats = {};
       for (const f of fails) cats[f.category] = (cats[f.category] || 0) + 1;
-      out.sites[site.name] = {
+      const rec = {
         url: site.url, cat: site.cat, sel: site.sel, reps: REPS, loadedCount: ok.length,
         shownMedian: median(ok.map((r) => r.shown)), loadMedian: median(ok.map((r) => r.load)),
         failures: cats, detail: fails[0] ? fails[0].detail : null, runs,
       };
-      console.log(`sites: ${site.name.padEnd(18)} ${ok.length}/${REPS} shown ${out.sites[site.name].shownMedian} load ${out.sites[site.name].loadMedian} ${JSON.stringify(cats)} ${fails[0] ? String(fails[0].detail).slice(0, 80) : ''}`);
-    }
-    const dir = path.join(__dirname, '..', '..', 'test-results');
-    fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, `sites-${out.sha}.json`);
-    fs.writeFileSync(file, JSON.stringify(out, null, 2));
-    const all = Object.values(out.sites);
-    console.log(`sites: wrote ${file}; full success ${all.filter((s) => s.loadedCount === s.reps).length}/${all.length}, rep success ${all.reduce((a, s) => a + s.loadedCount, 0)}/${all.length * REPS}`);
-    expect(all.length).toBeGreaterThan(0);
-  });
+      console.log(`sites: ${site.name.padEnd(18)} ${ok.length}/${REPS} shown ${rec.shownMedian} load ${rec.loadMedian} ${JSON.stringify(cats)} ${fails[0] ? String(fails[0].detail).slice(0, 80) : ''}`);
+      const dir = path.join(__dirname, '..', '..', 'test-results', `sites-${sha()}`);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, `${site.name}.json`), JSON.stringify({ name: site.name, ...rec }, null, 2));
+    });
+  }
 });

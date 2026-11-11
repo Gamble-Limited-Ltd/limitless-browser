@@ -8,7 +8,7 @@
     "test": "playwright test",
     "test:legal": "tests/legal-v2/run.sh",
     "test:stack": "deploy/rehearsal/run.sh",
-    "test:sites": "LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook tests/stack/sites.spec.js",
+    "test:sites": "LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=3 tests/stack/sites.spec.js; node scripts/sites-merge.mjs",
     "test:speed": "LB_SPEED=1 deploy/rehearsal/run.sh tests/stack/speed.spec.js",
     "speed:compare": "node scripts/speed-compare.mjs"
   },
