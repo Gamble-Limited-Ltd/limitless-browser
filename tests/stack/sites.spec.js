@@ -88,6 +88,7 @@ async function tryOnce(browser, testInfo, site) {
     res.shown = marks.shown ?? null; res.load = marks.load ?? null;
     const perr = await frame.evaluate(() => (window.__perr || []).slice(0, 6)).catch(() => []);
     res.loaded = found;
+    if (!found) res.snippet = await frame.evaluate(() => (document.title + ' | ' + (document.body ? document.body.innerText : '')).replace(/\s+/g, ' ').slice(0, 200)).catch(() => null);
     if (!found) {
       if (cons.length) { res.category = 'csp'; res.detail = cons[0]; }
       else if (perr.length) { res.category = 'script'; res.detail = perr.slice(0, 3).join(' | ').slice(0, 200); }
@@ -119,7 +120,7 @@ test.describe('real sites', () => {
       const rec = {
         url: site.url, cat: site.cat, sel: site.sel, reps: REPS, loadedCount: ok.length,
         shownMedian: median(ok.map((r) => r.shown)), loadMedian: median(ok.map((r) => r.load)),
-        failures: cats, detail: fails[0] ? fails[0].detail : null, runs,
+        failures: cats, detail: fails[0] ? fails[0].detail : null, snippet: fails[0] ? fails[0].snippet : null, runs,
       };
       console.log(`sites: ${site.name.padEnd(18)} ${ok.length}/${REPS} shown ${rec.shownMedian} load ${rec.loadMedian} ${JSON.stringify(cats)} ${fails[0] ? String(fails[0].detail).slice(0, 80) : ''}`);
       const dir = path.join(__dirname, '..', '..', 'test-results', `sites-${sha()}`);

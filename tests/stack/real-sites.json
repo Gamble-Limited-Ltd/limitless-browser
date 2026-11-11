@@ -10,7 +10,7 @@
   { "name": "merriam-webster", "cat": "reference", "url": "https://www.merriam-webster.com/", "sel": "input[name=search], #search" },
   { "name": "wikihow", "cat": "reference", "url": "https://www.wikihow.com/", "sel": "input[name=search], #hp_search" },
   { "name": "bbc", "cat": "news", "url": "https://www.bbc.com/news", "sel": "main h2, main h1, header" },
-  { "name": "cnn", "cat": "news", "url": "https://lite.cnn.com/", "sel": "h2, h1" },
+  { "name": "cnn", "cat": "news", "url": "https://lite.cnn.com/", "sel": "header, a[href]" },
   { "name": "npr", "cat": "news", "url": "https://www.npr.org/", "sel": "h1, h2, header" },
   { "name": "guardian", "cat": "news", "url": "https://www.theguardian.com/international", "sel": "h1, h2, header" },
   { "name": "apnews", "cat": "news", "url": "https://apnews.com/", "sel": "h1, h2, header" },
