@@ -90,6 +90,12 @@ Not recommended until Proton agrees in writing (a support question).
   option A is technically possible. Not checked: whether the router's WAN address is that same address (no CGNAT behind it),
   whether it is static, and the ISP's terms. The Claude Hub had no agent running to read the UniFi gateway; ask it next time
   one is up, or Boss reads the WAN IP in the UniFi console.
+- **Router check (Claude Hub, 2026-11-11, read-only):** the UniFi WAN address is DHCP (not PPPoE), the same address the VM sees,
+  so **no CGNAT**; ISP Spectrum; **no port forwards** today (443 is free); Smart Queues off. DHCP means the address can change:
+  option A needs a DDNS updater for the `/wisp/` name.
+- **Boss picked option A (2026-11-11)** with the relay on its own VM. Created by the hub: Proxmox VMID 100 `limitless-relay` on
+  node `pve`, Debian 13.7, 2 vCPU, 2 GiB, 20 GiB on `hdd-raid`, `vmbr0`, LAN IP 10.1.1.239 by DHCP (no reservation yet), SSH key
+  only, snapshot `clean-install`. Nothing else is on it: no Docker, port forward, DNS, VLAN, rate limit or backup job yet (each is Boss's call).
 - **The tunnel runs on QUIC** (`cloudflared` log: `protocol=quic`). This matters for S4 3.3: host BBR does not change the
   tunnel leg (QUIC carries its own congestion control), see `S4-HOST-COMMANDS.md`.
 - **Draft permission request (option D)** for Boss to send from the Cloudflare dashboard (Support, account and billing or
