@@ -14,7 +14,8 @@ test('chromebook profile: 1366x768, 4x CPU, throttled network', async ({ page },
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   const fast = await spin();
   expect(slow / fast).toBeGreaterThan(2);
-  // index.html is ~1.6 MB (S2): over 10 Mbit/s that cannot take much less than 1 s (unthrottled loopback takes about 10 ms) (route mocks would bypass the throttle).
-  const ms = await page.evaluate(async () => { const t = performance.now(); await (await fetch('/index.html?probe=' + Date.now(), { cache: 'no-store' })).arrayBuffer(); return performance.now() - t; });
-  expect(ms).toBeGreaterThan(600);
+  // Over 10 Mbit/s index.html takes at least size*8/10e6 s; expect half of that so S2/S3 size cuts do not break it
+  // (unthrottled loopback takes about 10 ms; route mocks would bypass the throttle).
+  const { ms, bytes } = await page.evaluate(async () => { const t = performance.now(); const b = await (await fetch('/index.html?probe=' + Date.now(), { cache: 'no-store' })).arrayBuffer(); return { ms: performance.now() - t, bytes: b.byteLength }; });
+  expect(ms).toBeGreaterThan((bytes * 8 / 10e6) * 1000 * 0.5);
 });

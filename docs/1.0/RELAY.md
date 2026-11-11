@@ -39,7 +39,7 @@ Service Inventory. No personal data is sent. Repeat monthly (one line in the Wor
   relay + DNS, website, rewrite + render.
 
 ## 3. S4: server tuning (wave 2, each item needs Boss's go when applied)
-**S4 status (2026-11-10, branch `slice/1.0-s4`):** 3.0 done (`TUNNEL-OPTIONS.md`). 2.2 nginx half, 3.1, 3.2, 3.4 built and tested in the rehearsal; 3.3 is host work (`S4-HOST-COMMANDS.md`); the gate halves of 2.2 and 3.5 (fair share, `FAIR_SHARE`, per-stream histograms) and 3.6 are NOT built (the gate worktree could not be created from the S4 session); 8 reviewed (decisions in `PLAN.md` 7). 3.4: no socket-buffer sysctls (host already allows 6 MiB receive); the relay gets 4 CPUs and 1 GiB.
+**S4 status (2026-11-10, branch `slice/1.0-s4`):** 3.0 done (`TUNNEL-OPTIONS.md`). 2.2 nginx half, 3.1, 3.2, 3.4 built and tested in the rehearsal; 3.3 is host work (`S4-HOST-COMMANDS.md`; 2026-11-11: recommended skip, the tunnel runs on QUIC so host BBR does not reach it); the gate half of 2.2 (per-stream histograms, `GET /_lb/admin/api/hops`), 3.5 (fair share: `FAIR_SHARE`, `TOTAL_UPLINK_MBPS`, `down` direction only, tier weight is 1 for everyone until S5 wires tiers) and 3.6 (`busy` on `GET /_lb/me`, app notice once per session, `tests/e2e/busy.spec.js`) are built on `~/limitless-gate` branch `slice/1.0-s4` (nginx proxies `/_lb/me`; the admin Health view does not show hops yet, ADMIN.md 6); 2.2 app half not built; 8 reviewed (decisions in `PLAN.md` 7). 3.4: no socket-buffer sysctls (host already allows 6 MiB receive); the relay gets 4 CPUs and 1 GiB.
 
 **3.0 Tunnel terms study (first S4 item, decided before 1.0 ships).** Cloudflare SSA 2.2.1(j) covers `/wisp/` on the
 tunnel (`R1-WORKERS-RESULT.md` addendum; Boss accepted the risk for now on 2026-11-10). Think each alternative through
@@ -142,4 +142,4 @@ Goal: decide whether a free off-home relay is reasonable. Nothing here touches p
 | Rotation | none: Limitless is not rotated; `rotate.sh check` still runs after deploy | |
 Update `HOSTING-AND-PERFORMANCE.md` and the vault Service Inventory (new DNS container, monitors) in the same commit.
 
-Last verified: 2026-11-10
+Last verified: 2026-11-11

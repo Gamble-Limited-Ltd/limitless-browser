@@ -8,6 +8,7 @@ What changed, in plain language. Newest first.
 - Pages now appear as soon as their text, styles and scripts are ready. Images keep loading after the page is shown, so one slow picture no longer holds the whole page back.
 - The page you were on stays visible and usable while the next one loads. A thin progress bar under the address bar shows how far the load has come, instead of covering the page.
 - Pictures far down a page now load only when you scroll close to them, which saves time and data.
+- When many people are online at once, Limitless now tells you once per visit that "The line is busy, Data saver helps". It never turns Data saver on for you.
 - New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
 - Sites you visit again open faster: Limitless now remembers the prepared scripts of a site between visits (only when the Resource Cache setting is on).
 - Back and Forward are now instant for the last few pages in each tab: they come straight from memory, with the scroll position where you left it.
