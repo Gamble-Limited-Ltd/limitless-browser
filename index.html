@@ -11417,6 +11417,7 @@ window._libcurlReady = true;
             function lbCacheWipe() {
                 memCache.clear();
                 cacheSize = 0;
+                try { lbBF.map.forEach((l, id) => lbBF.drop(id)); lbPageKV.clear(); lbRwKV.clear(); } catch (_) {}
                 if (!cacheDB) return Promise.resolve();
                 return new Promise((resolve) => {
                     try {
@@ -17157,6 +17158,41 @@ _VIEWER_DL_JS +
                 } catch (_) { h = lbRwHash(src); }
                 return h + ':' + _lbRwVer;
             }
+            // Cached rewritten pages (features.pageCache, S3 4.4): the final rewritten HTML of a document the response cache is
+            // allowed to keep (explicit freshness, no cookie, no no-store: lbCacheEvaluate), keyed by URL + rewriter version, in
+            // its own database LimitlessPages (64 MB). A repeat visit inside the freshness window shows it at once; the normal
+            // load runs behind it. Unchanged source: nothing more happens. Changed: swapped in silently if the member has not
+            // touched the page yet, else a small "Updated, reload" chip (lbPcChip). Settings that change the injected runtime
+            // (ad blocking, allowlist, WebRTC, user agent, spellcheck, Data saver, custom filters, build) are part of `sig`.
+            const lbPageKV = lbMakeKV('LimitlessPages', 64 * 1024 * 1024);
+            const lbPcOn = () => { try { return window.LB_features.pageCache !== false && lbCacheOn(); } catch (_) { return false; } };
+            function lbPcKey(url) { if (!_lbRwVer) _lbRwVer = lbRwHash(rewriteLocationRefs.toString()); return url + '|' + _lbRwVer; }
+            function lbPcSig() {
+                try {
+                    return lbRwHash([blockEnabled, ls.getItem('limitless:adblock:allowlist:v1'), mediaPref('limitless:webrtc:block:v1'), ls.getItem('limitless:ua:page:v1'),
+                        ls.getItem('limitless:spellcheck:v1'), ls.getItem('limitless:datasaver:v1'), JSON.stringify(getCustomFilters()), window.LB_BUILD_SHA,
+                        window.LB_features.lazyImg, ls.getItem('limitless:render:imglimit')].join('|'));
+                } catch (_) { return 'x'; }
+            }
+            function lbPcWatch(pc) {   // note the first touch of the page by the member
+                try {
+                    const d = frame.contentDocument; if (!d) return;
+                    const t = () => { pc.touched = true; };
+                    for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'input']) d.addEventListener(ev, t, { capture: true, once: true, passive: true });
+                } catch (_) {}
+            }
+            function lbPcChip(blobUrl) {
+                let c = document.getElementById('lbPageChip');
+                if (!c) {
+                    c = document.createElement('button'); c.id = 'lbPageChip'; c.type = 'button'; c.textContent = 'Updated, reload';
+                    c.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:99999;padding:8px 14px;border-radius:999px;border:1px solid var(--bd,#888);background:var(--bg-elevated,#222);color:var(--tx,#fff);font:inherit;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.35)';
+                    document.body.appendChild(c);
+                }
+                c.hidden = false;
+                c.onclick = () => { c.hidden = true; if (c._blob) { _blobLoadPending = true; frame.src = c._blob; } };
+                c._blob = blobUrl;
+            }
+            window.LB_pc = { kv: lbPageKV, key: lbPcKey, sig: lbPcSig };
             const lbRwPersistOn = () => { try { return window.LB_features.rewriteCache !== false && lbCacheOn(); } catch (_) { return false; } };
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
@@ -17571,6 +17607,39 @@ _VIEWER_DL_JS +
                         };
                     }
 
+                    // Cached rewritten page (features.pageCache): show it now, the normal load continues behind it.
+                    let _pcShown = null;
+                    const _pcUrl = url;
+                    if (!_isRetry && method === "GET" && activeTabId === initiatorTabId && lbPcOn()) {
+                        try {
+                            const pc = await lbPageKV.get(lbPcKey(url));
+                            if (pc && pc.sig === lbPcSig() && lbNow() < pc.exp && activeTabId === initiatorTabId && !tabCtrl.signal.aborted) {
+                                _pcShown = pc;
+                                const pcBlob = new Blob([pc.html], { type: "text/html;charset=utf-8" });
+                                const pcUrl = URL.createObjectURL(pcBlob);
+                                const prevPc = frame.src;
+                                _blobLoadPending = true;
+                                frame.removeAttribute('srcdoc');
+                                frame.style.display = 'block';
+                                frame.onload = () => {
+                                    const lt = tabs.find(t => t.id === initiatorTabId);
+                                    if (lt) { applyMuteToFrame(!!lt.muted); lt.blobSrc = pcUrl; lt.memBytes = pcBlob.size; }
+                                    lbPcWatch(pc);
+                                    frame.onload = null;
+                                };
+                                frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
+                                frame.src = pcUrl;
+                                lbRevoke(prevPc, 2000);
+                                lbBF.save(initiatorTabId, url, pcUrl, pcBlob.size, pc.title);
+                                if (pc.title) setTabTitle(pc.title);
+                                hideOverlay();
+                                window.__lbPerf.mark('shown');
+                                if (_progTok) lbProg.finish(_progTok);
+                                log('Shown from the page cache: ' + url, 'info');
+                            }
+                        } catch (_) { _pcShown = null; }
+                    }
+
                     const r = await queueFetch(url, opts, PRIORITY.html);
                     window.__lbPerf.mark('firstBytes');
                     if (_progTok && _progTok === lbProg.tok) lbProg.done++;
@@ -17645,6 +17714,12 @@ _VIEWER_DL_JS +
                     // ────────────────────────────────────────────────────────
 
                     const html = new TextDecoder().decode(r.buf);
+                    if (_pcShown && lbRwHash(html) === _pcShown.docSig && activeTabId === initiatorTabId) {
+                        // the page on screen is already built from exactly this document
+                        setStatus("idle", "Ready");
+                        tabAbortControllers.delete(initiatorTabId);
+                        return;
+                    }
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, "text/html");
                     window.__lbPerf.mark('dom');
@@ -18509,10 +18584,15 @@ _VIEWER_DL_JS +
                         addRecentSite(url);
                         return;
                     }
+                    // A cached copy is on screen and the member already touched it: offer the new version instead of replacing it.
+                    const _pcChip = !!(_pcShown && _pcShown.touched);
+                    if (_pcChip) {
+                        lbPcChip(newBlobUrl);
+                    } else {
                     frame.style.opacity = '0';
                     _blobLoadPending = true;
                     frame.src = newBlobUrl;
-                    frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
+                    if (!_pcShown) frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
                     frame.onload = () => {
                         // Re-apply mute state after new content loads
                         const loadedTab = tabs.find(t => t.id === initiatorTabId);
@@ -18524,6 +18604,7 @@ _VIEWER_DL_JS +
                         }
                         frame.onload = null;
                     };
+                    }
                     // Safety: always restore opacity even if the scheduled fade somehow misfires
                     const _opacitySafe = setTimeout(() => { frame.style.opacity = '1'; frame.style.transition = ''; }, 1500);
                     setTimeout(() => {
@@ -18532,10 +18613,19 @@ _VIEWER_DL_JS +
                         clearTimeout(_opacitySafe);
                         setTimeout(() => { frame.style.transition = ''; }, 220);
                     }, 50);
-                    if (prevBlobUrl && prevBlobUrl.startsWith('blob:')) {
+                    if (!_pcChip && prevBlobUrl && prevBlobUrl.startsWith('blob:')) {
                         lbRevoke(prevBlobUrl, 2000);
                     }
-                    if (method === 'GET' && !/no-store/i.test((r.headers && r.headers['cache-control']) || '')) lbBF.save(initiatorTabId, url, newBlobUrl, _newBytes, (doc.title || '').trim());
+                    if (!_pcChip && method === 'GET' && !/no-store/i.test((r.headers && r.headers['cache-control']) || '')) lbBF.save(initiatorTabId, url, newBlobUrl, _newBytes, (doc.title || '').trim());
+                    // Store the rewritten page for the next visit when the document may be cached at all.
+                    if (method === 'GET' && lbPcOn() && url === _pcUrl && !r.skipped) {
+                        try {
+                            let hc = false; try { hc = !!getCookieHeader(url); } catch (_) {}
+                            const ev = lbCacheEvaluate(r, { now: lbNow(), hasCookie: hc });
+                            if (ev.store && ev.freshMs > 0 && lbCacheKind(r.mime) === 'html') lbPageKV.put(lbPcKey(url), { html: finalHtml, title: (doc.title || '').trim(), sig: lbPcSig(), exp: lbNow() + ev.freshMs, docSig: lbRwHash(html) }, finalHtml.length * 2);
+                            else lbPageKV.del(lbPcKey(url));
+                        } catch (_) {}
+                    }
                     hideOverlay();
                     window.__lbPerf.mark('shown');
                     if (_progTok) lbProg.finish(_progTok);
@@ -18989,6 +19079,7 @@ _VIEWER_DL_JS +
                 if (pageUrl) {
                     memCache.clear();
                     lbBF.drop(activeTabId, pageUrl);
+                    lbPageKV.del(lbPcKey(pageUrl));
                     deleteCache(pageUrl);   // Reload asks the server for the document again
                     go(pageUrl, false);
                 }

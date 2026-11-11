@@ -11,6 +11,7 @@ What changed, in plain language. Newest first.
 - New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
 - Sites you visit again open faster: Limitless now remembers the prepared scripts of a site between visits (only when the Resource Cache setting is on).
 - Back and Forward are now instant for the last few pages in each tab: they come straight from memory, with the scroll position where you left it.
+- Pages you opened recently show up at once on the next visit, then quietly check for a newer version. If you have already started reading, a small "Updated, reload" button offers the new version instead of changing the page under you.
 
 ## 0.2.3
 
