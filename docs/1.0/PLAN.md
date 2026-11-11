@@ -66,7 +66,7 @@ At most **2 feature slices in flight** for this project (and 3 across the portfo
 | 3 | **D2 Design round 2**: **dropped** (Boss, 2026-11-10: the design room is done). S5/S6 build from `design/picks.json` and apply its notes (corner QR, typed number, name before number) directly | none | Crimson Prime theme, rings marks, certificate A with corner QR, typed number entry, splash and settings fixes | `UI.md` 9, `design/` |
 | 3 | **S5 Membership** | gate, Browser | Data model, invites, ceremony, numbers, tiers, standing, PDF, verify page, nominations | `MEMBERSHIP.md` |
 | 4 | **S6 UI** | Browser, theme | Toolbar and menu, tabs, settings, splash, notices, errors, icons, Prime theme, Vault lock, tour | `UI.md` |
-| 4 | **S7 Admin** | gate, Browser | Members, profiles, queue, charts, hops, audit viewer, reports, broadcast notices | `ADMIN.md` |
+| 4 | **S7 Admin** | gate, Browser | **First: fix the existing panel** (Boss, 2026-11-11: the owner password step-up does not work, so no changes can be saved; more issues to list), then members, profiles, queue, charts, hops, audit viewer, reports, broadcast notices | `ADMIN.md`, section 7 item 11 |
 | 5 | **S8 Downloads panel** | Browser | Queue, progress, pause/resume, retry, counts against caps | `SPEED.md` 6 |
 | any | **R1 Cloudflare Workers relay prototype**: **dropped** (Boss, 2026-11-10): Cloudflare SSA 2.2.1(j) forbids proxy services on Workers | none | Result in `R1-WORKERS-RESULT.md` | `RELAY.md` 7 |
 | any | **Rules round** (questions, then text) | docs | Charter and full Rules wording | `RULES-DRAFT.md` |
@@ -168,6 +168,13 @@ Answered by Boss on 2026-11-10 (second question round):
    written permission) get a proper study during S4, decided before 1.0 ships because 1.0 raises traffic.
    **Decided 2026-11-11 (Boss): option A**, `/wisp/` moves off the Cloudflare tunnel to a direct, DNS-only name on the home IP
    (`TUNNEL-OPTIONS.md`). Whether the relay moves to its own VM or LXC is being worked out (Boss asked for ideas).
+11. **Admin panel fixes (Boss, 2026-11-11), first part of S7.** Boss's password does not work in the panel's step-up, so
+   no write (approve, revoke, overrides, kill, flags) can be made. Code reading, not yet reproduced: `POST
+   /_lb/admin/api/step-up` (`limitless-gate/src/admin.ts`) calls GATE direct login and turns every GATE refusal into
+   one `stepup_failed`, so the real reason is hidden. Leading suspect: GATE legal v2 answers `403
+   LEGAL_ACCEPTANCE_REQUIRED` and step-up never sends `acceptedLegal` (the sign-in page does). Other suspects: login
+   name vs email, GATE rate limit. Fix starts with a failing test against the mock GATE; the panel must show the real
+   reason. Boss to list the other panel problems ("and more").
 Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
 
 Last verified: 2026-11-11
