@@ -8720,7 +8720,7 @@ window._libcurlReady = true;
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true };
+            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true };
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
                 try {
@@ -8745,6 +8745,7 @@ window._libcurlReady = true;
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) {}
                 return window.LB_features;
@@ -17027,9 +17028,96 @@ _VIEWER_DL_JS +
             // rewrite is done synchronously and the worker stays off for the rest of the session. Results are memoised
             // by content hash (bounded). window.__lbRewriteJs (dynamically injected scripts, called synchronously from the
             // iframe) always uses the synchronous function. Off with features.worker = false in version.json.
+            // ── Small persistent key-value stores (1.0 S3) ────────────────────────────
+            // lbMakeKV(name, maxBytes): its own IndexedDB database (NEW names such as LimitlessRewrite and LimitlessPages, never a
+            // ProxyCache version bump), one store `kv` with {k, v, size, t}; least recently used goes first above maxBytes. Opening
+            // is lazy and never blocks: any failure makes get() return undefined and put() do nothing.
+            function lbMakeKV(name, maxBytes) {
+                const st = { db: null, p: null, total: 0 };
+                const open = () => st.p || (st.p = new Promise((resolve) => {
+                    try {
+                        const req = indexedDB.open(_IDB_PFX + name, 1);
+                        const giveUp = setTimeout(() => resolve(null), 3000);
+                        req.onupgradeneeded = (e) => { const s = e.target.result.createObjectStore('kv', { keyPath: 'k' }); s.createIndex('t', 't'); s.createIndex('size', 'size'); };
+                        req.onerror = req.onblocked = () => { clearTimeout(giveUp); resolve(null); };
+                        req.onsuccess = () => {
+                            clearTimeout(giveUp);
+                            const db = req.result; st.db = db;
+                            db.onversionchange = () => { try { db.close(); } catch (_) {} st.db = null; st.p = null; };
+                            let sum = 0;
+                            try {
+                                const c = db.transaction('kv', 'readonly').objectStore('kv').index('size').openKeyCursor();
+                                c.onsuccess = () => { const cur = c.result; if (cur) { sum += Number(cur.key) || 0; cur.continue(); } else { st.total = sum; resolve(db); } };
+                                c.onerror = () => resolve(db);
+                            } catch (_) { resolve(db); }
+                        };
+                    } catch (_) { resolve(null); }
+                }));
+                const evict = (db) => {
+                    if (st.total <= maxBytes) return;
+                    try {
+                        const store = db.transaction('kv', 'readwrite').objectStore('kv');
+                        const c = store.index('t').openCursor();
+                        c.onsuccess = () => {
+                            const cur = c.result;
+                            if (!cur || st.total <= maxBytes * 0.9) return;
+                            st.total -= cur.value.size || 0; cur.delete(); cur.continue();
+                        };
+                    } catch (_) {}
+                };
+                return {
+                    async get(k) {
+                        const db = await open(); if (!db) return undefined;
+                        return new Promise((resolve) => {
+                            try {
+                                const tx = db.transaction('kv', 'readwrite'); const store = tx.objectStore('kv');
+                                const r = store.get(k);
+                                r.onsuccess = () => {
+                                    const rec = r.result;
+                                    if (rec && Date.now() - rec.t > 600000) { rec.t = Date.now(); store.put(rec); }
+                                    resolve(rec ? rec.v : undefined);
+                                };
+                                r.onerror = () => resolve(undefined);
+                            } catch (_) { resolve(undefined); }
+                        });
+                    },
+                    async put(k, v, size) {
+                        const db = await open(); if (!db) return;
+                        try { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put({ k, v, size, t: Date.now() }); st.total += size; tx.oncomplete = () => evict(db); } catch (_) {}
+                    },
+                    async del(k) {
+                        const db = await open(); if (!db) return;
+                        try { db.transaction('kv', 'readwrite').objectStore('kv').delete(k); } catch (_) {}
+                    },
+                    async count() {
+                        const db = await open(); if (!db) return 0;
+                        return new Promise((resolve) => { try { const r = db.transaction('kv', 'readonly').objectStore('kv').count(); r.onsuccess = () => resolve(r.result); r.onerror = () => resolve(0); } catch (_) { resolve(0); } });
+                    },
+                    async clear() {
+                        const db = await open(); if (!db) return;
+                        try { db.transaction('kv', 'readwrite').objectStore('kv').clear(); st.total = 0; } catch (_) {}
+                    },
+                    get total() { return st.total; },
+                };
+            }
+            // Rewrite cache across visits (features.rewriteCache, off with the Resource Cache switch too): rewritten script text
+            // for scripts of 16 KB or more, keyed by SHA-256 of the source plus a hash of rewriteLocationRefs itself, so any
+            // rewriter change invalidates everything at once. 50 MB, least recently used first.
+            const lbRwKV = lbMakeKV('LimitlessRewrite', 50 * 1024 * 1024);
+            let _lbRwVer = '';
+            async function lbRwKey(src) {
+                if (!_lbRwVer) _lbRwVer = lbRwHash(rewriteLocationRefs.toString());
+                let h;
+                try {
+                    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src));
+                    h = Array.from(new Uint8Array(d), b => b.toString(16).padStart(2, '0')).join('');
+                } catch (_) { h = lbRwHash(src); }
+                return h + ':' + _lbRwVer;
+            }
+            const lbRwPersistOn = () => { try { return window.LB_features.rewriteCache !== false && lbCacheOn(); } catch (_) { return false; } };
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
-                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0 } };
+                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0 } };
             function lbRwHash(str) {
                 let h1 = 0x811c9dc5, h2 = 0x01000193;
                 for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 + c, 2246822519) ^ (h2 >>> 13); }
@@ -17103,7 +17191,12 @@ _VIEWER_DL_JS +
                 const key = lbRwHash(src);
                 const hit = lbRw.memo.get(key);
                 if (hit !== undefined) { lbRw.stats.memoHits++; return hit; }
-                let out;
+                let out, pkey = null;
+                if (lbRwPersistOn()) {
+                    pkey = await lbRwKey(src);
+                    const got = await lbRwKV.get(pkey);
+                    if (typeof got === 'string') { lbRw.stats.persistHits++; lbRwMemoPut(key, got); return got; }
+                }
                 if (!lbRw.disabled && window.LB_features.worker !== false && typeof Worker !== 'undefined') {
                     try {
                         out = await new Promise((ok, fail) => { lbRw.queue.push({ id: ++_lbRwSeq, src, ok, fail }); lbRwPump(); });
@@ -17118,10 +17211,12 @@ _VIEWER_DL_JS +
                     out = rewriteLocationRefs(src);
                 }
                 lbRwMemoPut(key, out);
+                if (pkey) lbRwKV.put(pkey, out, out.length * 2);
                 return out;
             }
             window.LB_rewrite = { sync: rewriteLocationRefs, async: rewriteJsAsync, stats: () => ({ ...lbRw.stats, disabled: lbRw.disabled }),
-                get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; } };
+                get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; },
+                dropMemo() { lbRw.memo.clear(); lbRw.memoChars = 0; }, kv: lbRwKV };
 
             async function go(url, push = true, method = "GET", body = null, _isRetry = false) {
                 const initiatorTabId = activeTabId;
