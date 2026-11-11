@@ -99,6 +99,9 @@ Boss's Chromebook checklist (`TESTING.md` section 8) is advisory, never a blocke
 
 ## 6. Decisions log (2026-11-10)
 Speed
+- **Main issue (Boss, 2026-11-10, after wave 1):** real web pages, how long they take and whether they load at all.
+  Fixture targets stay, but from wave 2 every slice reports a real-site suite (`TESTING.md` 6a): success rate and
+  time to shown on popular public sites, with failure categories. Fixing failures outranks shaving fixture ms.
 - All three slow points matter: boot, page loading, jank. Page loading first.
 - Parallel stages and no wait on images (recommended option). Thin progress bar replaces the blur overlay.
 - Startup: "will be decided, can be big changes" -> plan takes the split + service worker route (`SPEED.md` 3).

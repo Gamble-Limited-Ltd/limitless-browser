@@ -78,6 +78,14 @@ small `tests/load/package.json`):
 | No regression | no fixture page more than 10 % and 100 ms slower on any metric (`scripts/speed-compare.mjs`) |
 Public speed sites are measured and reported in the release record but do not gate (internet noise).
 
+## 6a. Real-site suite (Boss's priority, added 2026-11-10)
+`tests/stack/sites.spec.js` (built in S3, `LB_SITES=1`): a fixed list of about 40 popular public sites in `tests/stack/real-sites.json`
+(search, video, reference, news, social, school tools, docs, shopping). Per site, chromebook profile, 3 reps through the rehearsal
+relay: loaded (page shown, no fatal page error, a site-specific selector present), time to shown, time to load, and a failure
+category (DNS, relay connect, TLS, HTTP status, rewrite or script error, CSP or frame block, timeout). Output
+`test-results/sites-<sha>.json`; the release record lists success rate vs the 0.2.3 run. Gate: success rate not lower than 0.2.3,
+and every failure on the list has a category and an issue or a note.
+
 ## 7. Migration rehearsal
 Seeded gate SQLite with the 0.2.3 schema and mock approvals (owner + 6 users with varied `approvedAt`), run
 `scripts/membership-migrate.ts` dry run and apply, check numbers (000 owner, 001 upward by date), tiers, `welcome`
