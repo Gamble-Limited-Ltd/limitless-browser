@@ -8619,6 +8619,38 @@ window._libcurlReady = true;
                     if (ms == null && !LB_fallbackAllowed) LB_showRelayNotice();
                 }, () => {});
             }
+            // Busy line hint (RELAY 3.6): when the gate reports fair share is limiting (/_lb/me busy), say once per
+            // session that Data saver helps. Never turns Data saver on by itself.
+            (function () {
+                if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+                const KEY = 'limitless:busynote:v1';
+                const seen = () => { try { return sessionStorage.getItem(KEY) === '1'; } catch (_) { return false; } };
+                const show = () => {
+                    try { sessionStorage.setItem(KEY, '1'); } catch (_) {}
+                    const mainEl = document.querySelector('main');
+                    if (!mainEl || !mainEl.parentNode) return;
+                    const ub = document.createElement('div');
+                    ub.className = 'lb-ub show'; ub.id = 'lbBusyNote'; ub.setAttribute('role', 'status');
+                    const dot = document.createElement('i'); dot.className = 'lb-ub-dot';
+                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg'; msg.textContent = 'The line is busy, Data saver helps';
+                    const gap = document.createElement('span'); gap.className = 'lb-ub-gap';
+                    const x = document.createElement('button'); x.type = 'button'; x.className = 'lb-ub-x'; x.id = 'lbBusyDismiss'; x.setAttribute('aria-label', 'Dismiss'); x.title = 'Dismiss';
+                    x.innerHTML = '<i class="fas fa-xmark"></i>';
+                    x.onclick = () => ub.remove();
+                    ub.append(dot, msg, gap, x);
+                    mainEl.parentNode.insertBefore(ub, mainEl);
+                };
+                const poll = async () => {
+                    if (seen()) return;
+                    try {
+                        const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin' });
+                        const j = r.ok ? await r.json() : null;
+                        if (j && j.busy === true) { show(); return; }
+                    } catch (_) {}
+                    setTimeout(poll, 120000);
+                };
+                setTimeout(poll, 4000);
+            })();
             (function () {
                 const sw = document.getElementById('settingsRelayFallbackSwitch');
                 if (!sw) return;
