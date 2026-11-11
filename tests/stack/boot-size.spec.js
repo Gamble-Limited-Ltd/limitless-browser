@@ -5,7 +5,7 @@
 // Per rep: fresh context, sign in as the mock user, then:
 //   cold    = the load that follows "Continue" at the mock GATE (nothing cached): bytes on the wire, splash hidden, start page interactive
 //   repeat  = page.reload() right after the cold load (HTTP cache only; a service worker is not installed yet)
-//   warm    = reload after the service worker (if the build has one) finished installing, 4 s later
+//   warm    = reload after the service worker (if the build has one, registered 8 s after load) finished installing
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
@@ -68,8 +68,13 @@ test('boot timings and transfer, cold / repeat / warm worker', async ({ browser 
       const rep = await read();
       rows.repeat.push({ ...rep, kb: Math.round(bytes.rx / 1024) });
       // let a service worker (if any) install and fill its cache, then reload once more
-      await page.waitForTimeout(4500);
-      const hasSw = await page.evaluate(async () => ('serviceWorker' in navigator) && !!(await navigator.serviceWorker.getRegistration()));
+      const hasSw = await page.evaluate(async () => {
+        if (!window.LB_swSync || !('serviceWorker' in navigator)) return false;   // build without a worker (c88ce5e)
+        await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(r, 30000))]);
+        const reg = await navigator.serviceWorker.getRegistration();
+        return !!(reg && reg.active);
+      });
+      await page.waitForTimeout(1500);
       bytes.rx = 0;
       await page.reload();
       await page.waitForFunction(() => window.__lbm !== undefined);

@@ -8727,7 +8727,7 @@ window._libcurlReady = true;
             // ── Service worker app shell (S2, docs/1.0/SPEED.md 3.5) ───────────────────
             // /sw.js caches the static shell (vendor, fonts, theme, app/<sha>); it never answers a page load without asking the
             // network (so the gate still decides who gets in) and never touches /wisp/, /auth/, /_lb/, version.json. Registered
-            // only on http(s) builds with a stamped sha (not 'dev'), after load so it does not compete with boot.
+            // only on http(s) builds with a stamped sha (not 'dev'), 8 s after load so its precache download does not compete with the first page.
             // features.sw = false unregisters it and drops its caches on the next load.
             window.LB_swSync = async function (f) {
                 if (!('serviceWorker' in navigator) || (location.protocol !== 'http:' && location.protocol !== 'https:')) return;
@@ -8745,7 +8745,7 @@ window._libcurlReady = true;
                 } catch (_) {}
             };
             window.LB_featuresReady.then((f) => {
-                const go = () => setTimeout(() => window.LB_swSync(f), window.LB_SW_DELAY != null ? window.LB_SW_DELAY : 2500);
+                const go = () => setTimeout(() => window.LB_swSync(f), window.LB_SW_DELAY != null ? window.LB_SW_DELAY : 8000);
                 if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
             });
 

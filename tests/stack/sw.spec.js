@@ -43,6 +43,7 @@ test.afterEach(async () => { await mock('/reset'); });
 test.describe('service worker with a warm cache', () => {
   test('the worker, its precache and the lazy skins file are all served through the gate', async ({ browser }) => {
     const ctx = await browser.newContext({ baseURL: BASE });
+    await ctx.addInitScript(() => { window.LB_SW_DELAY = 0; });
     const anon = await ctx.request.get('/sw.js');
     expect(anon.status()).toBe(401);
     for (const p of ['/vendor/libcurl/0.7.4/libcurl.wasm', '/vendor/acorn/8.14.0/acorn.min.js', '/theme/skins.css']) {
@@ -53,6 +54,7 @@ test.describe('service worker with a warm cache', () => {
 
   test('signed out (cookie gone) with a warm worker: the sign-in page, never the cached app', async ({ browser }) => {
     const ctx = await browser.newContext({ baseURL: BASE });
+    await ctx.addInitScript(() => { window.LB_SW_DELAY = 0; });
     const page = await ctx.newPage();
     await warmWorker(page);
     await ctx.clearCookies();
@@ -61,23 +63,25 @@ test.describe('service worker with a warm cache', () => {
       await expect(page.getByRole('link', { name: 'Sign in with GLL ID' })).toBeVisible();
       await expect(page.locator('#url')).toHaveCount(0);
     }
-    // a typed-in address of a cached file is a navigation, so it goes to the network and the gate answers
-    await page.goto('/vendor/acorn/8.14.0/acorn.min.js');
-    await expect(page.getByRole('link', { name: 'Sign in with GLL ID' })).toBeVisible();   // nginx answers a document request with the sign-in page
-    expect(await page.content()).not.toContain('acorn.parse');
-    // the 401 page was not stored under the file's name
+    // A typed-in address of a file the shell never loaded is a navigation: network, and the gate answers with the sign-in page.
+    // (A file the browser already holds under its 1-year immutable header, like acorn, can come from the browser's own HTTP
+    // cache, as before the worker existed; PDF.js is not loaded at boot, so it is a clean probe.)
+    await page.goto('/vendor/pdfjs/4.2.67/pdf.min.mjs');
+    await expect(page.getByRole('link', { name: 'Sign in with GLL ID' })).toBeVisible();
+    expect(await page.content()).not.toContain('pdfjsLib');
+    // and the worker did not keep anything for it
     const stored = await page.evaluate(async () => {
-      const c = await caches.open((await caches.keys())[0]);
-      const hit = await c.match('/vendor/acorn/8.14.0/acorn.min.js');
-      return hit ? (await hit.text()).slice(0, 200) : null;
+      for (const n of await caches.keys()) if (await (await caches.open(n)).match('/vendor/pdfjs/4.2.67/pdf.min.mjs')) return true;
+      return false;
     });
-    expect(stored === null || stored.indexOf('Sign in') === -1).toBe(true);
+    expect(stored).toBe(false);
     await ctx.close();
   });
 
   test('revoked (GATE says no) with a warm worker: the invite-only page after the gate recheck', async ({ browser }) => {
     test.setTimeout(180000);
     const ctx = await browser.newContext({ baseURL: BASE });
+    await ctx.addInitScript(() => { window.LB_SW_DELAY = 0; });
     const page = await ctx.newPage();
     await warmWorker(page);
     await mock('/users/alice/revoke');
