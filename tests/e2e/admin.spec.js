@@ -46,8 +46,12 @@ function mockApi(page, over = {}) {
     }
     if (method === 'POST' && path === 'step-up') {
       const b = JSON.parse(req.postData() || '{}');
-      if (b.password === 'right') { st.stepup = true; return route.fulfill(json({ ok: true })); }
-      return route.fulfill(json({ error: 'stepup_failed' }, 403));
+      if (over.stepupError) return route.fulfill(json({ error: over.stepupError.error }, over.stepupError.status));
+      if (b.password === 'right') {
+        if (over.legal && b.acceptedLegal !== true) return route.fulfill(json({ error: 'legal_required' }, 403));
+        st.stepup = true; return route.fulfill(json({ ok: true }));
+      }
+      return route.fulfill(json({ error: over.legal ? 'wrong_password' : 'stepup_failed' }, 403));
     }
     if (method === 'POST' && !st.stepup) return route.fulfill(json({ error: 'stepup' }, 403));
     if (path === 'users/approve') return route.fulfill(json({ sub: BOB, loginName: 'bob', created: true }));
@@ -156,6 +160,55 @@ test.describe('admin page', () => {
     expect(st.bodies[0]).toEqual({ loginName: 'bob' });
     expect(errors, errors.join('\n')).toEqual([]);
   });
+
+  test('step-up under legal v2 shows the acceptance box and resends acceptedLegal', async ({ page }) => {
+    const st = mockApi(page, { legal: true });
+    await boot(page);
+    await openAdmin(page);
+    const root = page.locator('#lbAdmin');
+    await root.locator('#lbAdmApproveName').fill('bob');
+    await root.locator('#lbAdmApproveBtn').click();
+    const dlg = page.locator('#lbAdmStepup');
+    const box = dlg.locator('input[name=acceptedLegal]');
+    await expect(box).toBeHidden();
+    await dlg.locator('input[name=login]').fill('boss');
+    await dlg.locator('input[name=password]').fill('wrong');
+    await dlg.locator('button[type=submit]').click();
+    await expect(dlg.locator('.lb-adm-err')).toContainText('password');
+    await dlg.locator('input[name=password]').fill('right');
+    await dlg.locator('button[type=submit]').click();
+    await expect(box).toBeVisible();
+    await expect(dlg).toContainText('I am 18 or older, or I am at least 13 and my parent or guardian has agreed to the Terms of Service and Privacy Policy for me.');
+    await expect(dlg.locator('.lb-adm-err')).toContainText('accept');
+    await expect(dlg.locator('input[name=password]')).toHaveValue('right');
+    await box.check();
+    await dlg.locator('button[type=submit]').click();
+    await expect(dlg).toBeHidden();
+    await expect(root.locator('.lb-adm-toast')).toContainText('bob');
+    const stepBodies = st.bodies.filter((b) => 'password' in b);
+    expect(stepBodies.at(-1).acceptedLegal).toBe(true);
+    expect(stepBodies[0]).not.toHaveProperty('acceptedLegal');
+  });
+
+  for (const [status, error, text] of [[403, 'not_owner', 'not the owner'], [429, 'rate_limited', 'Too many'], [503, 'gate_unavailable', 'not reachable']]) {
+    test(`step-up shows the reason ${error}; cancelling a write says why nothing happened`, async ({ page }) => {
+      mockApi(page, { stepupError: { status, error } });
+      await boot(page);
+      await openAdmin(page);
+      const root = page.locator('#lbAdmin');
+      await root.locator('#lbAdmApproveName').fill('bob');
+      await root.locator('#lbAdmApproveBtn').click();
+      const dlg = page.locator('#lbAdmStepup');
+      await dlg.locator('input[name=login]').fill('boss');
+      await dlg.locator('input[name=password]').fill('x');
+      await dlg.locator('button[type=submit]').click();
+      await expect(dlg.locator('.lb-adm-err')).toContainText(text);
+      if (error === 'gate_unavailable') {
+        await dlg.getByRole('button', { name: 'Cancel' }).click();
+        await expect(root.locator('.lb-adm-toast')).toContainText('password');
+      }
+    });
+  }
 
   test('switches, cut off and revoke send the right requests', async ({ page }) => {
     const st = mockApi(page);

@@ -8431,7 +8431,17 @@ window._libcurlReady = true;
             rate_limited: 'Too many requests. Wait a moment and try again.',
             self: 'That is not allowed for the owner account.',
             invalid: 'That value is not valid.',
-            owner_api_error: 'GLL ID gave an unexpected answer.'
+            owner_api_error: 'GLL ID gave an unexpected answer.',
+            stepup: 'Changes need your password. Nothing was changed.'
+        };
+        var STEP_ERR = {
+            legal_required: 'Please accept the terms below to continue.',
+            wrong_password: 'That login name or password is not right.',
+            not_owner: 'That is not the owner account.',
+            access_denied: 'That account is not allowed to use this app.',
+            suspended: 'That account is suspended.',
+            rate_limited: 'Too many tries. Wait a minute.',
+            gate_unavailable: 'GLL ID is not reachable. Try again in a moment.'
         };
 
         var root = el('div', 'lb-adm'); root.id = 'lbAdmin';
@@ -8493,14 +8503,24 @@ window._libcurlReady = true;
             l.appendChild(i); return l;
         }
         var fLogin = field('Login name', 'login', 'text', 'username'), fPass = field('Password', 'password', 'password', 'current-password');
+        // Legal v2: same wording as the sign-in page. Shown only after GATE asks for it (legal_required).
+        var fLegal = el('label', 'lb-adm-legal'); fLegal.hidden = true;
+        var legalBox = el('input'); legalBox.type = 'checkbox'; legalBox.name = 'acceptedLegal';
+        var legalHall = 'https://hall.taps-holdings.org/legal/';
+        fLegal.appendChild(legalBox);
+        var legalTxt = el('span');
+        function legalLink(text, path) { var a = el('a', '', text); a.href = legalHall + path; a.target = '_blank'; a.rel = 'noopener'; return a; }
+        legalTxt.append('I am 18 or older, or I am at least 13 and my parent or guardian has agreed to the ', legalLink('Terms of Service', 'terms'), ' and ', legalLink('Privacy Policy', 'privacy'), ' for me.');
+        fLegal.appendChild(legalTxt);
         var mErr = el('div', 'lb-adm-err'); mErr.setAttribute('role', 'alert');
         var mAct = el('div', 'lb-adm-act'), mCancel = btn('Cancel'), mOk = btn('Confirm', 'pri'); mOk.type = 'submit';
         mAct.append(mCancel, mOk);
-        mf.append(mt, mp, fLogin, fPass, mErr, mAct); modal.appendChild(mf); root.appendChild(modal);
+        mf.append(mt, mp, fLogin, fPass, fLegal, mErr, mAct); modal.appendChild(mf); root.appendChild(modal);
         var stepResolve = null;
         function closeStep(ok) {
             modal.classList.remove('show');
             fPass.querySelector('input').value = '';
+            legalBox.checked = false; fLegal.hidden = true;
             var res = stepResolve; stepResolve = null;
             if (res) res(ok);
         }
@@ -8510,13 +8530,18 @@ window._libcurlReady = true;
             e.preventDefault();
             var login = fLogin.querySelector('input').value, password = fPass.querySelector('input').value;
             mOk.disabled = true; mErr.textContent = '';
-            var r = await api('POST', 'step-up', { login: login, password: password });
+            var sb = { login: login, password: password };
+            if (!fLegal.hidden && legalBox.checked) sb.acceptedLegal = true;
+            var r = await api('POST', 'step-up', sb);
             mOk.disabled = false;
             if (r.status === 200) { S.who = Object.assign({}, S.who, { stepup: true }); closeStep(true); return; }
-            mErr.textContent = r.status === 429 ? 'Too many tries. Wait a minute.'
-                : r.status === 503 ? 'GLL ID is not reachable. Try again in a moment.'
-                : r.status === 0 ? 'Could not reach the service.'
-                : 'That did not match the owner account.';
+            var code = r.json && r.json.error;
+            mErr.textContent = r.status === 0 ? 'Could not reach the service.' : STEP_ERR[code] || 'That did not match the owner account.';
+            if (code === 'legal_required') {
+                // The password was right as far as GATE got; keep it so one tick and Confirm is enough.
+                fLegal.hidden = false; legalBox.required = true; legalBox.focus();
+                return;
+            }
             fPass.querySelector('input').value = '';
             fPass.querySelector('input').focus();
         });

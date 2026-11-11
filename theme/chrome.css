@@ -443,6 +443,10 @@ html[data-lb-theme="vault"]:not([data-skin]) {
 .lb-adm-modal p { margin: 0; color: var(--tx2); font-size: 13.5px; }
 .lb-adm-modal label { font-size: 12px; color: var(--tx3); display: flex; flex-direction: column; gap: 4px; }
 .lb-adm-modal input { height: 34px; }
+.lb-adm-modal .lb-adm-legal { flex-direction: row; align-items: flex-start; gap: 8px; line-height: 1.4; }
+.lb-adm-modal .lb-adm-legal[hidden] { display: none; }
+.lb-adm-modal .lb-adm-legal input { height: auto; margin-top: 2px; flex: none; }
+.lb-adm-modal .lb-adm-legal a { color: var(--ac); }
 .lb-adm-modal .lb-adm-act { justify-content: flex-end; margin-top: 4px; }
 .lb-adm-err { color: var(--err); font-size: 13px; min-height: 18px; }
 @media (max-width: 640px) { .lb-adm-in { padding: 20px 14px 56px; } .lb-adm h1 { font-size: 24px; } }
