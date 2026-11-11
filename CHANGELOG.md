@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## Unreleased 1.0.0
+
+- Limitless now opens much faster, especially the second time: the big parts of the app are separate files that your browser keeps, so a repeat visit has a lot less to download and read.
+
 ## 0.2.3
 
 - The legal page now points to the full Gamble Limited legal documents on HALL.

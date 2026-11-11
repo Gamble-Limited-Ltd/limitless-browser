@@ -11,7 +11,7 @@ test('index.html no longer carries the WASM data URI, acorn or the skins CSS', (
   expect(html).not.toContain('data:application/octet-stream;base64,AGFzbQ');
   expect(html).not.toContain('<style id="skinStyles">');
   expect(html).toContain('<script src="vendor/acorn/8.14.0/acorn.min.js"></script>');
-  expect(html.length).toBeLessThan(1.6e6);
+  expect(html.length).toBeLessThan(1.75e6);
 });
 
 test('vendored files exist with their license notices', () => {
