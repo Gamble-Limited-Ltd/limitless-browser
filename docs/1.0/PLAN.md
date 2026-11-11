@@ -175,6 +175,10 @@ Answered by Boss on 2026-11-10 (second question round):
    LEGAL_ACCEPTANCE_REQUIRED` and step-up never sends `acceptedLegal` (the sign-in page does). Other suspects: login
    name vs email, GATE rate limit. Fix starts with a failing test against the mock GATE; the panel must show the real
    reason. Boss to list the other panel problems ("and more").
+   **Status 2026-11-11 (branch `slice/1.0-adminfix`, both repos, not merged or deployed):** cause confirmed in GATE
+   (`gll-id/apps/server/src/routes/direct.ts:289`, legal v2 `LEGAL_ACCEPTANCE_REQUIRED`). Fixed: step-up sends
+   `acceptedLegal`, answers safe reason codes, the dialog shows the acceptance box and every reason. Other panel
+   problems found are in `ADMIN.md` section 0.
 Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
 
 Last verified: 2026-11-11
