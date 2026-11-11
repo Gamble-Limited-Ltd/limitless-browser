@@ -1,7 +1,7 @@
 # Limitless Browser 1.0: master plan
 
 Status: **in build** (2026-11-11). T0, S1, S2, S3 and S4 are built on `release/1.0.0` / `slice/1.0-s4` (S4 gate half on
-`limitless-gate` `slice/1.0-s4`); waiting on Boss: the tunnel pick (`TUNNEL-OPTIONS.md`, update 2026-11-11) and the go for the
+`limitless-gate` `slice/1.0-s4`); tunnel: option A picked 2026-11-11 (section 7, item 10); waiting on Boss: the go for the
 speed re-run and the real-site failure work; then S5. Prod is 0.2.3 (`c88ce5e`). Decisions come from Boss's question rounds on
 2026-11-10 and the design picker artifact (https://claude.ai/artifact/P1arJs1FYrMrCoBmR5VQ2h, collection `picks`, 30 picks).
 This file is the index, the order of work and the ship gates. Detail lives in the topic files:
@@ -166,6 +166,8 @@ Answered by Boss on 2026-11-10 (second question round):
 10. Cloudflare SSA 2.2.1(j) (no proxy services) covers the existing tunnel carrying `/wisp/` (`R1-WORKERS-RESULT.md`
    addendum). Boss: **accept the risk for now**; the alternatives (move `/wisp/` off Cloudflare, separate account and domain,
    written permission) get a proper study during S4, decided before 1.0 ships because 1.0 raises traffic.
+   **Decided 2026-11-11 (Boss): option A**, `/wisp/` moves off the Cloudflare tunnel to a direct, DNS-only name on the home IP
+   (`TUNNEL-OPTIONS.md`). Whether the relay moves to its own VM or LXC is being worked out (Boss asked for ideas).
 Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
 
 Last verified: 2026-11-11
