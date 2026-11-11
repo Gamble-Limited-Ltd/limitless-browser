@@ -18131,45 +18131,48 @@ _VIEWER_DL_JS +
                         if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || '')).slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image));
                     }
 
+                    // url() in CSS: fonts and images become data: URIs, everything else an absolute URL. S3 4.5: the base64 step is
+                    // the browser's own FileReader (off the main thread) instead of a String.fromCharCode loop plus Base64.encode, and
+                    // the replacements are applied in one pass over the text (the old split/join per url() was quadratic).
+                    // DOMParser cannot run in a Worker, so HTML parsing stays where it is.
                     async function rewriteCssUrls(cssText, baseUrl) {
-                        const seen = new Set();
-                        const urlMatches = [...cssText.matchAll(/url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi)];
-                        await Promise.all(urlMatches.map(async m => {
-                            if (/^(data:|blob:|#)/i.test(m[2]) || seen.has(m[0])) return;
-                            seen.add(m[0]);
+                        const re = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi;
+                        const todo = new Map();   // original url(...) text -> replacement text
+                        for (const m of cssText.matchAll(re)) {
+                            if (/^(data:|blob:|#)/i.test(m[2]) || todo.has(m[0])) continue;
+                            todo.set(m[0], null);
                             try {
                                 const absUrl = new URL(m[2], baseUrl).href;
+                                todo.set(m[0], `url("${absUrl}")`);
                                 const ext = absUrl.split('?')[0].split('.').pop().toLowerCase();
                                 const isFont = /woff2?|ttf|otf|eot/.test(ext);
                                 const isImg = /png|jpg|jpeg|gif|svg|webp|ico/.test(ext);
-                                if (isFont || isImg) {
-                                    try {
-                                        const r = await queueFetch(absUrl, { signal: tabCtrl.signal }, PRIORITY.font);
-                                        if (r.buf && r.buf.byteLength > 0) {
-                                            const fontMime = ext === 'woff2' ? 'font/woff2'
-                                                : ext === 'woff' ? 'font/woff'
-                                                    : ext === 'ttf' ? 'font/ttf'
-                                                        : ext === 'otf' ? 'font/otf'
-                                                            : r.mime || 'font/woff2';
-                                            const mime = isFont ? fontMime : (r.mime || 'image/png');
-                                            const arr = new Uint8Array(r.buf);
-                                            let bin = '';
-                                            const chunk = 32768;
-                                            for (let j = 0; j < arr.length; j += chunk) bin += String.fromCharCode.apply(null, arr.subarray(j, j + chunk));
-                                            const dataUri = `data:${mime};base64,${Base64.encode(bin)}`;
-                                            cssText = cssText.split(m[0]).join(`url("${dataUri}")`);
-                                        } else {
-                                            cssText = cssText.split(m[0]).join(`url("${absUrl}")`);
-                                        }
-                                    } catch (_fe) {
-                                        cssText = cssText.split(m[0]).join(`url("${absUrl}")`);
-                                    }
-                                } else {
-                                    cssText = cssText.split(m[0]).join(`url("${absUrl}")`);
+                                if (isFont || isImg) todo.set(m[0], { abs: absUrl, ext, isFont });
+                            } catch { todo.delete(m[0]); }
+                        }
+                        await Promise.all([...todo.entries()].map(async ([key, v]) => {
+                            if (!v || typeof v === 'string') return;
+                            const { abs, ext, isFont } = v;
+                            todo.set(key, `url("${abs}")`);
+                            try {
+                                const r = await queueFetch(abs, { signal: tabCtrl.signal }, PRIORITY.font);
+                                if (r.buf && r.buf.byteLength > 0) {
+                                    const fontMime = ext === 'woff2' ? 'font/woff2'
+                                        : ext === 'woff' ? 'font/woff'
+                                            : ext === 'ttf' ? 'font/ttf'
+                                                : ext === 'otf' ? 'font/otf'
+                                                    : r.mime || 'font/woff2';
+                                    const mime = isFont ? fontMime : (r.mime || 'image/png');
+                                    const dataUri = await new Promise((res, rej) => {
+                                        const fr = new FileReader();
+                                        fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error);
+                                        fr.readAsDataURL(new Blob([r.buf], { type: mime }));
+                                    });
+                                    todo.set(key, `url("${dataUri}")`);
                                 }
-                            } catch { }
+                            } catch (_fe) { /* keep the absolute URL */ }
                         }));
-                        return cssText;
+                        return cssText.replace(re, (m) => { const v = todo.get(m); return typeof v === 'string' ? v : m; });
                     }
 
                     // Stage: external CSS (with @import chains and font/image url()s), then inline <style> url()s. With the pipeline
