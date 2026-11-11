@@ -85,4 +85,30 @@ Not recommended until Proton agrees in writing (a support question).
    gate token feature (one slice). Do not do B, C or E first.
    Nothing here is applied: any port, tunnel or DNS change is Boss's.
 
-Last verified: 2026-11-10
+## Update 2026-11-11 (checked from the Gamble VM)
+- **Home IP:** the address the internet sees from the VM is a public IPv4 (not in 100.64.0.0/10 or a private range), so
+  option A is technically possible. Not checked: whether the router's WAN address is that same address (no CGNAT behind it),
+  whether it is static, and the ISP's terms. The Claude Hub had no agent running to read the UniFi gateway; ask it next time
+  one is up, or Boss reads the WAN IP in the UniFi console.
+- **The tunnel runs on QUIC** (`cloudflared` log: `protocol=quic`). This matters for S4 3.3: host BBR does not change the
+  tunnel leg (QUIC carries its own congestion control), see `S4-HOST-COMMANDS.md`.
+- **Draft permission request (option D)** for Boss to send from the Cloudflare dashboard (Support, account and billing or
+  general question). It is free and changes nothing; sending it is Boss's call (it names the use to Cloudflare):
+
+  > Subject: Permission question, Self-Serve Subscription Agreement 2.2.1(j)
+  >
+  > Hello. We run a small, invite-only web browser app for a small number of signed-in members, published through a Cloudflare
+  > Tunnel on our account. Part of it is a WebSocket endpoint that lets the app fetch web pages for the signed-in member
+  > (a private browsing proxy). Access is limited to members we approve; it is not offered to the public and not sold.
+  > Section 2.2.1(j) of the Self-Serve Subscription Agreement says the Services may not be used to provide "a virtual
+  > private network or other similar proxy services" unless expressly permitted in writing. Could you tell us whether this
+  > use can be permitted in writing on our current plan, and if not, which plan or option would allow it? If it cannot be
+  > permitted, we will move that endpoint off Cloudflare. Thank you.
+
+- **Decision Boss needs to make before 1.0 ships (pick one):**
+  1. **Status quo + send the request (recommended for 1.0).** Zero work, risk logged. Revisit when Cloudflare answers.
+  2. **Move `/wisp/` to option A now.** Needs: router port forward, DNS-only record, cert, and a gate token feature
+     (about one slice, added to 1.0 before S5). Exposes the home IP to members.
+  3. **Status quo, no request.** Zero work, risk stays silent; a suspension would hit GATE, HALL, Status and the games.
+
+Last verified: 2026-11-11
