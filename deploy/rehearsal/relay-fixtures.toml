@@ -33,7 +33,7 @@ extensions = []
 allow_udp = false
 allow_wsproxy_udp = false
 # Public resolvers, so the Docker embedded resolver (container names) is never consulted.
-dns_servers = ["1.1.1.1", "9.9.9.9"]
+dns_servers = ["10.88.81.53"]   # run.sh rewrites this to the rehearsal subnet
 
 # Destination checks run on the RESOLVED address, so DNS rebinding to an internal address is caught.
 allow_direct_ip = true

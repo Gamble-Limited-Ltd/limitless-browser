@@ -207,6 +207,12 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   one test per site, per-site JSON in `test-results/sites-<sha>/`, merged into `test-results/sites-<sha>.json`. `LB_SITES_REPS`, `LB_SITES_ONLY=a,b`, `LB_SPEED_SHA`. Failure categories: dns, connect, tls, http, blocked, csp, script, render, timeout, harness. Results: `docs/1.0/baseline/`, summary in `docs/1.0/BASELINE.md`. Run it alone: it is heavy and timings move with other load.
 - **Tests:** `tests/e2e/s3.spec.js`, `s3-back.spec.js`, `s3-pagecache.spec.js`, `s3-sleep.spec.js`, `s3-warm.spec.js`, `s3-css.spec.js`, `appscript.spec.js` (helpers `s3-helpers.js`, e2e port `LB_E2E_PORT`).
 
+## Server path (1.0 slice S4, docs/1.0/RELAY.md)
+- **Auth cache:** `/_gate/check` in `deploy/web/nginx.conf` uses `proxy_cache lbauth` (5 s, 200 only, key host + session cookie, no cookie = no cache; `Cache-Control: no-store` from the gate is ignored there on purpose). A revoked or cut-off user can keep getting app files from nginx for up to 5 s; new `/wisp/` sockets are refused at once by the gate. Tests that expect a refusal right after a revoke must poll for 5 s (`tests/stack/authcache.spec.js`, `admin.spec.js`). Kill switch: remove the `proxy_cache lbauth;` lines.
+- **Per-hop timing:** `Server-Timing` (security-headers snippet; empty without an auth subrequest) and `X-LB-T` on `/wisp/` carry gate ms, cache HIT/MISS and the cf-ray. Aggregates only; no hostnames anywhere.
+- **Relay DNS cache:** service `dns` (`deploy/dns/`, unbound, 10.88.81.53, DoT to 1.1.1.1 and 9.9.9.9); relay `dns_servers` points at it; relay is 4 CPUs and 1 GiB. `deploy/rehearsal/run.sh` rewrites the address for the 10.89.x rehearsal networks.
+- **Not applied by the repo:** BBR (host), tunnel/DNS/ports: `docs/1.0/S4-HOST-COMMANDS.md`, `docs/1.0/TUNNEL-OPTIONS.md`.
+
 ## Admin panel (0.2.0, slice D)
 - **Page:** `limitless://admin`, registered into `SKIN_PAGES` through the hooks `window.LB_pages` and `window.LB_go` (added after the What's new
   block). Everything else is its own `<script>` just before the theme script, plus the `.lb-adm-*` section at the end of `theme/chrome.css`. The

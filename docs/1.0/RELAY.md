@@ -39,6 +39,7 @@ Service Inventory. No personal data is sent. Repeat monthly (one line in the Wor
   relay + DNS, website, rewrite + render.
 
 ## 3. S4: server tuning (wave 2, each item needs Boss's go when applied)
+**S4 status (2026-11-10, branch `slice/1.0-s4`):** 3.0 done (`TUNNEL-OPTIONS.md`). 2.2 nginx half, 3.1, 3.2, 3.4 built and tested in the rehearsal; 3.3 is host work (`S4-HOST-COMMANDS.md`); the gate halves of 2.2 and 3.5 (fair share, `FAIR_SHARE`, per-stream histograms) and 3.6 are NOT built (the gate worktree could not be created from the S4 session); 8 reviewed (decisions in `PLAN.md` 7). 3.4: no socket-buffer sysctls (host already allows 6 MiB receive); the relay gets 4 CPUs and 1 GiB.
 
 **3.0 Tunnel terms study (first S4 item, decided before 1.0 ships).** Cloudflare SSA 2.2.1(j) covers `/wisp/` on the
 tunnel (`R1-WORKERS-RESULT.md` addendum; Boss accepted the risk for now on 2026-11-10). Think each alternative through

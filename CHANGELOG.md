@@ -16,6 +16,10 @@ What changed, in plain language. Newest first.
 - The main app code is now its own file that your browser keeps between visits, so Limitless starts faster on a repeat open and each update only has to fetch what changed.
 - Pages with many fonts and images in their styles are prepared faster, without stalling the page.
 
+- Opening the app and new connections is a little quicker: the server remembers a successful sign-in check for a few seconds instead of asking again for every file.
+- Site addresses are looked up through a small cache on our side, so the second visit to a site starts sooner.
+- The relay has more memory and processor time, which helps when several people browse at once.
+
 ## 0.2.3
 
 - The legal page now points to the full Gamble Limited legal documents on HALL.

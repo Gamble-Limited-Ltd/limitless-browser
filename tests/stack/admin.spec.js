@@ -105,7 +105,8 @@ test.describe('approve and revoke end to end', () => {
       const revoke = await post(owner.req, '/users/revoke', { sub: bobSub });
       expect(revoke.status()).toBe(200);
       // Revoke deletes bob's sessions and kills him: no waiting for the 60 s access-check cache.
-      expect((await bob.req.get('/version.json')).status()).toBe(401);
+      // nginx may answer from its 5 s auth cache (RELAY.md 3.1); the refusal must arrive within that window.
+      await expect.poll(async () => (await bob.req.get('/version.json')).status(), { timeout: 8000 }).toBe(401);
       expect((await owner.req.get('/version.json')).status()).toBe(200);
     } finally {
       // The kill row lives in the gate's database, which the mock reset does not touch.
@@ -123,8 +124,8 @@ test.describe('maintenance', () => {
     await stepUp(owner.req);
     try {
       expect((await post(owner.req, '/flags', { maintenance: true })).status()).toBe(200);
-      const asset = await alice.req.get('/version.json');
-      expect(asset.status()).toBe(401);
+      // within the 5 s nginx auth cache window (RELAY.md 3.1)
+      await expect.poll(async () => (await alice.req.get('/version.json')).status(), { timeout: 8000 }).toBe(401);
       const html = await alice.req.get('/', { headers: { accept: 'text/html' } });
       const body = await html.text();
       expect(body).toContain('down for maintenance');
