@@ -12,6 +12,7 @@ What changed, in plain language. Newest first.
 - Sites you visit again open faster: Limitless now remembers the prepared scripts of a site between visits (only when the Resource Cache setting is on).
 - Back and Forward are now instant for the last few pages in each tab: they come straight from memory, with the scroll position where you left it.
 - Pages you opened recently show up at once on the next visit, then quietly check for a newer version. If you have already started reading, a small "Updated, reload" button offers the new version instead of changing the page under you.
+- Tabs you have not used for a while now go to sleep to save memory (Settings, Tab Caching: choose Never, 10, 30 or 60 minutes). They wake in a moment, at the same spot. Tabs playing sound or video, or holding text you typed, never sleep.
 
 ## 0.2.3
 

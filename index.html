@@ -5525,6 +5525,16 @@ html.zen-split-on #zenSplitClose { display: block; }
                                                 </div>
                                             </div>
                                         </div>
+                                        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                                            <label class="settings-label" for="settingsSleepSelect" style="margin:0;">Put unused tabs to sleep after</label>
+                                            <select class="settings-input" id="settingsSleepSelect" style="flex:0 1 160px;">
+                                                <option value="0">Never</option>
+                                                <option value="10">10 minutes</option>
+                                                <option value="30">30 minutes</option>
+                                                <option value="60">60 minutes</option>
+                                            </select>
+                                        </div>
+                                        <div class="settings-hint">A sleeping tab gives its memory back and wakes in a moment when you return. Tabs that were playing sound or video, or hold text you typed, never sleep.</div>
                                     </div>
                                 </div>
 
@@ -10001,6 +10011,50 @@ window._libcurlReady = true;
                 },
             };
             window.LB_bf = lbBF;
+            // ── Tab sleeping (1.0 S3, features.tabSleep) ───────────────────────────
+            // Only the active tab has a live document; a background tab keeps its rendered blob (and lbBF entries) in memory.
+            // After `limitless:tabsleep:v1` minutes (0 off, 10 default, 30, 60) out of view, the blob and the stored entries are
+            // freed and the tab is marked sleeping; coming back goes through go(tab.url, false): the cached rewritten page and
+            // the response cache make that a local load, and the scroll position is put back. Never slept: a tab that was playing
+            // audio or video when it was left, or whose form had typed input (value different from its default).
+            const LB_SLEEP_KEY = 'limitless:tabsleep:v1';
+            function lbSleepMinutes() { try { const v = ls.getItem(LB_SLEEP_KEY); const n = v === null ? 10 : parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : 0; } catch (_) { return 10; } }
+            const lbSleep = {
+                run(now = Date.now(), minutes = lbSleepMinutes()) {
+                    if (!minutes || (window.LB_features && window.LB_features.tabSleep === false)) return 0;
+                    let n = 0;
+                    for (const t of tabs) {
+                        if (t.id === activeTabId || t.sleeping || !t._leftAt || t._dirty || t._media || t.hasAudio) continue;
+                        if (!t.blobSrc && !lbBF.map.has(t.id)) continue;
+                        if (now - t._leftAt < minutes * 60000) continue;
+                        freeTabBlob(t); lbBF.drop(t.id); t.sleeping = true; n++;
+                    }
+                    if (n) renderTabs();
+                    return n;
+                },
+                // called as the member leaves a tab, before the media is paused
+                leaving(t, d) {
+                    t._leftAt = Date.now(); t._media = false; t._dirty = false;
+                    try {
+                        t._media = [...d.querySelectorAll('video, audio')].some(m => !m.paused && !m.ended);
+                        t._dirty = [...d.querySelectorAll('input, textarea')].some(e => !/^(hidden|submit|button|checkbox|radio|reset|image|file)$/i.test(e.type || '') && e.value !== e.defaultValue) ||
+                            [...d.querySelectorAll('[contenteditable=""], [contenteditable="true"]')].some(e => (e.textContent || '').trim() !== '');
+                    } catch (_) { t._dirty = true; }
+                },
+                state() { return tabs.map(t => ({ id: t.id, sleeping: !!t.sleeping, blob: !!t.blobSrc, dirty: !!t._dirty, media: !!t._media })); },
+                wake(t) { if (t.sleeping) { t.sleeping = false; t._wake = t.scrollY || 0; } },
+                scroll(t) { if (t && t._wake) { try { frame.contentWindow.scrollTo(0, t._wake); } catch (_) {} t._wake = 0; } },
+            };
+            window.LB_sleep = lbSleep;
+            setInterval(() => lbSleep.run(), 60000);
+            (function wireSleepSetting() {
+                const wire = () => {
+                    const sel = document.getElementById('settingsSleepSelect'); if (!sel) return;
+                    sel.value = String(lbSleepMinutes());
+                    sel.addEventListener('change', () => { try { ls.setItem(LB_SLEEP_KEY, sel.value); } catch (_) {} });
+                };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+            })();
             function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) URL.revokeObjectURL(u); } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
@@ -10249,6 +10303,7 @@ window._libcurlReady = true;
                         // Pause all media so audio doesn't bleed into the next tab
                         try {
                             const doc = frame.contentDocument || frame.contentWindow?.document;
+                            if (doc) lbSleep.leaving(currentTab, doc);
                             if (doc) {
                                 doc.querySelectorAll('video, audio').forEach(el => { try { el.pause(); } catch(e){} });
                             }
@@ -10326,6 +10381,7 @@ window._libcurlReady = true;
                     updateSecurityChip(tab.url, tab.hasError ? 'error' : undefined);
                     updateBookmarkButton();
                 } else {
+                    lbSleep.wake(tab);
                     go(tab.url, false);
                 }
             }
@@ -17446,6 +17502,7 @@ _VIEWER_DL_JS +
                         frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
                         frame.onload = () => {
                             try { if (hit.scrollY) frame.contentWindow.scrollTo(0, hit.scrollY); } catch (_) {}
+                            lbSleep.scroll(bt);
                             if (bt) applyMuteToFrame(!!bt.muted);
                             frame.onload = null;
                         };
@@ -17623,7 +17680,7 @@ _VIEWER_DL_JS +
                                 frame.style.display = 'block';
                                 frame.onload = () => {
                                     const lt = tabs.find(t => t.id === initiatorTabId);
-                                    if (lt) { applyMuteToFrame(!!lt.muted); lt.blobSrc = pcUrl; lt.memBytes = pcBlob.size; }
+                                    if (lt) { applyMuteToFrame(!!lt.muted); lt.blobSrc = pcUrl; lt.memBytes = pcBlob.size; lbSleep.scroll(lt); }
                                     lbPcWatch(pc);
                                     frame.onload = null;
                                 };
@@ -18600,6 +18657,7 @@ _VIEWER_DL_JS +
                             applyMuteToFrame(!!loadedTab.muted);
                             loadedTab.blobSrc = newBlobUrl;
                             loadedTab.memBytes = _newBytes;
+                            lbSleep.scroll(loadedTab);
                             enforceBlobCap();   // keep only N warm background tabs
                         }
                         frame.onload = null;
