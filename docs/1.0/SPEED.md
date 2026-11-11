@@ -154,6 +154,16 @@ Custom filters and the per-site allowlist (`limitless:adblock:allowlist:v1`) kee
 page cache swap and chip, blocklist matching unit cases (subdomain, look-alike domain not blocked), harness repeat-visit
 numbers.
 
+**S3 notes (built 2026-11-10, branch `slice/1.0-s3`):**
+- 4.1 tab sleeping: built with kill switch `tabSleep` and Settings > Tab Caching "Put unused tabs to sleep after" (Never, 10 default, 30, 60). Changed on purpose: the app has one iframe, so a background tab holds only its blob (no live iframe to replace); sleeping frees that blob and the stored Back entries and wake goes through `go()` (page cache and response cache, scroll restored).
+- 4.2 instant Back and Forward: built (`instantBack`), 3 entries per tab, 64 MB, no-store never kept.
+- 4.3 rewrite cache: built (`rewriteCache`), database `LimitlessRewrite`, 50 MB, SHA-256 key plus a hash of the rewriter function text as the version.
+- 4.4 cached rewritten pages: built (`pageCache`), database `LimitlessPages`, 64 MB; background revalidation is the normal load running behind the shown copy, the unchanged-document case stops early, a changed one swaps silently or shows the "Updated, reload" chip after a touch.
+- 4.5 off-thread work: not a Worker. The CSS url() step now uses the browser's `FileReader` for base64 and a one-pass replace (output identical); parse5 and an HTML parser in a Worker were not added (no T0 evidence that `DOMParser` is over 100 ms, 4 ms measured on fx-news).
+- 4.6 warm favourites: built (`warm`); the "bandwidth meter above 80 %" skip is not built (no meter).
+- 4.7 blocklist matcher: not in S3 (not in the S3 task list).
+- Application script moved to `app/main.js` (`app/<sha>/main.js` in the build); numbers in `docs/1.0/BASELINE.md`.
+
 ## 5. Smoothness after load (jank)
 Covered by: lazy images (2.3), off-thread CSS work (4.5), tab sleeping (4.1). Plus, measured in T0 and fixed where it shows:
 - The media load limiter polls with `setTimeout(50)` while 24 loads are pending (`MAX_CONCURRENT_MEDIA`, ~15264): replace
