@@ -10047,6 +10047,36 @@ window._libcurlReady = true;
             };
             window.LB_sleep = lbSleep;
             setInterval(() => lbSleep.run(), 60000);
+            // ── Warm favourite sites (1.0 S3, features.warm) ─────────────────────────
+            // Idle 3 s after boot, and again when the network comes back: open relay + TCP + TLS to the hosts of the start-page
+            // favourites (6 at most) and the last 3 visited sites with a HEAD / request whose answer is thrown away (nothing is
+            // stored, no cookies are sent). Skipped with Data saver on. The idle connection stays in libcurl's connection cache.
+            // The menu bandwidth meter does not exist yet, so the "above 80 %" skip is not built.
+            const lbWarm = {
+                hosts() {
+                    const o = [];
+                    const add = (u) => { try { const x = new URL(u); if (x.protocol === 'https:' && !o.includes(x.origin)) o.push(x.origin); } catch (_) {} };
+                    try { (JSON.parse(ls.getItem(FAV_KEY) || '[]') || []).slice(0, 6).forEach(f => add(f && f.url)); } catch (_) {}
+                    try { (JSON.parse(ls.getItem('limitless:recent') || '[]') || []).slice(0, 3).forEach(e => add(typeof e === 'string' ? e : e && e.url)); } catch (_) {}
+                    return o;
+                },
+                run() {
+                    if (!curl || (window.LB_features && window.LB_features.warm === false) || lbDataSaver()) return 0;
+                    let n = 0;
+                    for (const origin of this.hosts()) {
+                        try {
+                            const ctl = new AbortController(); setTimeout(() => ctl.abort(), 8000);
+                            Promise.resolve(curl.fetch(origin + '/', { method: 'HEAD', redirect: 'manual', signal: ctl.signal })).catch(() => {});
+                            n++;
+                        } catch (_) {}
+                    }
+                    return n;
+                },
+                start(tries = 0) { if (curl || tries > 20) { setTimeout(() => window.LB_featuresReady.then(() => this.run()), 3000); } else setTimeout(() => this.start(tries + 1), 1000); },
+            };
+            window.LB_warm = lbWarm;
+            window.addEventListener('online', () => lbWarm.run());
+            lbWarm.start();
             (function wireSleepSetting() {
                 const wire = () => {
                     const sel = document.getElementById('settingsSleepSelect'); if (!sel) return;
