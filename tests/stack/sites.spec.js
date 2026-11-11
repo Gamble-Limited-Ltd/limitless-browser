@@ -64,16 +64,24 @@ async function tryOnce(browser, testInfo, site) {
 }
 async function tryOnceOnce(browser, testInfo, site) {
   let timer;
-  const hang = new Promise((resolve) => { timer = setTimeout(() => resolve({ loaded: false, shown: null, load: null, category: 'hang', detail: 'no result in 150 s' }), 150000); });
-  try { return await Promise.race([tryOnceInner(browser, testInfo, site), hang]); } finally { clearTimeout(timer); }
+  const st = { diag: null };
+  const hang = new Promise((resolve) => { timer = setTimeout(() => resolve({ loaded: false, shown: null, load: null, category: 'hang', detail: 'no result in 150 s', diag: st.diag }), 150000); });
+  try { return await Promise.race([tryOnceInner(browser, testInfo, site, st), hang]); } finally { clearTimeout(timer); }
 }
 
-async function tryOnceInner(browser, testInfo, site) {
+async function tryOnceInner(browser, testInfo, site, st) {
   const ctx = await browser.newContext({ baseURL: BASE });
   const page = await ctx.newPage();
   const cons = [];
   page.on('console', (m) => { const x = m.text(); if (/Content Security Policy|Refused to|X-Frame|frame-ancestors/i.test(x)) cons.push(x.slice(0, 160)); });
   const res = { loaded: false, shown: null, load: null, category: null, detail: null };
+  // at 100 s, look at what the app is doing (a stuck page makes evaluate hang, so it is raced against 5 s)
+  const wd = setTimeout(async () => {
+    st.diag = await Promise.race([
+      page.evaluate(() => { const r = window.__lbPerf.runs; const c = r[r.length - 1]; const f = document.getElementById('frame'); return { marks: c && c.marks, frame: f && (f.src || '').slice(0, 30), status: (document.getElementById('statusText') || {}).textContent || null }; }).catch((e) => String(e).slice(0, 80)),
+      new Promise((resolve) => setTimeout(() => resolve('page did not answer in 5 s'), 5000)),
+    ]);
+  }, 100000);
   try {
     await applyProfile(page, testInfo);
     await signIn(page);
@@ -116,7 +124,7 @@ async function tryOnceInner(browser, testInfo, site) {
     return res;
   } catch (e) {
     res.category = 'harness'; res.detail = String(e).slice(0, 160); return res;
-  } finally { await ctx.close(); }
+  } finally { clearTimeout(wd); await ctx.close(); }
 }
 
 // One test per site so Playwright can run several at once (--workers=3). Each writes test-results/sites-<sha>/<name>.json;
