@@ -89,6 +89,9 @@ async function tryOnceInner(browser, testInfo, site, st) {
     await page.locator('#url').focus();
     await page.locator('#url').fill(site.url);
     await page.keyboard.press('Enter');
+    // Enter is sometimes swallowed (an open suggestion list or a late dialog): if no navigation started within 4 s, use the Go button.
+    const started = await page.waitForFunction((n) => window.__lbPerf.runs.length > n, before, { timeout: 4000 }).then(() => true).catch(() => false);
+    if (!started) { await page.locator('#go').click({ timeout: 5000 }).catch(() => {}); res.enterRetried = true; }
     // Wait for either the shown mark or an error card (frame srcdoc is set by renderErrorPage).
     const outcome = await page.waitForFunction((n) => {
       const f = document.getElementById('frame');
