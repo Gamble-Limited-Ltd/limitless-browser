@@ -200,6 +200,10 @@ Answered by Boss on 2026-11-10 (second question round):
      sources only: 10 TB/month free outbound listed on Oracle's free-tier page; the Ampere A1 free shape was reported cut
      to 2 OCPU / 12 GB in 2026; idle reclaim below about 15 percent use over 7 days; account suspensions without warning
      reported. Plan B if it fails: a small paid VPS (about 4 EUR/month), which needs Boss's go.
+     **Live terms read 2026-11-11 (`ORACLE-TERMS.md`):** invite-only use is grey but defensible (members are authorized
+     end users, CSA 20.5); open sign-up on Oracle is treated as not allowed (CSA 3.4(c) "make available the Services to any
+     third party", 1.1 "internal business operations"). Free A1 confirmed 2 OCPU / 12 GB, 10 TB/month out; idle reclaim
+     below 20 % CPU (p95), network and memory over 7 days.
    - **Relay choice per member:** automatic by measured speed with a Settings override; the choices offered depend on rank.
      Home relay: Owner and Prime; Cardinal only as light overflow and cannot choose it; Ordinal does not use it. Prime may
      default to the cloud relay if it is the fastest. When a site fails on the cloud relay (captcha, 403), Prime and Owner
