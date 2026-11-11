@@ -1781,6 +1781,8 @@
                 start(tries = 0) { if (curl || tries > 20) { setTimeout(() => window.LB_featuresReady.then(() => this.run()), 3000); } else setTimeout(() => this.start(tries + 1), 1000); },
             };
             window.LB_warm = lbWarm;
+            // open the small stores once the app is idle, so the first navigation does not pay for creating them
+            setTimeout(() => { try { if (lbPcOn()) { lbPageKV.count(); lbRwKV.count(); } } catch (_) {} }, 2500);
             window.addEventListener('online', () => lbWarm.run());
             lbWarm.start();
             (function wireSleepSetting() {
@@ -7349,6 +7351,11 @@ const origReplace = history.replaceState;
 history.pushState = function(s, t, u) { if (u) { try { Object.assign(fakeLoc, new URL(resolve(u))); } catch {} parent.postMessage({ t: 'uc', u: fakeLoc.href }, '*'); } return origPush.call(this, s, t, null); };
 history.replaceState = function(s, t, u) { if (u) { try { Object.assign(fakeLoc, new URL(resolve(u))); } catch {} parent.postMessage({ t: 'uc', u: fakeLoc.href }, '*'); } return origReplace.call(this, s, t, null); };
 
+// postMessage: this frame's real origin is opaque ("null") but pages pass their own (fake) origin, or the "null" they read from a
+// MessageEvent, as targetOrigin: the browser throws ("Invalid target origin 'null'") or silently drops the message. Calls on this
+// window accept any targetOrigin, string or options object. window.postMessage is an own property in Chromium, so wrap that.
+try { const _pm = window.postMessage; window.postMessage = function(m, t, x) { try { if (typeof t === 'string') t = '*'; else if (t && typeof t === 'object' && !Array.isArray(t)) t = Object.assign({}, t, { targetOrigin: '*' }); } catch (e) {} return x === undefined ? _pm.call(window, m, t) : _pm.call(window, m, t, x); }; } catch (e) {}
+
 const OrigWorker = window.Worker;
 if (OrigWorker) { window.Worker = function(url, opts) { const absUrl = resolve(url); const w = { onmessage: null, onerror: null, postMessage: () => {}, terminate: () => {}, addEventListener: () => {}, removeEventListener: () => {} }; const p = /^(data:|blob:)/i.test(absUrl) ? _fetch.call(window, absUrl).then(r => r.arrayBuffer()).then(buf => { const arr = new Uint8Array(buf); return { d: Base64.encode(arr) }; }) : req(absUrl); p.then(r => { const arr = Base64.decode(r.d || ''); const blob = new Blob([arr], { type: 'application/javascript' }); const real = new OrigWorker(URL.createObjectURL(blob), opts); w.postMessage = m => real.postMessage(m); w.terminate = () => real.terminate(); w.addEventListener = (t, fn) => real.addEventListener(t, fn); w.removeEventListener = (t, fn) => real.removeEventListener(t, fn); real.onmessage = e => w.onmessage?.(e); real.onerror = e => w.onerror?.(e); }).catch(e => w.onerror?.(new ErrorEvent('error', { message: e.message }))); return w; }; }
 
@@ -8906,11 +8913,10 @@ _VIEWER_DL_JS +
                         const db = await open(); if (!db) return undefined;
                         return new Promise((resolve) => {
                             try {
-                                const tx = db.transaction('kv', 'readwrite'); const store = tx.objectStore('kv');
-                                const r = store.get(k);
+                                const r = db.transaction('kv', 'readonly').objectStore('kv').get(k);   // read-only: no lock against pending writes
                                 r.onsuccess = () => {
                                     const rec = r.result;
-                                    if (rec && Date.now() - rec.t > 600000) { rec.t = Date.now(); store.put(rec); }
+                                    if (rec && Date.now() - rec.t > 600000) { try { rec.t = Date.now(); db.transaction('kv', 'readwrite').objectStore('kv').put(rec); } catch (_) {} }
                                     resolve(rec ? rec.v : undefined);
                                 };
                                 r.onerror = () => resolve(undefined);
@@ -8934,6 +8940,8 @@ _VIEWER_DL_JS +
                         try { db.transaction('kv', 'readwrite').objectStore('kv').clear(); st.total = 0; } catch (_) {}
                     },
                     get total() { return st.total; },
+                    get isOpen() { return !!st.db; },
+                    open,
                 };
             }
             // Rewrite cache across visits (features.rewriteCache, off with the Resource Cache switch too): rewritten script text
@@ -9065,8 +9073,11 @@ _VIEWER_DL_JS +
                 let out, pkey = null;
                 if (lbRwPersistOn()) {
                     pkey = await lbRwKey(src);
-                    const got = await lbRwKV.get(pkey);
-                    if (typeof got === 'string') { lbRw.stats.persistHits++; lbRwMemoPut(key, got); return got; }
+                    // never wait for the store to be created or opened on the page's critical path: the first visit opens it for the next
+                    if (lbRwKV.isOpen) {
+                        const got = await lbRwKV.get(pkey);
+                        if (typeof got === 'string') { lbRw.stats.persistHits++; lbRwMemoPut(key, got); return got; }
+                    } else lbRwKV.open();
                 }
                 if (!lbRw.disabled && window.LB_features.worker !== false && typeof Worker !== 'undefined') {
                     try {
@@ -9401,39 +9412,40 @@ _VIEWER_DL_JS +
                     }
 
                     // Cached rewritten page (features.pageCache): show it now, the normal load continues behind it.
-                    let _pcShown = null;
+                    let _pcShown = null, _docIn = false;
                     const _pcUrl = url;
+                    // The lookup runs beside the document fetch (opening the store must never delay a cold navigation); it shows the
+                    // stored page only if it answers before the document does.
                     if (!_isRetry && method === "GET" && activeTabId === initiatorTabId && lbPcOn()) {
-                        try {
-                            const pc = await lbPageKV.get(lbPcKey(url));
-                            if (pc && pc.sig === lbPcSig() && lbNow() < pc.exp && activeTabId === initiatorTabId && !tabCtrl.signal.aborted) {
-                                _pcShown = pc;
-                                const pcBlob = new Blob([pc.html], { type: "text/html;charset=utf-8" });
-                                const pcUrl = URL.createObjectURL(pcBlob);
-                                const prevPc = frame.src;
-                                _blobLoadPending = true;
-                                frame.removeAttribute('srcdoc');
-                                frame.style.display = 'block';
-                                frame.onload = () => {
-                                    const lt = tabs.find(t => t.id === initiatorTabId);
-                                    if (lt) { applyMuteToFrame(!!lt.muted); lt.blobSrc = pcUrl; lt.memBytes = pcBlob.size; lbSleep.scroll(lt); }
-                                    lbPcWatch(pc);
-                                    frame.onload = null;
-                                };
-                                frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
-                                frame.src = pcUrl;
-                                lbRevoke(prevPc, 2000);
-                                lbBF.save(initiatorTabId, url, pcUrl, pcBlob.size, pc.title);
-                                if (pc.title) setTabTitle(pc.title);
-                                hideOverlay();
-                                window.__lbPerf.mark('shown');
-                                if (_progTok) lbProg.finish(_progTok);
-                                log('Shown from the page cache: ' + url, 'info');
-                            }
-                        } catch (_) { _pcShown = null; }
+                        lbPageKV.get(lbPcKey(url)).then((pc) => {
+                            if (_docIn || !pc || pc.sig !== lbPcSig() || lbNow() >= pc.exp || activeTabId !== initiatorTabId || tabCtrl.signal.aborted) return;
+                            _pcShown = pc;
+                            const pcBlob = new Blob([pc.html], { type: "text/html;charset=utf-8" });
+                            const pcUrl = URL.createObjectURL(pcBlob);
+                            const prevPc = frame.src;
+                            _blobLoadPending = true;
+                            frame.removeAttribute('srcdoc');
+                            frame.style.display = 'block';
+                            frame.onload = () => {
+                                const lt = tabs.find(t => t.id === initiatorTabId);
+                                if (lt) { applyMuteToFrame(!!lt.muted); lt.blobSrc = pcUrl; lt.memBytes = pcBlob.size; lbSleep.scroll(lt); }
+                                lbPcWatch(pc);
+                                frame.onload = null;
+                            };
+                            frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
+                            frame.src = pcUrl;
+                            lbRevoke(prevPc, 2000);
+                            lbBF.save(initiatorTabId, url, pcUrl, pcBlob.size, pc.title);
+                            if (pc.title) setTabTitle(pc.title);
+                            hideOverlay();
+                            window.__lbPerf.mark('shown');
+                            if (_progTok) lbProg.finish(_progTok);
+                            log('Shown from the page cache: ' + url, 'info');
+                        }).catch(() => { _pcShown = null; });
                     }
 
                     const r = await queueFetch(url, opts, PRIORITY.html);
+                    _docIn = true;
                     window.__lbPerf.mark('firstBytes');
                     if (_progTok && _progTok === lbProg.tok) lbProg.done++;
                     if (activeTabId !== initiatorTabId) return;

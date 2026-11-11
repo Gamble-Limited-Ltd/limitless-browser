@@ -17,6 +17,7 @@ test('rewrite cache: a second visit (new page load, empty memo) reads the rewrit
   await page.reload();
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
   await page.evaluate(SETUP);
+  await page.evaluate(() => LB_rewrite.kv.open());   // the app opens it when idle; the lookup never waits for the open
   const second = await page.evaluate(async () => {
     const src = __big();
     const out = await LB_rewrite.async(src);

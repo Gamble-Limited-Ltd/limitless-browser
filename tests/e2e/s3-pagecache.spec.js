@@ -24,6 +24,7 @@ async function primed(page, body) {
   const no = page.locator('#lbRelayNo');
   if (await no.isVisible().catch(() => false)) await no.click();
   await page.evaluate(SETUP);
+  await page.evaluate(() => LB_pc.kv.open());
   return errors;
 }
 
@@ -45,9 +46,10 @@ test('page cache: a changed document is swapped in when the member has not touch
   await page.evaluate(async ([o, h, b]) => {
     const key = LB_pc.key(o + '/p'); const v = await LB_pc.kv.get(key);
     v.docSig = 'old'; await LB_cache.clearAll(); await LB_pc.kv.put(key, v, 100);   // the response cache must not answer with the old body
-    __respond(o + '/p', { headers: h, body: b });
+    __respond(o + '/p', { headers: h, body: b, delay: 600 });
   }, [O, HEAD, DOC('Two')]);
   await page.evaluate((u) => { window.LB_go(u); }, O + '/p');
+  await expect.poll(() => frameDoc(page, 'document.title'), { timeout: 15000 }).toBe('One');
   await expect.poll(() => frameDoc(page, 'document.title'), { timeout: 15000 }).toBe('Two');
   await expect(page.locator('#lbPageChip')).toHaveCount(0);
 });
