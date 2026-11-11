@@ -204,6 +204,9 @@ Answered by Boss on 2026-11-10 (second question round):
      end users, CSA 20.5); open sign-up on Oracle is treated as not allowed (CSA 3.4(c) "make available the Services to any
      third party", 1.1 "internal business operations"). Free A1 confirmed 2 OCPU / 12 GB, 10 TB/month out; idle reclaim
      below 20 % CPU (p95), network and memory over 7 days.
+   - **Access stays Boss-approved (Boss, 2026-11-11, after the Oracle terms read):** every member is approved by Boss one by
+     one, also on the cloud relay. New: a "request access" form for signed-in GATE users that requires a detailed reason
+     ("I want access because ..."; a bare "I want access" is refused); requests land in Boss's admin queue (S5/S7).
    - **Relay choice per member:** automatic by measured speed with a Settings override; the choices offered depend on rank.
      Home relay: Owner and Prime; Cardinal only as light overflow and cannot choose it; Ordinal does not use it. Prime may
      default to the cloud relay if it is the fastest. When a site fails on the cloud relay (captcha, 403), Prime and Owner
