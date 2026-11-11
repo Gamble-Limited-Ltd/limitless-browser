@@ -9960,12 +9960,54 @@ window._libcurlReady = true;
             // memory pressure). ponytail: fixed cap; make it adaptive to
             // performance.memory pressure only if the fixed number proves wrong.
             const MAX_WARM_TABS = 8;
+            // ── Instant Back and Forward (1.0 S3, features.instantBack) ─────────────
+            // The rendered blob document of the last 3 history entries per tab stays in memory (64 MB across tabs, least
+            // recently used first). go(url, false) for a stored entry shows it at once and restores the scroll position
+            // instead of fetching and rewriting again. Never stored: POST, error pages, documents sent with no-store.
+            // A stored blob is only revoked by eviction (lbRevoke checks lbBF.holds), so the tab code can keep revoking freely.
+            const lbBF = {
+                map: new Map(), total: 0, seq: 0, MAX_PER_TAB: 3, MAX_BYTES: 64 * 1024 * 1024,
+                on() { try { return window.LB_features.instantBack !== false; } catch (_) { return true; } },
+                holds(u) { if (!u) return false; for (const l of this.map.values()) if (l.some(e => e.blob === u)) return true; return false; },
+                find(tabId, url) { const l = this.map.get(tabId); return l ? l.find(e => e.url === url) : null; },
+                _free(e) {
+                    this.total -= e.bytes;
+                    const tab = tabs.find(t => t.id === e.tabId);
+                    if (e.blob === frame.src || (tab && tab.blobSrc === e.blob)) return;   // still the live or warm document of a tab
+                    setTimeout(() => { try { URL.revokeObjectURL(e.blob); } catch (_) {} }, 300);
+                },
+                drop(tabId, url) {
+                    const l = this.map.get(tabId); if (!l) return;
+                    for (let i = l.length - 1; i >= 0; i--) if (!url || l[i].url === url) this._free(l.splice(i, 1)[0]);
+                    if (!l.length) this.map.delete(tabId);
+                },
+                save(tabId, url, blob, bytes, title) {
+                    if (!this.on() || !blob) return;
+                    this.drop(tabId, url);
+                    const l = this.map.get(tabId) || []; this.map.set(tabId, l);
+                    l.push({ tabId, url, blob, bytes: bytes || 0, title: title || '', scrollY: 0, seq: ++this.seq });
+                    this.total += bytes || 0;
+                    while (l.length > this.MAX_PER_TAB) this._free(l.shift());
+                    while (this.total > this.MAX_BYTES) {
+                        let old = null;
+                        for (const ll of this.map.values()) for (const e of ll) if (!old || e.seq < old.seq) old = e;
+                        if (!old || old.blob === frame.src) break;
+                        const ll = this.map.get(old.tabId); ll.splice(ll.indexOf(old), 1); this._free(old);
+                    }
+                },
+                leave(tabId, url) {   // remember where the member was on the page being left
+                    const e = this.find(tabId, url);
+                    if (e && frame.src === e.blob) { try { e.scrollY = frame.contentWindow.scrollY || 0; } catch (_) {} }
+                },
+            };
+            window.LB_bf = lbBF;
+            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) URL.revokeObjectURL(u); } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
                 if (!tab) return;
                 if (tab.blobSrc && tab.blobSrc.startsWith('blob:') && tab.blobSrc !== frame.src) {
                     const u = tab.blobSrc;
-                    setTimeout(() => { try { URL.revokeObjectURL(u); } catch (e) {} }, 300);
+                    lbRevoke(u, 300);
                 }
                 tab.blobSrc = null;
                 tab.memBytes = 0;
@@ -9984,7 +10026,7 @@ window._libcurlReady = true;
                 const t = tabs.find(x => x.id === initiatorTabId);
                 if (t) {
                     if (t.blobSrc && t.blobSrc.startsWith('blob:') && t.blobSrc !== blobUrl) {
-                        const old = t.blobSrc; setTimeout(() => { try { URL.revokeObjectURL(old); } catch (e) {} }, 300);
+                        lbRevoke(t.blobSrc, 300);
                     }
                     t.blobSrc = blobUrl;
                     t.memBytes = bytes || 0;
@@ -9992,7 +10034,7 @@ window._libcurlReady = true;
                     if (title) t.title = title;
                     enforceBlobCap();
                 } else if (blobUrl && blobUrl.startsWith('blob:')) {
-                    setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch (e) {} }, 300);
+                    lbRevoke(blobUrl, 300);
                 }
                 tabAbortControllers.delete(initiatorTabId);
                 renderTabs();
@@ -10083,13 +10125,14 @@ window._libcurlReady = true;
                     try {
                         const blobSrc = frame.src;
                         frame.src = 'about:blank';
-                        if (blobSrc && blobSrc.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(blobSrc), 300);
+                        if (blobSrc && blobSrc.startsWith('blob:')) lbRevoke(blobSrc, 300);
                     } catch (e) {}
                 }
 
                 if (closingTab) {
+                    lbBF.drop(closingTab.id);
                     if (closingTab.blobSrc && closingTab.blobSrc !== frame.src) {
-                        setTimeout(() => URL.revokeObjectURL(closingTab.blobSrc), 300);
+                        lbRevoke(closingTab.blobSrc, 300);
                     }
                     closingTab.cachedContent = null;
                     closingTab.cachedDoc = null;
@@ -17220,6 +17263,7 @@ _VIEWER_DL_JS +
 
             async function go(url, push = true, method = "GET", body = null, _isRetry = false) {
                 const initiatorTabId = activeTabId;
+                if (!_isRetry) lbBF.leave(initiatorTabId, pageUrl);
                 // 1.0 S1: features.pipeline=false is the kill switch back to the serial stages, overlay and image wait.
                 const _pipe = !(window.LB_features && window.LB_features.pipeline === false);
                 let _progTok = 0;
@@ -17343,6 +17387,40 @@ _VIEWER_DL_JS +
                         renderTabs();
                     }
                     return;
+                }
+
+                // Instant Back / Forward: a stored document for this exact entry is shown at once (see lbBF).
+                if (!push && !_isRetry && method === "GET" && lbBF.on() && activeTabId === initiatorTabId) {
+                    const hit = lbBF.find(initiatorTabId, url);
+                    if (hit) {
+                        window.__lbPerf.start(url);
+                        const pc = tabAbortControllers.get(initiatorTabId); if (pc) { pc.abort(); tabAbortControllers.delete(initiatorTabId); }
+                        abortAllRequests();
+                        hideNewTab(); hideSettingsPage(); hideOverlay();
+                        isErrorPage = false; pageUrl = url;
+                        const bt = tabs.find(t => t.id === initiatorTabId);
+                        if (bt) { bt.hasError = false; bt.url = url; bt.blobSrc = hit.blob; bt.memBytes = hit.bytes; if (hit.title) bt.title = hit.title; }
+                        urlInput.value = url;
+                        updateSecurityChip(url);
+                        if (hit.title) setTabTitle(hit.title);
+                        updateTabUrl(url);
+                        hit.seq = ++lbBF.seq;
+                        frame.removeAttribute('srcdoc');
+                        _blobLoadPending = true;
+                        frame.addEventListener('load', () => window.__lbPerf.mark('load'), { once: true });
+                        frame.onload = () => {
+                            try { if (hit.scrollY) frame.contentWindow.scrollTo(0, hit.scrollY); } catch (_) {}
+                            if (bt) applyMuteToFrame(!!bt.muted);
+                            frame.onload = null;
+                        };
+                        frame.style.display = 'block';
+                        frame.src = hit.blob;
+                        window.__lbPerf.mark('firstBytes'); window.__lbPerf.mark('dom'); window.__lbPerf.mark('shown');
+                        setStatus("idle", "Ready");
+                        updateBookmarkButton();
+                        renderTabs();
+                        return;
+                    }
                 }
 
                 isErrorPage = false;
@@ -18455,8 +18533,9 @@ _VIEWER_DL_JS +
                         setTimeout(() => { frame.style.transition = ''; }, 220);
                     }, 50);
                     if (prevBlobUrl && prevBlobUrl.startsWith('blob:')) {
-                        setTimeout(() => URL.revokeObjectURL(prevBlobUrl), 2000);
+                        lbRevoke(prevBlobUrl, 2000);
                     }
+                    if (method === 'GET' && !/no-store/i.test((r.headers && r.headers['cache-control']) || '')) lbBF.save(initiatorTabId, url, newBlobUrl, _newBytes, (doc.title || '').trim());
                     hideOverlay();
                     window.__lbPerf.mark('shown');
                     if (_progTok) lbProg.finish(_progTok);
@@ -18909,6 +18988,7 @@ _VIEWER_DL_JS +
                 }
                 if (pageUrl) {
                     memCache.clear();
+                    lbBF.drop(activeTabId, pageUrl);
                     deleteCache(pageUrl);   // Reload asks the server for the document again
                     go(pageUrl, false);
                 }

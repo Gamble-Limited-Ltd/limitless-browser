@@ -10,6 +10,7 @@ What changed, in plain language. Newest first.
 - Pictures far down a page now load only when you scroll close to them, which saves time and data.
 - New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
 - Sites you visit again open faster: Limitless now remembers the prepared scripts of a site between visits (only when the Resource Cache setting is on).
+- Back and Forward are now instant for the last few pages in each tab: they come straight from memory, with the scroll position where you left it.
 
 ## 0.2.3
 
