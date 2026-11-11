@@ -174,13 +174,17 @@ Answered by Boss on 2026-11-10 (second question round):
    one `stepup_failed`, so the real reason is hidden. Leading suspect: GATE legal v2 answers `403
    LEGAL_ACCEPTANCE_REQUIRED` and step-up never sends `acceptedLegal` (the sign-in page does). Other suspects: login
    name vs email, GATE rate limit. Fix starts with a failing test against the mock GATE; the panel must show the real
-   reason. Boss to list the other panel problems ("and more"). In build 2026-11-11 on `slice/1.0-adminfix` (gate and Browser).
+   reason. Boss to list the other panel problems ("and more").
+   **Status 2026-11-11:** cause confirmed in GATE (`gll-id/apps/server/src/routes/direct.ts:289`, legal v2
+   `LEGAL_ACCEPTANCE_REQUIRED`). Fixed: step-up sends `acceptedLegal`, answers safe reason codes, the dialog shows the
+   acceptance box and every reason. Other panel problems found are in `ADMIN.md` section 0. Merged into `release/1.0.0`
+   (both repos) 2026-11-11, not deployed.
 12. **Speed limits that follow the real line (Boss, 2026-11-11, in 1.0.0, build when ready).** Today fair share splits a
    fixed `TOTAL_UPLINK_MBPS` (18, from one T0 measurement). Wanted: the total follows the real ISP speed (periodic upload
    measurement on the box that carries `/wisp/`, smoothed, never above the box's shaped rate), per-member limits derived from
    it and the tier weights, and the admin panel showing the measured line, each member's share and the limit in force.
    Builds after the relay box slice (the box changes where the upload is measured). Detail to write in `RELAY.md` 3.5.
-Slices in flight (2026-11-11): `slice/1.0-adminfix` and `slice/1.0-edge` (relay box, item 10). Gate now has a
+Slices in flight (2026-11-11): `slice/1.0-edge` (relay box, item 10); `slice/1.0-adminfix` merged. Gate now has a
 `release/1.0.0` branch (from `slice/1.0-s4`) as the merge target.
 Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
 

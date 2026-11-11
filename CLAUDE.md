@@ -222,7 +222,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 - **Leaving it:** `#lbAdmClose` (Close) calls `window.LB_back()` (back to the previous page of the same tab, or the start page when there is none; the tab is never replaced or closed), Home goes to the start page; `showNewTab` calls `closeSkinPages()`, so no overlay page (admin, What's new) stays on top. Tests: "leaving the admin panel" in `tests/e2e/admin.spec.js`.
 - **Sections:** Users (approve by login name, last seen, today, cut off or restore, revoke with a second click), Usage (today, 30 days, live
   sockets and streams, 80 % warnings, per-user limits), Switches (pause new sign-ins, maintenance, cut off one user), Health (relay, GLL ID, live counts,
-  version, counters). A write that answers `403 {error:'stepup'}` opens the password dialog (`#lbAdmStepup`) and retries once.
+  version, counters). A write that answers `403 {error:'stepup'}` opens the password dialog (`#lbAdmStepup`) and retries once. The dialog shows the gate's reason code (`legal_required`, `wrong_password`, `not_owner`, `rate_limited`, `gate_unavailable`...); `legal_required` reveals the acceptance checkbox and resends with `acceptedLegal: true`.
 - **Server side:** `/_lb/admin/api/*` in the check service (`~/limitless-gate` CLAUDE.md, "Admin panel API"). nginx: `location ^~ /_lb/admin/`
   (gated, 16k body, no-store) and `X-LB-Reason: maintenance` maps to `/auth/maintenance` like `unavailable`.
 - **Kill switches:** `ADMIN_PANEL=off` in `deploy/gate.env` (every admin route 404s), `./manage.sh clients owner-api limitless-browser off` in GLL ID.

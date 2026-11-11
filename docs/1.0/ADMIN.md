@@ -5,6 +5,17 @@ Slice S7 (wave 4). Extends `limitless://admin` (0.2.0, `ACCESS-CONTROL.md` 11). 
 `textContent`, `ADMIN_PANEL=off` kills every route. **Totals only: the panel never shows which sites anyone visits.**
 All picks in the artifact were favourites: members and profile, invites and nominations, live and 30 days, health hops.
 
+## 0. Existing panel fixes (2026-11-11, branch `slice/1.0-adminfix`)
+- **Cause of "my password does not work":** with legal v2 on, GATE's direct login refuses an account that has not accepted
+  `LEGAL_VERSION` with `403 LEGAL_ACCEPTANCE_REQUIRED` (`gll-id/apps/server/src/routes/direct.ts:289`). Step-up never sent
+  `acceptedLegal` and showed every refusal as one message, so a right password looked wrong and no write could be saved.
+- **Now:** `POST step-up {login, password, acceptedLegal?}` answers a safe code: `legal_required`, `wrong_password`,
+  `not_owner`, `access_denied`, `suspended`, `rate_limited` (429), `gate_unavailable` (503), else `stepup_failed`. The dialog
+  shows each reason; on `legal_required` it adds the sign-in page's acceptance checkbox (same wording and HALL links), keeps
+  the password, and resends with `acceptedLegal: true`. Cancelling the dialog tells the owner nothing was changed.
+- **Known, not fixed:** the per-user "Connections" box accepts 0 but the API needs 1 to 256 (shows "That value is not
+  valid"); the subtitle "Changes are unlocked" is not cleared when the 10 minutes run out (the next write re-asks).
+
 ## 1. Layout
 Sections become: Members, Queue, Usage, Health, Notices, Reports, Audit, Switches. Desktop: list on the left, detail on
 the right (as in the artifact). Below 1100 px the detail opens over the list. Fits 1366x768.
@@ -71,4 +82,4 @@ up to 200 characters.
 `tests/stack/admin.spec.js` extended (warn, suspend with an open socket, remove, invite create and revoke, nomination
 approve, sign out everywhere, step-up required on each write, non-owner gets 404 on every new route).
 
-Last verified: 2026-11-10
+Last verified: 2026-11-11
