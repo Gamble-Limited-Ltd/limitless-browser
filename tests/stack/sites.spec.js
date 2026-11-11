@@ -31,14 +31,22 @@ const sha = () => {
   try { return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim(); } catch { return 'local'; }
 };
 
-async function signIn(page) {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Sign in with GLL ID' }).click();
-  await page.waitForURL(`${MOCK}/oidc/authorize**`);
-  await page.locator('input[name=user][value=alice]').check();
-  await page.locator('#continue').click();
-  await page.waitForLoadState('load');
+// The first rep of a site signs in through the mock GATE; later reps start from the saved session (cookies only: every other
+// store is empty, so the page still loads cold) and skip the sign-in round trip.
+const SIGNED = new Map();
+async function signIn(page, site) {
+  const saved = site && SIGNED.get(site.name);
+  if (saved) await page.goto('/');
+  else {
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Sign in with GLL ID' }).click();
+    await page.waitForURL(`${MOCK}/oidc/authorize**`);
+    await page.locator('input[name=user][value=alice]').check();
+    await page.locator('#continue').click();
+    await page.waitForLoadState('load');
+  }
   await expect(page.locator('#url')).toBeVisible({ timeout: 90000 });
+  if (site && !saved) { try { SIGNED.set(site.name, { cookies: await page.context().cookies() }); } catch (_) {} }
   const skip = page.locator('#tutorialOverlay button', { hasText: 'Skip tour' });
   try { await skip.waitFor({ state: 'visible', timeout: 4000 }); await skip.click(); } catch (_) {}
   const no = page.locator('#lbRelayNo');
@@ -70,7 +78,7 @@ async function tryOnceOnce(browser, testInfo, site) {
 }
 
 async function tryOnceInner(browser, testInfo, site, st) {
-  const ctx = await browser.newContext({ baseURL: BASE });
+  const ctx = await browser.newContext({ baseURL: BASE, ...(SIGNED.get(site.name) ? { storageState: { cookies: SIGNED.get(site.name).cookies, origins: [] } } : {}) });
   const page = await ctx.newPage();
   const cons = [];
   page.on('console', (m) => { const x = m.text(); if (/Content Security Policy|Refused to|X-Frame|frame-ancestors/i.test(x)) cons.push(x.slice(0, 160)); });
@@ -84,7 +92,7 @@ async function tryOnceInner(browser, testInfo, site, st) {
   }, 100000);
   try {
     await applyProfile(page, testInfo);
-    await signIn(page);
+    await signIn(page, site);
     const before = await page.evaluate(() => window.__lbPerf.runs.length);
     await page.locator('#url').focus();
     await page.locator('#url').fill(site.url);
