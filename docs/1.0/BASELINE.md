@@ -84,6 +84,26 @@ Measured from the VM with curl against Cloudflare's speed endpoints, no personal
   streaming at once already fill it. `TOTAL_UPLINK_MBPS` in `RELAY.md` 3.5 would be 21 x 0.85 = about 18 on this evidence;
   a multi-stream test could show a higher ceiling.
 
+## S2 candidate (startup slice, branch `slice/1.0-s2`, 2026-11-10)
+Same machine and harness as above, measured with the S2 code against `c88ce5e` re-run the same evening (`tests/stack/boot-size.spec.js`, 7 reps each, fresh contexts; fixture pages with
+`npm run test:speed`, `LB_SPEED_PUBLIC_REPS=0`). Other sessions shared the VM (rehearsal runs were serialised with `flock /tmp/limitless-rehearsal.lock`).
+`cold` = the load after Continue at the mock GATE (nothing cached); `repeat` = reload right after; `warm worker` = reload after the service worker installed. KB = bytes on the wire.
+
+| Project | Build | cold: interactive (ms) | cold KB | repeat: interactive (ms) | repeat KB | warm worker: interactive (ms) | warm KB |
+|---|---|---|---|---|---|---|---|
+| chromium | c88ce5e | 1528 | 2565 | 965 | 1376 | 872 | 1376 |
+| chromium | S2 | 1058 | 1042 | 608 | 3 | 1004 | 1 |
+| chromebook | c88ce5e | 5352 | 2565 | 3703 | 1376 | 3830 | 1376 |
+| chromebook | S2 | 4028 | 1042 | 2701 | 3 | 2813 | 1 |
+
+- **Cold transfer:** 2565 KB to 1042 KB, 59 % smaller (target: at least 40 %). `index.html` is 268 KB brotli (was about 978 KB); the libcurl WASM is 536 KB brotli.
+- **Repeat open, start page interactive, Chromebook profile:** 3703 ms to 2701 ms (27 % faster). **Target under 1.0 s: not met.** The time left is script parse and run of the 1 MB main script under 4x CPU (about 1.2 s of it in an
+  unthrottled-network 4x-CPU profile) plus revalidation round trips. In an experiment (not shipped, not committed) moving that one script to an external file so V8 can code-cache it cut splash from about 1360 ms to about 1040 ms at 4x CPU;
+  it touches the code S1 is editing, so it is best done as a mechanical step after S1 merges. Lazy subsystems (3.4) were not built (see SPEED.md S2 notes).
+- **Service worker:** the warm-worker reload is not faster than the HTTP-cache repeat, because page loads are deliberately network first (the gate answers every open). Its value is offline-safe precache and fewer revalidations of theme files.
+- **Fixture pages, Chromebook profile, S2 vs c88ce5e (`scripts/speed-compare.mjs`):** no page metric is slower than 10 % and 100 ms except fx-frames cold firstBytes (818 to 923 ms, +12.8 %, 5 ms over the gate; cold dom the same row; other fx-frames metrics are equal or faster).
+  This is inside the run-to-run spread seen elsewhere in the table (fx-slow cold firstBytes +8 %, fx-article cold firstBytes -12 %); S2 does not touch `go()`. Chromium project: gate passed. The service worker is registered 8 s after load (so its precache does not compete with the first page).
+
 ## Caveats
 - Chromium and chromebook runs were back to back on a shared VM; fixture medians of 7 are reasonably stable, public ones
   (3 reps) are not. Compare with `node scripts/speed-compare.mjs`, which gates only on fixture pages and boot.
