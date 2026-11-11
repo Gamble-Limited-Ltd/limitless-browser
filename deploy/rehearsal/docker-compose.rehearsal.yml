@@ -45,6 +45,7 @@ services:
       context: ../relay
     networks: [lb_relay, lb_egress, lb_fixture]
     dns: [1.1.1.1, 9.9.9.9]
+    depends_on: [dns]
     # Default = the prod config (same file the image bakes in). The speed run (LB_SPEED=1) swaps in relay-fixtures.toml.
     volumes:
       - ${REHEARSAL_RELAY_CONFIG:-../relay/config.toml}:/etc/epoxy/config.toml:ro
@@ -52,8 +53,25 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     pids_limit: 512
-    mem_limit: 512m
-    cpus: 2
+    mem_limit: 1g
+    cpus: 4
+
+  dns:
+    image: limitless-dns:rehearsal
+    build:
+      context: ../dns
+    networks:
+      lb_relay:
+        ipv4_address: 10.89.81.53
+      lb_egress: {}
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 128m
 
   # Stand-in for GATE. Published on the host at the SAME URL the gate uses as its issuer, so the browser and
   # the id token agree; the gate itself reaches it through GATE_BACKCHANNEL_URL (http://mock-gate:PORT).

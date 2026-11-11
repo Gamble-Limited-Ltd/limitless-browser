@@ -71,16 +71,47 @@ services:
     networks: [lb_relay, lb_egress]
     # Container-level egress hardening (host-level iptables rules are also recommended: relay/egress-rules.sh).
     # Public resolvers: the relay never asks Docker's embedded DNS, so container names do not resolve.
+    # (epoxy itself uses dns_servers in relay/config.toml: our caching resolver, service `dns` below.)
     dns: [1.1.1.1, 9.9.9.9]
+    depends_on: [dns]
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     pids_limit: 512
-    mem_limit: 512m
-    cpus: 2
+    # RELAY.md 3.4: was 512m and 2 CPUs. No tcp_rmem/tcp_wmem sysctls: the host max is already 6 MiB rmem (checked 2026-11-10), above the 4 MiB planned.
+    mem_limit: 1g
+    cpus: 4
     logging:
       driver: local
       options: { max-size: "2m", max-file: "2" }
+
+  # Relay DNS cache (RELAY.md 3.2). Fixed address on lb_relay (epoxy needs an IP); lb_egress is its way out (DoT to 1.1.1.1, 9.9.9.9).
+  dns:
+    image: limitless-dns:${DNS_SHA:-dev}
+    build:
+      context: ./dns
+    restart: unless-stopped
+    networks:
+      lb_relay:
+        ipv4_address: 10.88.81.53
+      lb_egress: {}
+    # Non-root bind to port 53 without a capability.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "nslookup -timeout=2 example.com 127.0.0.1 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: local
+      options: { max-size: "1m", max-file: "2" }
 
 networks:
   # web <-> gate. No outside access at all.
