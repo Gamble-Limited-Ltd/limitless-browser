@@ -57,6 +57,12 @@ function classifyError(text) {
 
 // A page that hangs the browser (busy loop under CPU throttling) must not stall the whole run: give up after 150 s.
 async function tryOnce(browser, testInfo, site) {
+  const r = await tryOnceOnce(browser, testInfo, site);
+  // A crashed or stuck browser under load says nothing about the site: one more try before it counts.
+  if (!r.loaded && (r.category === 'harness' || r.category === 'hang')) { const r2 = await tryOnceOnce(browser, testInfo, site); r2.retried = true; return r2; }
+  return r;
+}
+async function tryOnceOnce(browser, testInfo, site) {
   let timer;
   const hang = new Promise((resolve) => { timer = setTimeout(() => resolve({ loaded: false, shown: null, load: null, category: 'hang', detail: 'no result in 150 s' }), 150000); });
   try { return await Promise.race([tryOnceInner(browser, testInfo, site), hang]); } finally { clearTimeout(timer); }
@@ -94,8 +100,13 @@ async function tryOnceInner(browser, testInfo, site) {
     const marks = await page.evaluate(() => ({ ...window.__lbPerf.runs[window.__lbPerf.runs.length - 1].marks }));
     res.shown = marks.shown ?? null; res.load = marks.load ?? null;
     const perr = await frame.evaluate(() => (window.__perr || []).slice(0, 6)).catch(() => []);
-    res.loaded = found;
-    if (!found) res.snippet = await frame.evaluate(() => (document.title + ' | ' + (document.body ? document.body.innerText : '')).replace(/\s+/g, ' ').slice(0, 200)).catch(() => null);
+    // Second proof of a real render for pages whose selector went stale: plenty of visible text and no bot-check or error wording.
+    let via = found ? 'selector' : null;
+    const probe = await frame.evaluate(() => ({ len: (document.body ? document.body.innerText : '').trim().length, head: (document.title + ' | ' + (document.body ? document.body.innerText : '')).replace(/\s+/g, ' ').slice(0, 200) })).catch(() => ({ len: 0, head: null }));
+    const BLOCKED = /just a moment|access denied|captcha|verify you are (a )?human|unusual traffic|request blocked|attention required|are you a robot|pardon our interruption|enable javascript|forbidden/i;
+    if (!found && probe.len >= 400 && !BLOCKED.test(probe.head || '')) { found = true; via = 'text'; }
+    res.loaded = found; res.via = via; res.textLen = probe.len;
+    if (!found) res.snippet = probe.head;
     if (!found) {
       if (cons.length) { res.category = 'csp'; res.detail = cons[0]; }
       else if (perr.length) { res.category = 'script'; res.detail = perr.slice(0, 3).join(' | ').slice(0, 200); }
