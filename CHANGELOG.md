@@ -10,6 +10,10 @@ What changed, in plain language. Newest first.
 - Pictures far down a page now load only when you scroll close to them, which saves time and data.
 - New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
 
+- Opening the app and new connections is a little quicker: the server remembers a successful sign-in check for a few seconds instead of asking again for every file.
+- Site addresses are looked up through a small cache on our side, so the second visit to a site starts sooner.
+- The relay has more memory and processor time, which helps when several people browse at once.
+
 ## 0.2.3
 
 - The legal page now points to the full Gamble Limited legal documents on HALL.

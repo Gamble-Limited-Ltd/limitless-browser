@@ -172,6 +172,14 @@ Built on branch `slice/browsing`; details for the code are in `CLAUDE.md` ("Fast
   for fixture pages and boot (more than 10 % and 100 ms slower). Public sites are reported, not gated. Run base and candidate on the same machine, same hour.
   The 0.2.3 baseline is in `docs/1.0/BASELINE.md`.
 
+### Server path, S4 (1.0, `docs/1.0/RELAY.md` 2.2 and 3)
+- **nginx auth cache:** `/_gate/check` is cached in `proxy_cache lbauth` (tmpfs, 10 MB), key `host|session cookie` (no session cookie: never cached), `proxy_cache_valid 200 5s`: 401 and 403 are never stored. The gate answers `Cache-Control: no-store`, which nginx would honour, so it is ignored in that location only. A revoked user is refused within 5 s (app files); a new WISP socket is refused at once because the gate checks the session itself. Tests: `tests/stack/authcache.spec.js` (signed-out, forged cookie, unapproved, revoked; hit and miss), and `admin.spec.js` now allows the 5 s window. Kill switch: remove the `proxy_cache lbauth;` lines in `deploy/web/nginx.conf`.
+- **Per-hop timing:** every gated response carries `Server-Timing: gate;dur=<ms>, authcache;desc=HIT|MISS, edge;desc="<cf-ray>"` (the same value for the browser's own `performance` entries) and the WISP upgrade carries `X-LB-T: gate=<ms>;cache=<HIT|MISS>`. No hostnames, no per-user data. The gate side (CONNECT to first DATA histograms) and the daily anonymous medians from the app are not built yet (see `docs/1.0/RELAY.md` 2.2 status).
+- **Relay DNS cache:** service `dns` (`deploy/dns/`, unbound, 10.88.81.53 on `lb_relay`, DNS-over-TLS to 1.1.1.1 and 9.9.9.9, TTLs followed up to 1 h, negative answers 60 s, prefetch). `deploy/relay/config.toml` `dns_servers = ["10.88.81.53"]`; epoxy's destination checks still run on the resolved address. The rehearsal rewrites the address to its own subnet (`run.sh`).
+- **Relay resources:** 4 CPUs, 1 GiB (was 2 and 512 MB). No socket-buffer sysctls: the host already allows 6 MiB receive and 4 MiB send.
+- **BBR:** host step, `docs/1.0/S4-HOST-COMMANDS.md`.
+- **Tunnel terms:** `docs/1.0/TUNNEL-OPTIONS.md`.
+
 ### Home link (measured 2026-11-10)
 The home upload rate is the ceiling for all members together (`docs/1.0/RELAY.md` 2.1). Measured from the VM with curl against speed.cloudflare.com at 15:07 to 15:42 Chicago (not a quiet hour), 3 runs each, no personal data:
 download 104 Mbit/s median (104, 114, 102; 25 MB bodies, the 100 MB request is now refused with HTTP 403), upload 21 Mbit/s median (22, 21 and one outlier at 2.5;
