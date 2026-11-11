@@ -28,11 +28,14 @@ done
 # Lazy subsystems (SPEED.md 3.4): source app/*.js is served from app/<sha>/ so every build has its own immutable URLs.
 if [ -d "$SRC/app" ]; then mkdir -p "$OUT/app/$SHA" && cp -a "$SRC/app/." "$OUT/app/$SHA/"; fi
 
-# Stamp the build's own sha into the dist copy of index.html (never the source) so the app can tell when
-# version.json names a newer build. The marker line in index.html is `... || 'dev'; // @LB_BUILD_SHA@`.
+# Stamp the build's own sha into the dist copy of the app script (never the source) so the app can tell when
+# version.json names a newer build. The marker line in app/main.js is `... || 'dev'; // @LB_BUILD_SHA@`.
 if [[ ! "$SHA" =~ ^[0-9A-Za-z._-]+$ ]]; then echo "build-static: unsafe sha '$SHA'" >&2; exit 1; fi
-sed -i "/@LB_BUILD_SHA@/ s/|| 'dev';/|| '$SHA';/" "$OUT/index.html"
-grep -q "|| '$SHA'; // @LB_BUILD_SHA@" "$OUT/index.html" || { echo "build-static: could not stamp the build sha into index.html" >&2; exit 1; }
+# S3: the application script lives in app/main.js (source) and is served from app/<sha>/main.js; the marker line is in that file.
+sed -i "s#<script src=\"app/main.js\"></script>#<script src=\"app/$SHA/main.js\"></script>#" "$OUT/index.html"
+grep -q "<script src=\"app/$SHA/main.js\"></script>" "$OUT/index.html" || { echo "build-static: could not point index.html at app/$SHA/main.js" >&2; exit 1; }
+sed -i "/@LB_BUILD_SHA@/ s/|| 'dev';/|| '$SHA';/" "$OUT/app/$SHA/main.js"
+grep -q "|| '$SHA'; // @LB_BUILD_SHA@" "$OUT/app/$SHA/main.js" || { echo "build-static: could not stamp the build sha into app/main.js" >&2; exit 1; }
 # Lazy loaders in index.html read the sha from the same constant; the service worker gets it plus its precache list
 # (shell files a first visit needs: index, acorn, the WASM, font css, Latin faces, theme css, app/<sha>). Skins CSS and PDF.js are cached on use.
 sed -i "/@LB_BUILD_SHA@/ s/const SHA = 'dev';/const SHA = '$SHA';/" "$OUT/sw.js"
@@ -54,12 +57,17 @@ FEAT_CACHE="${LB_FEATURE_RESPCACHE:-true}"
 FEAT_SW="${LB_FEATURE_SW:-true}"
 FEAT_PIPELINE="${LB_FEATURE_PIPELINE:-true}"
 FEAT_LAZYIMG="${LB_FEATURE_LAZYIMG:-true}"
+FEAT_TABSLEEP="${LB_FEATURE_TABSLEEP:-true}"
+FEAT_REWRITECACHE="${LB_FEATURE_REWRITECACHE:-true}"
+FEAT_PAGECACHE="${LB_FEATURE_PAGECACHE:-true}"
+FEAT_WARM="${LB_FEATURE_WARM:-true}"
+FEAT_INSTANTBACK="${LB_FEATURE_INSTANTBACK:-true}"
 [[ "$FEAT_SOCKETS" =~ ^[0-4]$ ]] || { echo "build-static: LB_FEATURE_OWNSOCKETS must be 0 to 4" >&2; exit 1; }
-for v in "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG"; do
-  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE and LB_FEATURE_LAZYIMG must be true or false" >&2; exit 1; }
+for v in "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK"; do
+  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE, LB_FEATURE_LAZYIMG, LB_FEATURE_TABSLEEP, LB_FEATURE_REWRITECACHE, LB_FEATURE_PAGECACHE, LB_FEATURE_WARM and LB_FEATURE_INSTANTBACK must be true or false" >&2; exit 1; }
 done
-printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s}}\n' \
-  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" > "$OUT/version.json"
+printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s,"tabSleep":%s,"rewriteCache":%s,"pageCache":%s,"warm":%s,"instantBack":%s}}\n' \
+  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" > "$OUT/version.json"
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"

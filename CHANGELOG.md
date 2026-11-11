@@ -9,6 +9,12 @@ What changed, in plain language. Newest first.
 - The page you were on stays visible and usable while the next one loads. A thin progress bar under the address bar shows how far the load has come, instead of covering the page.
 - Pictures far down a page now load only when you scroll close to them, which saves time and data.
 - New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
+- Sites you visit again open faster: Limitless now remembers the prepared scripts of a site between visits (only when the Resource Cache setting is on).
+- Back and Forward are now instant for the last few pages in each tab: they come straight from memory, with the scroll position where you left it.
+- Pages you opened recently show up at once on the next visit, then quietly check for a newer version. If you have already started reading, a small "Updated, reload" button offers the new version instead of changing the page under you.
+- Tabs you have not used for a while now go to sleep to save memory (Settings, Tab Caching: choose Never, 10, 30 or 60 minutes). They wake in a moment, at the same spot. Tabs playing sound or video, or holding text you typed, never sleep.
+- The main app code is now its own file that your browser keeps between visits, so Limitless starts faster on a repeat open and each update only has to fetch what changed.
+- Pages with many fonts and images in their styles are prepared faster, without stalling the page.
 
 ## 0.2.3
 

@@ -62,7 +62,7 @@ test.describe('without a session', () => {
     await expect(page.locator('#url')).toHaveCount(0);
   });
 
-  for (const path of ['/index.html', '/version.json', '/patcher.html']) {
+  for (const path of ['/index.html', '/version.json', '/patcher.html', '/app/rehearsal-x/main.js']) {
     test(`${path} is not served`, async ({ request }) => {
       // Assets and fetches get the bare status.
       expect((await request.get(path)).status()).toBe(401);
