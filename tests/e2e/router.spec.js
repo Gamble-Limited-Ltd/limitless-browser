@@ -99,11 +99,11 @@ test.describe('own relay shards', () => {
   });
 
   test('the ownSockets kill switch from version.json turns sharding off', async ({ page }) => {
-    await page.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: '0.2.0', sha: 'zzzzzzz', features: { ownSockets: 0, worker: false, respCache: false } }) }));
+    await page.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: '0.2.0', sha: 'zzzzzzz', features: { ownSockets: 0, worker: false, respCache: false, pipeline: false, lazyImg: false } }) }));
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
     const f = await page.evaluate(() => ({ ...window.LB_features }));
-    expect(f).toEqual({ ownSockets: 1, worker: false, respCache: false });
+    expect(f).toEqual({ ownSockets: 1, worker: false, respCache: false, pipeline: false, lazyImg: false });
     expect(await page.evaluate(() => window.LB_router.route('ws://' + location.host + '/wisp/a.test:443').url)).toBe(`ws://127.0.0.1:${PORT}/wisp/a.test:443`);
   });
 
@@ -111,7 +111,7 @@ test.describe('own relay shards', () => {
     await page.route('**/version.json*', (r) => r.fulfill({ status: 404, body: 'no' }));
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
-    expect(await page.evaluate(() => ({ ...window.LB_features }))).toEqual({ ownSockets: 4, worker: true, respCache: true });
+    expect(await page.evaluate(() => ({ ...window.LB_features }))).toEqual({ ownSockets: 4, worker: true, respCache: true, pipeline: true, lazyImg: true });
   });
 });
 

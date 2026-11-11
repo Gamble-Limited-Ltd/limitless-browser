@@ -1456,6 +1456,15 @@
             width: 100%
         }
 
+        /* 1.0 S1: determinate bar driven by real progress (width set inline by lbProg), 2 px with a soft glow */
+        .progress-wrap:has(.progress-bar.lb-det) { height: 2px; }
+        .progress-bar.lb-det, .progress-bar.lb-det.loading {
+            animation: none;
+            background: linear-gradient(90deg, var(--ac), var(--ac2));
+            box-shadow: 0 0 8px var(--ac);
+            transition: width .12s linear;
+        }
+
         .progress-bar.loading {
             animation: loading 1.5s ease-in-out infinite;
             background: linear-gradient(90deg, var(--ac) 0%, var(--ac2) 50%, var(--ac) 100%);
@@ -6075,6 +6084,21 @@
                                 </div>
 
                                 <div class="settings-card">
+                                    <div class="settings-card-head"><i class="fas fa-leaf"></i> Data saver</div>
+                                    <div class="settings-card-body">
+                                        <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-leaf"></i></span>
+                                            <div>
+                                                <div class="settings-switch-label">Data saver</div>
+                                                <div class="settings-hint">Off by default. Asks sites for lighter pages, loads images only when you scroll near them, does not start videos by itself and loads video only when you press play. Uses less of your data allowance on slow or limited connections.</div>
+                                            </div>
+                                            <div class="settings-switch" id="settingsDataSaverSwitch">
+                                                <div class="settings-switch-track"><div class="settings-switch-thumb"></div></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-shield-halved"></i> Relays</div>
                                     <div class="settings-card-body">
                                         <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-route"></i></span>
@@ -9582,7 +9606,7 @@ window._libcurlReady = true;
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownSockets: 4, worker: true, respCache: true };
+            window.LB_features = { ownSockets: 4, worker: true, respCache: true, pipeline: true, lazyImg: true };
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
                 try {
@@ -9597,6 +9621,8 @@ window._libcurlReady = true;
                         if ('ownSockets' in f) { const n = Math.floor(Number(f.ownSockets)); window.LB_features.ownSockets = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; }
                         if ('worker' in f) window.LB_features.worker = f.worker !== false && f.worker !== 0;
                         if ('respCache' in f) window.LB_features.respCache = f.respCache !== false && f.respCache !== 0;
+                        if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
+                        if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                     }
                 } catch (_) {}
                 return window.LB_features;
@@ -13364,6 +13390,35 @@ window._libcurlReady = true;
                 return div.innerHTML;
             }
 
+            // Determinate progress for go(): finished / started requests of this navigation plus a slow creep so it never
+            // looks stuck (capped at 90 % until the page is shown). `quiet` keeps the bar hidden while late images stream in.
+            const lbProg = {
+                tok: 0, t: 0, started: 0, done: 0, pct: 0, quiet: false,
+                begin() {
+                    this.tok++; this.started = 1; this.done = 0; this.pct = 3; this.quiet = false;
+                    progressBar.classList.add('lb-det'); progressBar.style.width = '3%';
+                    if (progressWrap) progressWrap.classList.remove('hidden');
+                    clearInterval(this.t); this.t = setInterval(() => this.tick(), 120);
+                    return this.tok;
+                },
+                track(p, tok) { if (tok === this.tok) { this.started++; const f = () => { if (tok === this.tok) this.done++; }; p.then(f, f); } return p; },
+                tick() {
+                    const target = Math.min(90, 8 + (this.done / Math.max(1, this.started)) * 82);
+                    this.pct = Math.max(this.pct, target, Math.min(90, this.pct + 0.6));
+                    progressBar.style.width = this.pct.toFixed(1) + '%';
+                },
+                finish(tok) {
+                    if (tok !== this.tok) return;
+                    clearInterval(this.t); this.quiet = true;
+                    progressBar.style.width = '100%'; progressBar.classList.remove('loading');
+                    setTimeout(() => { if (tok === this.tok) { if (progressWrap) progressWrap.classList.add('hidden'); progressBar.classList.remove('lb-det', 'done', 'error'); progressBar.style.width = ''; } }, 250);
+                },
+                end(tok) {
+                    if (tok !== this.tok || this.quiet) return;
+                    clearInterval(this.t); progressBar.classList.remove('lb-det'); progressBar.style.width = '';
+                }
+            };
+
             function setStatus(state, text) {
                 statusDot.className = "dot " + state;
                 statusText.textContent = text;
@@ -13373,7 +13428,9 @@ window._libcurlReady = true;
                 }
                 if (titlebarStatusLabel) titlebarStatusLabel.textContent = text;
 
-                if (state === "active") {
+                if (state === "active" && lbProg.quiet) {
+                    // page already shown, late images still streaming: no bar, no Stop button
+                } else if (state === "active") {
                     if (progressWrap) progressWrap.classList.remove("hidden");
                     progressBar.classList.add("loading");
                     progressBar.classList.remove("done", "error");
@@ -13789,6 +13846,15 @@ window._libcurlReady = true;
                 updateStats();
             }
 
+            // ── Page pipeline helpers (1.0 S1) ──────────────────────────────────
+            // Data saver (Settings > Connection, limitless:datasaver:v1, default off): Save-Data header, no image pre-warm,
+            // lazy margin 50 %, preload none and no autoplay, image limit 100.
+            function lbDataSaver() { try { return ls.getItem('limitless:datasaver:v1') === '1'; } catch (_) { return false; } }
+            // Read by makeProxyScript (the injected runtime): lazy offscreen images and the data saver media rules.
+            function lbLazyConfig() {
+                const sv = lbDataSaver();
+                return { on: !(window.LB_features && window.LB_features.lazyImg === false), margin: sv ? 50 : 150, saver: sv };
+            }
             async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
@@ -14027,6 +14093,9 @@ window._libcurlReady = true;
                 if (!headers['Accept-Language'] && !headers['accept-language']) {
                     headers['Accept-Language'] = 'en-US,en;q=0.9';
                 }
+
+                // Data saver (Settings > Connection): ask servers for lighter responses
+                if (lbDataSaver() && !headers['Save-Data'] && !headers['save-data']) headers['Save-Data'] = 'on';
 
                 // Sec-Fetch-* — only when the spoofing preference is enabled
                 if (!headers['Sec-Fetch-Mode'] && !headers['sec-fetch-mode'] && mediaPref('limitless:media:headers:v1')) {
@@ -14555,6 +14624,7 @@ const BLOCK_ENABLED = ${JSON.stringify(!!blockEnabled)};
 const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
 const SPELLCHECK = ${JSON.stringify(!!spellcheck)};
+const LB_LAZY = ${JSON.stringify(lbLazyConfig())};
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
 
@@ -15584,6 +15654,32 @@ function _proxyUse(el) {
   _spriteCache.get(spriteUrl).then(() => { try { el.setAttribute(attr, frag); } catch (e) {} });
 }
 
+const _lazyPend = new Set();
+let _lazyRaf = 0, _lazyOn = false;
+function _lazyCheck() {
+  _lazyRaf = 0;
+  const vh = innerHeight || 800, vw = innerWidth || 1200, m = LB_LAZY.margin / 100;
+  let blind = 0;
+  for (const el of [..._lazyPend]) {
+    if (!el.isConnected) { _lazyPend.delete(el); continue; }
+    const r = el.getBoundingClientRect();
+    // an image with no size yet could be anywhere: let a few through per pass, the load events bring the next ones
+    if (!r.width && !r.height && ++blind > 8) continue;
+    if (r.bottom >= -vh * m && r.top <= vh * (1 + m) && r.right >= -vw * m && r.left <= vw * (1 + m)) {
+      _lazyPend.delete(el); el.__lbLazyGo = 1; processedEls.delete(el); processEl(el);
+    }
+  }
+}
+function _lazySched() { if (!_lazyRaf) _lazyRaf = requestAnimationFrame(_lazyCheck); }
+function _lazyArm() {
+  if (_lazyOn) return;
+  _lazyOn = true;
+  addEventListener('scroll', _lazySched, true);
+  addEventListener('resize', _lazySched);
+  addEventListener('load', _lazySched, true);
+  addEventListener('error', _lazySched, true);
+}
+
 function processEl(el) {
   if (!el.tagName) return;
   const tag = el.tagName;
@@ -15627,7 +15723,12 @@ function processEl(el) {
     // data-lb-src is Limitless's own neutralization marker (set server-side or by
     // _sanitizeMediaHTML before a real src ever reaches the parser) — always
     // trustworthy and checked first. The site's own lazy-load attrs follow.
-    const lazySrc = el.getAttribute('data-lb-src') || el.getAttribute('data-src') || el.getAttribute('data-lazy') || el.getAttribute('data-original') || el.getAttribute('data-lazy-src');
+    // Lazy offscreen images (feature lazyImg): promote only when within LB_LAZY.margin % of a viewport, see _lazyCheck.
+    // loading="eager" and fetchpriority="high" set by the site are honoured. Data saver also stops media autoplay.
+    const _defer = LB_LAZY.on && tag === 'IMG' && !el.__lbLazyGo && el.hasAttribute('data-lb-src') && el.getAttribute('loading') !== 'eager' && el.getAttribute('fetchpriority') !== 'high';
+    if (_defer) { _lazyPend.add(el); _lazyArm(); _lazySched(); }
+    if (LB_LAZY.saver && (tag === 'VIDEO' || tag === 'AUDIO')) { el.removeAttribute('autoplay'); el.setAttribute('preload', 'none'); }
+    const lazySrc = _defer ? null : (el.getAttribute('data-lb-src') || el.getAttribute('data-src') || el.getAttribute('data-lazy') || el.getAttribute('data-original') || el.getAttribute('data-lazy-src'));
     if (lazySrc && !/^(data:|blob:)/i.test(lazySrc) && !el.getAttribute('data-real-src')) {
       el.src = lazySrc;
       el.removeAttribute('data-lb-src');
@@ -15636,7 +15737,7 @@ function processEl(el) {
       el.removeAttribute('data-original');
       el.removeAttribute('data-lazy-src');
     }
-    const srcset = el.getAttribute('srcset') || el.getAttribute('data-lb-srcset') || el.getAttribute('data-srcset');
+    const srcset = _defer ? null : (el.getAttribute('srcset') || el.getAttribute('data-lb-srcset') || el.getAttribute('data-srcset'));
     if (srcset && !/blob:/.test(srcset)) {
       el.srcset = srcset;
       el.removeAttribute('data-lb-srcset');
@@ -17857,6 +17958,9 @@ _VIEWER_DL_JS +
 
             async function go(url, push = true, method = "GET", body = null, _isRetry = false) {
                 const initiatorTabId = activeTabId;
+                // 1.0 S1: features.pipeline=false is the kill switch back to the serial stages, overlay and image wait.
+                const _pipe = !(window.LB_features && window.LB_features.pipeline === false);
+                let _progTok = 0;
 
                 frame.removeAttribute('srcdoc');
                 resetFindSearch();
@@ -17988,6 +18092,9 @@ _VIEWER_DL_JS +
                 tabAbortControllers.set(initiatorTabId, tabCtrl);
                 if (initiatorTabId === activeTabId) abortCtrl = tabCtrl;
 
+                // a page is already showing in this tab: keep it visible and usable behind the progress bar (it is replaced
+                // when the new one is ready); empty tabs and the serial path blank the frame and show the overlay as before
+                const _keepPage = _pipe && activeTabId === initiatorTabId && !newtab.classList.contains('active') && /^blob:/.test(frame.src || '');
                 if (activeTabId === initiatorTabId && !isInvalidInternal(url)) {
                     frame.onload = null;
                     // Mark this as a Limitless-initiated load. The iframe is sandboxed, so
@@ -17995,8 +18102,10 @@ _VIEWER_DL_JS +
                     // origin) — including this about:blank clear. Without this flag the
                     // native-escape interceptor treats our own blanking as an escape and
                     // can re-enter go(), which blanks again → infinite load loop.
-                    _blobLoadPending = true;
-                    frame.src = 'about:blank';
+                    if (!_keepPage) {
+                        _blobLoadPending = true;
+                        frame.src = 'about:blank';
+                    }
                 }
 
                 if (initiatorTabId === activeTabId) { abortAllRequests(); closeAllSockets(); }
@@ -18065,7 +18174,8 @@ _VIEWER_DL_JS +
                         setTabTitle("Loading...");
                     }
                     if (typeof updatePauseSiteBtn === 'function') updatePauseSiteBtn();
-                    showOverlay("Loading...");
+                    if (_pipe) _progTok = lbProg.begin();
+                    if (!_keepPage) showOverlay("Loading...");
                     totalRequests = 0;
                     pendingRequests = 0;
                     cachedHits = 0;
@@ -18123,6 +18233,7 @@ _VIEWER_DL_JS +
 
                     const r = await queueFetch(url, opts, PRIORITY.html);
                     window.__lbPerf.mark('firstBytes');
+                    if (_progTok && _progTok === lbProg.tok) lbProg.done++;
                     if (activeTabId !== initiatorTabId) return;
 
                     // If the server redirected us, update url to the final landing URL.
@@ -18490,6 +18601,34 @@ _VIEWER_DL_JS +
 
                     const cssLinks = [...doc.querySelectorAll('link[rel="stylesheet"]')];
 
+                    // ── Pipeline kick-off (1.0 S1): start every subresource fetch of the document at once. The queue orders by
+                    // PRIORITY and caps concurrency (MAX_CONCURRENT), so this does not flood the relay. The stages below take
+                    // their own result from `qf` (a shared promise per URL, so even a response that is not cacheable is fetched
+                    // once) and only rewrite. Images: the first 24 in document order warm the cache (all up to the limit when
+                    // lazyImg is off, none in data saver); nothing here waits for them.
+                    const _saver = lbDataSaver();
+                    const _pf = new Map();
+                    const qf = (u, o, p) => _pf.get(u) || queueFetch(u, o, p);
+                    if (_pipe) {
+                        const kick = (raw, prio) => {
+                            try {
+                                if (!raw || /^(data:|blob:|javascript:|about:|#)/i.test(raw) || shouldSkip(raw)) return;
+                                const u = new URL(raw, url).href;
+                                if (_pf.has(u) || shouldSkip(u)) return;
+                                const pr = lbProg.track(queueFetch(u, { signal: tabCtrl.signal }, prio), _progTok);
+                                pr.catch(() => {});
+                                _pf.set(u, pr);
+                            } catch (_) {}
+                        };
+                        cssLinks.slice(0, 60).forEach(l => kick(l.getAttribute('href'), PRIORITY.css));
+                        const _sl = Math.max(1, parseInt((() => { try { return ls.getItem('limitless:render:scriptlimit'); } catch (e) { return null; } })() || '250', 10));
+                        [...doc.querySelectorAll('script[src]')].slice(0, _sl).forEach(sc => kick(sc.getAttribute('src'), PRIORITY.js));
+                        doc.querySelectorAll('iframe[src]').forEach(f => kick(f.getAttribute('src'), PRIORITY.html));
+                        const _il = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch (e) { return null; } })() || (_saver ? '100' : '300'), 10));
+                        const _pre = _saver ? 0 : (window.LB_features.lazyImg === false ? _il : Math.min(_il, 24));
+                        if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || '')).slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image));
+                    }
+
                     async function rewriteCssUrls(cssText, baseUrl) {
                         const seen = new Set();
                         const urlMatches = [...cssText.matchAll(/url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi)];
@@ -18531,16 +18670,19 @@ _VIEWER_DL_JS +
                         return cssText;
                     }
 
+                    // Stage: external CSS (with @import chains and font/image url()s), then inline <style> url()s. With the pipeline
+                    // on it runs alongside the script and iframe stages (all their fetches were started by the kick-off above).
+                    const _cssStage = async () => {
                     const BATCH_SIZE = 15;
                     for (let i = 0; i < cssLinks.length; i += BATCH_SIZE) {
-                        if (activeTabId !== initiatorTabId) { return; }
+                        if (activeTabId !== initiatorTabId) { return false; }
                         const batch = cssLinks.slice(i, i + BATCH_SIZE);
                         const batchPromises = batch.map(async link => {
                             const href = link.getAttribute("href");
                             if (!href || /^(data:|blob:)/i.test(href) || shouldSkip(href)) return;
                             try {
                                 const cssUrl = new URL(href, url).href;
-                                const cssR = await queueFetch(cssUrl, {
+                                const cssR = await qf(cssUrl, {
                                     signal: tabCtrl.signal
                                 }, PRIORITY.css);
                                 if (activeTabId !== initiatorTabId) return;
@@ -18572,7 +18714,7 @@ _VIEWER_DL_JS +
 
                         await Promise.all(batchPromises);
 
-                        if (tabCtrl.signal.aborted || !tabs.find(t => t.id === initiatorTabId)) return;
+                        if (tabCtrl.signal.aborted || !tabs.find(t => t.id === initiatorTabId)) return false;
                     }
 
                     const inlineStyles = [...doc.querySelectorAll('style')];
@@ -18610,6 +18752,11 @@ _VIEWER_DL_JS +
                             styleEl.textContent = result;
                         } catch { }
                     }));
+
+                    };
+                    let _cssP = null;
+                    if (_pipe) { _cssP = _cssStage(); _cssP.catch(() => {}); }
+                    else if ((await _cssStage()) === false) return;
 
                     if (tabCtrl.signal.aborted || activeTabId !== initiatorTabId) return;
 
@@ -18686,7 +18833,7 @@ _VIEWER_DL_JS +
                             let src;
                             try {
                                 const r = await Promise.race([
-                                    queueFetch(absUrl, { signal: tabCtrl.signal }, PRIORITY.js),
+                                    qf(absUrl, { signal: tabCtrl.signal }, PRIORITY.js),
                                     new Promise((_, rj) => setTimeout(() => rj(new Error('module fetch timeout')), 12000))
                                 ]);
                                 if (!r.buf || !r.buf.byteLength) throw new Error('empty');
@@ -18819,7 +18966,7 @@ _VIEWER_DL_JS +
                     await Promise.all(_toProxy.map(async ({ scr, jsUrl }) => {
                         try {
                             const jsR = await Promise.race([
-                                queueFetch(jsUrl, { signal: tabCtrl.signal }, PRIORITY.js),
+                                qf(jsUrl, { signal: tabCtrl.signal }, PRIORITY.js),
                                 new Promise((_, rj) => setTimeout(() => rj(new Error('script fetch timeout')), 12000))
                             ]);
                             if (activeTabId !== initiatorTabId) return;
@@ -18843,11 +18990,14 @@ _VIEWER_DL_JS +
                         }
                     }));
 
+                    if (_cssP && (await _cssP) === false) return;
                     if (tabCtrl.signal.aborted || activeTabId !== initiatorTabId) return;
 
-                    doc.querySelectorAll('img[loading="lazy"], iframe[loading="lazy"], source[loading="lazy"]').forEach(el => {
+                    const _lazyOn = window.LB_features.lazyImg !== false;
+                    doc.querySelectorAll(_lazyOn ? 'iframe[loading="lazy"], source[loading="lazy"]' : 'img[loading="lazy"], iframe[loading="lazy"], source[loading="lazy"]').forEach(el => {
                         el.setAttribute('loading', 'eager');
                     });
+                    if (_saver) doc.querySelectorAll('video, audio').forEach(el => { el.removeAttribute('autoplay'); el.setAttribute('preload', 'none'); });
                     doc.querySelectorAll('img[data-src], img[data-lazy], img[data-original], img[data-lazy-src]').forEach(img => {
                         const lazySrc = img.getAttribute('data-src') || img.getAttribute('data-lazy') || img.getAttribute('data-original') || img.getAttribute('data-lazy-src');
                         if (lazySrc && !/^(data:|blob:)/i.test(lazySrc)) {
@@ -18890,7 +19040,7 @@ _VIEWER_DL_JS +
                     await Promise.all(_iframesToProxy.map(async ({ ifr, iu }) => {
                         try {
                             const ir = await Promise.race([
-                                queueFetch(iu, { signal: tabCtrl.signal }, PRIORITY.html),
+                                qf(iu, { signal: tabCtrl.signal }, PRIORITY.html),
                                 new Promise((_, rj) => setTimeout(() => rj(new Error('iframe fetch timeout')), 12000))
                             ]);
                             if (activeTabId !== initiatorTabId) return;
@@ -18936,8 +19086,9 @@ _VIEWER_DL_JS +
                         });
                     }
 
-                    const _imgLimit = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch(e) { return null; } })() || '300', 10));
-                    const images = _imgLimit > 0 ? [...doc.querySelectorAll("img[src]")].slice(0, _imgLimit) : [];
+                    const _imgLimit = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch(e) { return null; } })() || (_saver ? '100' : '300'), 10));
+                    // pipeline on: the pre-warm already started in the kick-off and is never awaited
+                    const images = _imgLimit > 0 && !_pipe ? [...doc.querySelectorAll("img[src]")].slice(0, _imgLimit) : [];
                     const loadedImageUrls = new Set();
                     const imagePromises = images.map(async img => {
                         const src = img.getAttribute("src");
@@ -19046,6 +19197,7 @@ _VIEWER_DL_JS +
                     }
                     hideOverlay();
                     window.__lbPerf.mark('shown');
+                    if (_progTok) lbProg.finish(_progTok);
                     if (document.activeElement === urlInput) urlInput.blur();
                     if (!_isRetry) {
                         log(`<i class="fas fa-circle-check" style="color:var(--ok)"></i>Loaded: ` + url + ` <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">via ${WISP.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, "ok");
@@ -19327,6 +19479,7 @@ _VIEWER_DL_JS +
                     updateSecurityChip(pageUrl, 'error');
                     renderTabs();
                 } finally {
+                    if (_progTok) lbProg.end(_progTok);
                     // Always put the sticky primary back once this navigation's own
                     // work (document + everything fetched while go() was on the
                     // stack) is done — success, error, or early return all hit this.
@@ -21325,6 +21478,7 @@ _VIEWER_DL_JS +
                     { id: 'faviconProxySwitch',  key: 'limitless:favicon-proxy:v1',  defaultOn: false },
                     { id: 'settingsPoolModeSwitch', key: 'limitless:wisp:poolmode:v1', defaultOn: true },
                     { id: 'settingsCacheSwitch',    key: 'limitless:cache:resp:v1',    defaultOn: true  },
+                    { id: 'settingsDataSaverSwitch', key: 'limitless:datasaver:v1',    defaultOn: false },
                 ];
                 _mediaSwitches.forEach(({ id, key, defaultOn }) => {
                     const sw = $(id);

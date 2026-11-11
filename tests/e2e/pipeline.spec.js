@@ -139,7 +139,8 @@ test('features.lazyImg=false: all images are promoted at once', async ({ page })
 });
 
 test('data saver: Save-Data header, no pre-warm, no autoplay, preload none', async ({ page }) => {
-  await setup(page, () => { try { localStorage.setItem('limitless:datasaver:v1', '1'); } catch (_) {} });
+  await setup(page);
+  await page.evaluate(() => localStorage.setItem(localStorage.getItem('limitless:inst:v1') + ':limitless:datasaver:v1', '1'));
   const html = '<html><head><title>t</title></head><body style="margin:0"><video id="v" autoplay src="/v.mp4"></video><img src="/img/0.png" width="10" height="10"></body></html>';
   const r = await page.evaluate(async ({ o, html }) => {
     __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: html });
@@ -149,6 +150,7 @@ test('data saver: Save-Data header, no pre-warm, no autoplay, preload none', asy
     return { sd: __net.log[0].headers['save-data'] };
   }, { o: O, html });
   expect(r.sd).toBe('on');
+  await expect.poll(() => page.frames().some((f) => f !== page.mainFrame() && f.url().startsWith('blob:')), { timeout: 5000 }).toBe(true);
   const fr = page.frames().find((f) => f !== page.mainFrame() && f.url().startsWith('blob:'));
   const v = await fr.evaluate(() => { const e = document.getElementById('v'); return { auto: e.hasAttribute('autoplay'), pre: e.getAttribute('preload') }; });
   expect(v.auto).toBe(false);
@@ -176,4 +178,15 @@ test('progress bar replaces the overlay when a page is already showing, and move
   expect(r.det).toBe(true);
   expect(r.w).toBeGreaterThan(5);
   expect(r.w).toBeLessThan(100);
+});
+
+test('data saver switch in Settings > Connection saves limitless:datasaver:v1', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => { document.getElementById('settingsDataSaverSwitch').scrollIntoView(); });
+  const sw = page.locator('#settingsDataSaverSwitch');
+  await expect(sw).not.toHaveClass(/\bon\b/);
+  await sw.evaluate((e) => e.click());
+  await expect(sw).toHaveClass(/\bon\b/);
+  const v = await page.evaluate(() => localStorage.getItem(localStorage.getItem('limitless:inst:v1') + ':limitless:datasaver:v1'));
+  expect(v).toBe('1');
 });
