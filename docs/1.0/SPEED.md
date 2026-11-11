@@ -44,7 +44,7 @@ driven by real progress: `(finished requests for this navigation) / (started)`, 
 stuck. The previous page stays visible and usable until the new one is ready; Stop works as today. `showOverlay` stays
 for error states and first load in an empty tab only.
 
-2.5 **Data saver mode** (Settings > Connection, `limitless:datasaver:v1`, default off). When on: send `Save-Data: on`
+2.5 **Data saver mode** (Settings > Connection, `limitless:datasaver:v1`, default ON for everyone from 2026-11-11 (Boss); only Prime and Owner can turn it off). When on: send `Save-Data: on`
 on every request, pre-warm 0 images, lazy margin 50 %, `preload="none"` on media, no autoplay (strip `autoplay`), image
 limit 100. The bandwidth meter in the menu shows "Data saver on".
 
@@ -171,6 +171,7 @@ Covered by: lazy images (2.3), off-thread CSS work (4.5), tab sleeping (4.1). Pl
 - Long tasks: the harness records `longtask` entries during scroll on fixture pages; anything over 50 ms gets a ticket.
 
 ## 6. S8: downloads panel (wave 5)
+**Boss, 2026-11-11:** file saves are blocked for Ordinal, small files only (about 10 MB) for Cardinal, full for Prime and Owner. The panel is shown to Prime and Owner (Cardinal sees only the small-file list). The block must also be enforced in the gate, not only client code (`/_lb/me` carries the rank); streaming and normal loads are not downloads.
 Panel in the menu: queue, progress (bytes, rate), pause and resume with HTTP Range when the server sends
 `Accept-Ranges`, retry with backoff, cancel. Downloads count against the member's caps (the gate already counts bytes).
 Files are saved through the browser's own download (blob + `<a download>`) when complete. Large files over 2 GB are

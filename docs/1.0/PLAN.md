@@ -184,6 +184,39 @@ Answered by Boss on 2026-11-10 (second question round):
    measurement on the box that carries `/wisp/`, smoothed, never above the box's shaped rate), per-member limits derived from
    it and the tier weights, and the admin panel showing the measured line, each member's share and the limit in force.
    Builds after the relay box slice (the box changes where the upload is measured). Detail to write in `RELAY.md` 3.5.
+13. **Upload, ranks and cloud relay (Boss, 2026-11-11 question rounds).** Context: about 10 members, about 4 at once,
+   mostly pages and school tools, speed is key, home upload about 21 Mbit/s. Free options only; paid hosting stays out of 1.0.
+   - **Fetch less:** Data saver is ON for everyone; only Prime and Owner can turn it off (`SPEED.md` 2.5). Small interactive
+     requests get a reserved lane (about 25 percent) over bulk transfers (`RELAY.md` 3.5).
+   - **Limits:** fair share (slow heavy streams) AND a daily quota per rank as backstop: Ordinal 3, Cardinal 8, Prime 20 GiB,
+     Owner unlimited (`MEMBERSHIP.md` 5, `RELAY.md` 6). Weights stay 1 / 1.5 / 2. Standing ladder unchanged (warning,
+     suspension, removal; no demotion step, no quota strike). Numbers may be reconsidered after real usage data.
+   - **Downloads:** file saves (save-as, attachments) are blocked for Ordinal. Cardinal may save small files only (about 10 MB
+     each, any count). Prime and Owner have full downloads. Streaming and normal page loads are allowed for all. The S8
+     Downloads panel is Prime and Owner only (`SPEED.md` 6).
+   - **Cloud relay (free, Oracle first):** prototype and measure; the home relay stays the fallback. **Before any VM is
+     made, read Oracle's LIVE Cloud Services Agreement and AUP and quote the clauses** (older versions bar reselling or
+     making the service available to third parties; a public service probably counts). Checked 2026-11-11 from web
+     sources only: 10 TB/month free outbound listed on Oracle's free-tier page; the Ampere A1 free shape was reported cut
+     to 2 OCPU / 12 GB in 2026; idle reclaim below about 15 percent use over 7 days; account suspensions without warning
+     reported. Plan B if it fails: a small paid VPS (about 4 EUR/month), which needs Boss's go.
+   - **Relay choice per member:** automatic by measured speed with a Settings override; the choices offered depend on rank.
+     Home relay: Owner and Prime; Cardinal only as light overflow and cannot choose it; Ordinal does not use it. Prime may
+     default to the cloud relay if it is the fastest. When a site fails on the cloud relay (captcha, 403), Prime and Owner
+     retry via the home relay automatically (counts toward quota); automated tests cover it. Details `RELAY.md` 4.
+   - **Third-party relays join the 1.0 speed work** (were out of scope): opt-in for every rank with a plain notice (the
+     operator sees hostnames and timing, not page contents); their bytes count against the same daily quota. Racing the
+     first connection, spreading connections and using home plus cloud together are all toggleable (`RELAY.md` 4.1).
+   - **CONDITIONAL, only if the cloud relay works (Boss decides, no fixed test):** Limitless leaves invite-only for open
+     sign-up with a GLL ID required (limits and bans still work). Ordinal rises to 5 GiB/day; Cardinal and Prime rise by
+     numbers set after measuring. This overrides the hard constraint "invite only" and the repo rule "never ship a public
+     ungated deploy" ONLY when Boss says go. Before it opens: abuse report and takedown form, sign-up throttle with email
+     checks, blocklist of malware and phishing domains at the relay, ACCESS-CONTROL, Charter, Privacy and Rules updated
+     (`ACCESS-CONTROL.md` 12). All limits are per account, never per IP (shared school connections).
+   - **Not planned, only possible:** if Limitless becomes popular and a cloud VM carries the upload, Ordinal free and
+     Cardinal/Prime paid. Needs a host whose terms allow resale, a Terms of Service and an abuse process. Not in 1.0.
+   - **Still open:** exact Cardinal/Prime extras (more awake tabs and parallel connections, never turned away when busy are
+     decided), Prime-only perks list, the rank comparison page (3 columns, built when Boss says), the rule for a 5th active member.
 Slices in flight (2026-11-11): `slice/1.0-edge` (relay box, item 10); `slice/1.0-adminfix` merged. Gate now has a
 `release/1.0.0` branch (from `slice/1.0-s4`) as the merge target.
 Still open: none blocking. Exit IP is decided after T0 (home link vs Proton egress, `RELAY.md` 5); R1 was dropped.
