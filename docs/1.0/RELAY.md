@@ -77,6 +77,9 @@ better throughput to far or lossy sites and members on school Wi-Fi. Exact comma
 - Per-member caps by tier: **replaced 2026-11-10 (Boss)**. The home upload measured about 21 Mbit/s (`BASELINE.md`), so fixed
   50 / 75 / 100 Mbit/s perks cannot be met. Tiers get fair-share weights only (above) of the total (`TOTAL_UPLINK_MBPS` about 18);
   owner unlimited (as today). Per-user overrides in admin still win. Ways to raise the total get their own brainstorm later.
+- **Browse lane (Boss, 2026-11-11):** about 25 percent of the total is reserved for small interactive requests (pages, scripts,
+  search); bulk transfers (large bodies, video chunks) share the rest. Lane size is a config value; unit tests cover that a
+  big download cannot starve page loads.
 - Unit tests in `src/tests/bandwidth.test.ts`: two members share fairly, weights hold, owner first, caps unchanged when
   under the total.
 
@@ -88,7 +91,20 @@ and shows "The line is busy, Data saver helps" once per session. Never forces it
   (home `/wisp/`, and an off-site relay if one is ever added) with 3 WISP pings, picks the lowest median, and re-checks
   every 10 minutes. Members can pin one in Settings > Connection. With only the home relay this is a no-op.
 - Heavy downloads and video prefer the relay with the most headroom (from `/_lb/me`) when there are two.
-- Third-party relays stay off by default and are not part of "our relays" (unchanged behaviour, `limitless:relay-fallback:v1`).
+- **Per rank (Boss, 2026-11-11):** Auto by default with a Settings override; Settings lists only the relays the rank may use.
+  Home relay: Owner and Prime; Cardinal light overflow only (cannot choose); Ordinal never. Cloud relay (once it exists):
+  everyone, Prime may default to it when it is fastest. Failed on cloud (captcha, 403, block): Prime and Owner retry via
+  home automatically, counted toward quota; others see the error with Retry. Tests: a stub cloud relay that refuses a site.
+- Third-party relays stay off by default and are not part of "our relays" (`limitless:relay-fallback:v1`), but **join the 1.0
+  speed work from 2026-11-11** (4.1).
+
+### 4.1 Third-party relay speed (Boss, 2026-11-11, build in S4/S3 follow-up)
+- Opt-in for every rank with a plain notice in Settings: the relay operator can see destination hostnames and timing, not page
+  contents (TLS stays in the browser). Their bytes count against the same daily quota.
+- Parallel modes, each its own toggle: race the first connection on two relays (443 only, exists), spread a page's connections
+  across relays (exists as `spread`), home plus cloud together for big pages. Plus health ranking and sticky per site (exists).
+- Work: measure the 13-entry pool in the harness (success rate, connect time), prune dead entries, make race/spread safe to
+  turn on (failure falls back, no dropped streams), add switches to `version.json` `features`, tests with stub relays.
 
 ## 5. Exit IP (open, Boss to decide)
 | Option | What sites see | Speed | Notes |
@@ -101,7 +117,10 @@ Recommendation: decide after 2.1 and the prototype. If chosen, Proton is the qui
 ## 6. Abuse and limits (unchanged unless noted)
 - Port blocks and destination checks in the gate (`isBlockedPort`) and epoxy (`allow_non_global = false`, no UDP,
   no loopback) stay as they are. Host egress rules in `deploy/relay/egress-rules.sh` remain a separate Boss step.
-- Daily cap 20 GiB per user stays (admin override per user).
+- Daily cap: **per rank from 2026-11-11 (Boss)**: Ordinal 3, Cardinal 8, Prime 20 GiB, Owner unlimited (was 20 GiB for all).
+  Admin override per user still wins. Third-party relay bytes count too. Limits are per account, never per IP.
+- If the cloud relay works and sign-up opens: guard rails first (abuse report and takedown form, sign-up throttle with email
+  checks, blocklist of malware and phishing domains at the relay). See `PLAN.md` item 13 and `ACCESS-CONTROL.md` 12.
 
 ## 7. R1: Cloudflare Workers relay prototype (DROPPED 2026-11-10, Cloudflare SSA 2.2.1(j); see R1-WORKERS-RESULT.md)
 Goal: decide whether a free off-home relay is reasonable. Nothing here touches production.

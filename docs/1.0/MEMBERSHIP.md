@@ -89,6 +89,19 @@ an exception Boss added by hand in GLL ID still works, because approval goes by 
 | May show their certificate | no (personal) | no | yes |
 | Immunity | none | none | partial, by severity (`RULES-DRAFT.md` 4) |
 - Owner: unlimited, first under load, everything unlocked.
+- **Added by Boss, 2026-11-11 (`PLAN.md` item 13):**
+  | | Ordinal | Cardinal | Prime |
+  |---|---|---|---|
+  | Daily data | 3 GiB | 8 GiB | 20 GiB (Owner unlimited) |
+  | File saves | none | small files only (about 10 MB each) | full |
+  | Data saver | on, cannot turn off | on, cannot turn off | can turn off |
+  | Tabs and parallel connections | base | more | most (numbers to set) |
+  | Busy line | slowed first | never turned away | never turned away |
+  | Home relay | no | light overflow only, cannot choose | yes |
+  | Cloud relay default | by speed | by speed | may default to it if fastest |
+  Promotion: Boss by hand, plus a member "request with a reason" from their profile (lands in Boss's queue). Prime is Boss's
+  choice only; no automatic routes. A 3-column rank comparison list is built when Boss says. If the cloud relay works and
+  sign-up opens, Ordinal becomes 5 GiB and the others rise (numbers after measuring).
 - **Vault lock** (Boss: "lock now, may need a redesign"): Ordinal members using Vault are moved to Luxury dark at their
   next load with a quiet note "Vault is reserved for Cardinal and Prime". Enforced in the theme UI from the tier in
   `/_lb/me` (cosmetic, client side is fine for themes).

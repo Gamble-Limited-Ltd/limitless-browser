@@ -131,3 +131,12 @@ built in parallel.
 - **Privacy:** the audit table (`admin_audit`, 90 days) holds time, action and account ids only, never emails, names or destinations. Usage per day
   is now kept 30 days (was 14) so the panel can show a month; the privacy page still needs a retention figure, which Boss decides.
 - **Kill switches:** `ADMIN_PANEL=off`; `./manage.sh clients owner-api limitless-browser off` (GLL ID).
+
+## 12. Conditional: open sign-up (Boss, 2026-11-11, NOT approved to build or ship)
+Only if the cloud relay works (`1.0/PLAN.md` item 13; Boss decides, no fixed test), Limitless leaves invite-only for open sign-up
+with a GLL ID required. Until Boss says go, sections 1 to 11 stand and **a public ungated deploy is still forbidden**.
+- Sign-in stays required, so quotas, bans and the kill switch keep working. Everyone starts as Ordinal.
+- Guard rails first: abuse report and takedown form; sign-up throttle with email checks; blocklist of malware and phishing
+  domains at the relay; all limits per account, never per IP (shared school connections).
+- Documents to update before it opens: this file, Charter, Privacy, Rules (`RULES-DRAFT.md`), HALL listing (no longer "by invitation").
+- Host terms: read Oracle's live agreement and AUP first; open sign-up is probably "making the service available to third parties".
