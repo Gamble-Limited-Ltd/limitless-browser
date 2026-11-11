@@ -19,13 +19,13 @@ Read both before touching names, credits, license text or features.
 
 ## Run / dev
 No build system, lint or CI. `package.json` exists only for the Playwright test harness (nothing ships from it).
-- `index.html` (~3.6 MB): the whole app, JS and CSS inlined, with vendored libs (acorn, libcurl.js WASM). No CDN or font-service requests remain.
+- `index.html` (~1.7 MB since 1.0 S2, was 3.6 MB): the app, JS and CSS inlined. The libcurl WASM binary, acorn/acorn-walk and the skin-scoped CSS moved out (see "Startup" below); the libcurl.js glue stays inline. No CDN or font-service requests remain.
 - `patcher.html` (renamed from `GUST-Patcher.html`, 2026-10-19): standalone patcher page. Its patch definitions match
   identifiers and storage keys in `index.html`; when you rename code there, update them too. It fetches only our own
   same-origin `./index.html`; served behind the gate.
 - `vendor/` and `fonts/` (stage 2): self-hosted third-party assets, each with its license file:
   `vendor/fontawesome/6.7.2/` (standardised on 6.7.2), `vendor/pdfjs/4.2.67/`, `vendor/iso-639-1/2.1.11/`, `fonts/`
-  (JetBrains Mono, Space Grotesk, `fonts/fonts.css`). Documents the app generates (error page, viewers) must use the
+  (JetBrains Mono, Space Grotesk, `fonts/fonts.css`), plus (S2) `vendor/libcurl/0.7.4/` (`libcurl.wasm`, LGPL notice) and `vendor/acorn/8.14.0/` (`acorn.min.js` = acorn + acorn-walk, MIT). Documents the app generates (error page, viewers) must use the
   absolute `LB_FA`, `LB_PDFJS`, `LB_FONTS_CSS` URLs, not relative paths.
 - Relays (stage 2): default relay is our own same-origin `/wisp/` (`ws:`/`wss:` from the page protocol; none on
   `file://`). The 13-entry third-party pool plus the `mages.io` fallback stay in the code but are used only when "Allow
@@ -47,8 +47,8 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   loads, no uncaught page errors, title set, address bar accepts input). It does not replace manual checks: also load
   the page, check the console, and exercise the touched feature.
 - Full-stack rehearsal: `npm run test:stack` (`deploy/rehearsal/run.sh`).
-- Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, vendor/, fonts/, theme/, legal/,
-  favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html`.
+- Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, sw.js, vendor/, fonts/, theme/, legal/, app/ when present,
+  favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html` and `sw.js` (and the service worker precache list).
 - Theme CSS is generated: edit `scripts/gen-themes.py`, rerun. Fonts: `scripts/fetch-fonts.py`.
 - Not offloaded to buildpc (no `.nvmrc`; stack tests unverified there).
 
@@ -146,7 +146,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   `LBRaceSocket` opens the stream on the top two, sends to both until the first data arrives, closes the other and records the host. Failures call
   `markWispFailed` and drop the sticky entry. While multi-relay is active the per-page pool pick in `go()` is skipped. Test hooks: `LB_router`, `LB_makeRouter`,
   `LB_swapSession`, `LB_net.curl`.
-- **Feature switches:** `window.LB_features` `{ownSockets (1-4), worker, respCache}` defaults on/4; `window.LB_featuresReady` reads `features` from `version.json`
+- **Feature switches:** `window.LB_features` `{ownSockets (1-4), worker, respCache, sw}` defaults on/4; `window.LB_featuresReady` reads `features` from `version.json`
   at boot (missing file or keys keep the defaults). Used at use time by the router, the cache and the script rewriter.
 - **Cache open never blocks boot (0.2.1):** `initCache` resolves after 3 s, on `onblocked` or on error and boot continues without `cacheDB` (it is picked up if the open succeeds later); the open handle closes itself on `versionchange`. A 0.1.0 tab held version 2 open, so 0.2.0 hung before the libcurl session existed ("libcurl not ready"). Test `tests/e2e/idb-upgrade.spec.js`. Bump the `ProxyCache` version only with this in mind.
 - **Response cache (F4):** `memCache` (session, `LBMemCache`, 600 entries / 96 MB) over IndexedDB `ProxyCache` (v3, 200 MB, index `byLastAccessed` for LRU eviction,
@@ -162,8 +162,28 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   entries / 24 M chars). Worker creation failure, a worker error or a 3 s timeout rewrites synchronously and turns workers off for the session. Awaited callers: external
   scripts, inline classic scripts, ES module sources. `window.__lbRewriteJs` (dynamic injection, called synchronously by the iframe) stays synchronous. No CSP change needed.
   Test hook: `LB_rewrite` (`sync`, `async`, `stats()`, `timeoutMs`).
-- **Kill switches at build time:** `scripts/build-static.sh` writes `features` into `version.json` from `LB_FEATURE_OWNSOCKETS` (0 to 4, default 4), `LB_FEATURE_WORKER` and
-  `LB_FEATURE_RESPCACHE` (`true`/`false`, default true), e.g. `LB_FEATURE_WORKER=false ./deploy.sh`. Users can also turn off the cache (Settings) and set sockets (Settings).
+- **Kill switches at build time:** `scripts/build-static.sh` writes `features` into `version.json` from `LB_FEATURE_OWNSOCKETS` (0 to 4, default 4), `LB_FEATURE_WORKER`, `LB_FEATURE_RESPCACHE`
+  and `LB_FEATURE_SW` (`true`/`false`, default true), e.g. `LB_FEATURE_WORKER=false ./deploy.sh`. Users can also turn off the cache (Settings) and set sockets (Settings).
+
+## Startup (1.0 slice S2, docs/1.0/SPEED.md section 3)
+- **Moved out of `index.html`:** the libcurl WASM binary (`vendor/libcurl/0.7.4/libcurl.wasm`, 1.4 MB; the Emscripten single-file data URI is gone, `wasmBinaryFile` is the vendored URL and
+  libcurl starts `fetch` + `WebAssembly.instantiateStreaming` as soon as its inline script runs; `load_wasm()` only waits); acorn + acorn-walk (`vendor/acorn/8.14.0/acorn.min.js`, a normal
+  render-blocking `<script src>` in `<head>`, cached); the skin-scoped CSS (`theme/skins.css`, rules for `html[data-skin=...]`). The unscoped skin defaults (hidden skin buttons, Settings skin tiles
+  and previews) stay inline in `<style id="skinStylesSlot">`: without them the toolbar overflows. `lbEnsureSkins()` adds `<link id="skinStyles">` after the slot when a skin is active
+  (`applySkin`) or the Plus code needs the sheet (`plusEnsureSheet` retries when it has loaded). `theme/skins.css` is gated by an exact nginx location (not public like the rest of `/theme/`).
+  PDF.js was already vendored (`vendor/pdfjs/4.2.67/`); nothing of it was inline.
+- **Worker rewriter:** `lbRwSource()` no longer reads the first `<script>` of `<head>`; `lbRwLoadLib()` fetches `vendor/acorn/8.14.0/acorn.min.js` once (HTTP cache) and the pump waits for it. A failed fetch turns workers off (synchronous rewrite). Test `tests/e2e/worker.spec.js`.
+- **Service worker** (`/sw.js`, scope `/`, cache `lb-shell-<sha>`): registered after load (2.5 s, `window.LB_SW_DELAY` in tests) only on http(s) with a stamped sha (the source tree says `dev`: no worker).
+  Precache: index.html, acorn, WASM, iso-639-1, Font Awesome css + faces, Latin fonts, theme css, `app/<sha>/*`. Sub-resources under `/app /vendor /fonts /theme/fonts` are cache first, other `/theme/*`
+  stale-while-revalidate. **Access stays at nginx:** page loads of `/` and `/index.html` are network first (the gate answers every open, so a signed-out or revoked user gets the sign-in or invite page even with a
+  warm worker; the cached index.html is used only when the network itself fails); only 200, same-origin, non-redirected, non-`no-store`, non-HTML (except index) responses are stored; `/wisp/ /auth/ /_lb/ /_gate/ /legal/ /verify/`,
+  `version.json`, `CHANGELOG.md`, `/sw.js` are never handled. Cached files are given only to sub-resource requests, never to a top-level navigation to them. At boot a 401/403 from `version.json` reloads the page once
+  (sessionStorage `limitless:gate-reload:v1`) so the gate shows sign-in or invite. Update: `lbCheckForUpdate` calls `registration.update()`; the banner's Reload posts `{type:'skip'}` to the waiting worker
+  (it never skips waiting by itself) and then reloads.
+- **Kill switch:** `LB_FEATURE_SW=false ./deploy.sh` puts `"sw": false` in `version.json`; the next load unregisters `/sw.js` registrations and deletes `lb-shell-*` caches (index.html is network first, so a bad worker cannot block this).
+- **Not done:** lazy subsystems (inspector, extensions, log panel, PDF viewer as `app/<sha>/*.js`): they share closure state with the 1 MB main script (`selectedElement`, `elementsEl`, `ls`, `go`, ...), so moving them needs an API refactor.
+  `build-static.sh` already copies a source `app/` dir to `dist/app/<sha>/` and nginx serves `/app/` immutable and gated, ready for it.
+- **Tests:** `tests/e2e/boot.spec.js`, `skins.spec.js`, `sw.spec.js`; stack `tests/stack/sw.spec.js` (signed-out and revoked with a warm worker, run under `flock /tmp/limitless-rehearsal.lock`).
 
 ## Admin panel (0.2.0, slice D)
 - **Page:** `limitless://admin`, registered into `SKIN_PAGES` through the hooks `window.LB_pages` and `window.LB_go` (added after the What's new

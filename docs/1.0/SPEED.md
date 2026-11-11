@@ -98,6 +98,18 @@ the split and update the ones that pointed into moved code.
 when `version.json` answers 401, `features.sw=false` unregisters), smoke and all existing specs, transfer size and
 boot timing in the harness (`TESTING.md` 6).
 
+**S2 notes (built 2026-11-10, branch `slice/1.0-s2`):**
+- 3.1 done with the single-file build kept: only the WASM binary moved (to `vendor/libcurl/0.7.4/libcurl.wasm`), the libcurl.js glue (190 KB) stays inline, so `libcurl.mjs` was not split out. The binary starts loading when the inline
+  script runs and is instantiated with `instantiateStreaming`.
+- 3.2 done as one file `vendor/acorn/8.14.0/acorn.min.js` (acorn and acorn-walk were already one minified block). The Worker rewriter fetches it once.
+- 3.3 done in two parts: the unscoped skin defaults had to stay inline (77 KB, they style the Settings skin tiles and hide skin-only toolbar buttons; without them the toolbar overflows at 760 px), the 54 KB of
+  `html[data-skin=...]` rules moved to `theme/skins.css`. That is less than the 136 KB the plan counted.
+- 3.4 not done (closure-coupled code; see CLAUDE.md "Startup"). PDF.js was already external.
+- 3.5 changed on purpose: **page loads are network first, not stale-while-revalidate.** A cached shell served first would show the app to a signed-out or revoked user for a moment before the version.json check
+  redirects; network first lets nginx decide on every open at the cost of one revalidation round trip. Versioned files are cache first. The boot check on 401/403 stays as a second line.
+- 3.6 and 3.7: patcher definitions checked, none point into moved code. Boot work (3.6) was not changed.
+- Numbers: see `docs/1.0/BASELINE.md` section "S2 candidate".
+
 ## 4. S3: client speed extras (wave 2)
 4.1 **Tab sleeping** (feature `tabSleep`). A background tab hidden for 10 minutes has its iframe replaced by a
 placeholder; the blob URL and scroll position are kept (`stashBackgroundLoad` style), so waking is a blob reload with no
