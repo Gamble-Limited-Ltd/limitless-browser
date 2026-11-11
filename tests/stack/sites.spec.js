@@ -55,7 +55,14 @@ function classifyError(text) {
   return 'error-other';
 }
 
+// A page that hangs the browser (busy loop under CPU throttling) must not stall the whole run: give up after 150 s.
 async function tryOnce(browser, testInfo, site) {
+  let timer;
+  const hang = new Promise((resolve) => { timer = setTimeout(() => resolve({ loaded: false, shown: null, load: null, category: 'hang', detail: 'no result in 150 s' }), 150000); });
+  try { return await Promise.race([tryOnceInner(browser, testInfo, site), hang]); } finally { clearTimeout(timer); }
+}
+
+async function tryOnceInner(browser, testInfo, site) {
   const ctx = await browser.newContext({ baseURL: BASE });
   const page = await ctx.newPage();
   const cons = [];
