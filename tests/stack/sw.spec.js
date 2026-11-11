@@ -62,8 +62,8 @@ test.describe('service worker with a warm cache', () => {
       await expect(page.locator('#url')).toHaveCount(0);
     }
     // a typed-in address of a cached file is a navigation, so it goes to the network and the gate answers
-    const r = await page.goto('/vendor/acorn/8.14.0/acorn.min.js');
-    expect(r && r.status()).toBe(401);
+    await page.goto('/vendor/acorn/8.14.0/acorn.min.js');
+    await expect(page.getByRole('link', { name: 'Sign in with GLL ID' })).toBeVisible();   // nginx answers a document request with the sign-in page
     expect(await page.content()).not.toContain('acorn.parse');
     // the 401 page was not stored under the file's name
     const stored = await page.evaluate(async () => {

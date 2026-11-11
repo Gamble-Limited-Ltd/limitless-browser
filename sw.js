@@ -23,6 +23,7 @@ function storable(res, allowHtml) {
   const cc = res.headers.get('cache-control') || '';
   if (/no-store/i.test(cc)) return false;
   if (!allowHtml && /text\/html/i.test(res.headers.get('content-type') || '')) return false;
+  if (allowHtml && !res.headers.get('etag')) return false;   // the app shell is a static file with an ETag; a gate page (proxied) has none
   return true;
 }
 
