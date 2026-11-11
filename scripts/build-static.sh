@@ -16,7 +16,7 @@ rm -rf "$OUT" "$OUTBR"
 mkdir -p "$OUT" "$OUTBR"
 
 # What the web tier serves. Optional entries are skipped with a notice while other work lands.
-REQUIRED=(index.html patcher.html legal theme favicon.svg CHANGELOG.md)
+REQUIRED=(index.html patcher.html sw.js legal theme favicon.svg CHANGELOG.md)
 OPTIONAL=(vendor fonts)
 for p in "${REQUIRED[@]}"; do
   [ -e "$SRC/$p" ] || { echo "build-static: missing required $p in $SRC" >&2; exit 1; }
@@ -25,12 +25,22 @@ done
 for p in "${OPTIONAL[@]}"; do
   if [ -e "$SRC/$p" ]; then cp -a "$SRC/$p" "$OUT/"; else echo "build-static: note, $p/ not present yet, skipped"; fi
 done
+# Lazy subsystems (SPEED.md 3.4): source app/*.js is served from app/<sha>/ so every build has its own immutable URLs.
+if [ -d "$SRC/app" ]; then mkdir -p "$OUT/app/$SHA" && cp -a "$SRC/app/." "$OUT/app/$SHA/"; fi
 
 # Stamp the build's own sha into the dist copy of index.html (never the source) so the app can tell when
 # version.json names a newer build. The marker line in index.html is `... || 'dev'; // @LB_BUILD_SHA@`.
 if [[ ! "$SHA" =~ ^[0-9A-Za-z._-]+$ ]]; then echo "build-static: unsafe sha '$SHA'" >&2; exit 1; fi
 sed -i "/@LB_BUILD_SHA@/ s/|| 'dev';/|| '$SHA';/" "$OUT/index.html"
 grep -q "|| '$SHA'; // @LB_BUILD_SHA@" "$OUT/index.html" || { echo "build-static: could not stamp the build sha into index.html" >&2; exit 1; }
+# Lazy loaders in index.html read the sha from the same constant; the service worker gets it plus its precache list
+# (shell files a first visit needs: index, acorn, the WASM, font css, Latin faces, theme css, app/<sha>). Skins CSS and PDF.js are cached on use.
+sed -i "/@LB_BUILD_SHA@/ s/const SHA = 'dev';/const SHA = '$SHA';/" "$OUT/sw.js"
+PRE="$(cd "$OUT" && { echo index.html; find vendor/acorn vendor/libcurl vendor/iso-639-1 vendor/fontawesome/6.7.2/css vendor/fontawesome/6.7.2/webfonts fonts theme app -type f \
+  ! -name '*.gz' ! -name 'LICENSE*' ! -name '*.txt' ! -name 'skins.css' ! -name '*.md' ! -name '*.ttf' \
+  ! -regex '.*-\(latin-ext\|cyrillic-ext\|cyrillic\|greek\|vietnamese\)\.woff2' 2>/dev/null || true; } | sort | node -e 'const l=require("fs").readFileSync(0,"utf8").split("\n").filter(Boolean).map(x=>"/"+x);process.stdout.write(JSON.stringify(l))')"
+sed -i "s|^const PRECACHE = \[\]; // @LB_PRECACHE@|const PRECACHE = $PRE; // @LB_PRECACHE@|" "$OUT/sw.js"
+grep -q "const SHA = '$SHA';" "$OUT/sw.js" && grep -q '@LB_PRECACHE@' "$OUT/sw.js" && ! grep -q 'PRECACHE = \[\]' "$OUT/sw.js" || { echo "build-static: could not stamp sw.js" >&2; exit 1; }
 
 VERSION=0.1.0
 if [ -f "$SRC/package.json" ]; then
@@ -41,10 +51,11 @@ fi
 FEAT_SOCKETS="${LB_FEATURE_OWNSOCKETS:-4}"
 FEAT_WORKER="${LB_FEATURE_WORKER:-true}"
 FEAT_CACHE="${LB_FEATURE_RESPCACHE:-true}"
+FEAT_SW="${LB_FEATURE_SW:-true}"
 [[ "$FEAT_SOCKETS" =~ ^[0-4]$ ]] || { echo "build-static: LB_FEATURE_OWNSOCKETS must be 0 to 4" >&2; exit 1; }
-[[ "$FEAT_WORKER" =~ ^(true|false)$ && "$FEAT_CACHE" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER and LB_FEATURE_RESPCACHE must be true or false" >&2; exit 1; }
-printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s}}\n' \
-  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" > "$OUT/version.json"
+[[ "$FEAT_WORKER" =~ ^(true|false)$ && "$FEAT_CACHE" =~ ^(true|false)$ && "$FEAT_SW" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE and LB_FEATURE_SW must be true or false" >&2; exit 1; }
+printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s}}\n' \
+  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" > "$OUT/version.json"
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"

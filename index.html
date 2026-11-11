@@ -8093,7 +8093,7 @@ window._libcurlReady = true;
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownSockets: 4, worker: true, respCache: true };
+            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true };
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
                 try {
@@ -8101,6 +8101,13 @@ window._libcurlReady = true;
                     const t = setTimeout(() => ctl.abort(), 4000);
                     const r = await fetch(new URL('version.json', location.href).href, { cache: 'no-store', credentials: 'same-origin', signal: ctl.signal });
                     clearTimeout(t);
+                    // The gate answers 401/403 when the session is gone or revoked: load the page again through the gate (it
+                    // returns the sign-in or invite page for a document request). One try per tab session, so no loop.
+                    if (r.status === 401 || r.status === 403) {
+                        let again = false;
+                        try { again = sessionStorage.getItem('limitless:gate-reload:v1') === '1'; sessionStorage.setItem('limitless:gate-reload:v1', '1'); } catch (_) {}
+                        if (!again) { location.reload(); return window.LB_features; }
+                    } else { try { sessionStorage.removeItem('limitless:gate-reload:v1'); } catch (_) {} }
                     if (!r.ok) return window.LB_features;
                     const j = await r.json();
                     const f = j && j.features;
@@ -8108,10 +8115,36 @@ window._libcurlReady = true;
                         if ('ownSockets' in f) { const n = Math.floor(Number(f.ownSockets)); window.LB_features.ownSockets = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; }
                         if ('worker' in f) window.LB_features.worker = f.worker !== false && f.worker !== 0;
                         if ('respCache' in f) window.LB_features.respCache = f.respCache !== false && f.respCache !== 0;
+                        if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                     }
                 } catch (_) {}
                 return window.LB_features;
             })();
+
+            // ── Service worker app shell (S2, docs/1.0/SPEED.md 3.5) ───────────────────
+            // /sw.js caches the static shell (vendor, fonts, theme, app/<sha>); it never answers a page load without asking the
+            // network (so the gate still decides who gets in) and never touches /wisp/, /auth/, /_lb/, version.json. Registered
+            // only on http(s) builds with a stamped sha (not 'dev'), after load so it does not compete with boot.
+            // features.sw = false unregisters it and drops its caches on the next load.
+            window.LB_swSync = async function (f) {
+                if (!('serviceWorker' in navigator) || (location.protocol !== 'http:' && location.protocol !== 'https:')) return;
+                try {
+                    if (f && f.sw === false) {
+                        for (const r of await navigator.serviceWorker.getRegistrations()) {
+                            const u = (r.active || r.waiting || r.installing || {}).scriptURL || '';
+                            if (u.endsWith('/sw.js')) await r.unregister();
+                        }
+                        if (window.caches) for (const k of await caches.keys()) if (k.startsWith('lb-shell-')) await caches.delete(k);
+                        return;
+                    }
+                    if (!window.LB_BUILD_SHA || window.LB_BUILD_SHA === 'dev') return;
+                    await navigator.serviceWorker.register(new URL('sw.js', location.href).href, { scope: new URL('./', location.href).pathname });
+                } catch (_) {}
+            };
+            window.LB_featuresReady.then((f) => {
+                const go = () => setTimeout(() => window.LB_swSync(f), window.LB_SW_DELAY != null ? window.LB_SW_DELAY : 2500);
+                if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
+            });
 
             // ── Transport router (0.2.0) ────────────────────────────────────────
             // libcurl asks its transport for one WebSocket per TCP stream, with the url `<relay base><host>:<port>`.
@@ -11166,7 +11199,16 @@ window._libcurlReady = true;
                 if (themeBtn && themeBtn.parentNode) themeBtn.parentNode.insertBefore(pill, themeBtn);
                 lbUpd.banner = ub; lbUpd.pill = pill; lbUpd.msgB = b; lbUpd.msgRest = rest;
                 wn.onclick = () => go(LB_WHATS_NEW, true);
-                rl.onclick = () => location.reload();
+                rl.onclick = async () => {
+                    // let a waiting service worker take over first (it never skips waiting by itself), then reload
+                    try {
+                        const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+                        if (reg && reg.waiting) {
+                            await new Promise((ok) => { navigator.serviceWorker.addEventListener('controllerchange', ok, { once: true }); setTimeout(ok, 1500); reg.waiting.postMessage({ type: 'skip' }); });
+                        }
+                    } catch (_) {}
+                    location.reload();
+                };
                 x.onclick = () => { lbUpd.dismissed = true; lbUpdateRender(); };
                 pill.onclick = () => { lbUpd.dismissed = false; lbUpdateRender(); };
             }
@@ -11188,6 +11230,7 @@ window._libcurlReady = true;
                 try {
                     const r = await fetch(new URL('version.json', location.href).href, { cache: 'no-store', credentials: 'same-origin' });
                     if (!r.ok) return null;
+                    try { const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null; if (reg) reg.update().catch(() => {}); } catch (_) {}
                     const j = await r.json();
                     if (!j || typeof j.sha !== 'string' || !j.sha || j.sha === own) return null;
                     if (!lbUpd.info || lbUpd.info.sha !== j.sha) lbUpd.dismissed = false;
