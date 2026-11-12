@@ -1829,7 +1829,18 @@
             // window.postMessage (own property), so frame.postMessage(...) would run that wrapper and arrive with the frame
             // itself as event.source, which the runtime's `e.source !== parent` check drops (every reply lost).
             function lbPostTo(w, m, o) { if (w) window.postMessage.call(w, m, o); }
-            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) URL.revokeObjectURL(u); } catch (e) {} }, ms); }
+            // L6: script blob: URLs of a page blob, revoked with it. A stored page (page cache) must not hold blob: URLs,
+            // so lbBlobsToData swaps them for data: URLs first (same bytes the pre-blob path made).
+            const lbScriptBlobs = new Map();
+            async function lbBlobsToData(html, blobs) {
+                for (const { u, blob } of blobs) {
+                    const bin = new Uint8Array(await blob.arrayBuffer());
+                    let b = ''; for (let j = 0; j < bin.length; j += 32768) b += String.fromCharCode.apply(null, bin.subarray(j, j + 32768));
+                    html = html.split(u).join('data:text/javascript;charset=utf-8;base64,' + Base64.encode(b));
+                }
+                return html;
+            }
+            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
                 if (!tab) return;
@@ -4890,6 +4901,17 @@
             // L1: in-flight fetches of scripts that missed the build deadline, handed to the frame's 'qjs' request so the
             // download is not started twice.
             const lbLateJs = new Map();
+            // L12: results of the image pre-warm, handed to the frame's first request for that URL even when the cache
+            // refused to store them (no-store, cookies, cache off). Emptied at every navigation; an unclaimed entry goes after 30 s.
+            const lbPrewarm = new Map();
+            function lbPrewarmTake(url, opts) {
+                const p = lbPrewarm.get(url);
+                if (!p) return null;
+                const h = opts && opts.headers ? Object.keys(opts.headers).map(k => k.toLowerCase()) : [];
+                if ((opts && (opts.body || (opts.method && opts.method !== 'GET'))) || h.includes('range') || h.includes('if-none-match') || h.includes('if-modified-since')) return null;
+                lbPrewarm.delete(url);
+                return p;
+            }
             async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
@@ -5660,6 +5682,7 @@ const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
 const SPELLCHECK = ${JSON.stringify(!!spellcheck)};
 const LB_LAZY = ${JSON.stringify(lbLazyConfig())};
+const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
@@ -6336,6 +6359,10 @@ const elMap = [ { p: HTMLImageElement.prototype, a: ['src'] }, { p: HTMLVideoEle
 const loadingEls = new WeakMap();
 let pendingLoadCount = 0;
 const MAX_CONCURRENT_MEDIA = 24;
+// L12: a finished load hands its slot straight to the next waiter (no 50 ms polling).
+const _mediaWaiters = [];
+function acquireMedia() { if (pendingLoadCount < MAX_CONCURRENT_MEDIA) { pendingLoadCount++; return Promise.resolve(); } return new Promise(r => _mediaWaiters.push(r)); }
+function releaseMedia() { const w = _mediaWaiters.shift(); if (w) w(); else pendingLoadCount--; }
 
 function findPropertyDescriptor(proto, attr) { for (let cur = proto; cur; cur = Object.getPrototypeOf(cur)) { const d = Object.getOwnPropertyDescriptor(cur, attr); if (d) return d; } return null; }
 elMap.forEach(({ p, a }) => { a.forEach(attr => {
@@ -6367,9 +6394,8 @@ loadMedia();
 // the first of several identical <img> tags ever got its blob set — every
 // duplicate silently kept its original https src forever.
 async function loadMedia() {
-  while (pendingLoadCount >= MAX_CONCURRENT_MEDIA) await new Promise(r => setTimeout(r, 50));
-  if (state.cancel) return;
-  pendingLoadCount++;
+  await acquireMedia();
+  if (state.cancel) { releaseMedia(); return; }
   try {
     const burl = await fetchBlob(absUrl);
     if (state.cancel) return;
@@ -6390,7 +6416,7 @@ async function loadMedia() {
   } catch (e) {
     if (!state.cancel) el.dispatchEvent(new Event('error'));
   } finally {
-    pendingLoadCount--;
+    releaseMedia();
   }
 }
 }, configurable: true }); }); });
@@ -6530,6 +6556,21 @@ if (_scriptSrcDesc && _scriptSrcDesc.set) {
     configurable: true
   });
 }
+
+// L6: proxied scripts run from a blob:/data: URL; page code that looks for itself by src (getAttribute('src'),
+// script[src*=...] queries, document.scripts scans) must still find the original URL. currentScript.src is covered by the
+// .src getter above. Selector rewrite only touches "script[src" (shortcut: other attribute forms are not rewritten).
+if (LB_BLOBSCRIPTS) { try {
+  const _ga = Element.prototype.getAttribute;
+  Element.prototype.getAttribute = function (n) {
+    if (this.localName === 'script' && typeof n === 'string' && n.toLowerCase() === 'src') { const o = _ga.call(this, 'data-original-src'); if (o) return o; }
+    return _ga.call(this, n);
+  };
+  const _rwSel = q => typeof q === 'string' ? q.replace(/(script\\s*)\\[\\s*src(?=[\\]=~|^$*\\s])/gi, '$1[data-original-src') : q;
+  [Document.prototype, Element.prototype, DocumentFragment.prototype].forEach(P => ['querySelector', 'querySelectorAll'].forEach(m => {
+    const o = P[m]; P[m] = function (q) { return o.call(this, _rwSel(q)); };
+  }));
+} catch (e) {} }
 
 // L1: a parsed script that missed the build deadline arrives without src (data-lb-late); load it through the
 // proxy as soon as the document is ready, same ordered path as a script added at runtime.
@@ -7982,7 +8023,8 @@ parent.postMessage({ t: 'ready' }, '*');
                     if (closedTabIds.has(msgTabId)) return;
                     const msgSignal = tabAbortControllers.get(msgTabId)?.signal || abortCtrl?.signal;
                     try {
-                        const r = await queueFetch(url, {
+                        let r = await lbPrewarmTake(url, opts);
+                        if (!r) r = await queueFetch(url, {
                             method: opts?.method,
                             headers: opts?.headers,
                             body: opts?.body,
@@ -9883,6 +9925,7 @@ _VIEWER_DL_JS +
                     // lazyImg is off, none in data saver); nothing here waits for them.
                     const _saver = lbDataSaver();
                     const _pf = new Map();
+                    lbPrewarm.clear();
                     const qf = (u, o, p) => _pf.get(u) || queueFetch(u, o, p);
                     if (_pipe) {
                         const kick = (raw, prio) => {
@@ -9893,6 +9936,11 @@ _VIEWER_DL_JS +
                                 const pr = lbProg.track(queueFetch(u, { signal: tabCtrl.signal }, prio), _progTok);
                                 pr.catch(() => {});
                                 _pf.set(u, pr);
+                                if (prio === PRIORITY.image) {
+                                    const pw = pr.then(r => (r && !r.skipped) ? r : undefined, () => undefined);
+                                    lbPrewarm.set(u, pw);
+                                    setTimeout(() => { if (lbPrewarm.get(u) === pw) lbPrewarm.delete(u); }, 30000);
+                                }
                             } catch (_) {}
                         };
                         cssLinks.slice(0, 60).forEach(l => kick(l.getAttribute('href'), PRIORITY.css));
@@ -10243,6 +10291,10 @@ _VIEWER_DL_JS +
                     // Fetch concurrently; 12s per-script timeout falls back to a direct external
                     // load so one stalled chunk can't freeze the whole render.
                     const _noDirect = window.LB_features.noDirect !== false;
+                    // L6: with blobScripts the script bytes go into a Blob; the blob: URL is made right before the page is
+                    // serialised (so an aborted load leaks none) and revoked with the page blob (lbScriptBlobs).
+                    const _blobOn = window.LB_features.blobScripts !== false;
+                    const _blobScr = [];
                     await Promise.all(_toProxy.map(async ({ scr, jsUrl }) => {
                         const fp = qf(jsUrl, { signal: tabCtrl.signal }, PRIORITY.js);
                         try {
@@ -10255,10 +10307,11 @@ _VIEWER_DL_JS +
                                 // Decode → rewrite location refs to __lbLoc → re-encode as UTF-8 bytes.
                                 const jsText = await rewriteJsAsync(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf)));
                                 const bytes = new TextEncoder().encode(jsText);
+                                scr.removeAttribute('integrity');   // SRI hash won't match a data: URL; bytes already came via our proxy
+                                if (_blobOn) { scr.removeAttribute('src'); _blobScr.push({ scr, blob: new Blob([bytes], { type: 'text/javascript' }) }); return; }
                                 let bin = '';
                                 const chunk = 32768;
                                 for (let j = 0; j < bytes.length; j += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + chunk));
-                                scr.removeAttribute('integrity');   // SRI hash won't match a data: URL; bytes already came via our proxy
                                 // charset=utf-8 is required: without it the browser decodes the data: URL as
                                 // ASCII/Latin-1, so any non-ASCII byte outside a string literal (common in
                                 // minified bundles) becomes an "Invalid or unexpected token" SyntaxError.
@@ -10447,11 +10500,13 @@ _VIEWER_DL_JS +
 
                     if (!tabs.find(t => t.id === initiatorTabId)) return;
 
+                    const _scriptBlobs = _blobScr.map(({ scr, blob }) => { const u = URL.createObjectURL(blob); scr.setAttribute('src', u); return { u, blob }; });
                     const finalHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
                     const prevBlobUrl = frame.src;
                     const _newBlob = new Blob([finalHtml], { type: "text/html;charset=utf-8" });
                     const _newBytes = _newBlob.size;
                     const newBlobUrl = URL.createObjectURL(_newBlob);
+                    if (_scriptBlobs.length) lbScriptBlobs.set(newBlobUrl, _scriptBlobs.map(b => b.u));
                     // Finished after the user moved to another tab: hand it to its own
                     // tab (instant on switch), don't repaint the live frame.
                     if (activeTabId !== initiatorTabId) {
@@ -10498,7 +10553,7 @@ _VIEWER_DL_JS +
                         try {
                             let hc = false; try { hc = !!getCookieHeader(url); } catch (_) {}
                             const ev = lbCacheEvaluate(r, { now: lbNow(), hasCookie: hc });
-                            if (ev.store && ev.freshMs > 0 && lbCacheKind(r.mime) === 'html') lbPageKV.put(lbPcKey(url), { html: finalHtml, title: (doc.title || '').trim(), sig: lbPcSig(), exp: lbNow() + ev.freshMs, docSig: lbRwHash(html) }, finalHtml.length * 2);
+                            if (ev.store && ev.freshMs > 0 && lbCacheKind(r.mime) === 'html') { const _pcKey = lbPcKey(url), _pcRec = { title: (doc.title || '').trim(), sig: lbPcSig(), exp: lbNow() + ev.freshMs, docSig: lbRwHash(html) }; lbBlobsToData(finalHtml, _scriptBlobs).then(h => lbPageKV.put(_pcKey, { html: h, ..._pcRec }, h.length * 2)).catch(() => {}); }
                             else lbPageKV.del(lbPcKey(url));
                         } catch (_) {}
                     }
