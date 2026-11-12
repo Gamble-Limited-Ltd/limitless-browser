@@ -4,6 +4,8 @@ What changed, in plain language. Newest first.
 
 ## Unreleased 1.0.0
 
+- A slow or failing script on a page is no longer loaded straight from the site, outside the relay, which could expose your own connection. The page now shows without it and the script is added through Limitless when it arrives.
+- Fixed answers from the page's helper code being ignored in the new page runtime (replies to page requests, streams and cookies could be lost).
 - Admin panel: confirming the owner password now works when the Terms of Service need accepting again (a tick box appears), and when something goes wrong the dialog says why (wrong password, too many tries, GLL ID not reachable).
 - Limitless now opens much faster, especially the second time: the big parts of the app are separate files that your browser keeps, so a repeat visit has a lot less to download and read.
 - Pages now appear as soon as their text, styles and scripts are ready. Images keep loading after the page is shown, so one slow picture no longer holds the whole page back.

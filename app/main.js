@@ -468,7 +468,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true };
+            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true };
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
                 try {
@@ -493,7 +493,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) {}
                 return window.LB_features;
@@ -958,7 +958,7 @@
             };
             let findDebounce = null;
             function sendFind(action, q) {
-                try { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'limitless:find', action: action, q: q || '' }, '*'); } catch (_) {}
+                try { if (frame && frame.contentWindow) lbPostTo(frame.contentWindow, { type: 'limitless:find', action: action, q: q || '' }, '*'); } catch (_) {}
             }
 
             const VALID_SETTINGS_SECTIONS = new Set([
@@ -1825,6 +1825,10 @@
                 };
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
             })();
+            // Messages to the page frame go through the app window's own postMessage: the frame's runtime wraps its
+            // window.postMessage (own property), so frame.postMessage(...) would run that wrapper and arrive with the frame
+            // itself as event.source, which the runtime's `e.source !== parent` check drops (every reply lost).
+            function lbPostTo(w, m, o) { if (w) window.postMessage.call(w, m, o); }
             function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) URL.revokeObjectURL(u); } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
@@ -1995,7 +1999,7 @@
                 } catch (e) {}
                 // 3. postMessage so any future media created inside the frame is also muted
                 try {
-                    frame.contentWindow?.postMessage({ type: 'limitless:setMuted', muted: !!muted }, '*');
+                    lbPostTo(frame.contentWindow, { type: 'limitless:setMuted', muted: !!muted }, '*');
                 } catch (e) {}
             }
 
@@ -2704,7 +2708,7 @@
             function syncCookiesToFrame(origin) {
                 if (!frame.contentWindow) return;
                 const cookie = getCookieHeader(origin, { forDocument: true });
-                frame.contentWindow.postMessage({
+                lbPostTo(frame.contentWindow, {
                     t: "cookieSync",
                     origin,
                     cookie
@@ -4381,12 +4385,12 @@
             });
             $('ctxScrollTo')?.addEventListener('click', () => {
                 if (selectedElement) {
-                    frame.contentWindow?.postMessage({ type: 'limitless:scrollTo', selector: getSelector(selectedElement) }, '*');
+                    lbPostTo(frame.contentWindow, { type: 'limitless:scrollTo', selector: getSelector(selectedElement) }, '*');
                 }
             });
             $('ctxHideElement')?.addEventListener('click', () => {
                 if (selectedElement) {
-                    frame.contentWindow?.postMessage({ type: 'limitless:hideElement', selector: getSelector(selectedElement) }, '*');
+                    lbPostTo(frame.contentWindow, { type: 'limitless:hideElement', selector: getSelector(selectedElement) }, '*');
                 }
             });
 
@@ -4883,6 +4887,9 @@
                 const sv = lbDataSaver();
                 return { on: !(window.LB_features && window.LB_features.lazyImg === false), margin: sv ? 50 : 150, saver: sv };
             }
+            // L1: in-flight fetches of scripts that missed the build deadline, handed to the frame's 'qjs' request so the
+            // download is not started twice.
+            const lbLateJs = new Map();
             async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
@@ -5448,30 +5455,30 @@
                     const wsShort = url.replace(/^wss?:\/\//, '').slice(0, 50);
                     log(`<i class="fas fa-plug" style="color:#c084fc"></i><span style="color:#c084fc">WS</span> ${wsShort}`, "stream");
                     ws.onopen = () => {
-                        frame.contentWindow?.postMessage({ t: "ws", i: id, a: "open", protocol: ws.protocol }, "*");
+                        lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "open", protocol: ws.protocol }, "*");
                     };
                     ws.onmessage = async e => {
                         if (!frame.contentWindow) return;
                         if (typeof e.data === "string") {
-                            frame.contentWindow.postMessage({ t: "ws", i: id, a: "message", d: e.data }, "*");
+                            lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "message", d: e.data }, "*");
                         } else if (e.data instanceof ArrayBuffer) {
-                            frame.contentWindow.postMessage({ t: "ws", i: id, a: "message", b64: 1, d: toB64(e.data) }, "*");
+                            lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "message", b64: 1, d: toB64(e.data) }, "*");
                         } else if (e.data instanceof Blob) {
                             const buf = await e.data.arrayBuffer();
-                            frame.contentWindow.postMessage({ t: "ws", i: id, a: "message", b64: 1, d: toB64(buf) }, "*");
+                            lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "message", b64: 1, d: toB64(buf) }, "*");
                         }
                     };
                     ws.onerror = () => {
                         log(`<i class="fas fa-plug-circle-xmark" style="color:var(--err)"></i><span style="color:var(--err)">WS error:</span> ${wsShort}`, "err");
-                        frame.contentWindow?.postMessage({ t: "ws", i: id, a: "error" }, "*");
+                        lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "error" }, "*");
                     };
                     ws.onclose = e => {
-                        frame.contentWindow?.postMessage({ t: "ws", i: id, a: "close", code: e.code, reason: e.reason, wasClean: e.wasClean }, "*");
+                        lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "close", code: e.code, reason: e.reason, wasClean: e.wasClean }, "*");
                         wsMap.delete(id);
                     };
                 } catch (e) {
                     log(`<i class="fas fa-plug-circle-xmark" style="color:var(--err)"></i><span style="color:var(--err)">WS failed:</span> ${e.message}`, "err");
-                    frame.contentWindow?.postMessage({ t: "ws", i: id, a: "error", message: e.message }, "*");
+                    lbPostTo(frame.contentWindow, { t: "ws", i: id, a: "error", message: e.message }, "*");
                 }
             }
 
@@ -5512,7 +5519,7 @@
                     const reader = resp.body?.getReader?.();
                     if (!reader) {
                         const buf = await resp.arrayBuffer();
-                        frame.contentWindow?.postMessage({
+                        lbPostTo(frame.contentWindow, {
                             t: 'sse',
                             i: id,
                             d: toB64(buf),
@@ -5534,25 +5541,25 @@
                         const lines = buffer.split("\n\n");
                         buffer = lines.pop() || "";
                         for (const chunk of lines) {
-                            if (chunk.trim()) frame.contentWindow?.postMessage({
+                            if (chunk.trim()) lbPostTo(frame.contentWindow, {
                                 t: 'sse',
                                 i: id,
                                 chunk: chunk + "\n\n"
                             }, '*');
                         }
                     }
-                    if (buffer.trim()) frame.contentWindow?.postMessage({
+                    if (buffer.trim()) lbPostTo(frame.contentWindow, {
                         t: 'sse',
                         i: id,
                         chunk: buffer
                     }, '*');
-                    frame.contentWindow?.postMessage({
+                    lbPostTo(frame.contentWindow, {
                         t: 'sse',
                         i: id,
                         done: true
                     }, '*');
                 } catch (e) {
-                    frame.contentWindow?.postMessage({
+                    lbPostTo(frame.contentWindow, {
                         t: 'sse',
                         i: id,
                         error: e.message
@@ -5580,7 +5587,7 @@
                     const hdrs = {};
                     resp.headers?.forEach?.((v, k) => hdrs[k.toLowerCase()] = v);
                     try { if (captureSetCookies(new URL(url).origin, resp)) syncCookiesToFrame(new URL(url).origin); } catch (e) {}
-                    frame.contentWindow?.postMessage({
+                    lbPostTo(frame.contentWindow, {
                         t: 'streamStart',
                         i: id,
                         status: resp.status,
@@ -5589,12 +5596,12 @@
                     const reader = resp.body?.getReader?.();
                     if (!reader) {
                         const buf = await resp.arrayBuffer();
-                        frame.contentWindow?.postMessage({
+                        lbPostTo(frame.contentWindow, {
                             t: 'streamData',
                             i: id,
                             d: toB64(buf)
                         }, '*');
-                        frame.contentWindow?.postMessage({
+                        lbPostTo(frame.contentWindow, {
                             t: 'streamEnd',
                             i: id
                         }, '*');
@@ -5606,18 +5613,18 @@
                             value
                         } = await reader.read();
                         if (done) break;
-                        frame.contentWindow?.postMessage({
+                        lbPostTo(frame.contentWindow, {
                             t: 'streamData',
                             i: id,
                             d: toB64(value)
                         }, '*');
                     }
-                    frame.contentWindow?.postMessage({
+                    lbPostTo(frame.contentWindow, {
                         t: 'streamEnd',
                         i: id
                     }, '*');
                 } catch (e) {
-                    frame.contentWindow?.postMessage({
+                    lbPostTo(frame.contentWindow, {
                         t: 'streamError',
                         i: id,
                         error: e.message
@@ -5653,6 +5660,7 @@ const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
 const SPELLCHECK = ${JSON.stringify(!!spellcheck)};
 const LB_LAZY = ${JSON.stringify(lbLazyConfig())};
+const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
 
@@ -6471,7 +6479,7 @@ Element.prototype.insertAdjacentHTML = function(pos, html) { return _origInsertA
 function proxyDynamicScript(realUrl) {
   return new Promise((rs, rj) => {
     const i = ++rid;
-    const tm = setTimeout(() => { pending.delete(i); rj(new Error('qjs timeout')); }, 25000);
+    const tm = setTimeout(() => { pending.delete(i); rj(new Error('qjs timeout')); }, LB_NODIRECT ? 120000 : 25000);
     pending.set(i, { rs: (d) => rs(d && d.d), rj, tm });
     parent.postMessage({ t: 'qjs', i, url: realUrl }, '*');
   });
@@ -6490,8 +6498,9 @@ function orderedScriptSwap(node, abs) {
   const fetchP = proxyDynamicScript(abs).catch(() => null);
   const prev = _dynScriptChain;
   _dynScriptChain = (async () => {
-    const dataUrl = await fetchP;
+    const dataUrl = await fetchP; 
     await prev;
+    if (!dataUrl && LB_NODIRECT) { try { node.dispatchEvent(new Event('error')); } catch (e) {} return; }   // L1: never the real URL
     await new Promise(done => {
       let fin = false; const end = () => { if (!fin) { fin = true; done(); } };
       node.addEventListener('load', end, { once: true });
@@ -6521,6 +6530,19 @@ if (_scriptSrcDesc && _scriptSrcDesc.set) {
     configurable: true
   });
 }
+
+// L1: a parsed script that missed the build deadline arrives without src (data-lb-late); load it through the
+// proxy as soon as the document is ready, same ordered path as a script added at runtime.
+function lbRunLate() {
+  document.querySelectorAll('script[data-lb-late]').forEach(old => {
+    const abs = old.getAttribute('data-original-src'); if (!abs) return;
+    const n = document.createElement('script');
+    for (const a of old.attributes) if (a.name !== 'data-lb-late') n.setAttribute(a.name, a.value);
+    old.replaceWith(n);
+    orderedScriptSwap(n, abs);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lbRunLate); else lbRunLate();
 
 // ── Route runtime-created/modified <iframe src> through WISP ────────────────
 // A page that builds an iframe at runtime (DuckDuckGo's post3.html POST relay +
@@ -7916,7 +7938,7 @@ parent.postMessage({ t: 'ready' }, '*');
                     // Cached + deduped: watchPosition polls every 10s and file:// hosts
                     // often don't persist the grant, so ask the host at most once and
                     // serve the cache after — never re-prompt the user per request.
-                    const send = m => { try { _replyTo?.postMessage(m, '*'); } catch (e) {} };
+                    const send = m => { try { lbPostTo(_replyTo, m, '*'); } catch (e) {} };
                     if (!navigator.geolocation) { send({ t: 'geoResp', i: d.i, code: 2, message: 'Geolocation unavailable' }); return; }
                     (async () => {
                         if (_geoCache && Date.now() - _geoCache.ts < 60000) { send({ t: 'geoResp', i: d.i, ok: 1, coords: _geoCache.coords }); return; }
@@ -7944,7 +7966,7 @@ parent.postMessage({ t: 'ready' }, '*');
                     (async () => {
                         let result;
                         try { result = await LimitlessExt.handleBridge(d.kind, d.payload); } catch (e) { result = undefined; }
-                        _replyTo?.postMessage({ t: 'ext:bridgeResp', i: d.i, result }, '*');
+                        lbPostTo(_replyTo, { t: 'ext:bridgeResp', i: d.i, result }, '*');
                     })();
                     return;
                 }
@@ -7967,7 +7989,7 @@ parent.postMessage({ t: 'ready' }, '*');
                             signal: msgSignal
                         }, priority);
                         if (r.skipped) {
-                            _replyTo?.postMessage({
+                            lbPostTo(_replyTo, {
                                 t: 'r',
                                 i,
                                 s: 200,
@@ -7982,7 +8004,7 @@ parent.postMessage({ t: 'ready' }, '*');
                         else log(`<i class="fas fa-check" style="color:var(--ok)"></i>${url.slice(0, 45)} (${(r.buf.byteLength / 1024).toFixed(0)}K)`, "ok");
                         // Clone buf for transfer — buf may be referenced by cache so we send a copy
                         const transferBuf = r.buf.slice(0);
-                        _replyTo?.postMessage({
+                        lbPostTo(_replyTo, {
                             t: 'r',
                             i,
                             s: r.status,
@@ -7993,7 +8015,7 @@ parent.postMessage({ t: 'ready' }, '*');
                     } catch (e) {
                         if (e.name === 'AbortError') return;
                         log(`<i class="fas fa-xmark" style="color:var(--err)"></i>${url.slice(0, 45)} - ${e.message}`, "err");
-                        _replyTo?.postMessage({
+                        lbPostTo(_replyTo, {
                             t: 'r',
                             i,
                             e: e.message
@@ -8009,11 +8031,12 @@ parent.postMessage({ t: 'ready' }, '*');
                     // rewritten instead of hitting the raw blob:null origin.
                     const { i, url } = d;
                     const msgTabId = activeTabId;
-                    if (closedTabIds.has(msgTabId)) { _replyTo?.postMessage({ t: 'r', i, e: 'closed' }, '*'); return; }
+                    if (closedTabIds.has(msgTabId)) { lbPostTo(_replyTo, { t: 'r', i, e: 'closed' }, '*'); return; }
                     const msgSignal = tabAbortControllers.get(msgTabId)?.signal || abortCtrl?.signal;
                     try {
-                        const r = await queueFetch(url, { signal: msgSignal }, PRIORITY.js);
-                        if (r.skipped || !r.buf || !r.buf.byteLength) { _replyTo?.postMessage({ t: 'r', i, e: 'empty' }, '*'); return; }
+                        const _late = lbLateJs.get(url); lbLateJs.delete(url);
+                        const r = await (_late || queueFetch(url, { signal: msgSignal }, PRIORITY.js));
+                        if (r.skipped || !r.buf || !r.buf.byteLength) { lbPostTo(_replyTo, { t: 'r', i, e: 'empty' }, '*'); return; }
                         let jsText = new TextDecoder('utf-8').decode(new Uint8Array(r.buf));
                         try { if (window.__lbRewriteJs) jsText = window.__lbRewriteJs(jsText); } catch (e) {}
                         const bytes = new TextEncoder().encode(jsText);
@@ -8021,10 +8044,10 @@ parent.postMessage({ t: 'ready' }, '*');
                         for (let j = 0; j < bytes.length; j += CH) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + CH));
                         const dataUrl = 'data:text/javascript;charset=utf-8;base64,' + Base64.encode(bin);
                         log(`<i class="fas fa-code" style="color:#a78bfa"></i> dyn-js ${url.slice(0, 40)} (${(bytes.length / 1024).toFixed(0)}K)`, "ok");
-                        _replyTo?.postMessage({ t: 'r', i, d: dataUrl }, '*');
+                        lbPostTo(_replyTo, { t: 'r', i, d: dataUrl }, '*');
                     } catch (e) {
                         if (e.name === 'AbortError') return;
-                        _replyTo?.postMessage({ t: 'r', i, e: e.message }, '*');
+                        lbPostTo(_replyTo, { t: 'r', i, e: e.message }, '*');
                     }
                     return;
                 }
@@ -8034,10 +8057,10 @@ parent.postMessage({ t: 'ready' }, '*');
                     const { i, url } = d;
                     try {
                         const html = await buildProxiedIframeHtml(url, tabAbortControllers.get(activeTabId)?.signal || abortCtrl?.signal);
-                        _replyTo?.postMessage({ t: 'r', i, d: html || '' }, '*');
+                        lbPostTo(_replyTo, { t: 'r', i, d: html || '' }, '*');
                     } catch (e) {
                         if (e.name === 'AbortError') return;
-                        _replyTo?.postMessage({ t: 'r', i, e: e.message }, '*');
+                        lbPostTo(_replyTo, { t: 'r', i, e: e.message }, '*');
                     }
                     return;
                 }
@@ -8077,7 +8100,7 @@ parent.postMessage({ t: 'ready' }, '*');
                         if (typeof LimitlessExt !== 'undefined') {
                             const sid = LimitlessExt.storeId(d.u || pageUrl || '');
                             const installed = !!(sid && (LimitlessExt.list().some(x => x.storeId === sid) || LimitlessExt.themeList().some(x => x.storeId === sid)));
-                            _replyTo.postMessage({ t: 'extstate', installed }, '*');
+                            lbPostTo(_replyTo, { t: 'extstate', installed }, '*');
                         }
                     } catch (e) {}
                     return;
@@ -8096,7 +8119,7 @@ parent.postMessage({ t: 'ready' }, '*');
                             }
                         }
                     } catch (e) {}
-                    try { _replyTo.postMessage({ t: 'extremoved', ok: removed }, '*'); } catch (e) {}
+                    try { lbPostTo(_replyTo, { t: 'extremoved', ok: removed }, '*'); } catch (e) {}
                     return;
                 }
                 if (d.t === "n") {
@@ -10180,7 +10203,8 @@ _VIEWER_DL_JS +
                             scr.removeAttribute('crossorigin');
                             scr.setAttribute('src', dataUrl);
                         } catch (e) {
-                            try { scr.setAttribute('src', jsUrl); } catch (_) {}
+                            if (window.LB_features.noDirect !== false) scr.removeAttribute('src');   // L1: never a direct load
+                            else try { scr.setAttribute('src', jsUrl); } catch (_) {}
                         }
                     }));
                     // Emit ONE import map: real module URL -> its proxied data: URL. Module
@@ -10218,11 +10242,13 @@ _VIEWER_DL_JS +
                     }
                     // Fetch concurrently; 12s per-script timeout falls back to a direct external
                     // load so one stalled chunk can't freeze the whole render.
+                    const _noDirect = window.LB_features.noDirect !== false;
                     await Promise.all(_toProxy.map(async ({ scr, jsUrl }) => {
+                        const fp = qf(jsUrl, { signal: tabCtrl.signal }, PRIORITY.js);
                         try {
                             const jsR = await Promise.race([
-                                qf(jsUrl, { signal: tabCtrl.signal }, PRIORITY.js),
-                                new Promise((_, rj) => setTimeout(() => rj(new Error('script fetch timeout')), 12000))
+                                fp,
+                                new Promise((_, rj) => setTimeout(() => rj(new Error('script fetch timeout')), window.LB_features.scriptTimeoutMs || 12000))
                             ]);
                             if (activeTabId !== initiatorTabId) return;
                             if (jsR.buf && jsR.buf.byteLength) {
@@ -10237,11 +10263,20 @@ _VIEWER_DL_JS +
                                 // ASCII/Latin-1, so any non-ASCII byte outside a string literal (common in
                                 // minified bundles) becomes an "Invalid or unexpected token" SyntaxError.
                                 scr.setAttribute('src', 'data:text/javascript;charset=utf-8;base64,' + Base64.encode(bin));
+                            } else if (_noDirect) {
+                                scr.removeAttribute('src');   // empty body or blocked: nothing to run, never a direct load
                             } else {
                                 scr.setAttribute('src', jsUrl);   // empty → external fallback
                             }
                         } catch (e) {
-                            try { scr.setAttribute('src', jsUrl); } catch (_) {}   // failed/timeout → external
+                            if (!_noDirect) { try { scr.setAttribute('src', jsUrl); } catch (_) {} return; }   // failed/timeout → external
+                            // L1: never the real URL. A timeout keeps the proxied fetch running; the runtime loads the script
+                            // when the document is ready (data-lb-late) and takes this download over. A failure leaves no src.
+                            scr.removeAttribute('src'); scr.removeAttribute('integrity'); scr.removeAttribute('crossorigin');
+                            if (e && e.message === 'script fetch timeout') {
+                                scr.setAttribute('data-lb-late', '1');
+                                lbLateJs.set(jsUrl, fp); fp.catch(() => {}); fp.finally(() => setTimeout(() => lbLateJs.delete(jsUrl), 60000)).catch(() => {});
+                            } else log('Script not loaded: ' + jsUrl.slice(0, 60), 'warn');
                         }
                     }));
 
@@ -12734,7 +12769,7 @@ _VIEWER_DL_JS +
                         const nowOn = spellSwitch.classList.toggle("on");
                         try { ls.setItem(spellKey, nowOn ? 'true' : 'false'); } catch (_) { }
                         document.querySelectorAll('input[type=text], textarea').forEach(el => el.spellcheck = nowOn);
-                        try { frame.contentWindow?.postMessage({ type: 'limitless:spellcheck', enabled: nowOn }, '*'); } catch (_) { }
+                        try { lbPostTo(frame.contentWindow, { type: 'limitless:spellcheck', enabled: nowOn }, '*'); } catch (_) { }
                     };
                 }
 
@@ -17751,7 +17786,7 @@ _VIEWER_DL_JS +
                     closeTabs(ids) { ids.forEach(i => { try { closeTabAnimated(i); } catch (e) { } }); },
                     openExtTab(id, path) { API.openPage(id, path); },
                     notify(title, msg) { try { if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body: msg }); } catch (e) { } log('<i class="fas fa-puzzle-piece" style="color:#a78bfa"></i> ' + title + ': ' + msg, 'ok'); },
-                    tabMessage(tid, extId, msg) { try { const w = (tid === activeTabId) ? frame.contentWindow : null; if (w) w.postMessage({ t: 'ext:tabMsg', extId, msg }, '*'); return true; } catch (e) { return false; } },
+                    tabMessage(tid, extId, msg) { try { const w = (tid === activeTabId) ? frame.contentWindow : null; if (w) lbPostTo(w, { t: 'ext:tabMsg', extId, msg }, '*'); return true; } catch (e) { return false; } },
                     // Content realm is opaque/cross-origin — can't reach into it. ponytail:
                     // background→page code injection is a no-op; upgrade needs a same-origin proxy.
                     execInTab() { }, execCode() { }, insertCSS() { }, openPopup(id) { API.togglePopup(id); }
@@ -18200,7 +18235,7 @@ _VIEWER_DL_JS +
                 // button label can settle.
                 let storeBusy = false;
                 async function installFromStore(idOrUrl, replyTo) {
-                    if (storeBusy) { try { if (replyTo) replyTo.postMessage({ t: 'extinstalled', ok: false }, '*'); } catch (e) {} return; }
+                    if (storeBusy) { try { if (replyTo) lbPostTo(replyTo, { t: 'extinstalled', ok: false }, '*'); } catch (e) {} return; }
                     storeBusy = true;
                     let ok = false;
                     try {
@@ -18213,7 +18248,7 @@ _VIEWER_DL_JS +
                         alert('Could not install from Web Store: ' + (e && e.message || e) + '\n\nSome items are themes/apps (not extensions) or region-locked. You can also download the .crx and use "Load extension".');
                     } finally {
                         storeBusy = false;
-                        try { if (replyTo) replyTo.postMessage({ t: 'extinstalled', ok }, '*'); } catch (e) {}
+                        try { if (replyTo) lbPostTo(replyTo, { t: 'extinstalled', ok }, '*'); } catch (e) {}
                     }
                 }
                 LimitlessExt._installUI = installFromStore;
