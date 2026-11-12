@@ -86,3 +86,18 @@ test('page cache off by switch', async ({ page }) => {
   await visit(page, O + '/p');
   expect(await page.evaluate(() => LB_pc.kv.count())).toBe(0);
 });
+
+test('page cache: a stored page never holds blob: script URLs (L6)', async ({ page }) => {
+  const errors = await setup(page);
+  await page.evaluate(([o, h]) => {
+    __respond(o + '/q', { headers: h, body: '<html><head><title>S</title><script src="/s.js"></script></head><body>x</body></html>' });
+    __respond(o + '/s.js', { headers: { 'content-type': 'application/javascript' }, body: 'window.__ranS=1;' });
+  }, [O, HEAD]);
+  await visit(page, O + '/q');
+  await expect.poll(() => page.evaluate(() => LB_pc.kv.count())).toBe(1);
+  const html = await page.evaluate(async (o) => (await LB_pc.kv.get(LB_pc.key(o + '/q'))).html, O);
+  expect(html).toContain('data-original-src');
+  expect(html).not.toMatch(/src="blob:/);
+  expect(html).toMatch(/src="data:text\/javascript/);
+  expect(errors).toEqual([]);
+});

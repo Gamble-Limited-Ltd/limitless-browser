@@ -166,8 +166,7 @@ numbers.
 
 ## 5. Smoothness after load (jank)
 Covered by: lazy images (2.3), off-thread CSS work (4.5), tab sleeping (4.1). Plus, measured in T0 and fixed where it shows:
-- The media load limiter polls with `setTimeout(50)` while 24 loads are pending (`MAX_CONCURRENT_MEDIA`, ~15264): replace
-  with a promise queue (no polling).
+- The media load limiter polled with `setTimeout(50)` while 24 loads were pending (`MAX_CONCURRENT_MEDIA`): now a promise queue (no polling), slice `1.0-compat` (2026-11-12), test `tests/e2e/compat.spec.js`.
 - Long tasks: the harness records `longtask` entries during scroll on fixture pages; anything over 50 ms gets a ticket.
 
 ## 6. S8: downloads panel (wave 5)

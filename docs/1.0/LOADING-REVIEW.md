@@ -74,6 +74,8 @@ Each item: problem, where, evidence, fix, failing test to write first, kill swit
   URLs) and the script runs once it arrives, in order.
 - **Kill switch:** `features.noDirect` (default on; false = today's fallback).
 - **Done when:** no direct third-party request in any e2e or stack spec; real-site suite "timeout" and "render" rows shrink.
+- **Status (slice/1.0-compat, 2026-11-12): built, tests green** (`tests/e2e/compat.spec.js`). Classic scripts that miss the deadline, fail or come back empty never get their real URL (also module entries and the frame runtime's dynamic scripts: on failure the element gets an `error` event). A timed-out script keeps downloading, the page is built without it (`data-lb-late`), and the frame runtime loads it through the proxy as soon as the document is ready, reusing the in-flight download. Open: the 12 s clock still starts when the request is queued, not when `runQueue` dispatches it (that is the queue, owned by `slice/1.0-fetchcore` L4); a late script runs after the scripts that follow it in the document, not before. `setAttribute('src', ...)` on a script created at runtime is still a direct load (only the `.src` setter is proxied); not part of L1, needs its own item. Test knob: `LB_features.scriptTimeoutMs`.
+- **Found while testing L1:** commit f66a713 (S3) wrapped the frame's `window.postMessage`, so every parent-to-frame reply arrived with the frame itself as `event.source` and the runtime's `e.source !== parent` check dropped it (fetch, XHR, stream, WebSocket and dynamic-script replies, cookie sync). Fixed here: the parent posts through its own `window.postMessage` (`lbPostTo`). Stub-network e2e tests never exercise this path; a stack spec should.
 
 ### L2. Ordinary site errors are treated as a relay drop and reset the whole session
 - **Where:** `doFetch` catch block, `const isWispDrop` (`app/main.js` 5224). The test is a substring match on the error
@@ -159,6 +161,7 @@ Each item: problem, where, evidence, fix, failing test to write first, kill swit
 - **Test first:** fixture script that does `document.querySelector('script[src*="banner.js"]')` and
   `document.currentScript.src`: both must find the original URL.
 - **Kill switch:** `features.blobScripts`.
+- **Status (slice/1.0-compat, 2026-11-12): partial, tests green.** Parsed classic scripts now run from `blob:` URLs (made right before the page is serialised, revoked with the page blob through `lbScriptBlobs`); the page cache stores `data:` URLs instead (`lbBlobsToData`), since a stored page outlives the blobs. The runtime keeps the original URL visible: `currentScript.src` (already), `getAttribute('src')` and `querySelector(All)('script[src...')` answer from `data-original-src`. Not done: module entries and the dynamic `qjs` scripts still use `data:` (the `qjs` reply is the L10 binary-transfer work in `slice/1.0-fetchcore`); selectors other than `script[src` (for example a bare `[src*=x]`) are not rewritten; `hasAttribute('src')` and `.attributes` still show the blob URL.
 
 ### L7. The gate allows 8 sockets per user; one app tab opens 4
 - **Where:** `~/limitless-gate/src/config.ts` 83 `maxSocketsPerUser: 8` (`maxStreamsPerUser: 64`); app default
@@ -215,8 +218,9 @@ Each item: problem, where, evidence, fix, failing test to write first, kill swit
 - The image pre-warm fetches the first 24 images (S1) to fill the cache. If the response is not storable (`no-store`, cookie,
   cache switched off) the bytes are thrown away and the frame fetches the same image again. Fix: keep pre-warm responses
   in a per-navigation memory map that the frame's first request for that URL consumes, whatever the cache decides.
+  **Status (slice/1.0-compat, 2026-11-12): built.** `lbPrewarm` (cleared at each navigation, entries expire after 30 s) is consumed by the frame's plain GET for the same URL (no Range or conditional headers).
 - `loadMedia` polls `setTimeout(50)` while 24 loads are pending (`app/main.js` 6362). Already in `SPEED.md` section 5, not
-  built: replace with a promise queue.
+  built: replace with a promise queue. **Built** (`acquireMedia`/`releaseMedia`: a finished load hands its slot to the next waiter).
 
 ### HTTP/2 follow-ups (after L2 and L4)
 - With HTTP/2 confirmed, measure whether `set_connections(n, n, 6)` and `MAX_CONCURRENT` 24 are still right: HTTP/2 hosts
