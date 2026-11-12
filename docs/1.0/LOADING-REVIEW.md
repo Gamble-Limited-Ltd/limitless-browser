@@ -27,6 +27,8 @@ Built on `slice/1.0-fetchcore` (not merged, not deployed). Tests: `tests/e2e/fet
 | L11 logging | done | `log()` fills a 500 entry ring; DOM is built only while the log panel is open; the REQDIAG lines are gone |
 | L1, L6, L12, L7, L8, T1-T4, T7-T9 | not in this slice | |
 
+Resume here (wrap-up 2026-11-12): (1) `npm test` gave 149 passed, 2 failed (`s3-back.spec.js:16` instant Back, `router.spec.js:91` Connection setting, 1.0 min timeout) while other agents loaded the VM: re-run both alone first; if they still fail they are regressions from this slice (suspect the `log()` ring change or `ws.close` wrapping in the router). (2) `tests/stack/failures.spec.js` has NOT been run on the rehearsal stack yet: `flock /tmp/limitless-rehearsal.lock env LB_FAULTS=1 deploy/rehearsal/run.sh tests/stack/failures.spec.js`; its 300-image test assumes frame images render (they did not in the stubbed e2e frame, so check it on the real stack). (3) Open: L2 step 4 (WISP CLOSE reasons), L5 per-priority arrays. Merge note: compat slice edits the same `LB_features` and `build-static.sh` feature lines.
+
 ## 1. The problem in one table
 From `BASELINE.md` "Real-site suite" (on `slice/1.0-s3`): 42 popular sites, Chromebook profile, 3 reps each.
 
