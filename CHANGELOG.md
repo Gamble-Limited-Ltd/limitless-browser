@@ -17,6 +17,13 @@ What changed, in plain language. Newest first.
 - Tabs you have not used for a while now go to sleep to save memory (Settings, Tab Caching: choose Never, 10, 30 or 60 minutes). They wake in a moment, at the same spot. Tabs playing sound or video, or holding text you typed, never sleep.
 - The main app code is now its own file that your browser keeps between visits, so Limitless starts faster on a repeat open and each update only has to fetch what changed.
 - Pages with many fonts and images in their styles are prepared faster, without stalling the page.
+- A page that cannot reach one of its sites (a dead tracker or ad address, a wrong name) no longer resets your connection to our relay, so the rest of the page keeps loading.
+- Error pages for a mistyped or missing site now appear at once with the right reason, instead of after several automatic retries.
+- A form you send is never sent twice by the automatic retry.
+- A request that never gets an answer is now stopped after a while, so it no longer holds up the pictures and scripts behind it.
+- Long pages no longer lose pictures when many are waiting to load.
+- Pictures and files reach the page without being converted to text first, which saves work on slower computers.
+- The log panel no longer slows loading while it is closed.
 
 - Opening the app and new connections is a little quicker: the server remembers a successful sign-in check for a few seconds instead of asking again for every file.
 - Site addresses are looked up through a small cache on our side, so the second visit to a site starts sooner.
