@@ -62,12 +62,15 @@ FEAT_REWRITECACHE="${LB_FEATURE_REWRITECACHE:-true}"
 FEAT_PAGECACHE="${LB_FEATURE_PAGECACHE:-true}"
 FEAT_WARM="${LB_FEATURE_WARM:-true}"
 FEAT_INSTANTBACK="${LB_FEATURE_INSTANTBACK:-true}"
+FEAT_ERRCLASS="${LB_FEATURE_ERRCLASS:-true}"
+FEAT_DEADLINES="${LB_FEATURE_DEADLINES:-true}"
+FEAT_TRANSFER="${LB_FEATURE_TRANSFER:-true}"
 [[ "$FEAT_SOCKETS" =~ ^[0-4]$ ]] || { echo "build-static: LB_FEATURE_OWNSOCKETS must be 0 to 4" >&2; exit 1; }
-for v in "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK"; do
-  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE, LB_FEATURE_LAZYIMG, LB_FEATURE_TABSLEEP, LB_FEATURE_REWRITECACHE, LB_FEATURE_PAGECACHE, LB_FEATURE_WARM and LB_FEATURE_INSTANTBACK must be true or false" >&2; exit 1; }
+for v in "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" "$FEAT_ERRCLASS" "$FEAT_DEADLINES" "$FEAT_TRANSFER"; do
+  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE, LB_FEATURE_LAZYIMG, LB_FEATURE_TABSLEEP, LB_FEATURE_REWRITECACHE, LB_FEATURE_PAGECACHE, LB_FEATURE_WARM, LB_FEATURE_INSTANTBACK, LB_FEATURE_ERRCLASS, LB_FEATURE_DEADLINES and LB_FEATURE_TRANSFER must be true or false" >&2; exit 1; }
 done
-printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s,"tabSleep":%s,"rewriteCache":%s,"pageCache":%s,"warm":%s,"instantBack":%s}}\n' \
-  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" > "$OUT/version.json"
+printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s,"tabSleep":%s,"rewriteCache":%s,"pageCache":%s,"warm":%s,"instantBack":%s,"errClass":%s,"deadlines":%s,"transfer":%s}}\n' \
+  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" "$FEAT_ERRCLASS" "$FEAT_DEADLINES" "$FEAT_TRANSFER" > "$OUT/version.json"
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"
