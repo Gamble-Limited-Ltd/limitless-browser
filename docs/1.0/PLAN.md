@@ -15,6 +15,7 @@ This file is the index, the order of work and the ship gates. Detail lives in th
 | `UI.md` | Chrome, tabs, settings, splash, notices, errors, icons, Prime theme, tier marks |
 | `ADMIN.md` | Admin panel additions and the gate API behind them |
 | `TESTING.md` | Harness upgrades, test layers, gates for the Major lane, Boss's Chromebook checklist |
+| `LOADING-REVIEW.md` | Review of 2026-11-12 (Boss approved): why real pages fail or load slowly (fetch core, retries, timeouts, frame transfer) and how to make the test suites faster; work items L1 to L12 and T1 to T9, not built yet |
 | `design/` | Design reference for dev: `design-room.html` (snapshot of the picker artifact, open in a browser; names in it are examples) and `picks.json` (Boss's 30 picks with notes). Build from the `fav` picks and apply the notes. |
 
 ## 1. What 1.0 is
