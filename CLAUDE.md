@@ -46,7 +46,8 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   in `~/.cache/ms-playwright`) starts `python3 -m http.server 8599` and runs the smoke test in `tests/e2e` (app shell
   loads, no uncaught page errors, title set, address bar accepts input). It does not replace manual checks: also load
   the page, check the console, and exercise the touched feature.
-- Full-stack rehearsal: `npm run test:stack` (`deploy/rehearsal/run.sh`).
+- Full-stack rehearsal: `npm run test:stack` (`deploy/rehearsal/run.sh`). Anything that starts it: `flock /tmp/limitless-rehearsal.lock ...`.
+- Test tiers (docs/1.0/TESTING.md section 6): `npm test` (e2e, `fullyParallel`), `npm run test:speed:quick` (chromebook, fixtures, 3 reps), `npm run test:sites:smoke` (12 sites), release gate `npm run test:speed` + `npm run test:sites`; `scripts/speed-nightly.sh` runs the gate set unattended.
 - Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, sw.js, vendor/, fonts/, theme/, legal/, app/ when present,
   favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html` and `sw.js` (and the service worker precache list).
 - Theme CSS is generated: edit `scripts/gen-themes.py`, rerun. Fonts: `scripts/fetch-fonts.py`.
@@ -204,7 +205,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   A repeat visit inside the freshness window shows it before the fetch; the normal load continues. Same source document (`docSig`): nothing more. Changed: replaced silently if the member has not touched the page (first pointer, key, wheel, touch or input in the frame), else the "Updated, reload" chip (`#lbPageChip`).
 - **CSS url() rewrite (4.5):** `rewriteCssUrls` now makes one pass: fetches in parallel, base64 through `FileReader.readAsDataURL` (off the main thread) and a single `replace`, instead of `String.fromCharCode` chunks plus `split/join` per url (quadratic). Output is identical. `DOMParser` cannot run in a Worker; no parse5 added.
 - **Warm favourites (`features.warm`, `LB_warm`):** 3 s after boot (once libcurl exists) and on `online`, `HEAD https://host/` for the hosts of up to 6 favourites and the last 3 recent sites; the answer is discarded, no cookies, skipped with Data saver. The "bandwidth meter above 80 %" skip is not built (no meter yet).
-- **Real-site suite (TESTING 6a):** `npm run test:sites` = `LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=3 tests/stack/sites.spec.js; node scripts/sites-merge.mjs`. List and selectors in `tests/stack/real-sites.json` (a site "loads" when the page is shown, no error card and its selector exists in the proxied frame), 3 reps in fresh contexts,
+- **Real-site suite (TESTING 6a):** `npm run test:sites` = `LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js; node scripts/sites-merge.mjs`. List and selectors in `tests/stack/real-sites.json` (a site "loads" when the page is shown, no error card and its selector exists in the proxied frame), 3 reps in fresh contexts,
   one test per site, per-site JSON in `test-results/sites-<sha>/`, merged into `test-results/sites-<sha>.json`. `LB_SITES_REPS`, `LB_SITES_ONLY=a,b`, `LB_SPEED_SHA`. Failure categories: dns, connect, tls, http, blocked, csp, script, render, timeout, harness. Results: `docs/1.0/baseline/`, summary in `docs/1.0/BASELINE.md`. Run it alone: it is heavy and timings move with other load.
 - **Tests:** `tests/e2e/s3.spec.js`, `s3-back.spec.js`, `s3-pagecache.spec.js`, `s3-sleep.spec.js`, `s3-warm.spec.js`, `s3-css.spec.js`, `appscript.spec.js` (helpers `s3-helpers.js`, e2e port `LB_E2E_PORT`).
 
