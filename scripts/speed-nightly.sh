@@ -28,7 +28,7 @@ git worktree add --detach "$WT" release/1.0.0 || { echo "worktree failed"; exit 
 cd "$WT"
 NOTE="release/1.0.0 as is"
 if ! grep -q '"test:speed:quick"' package.json; then
-  if git merge --no-edit -q slice/1.0-testspeed >/dev/null 2>&1; then NOTE="release/1.0.0 + merged slice/1.0-testspeed (temp)"
+  if git -c user.name=TheGeneral4757 -c user.email=jgthiessen3@icloud.com merge --no-edit -q slice/1.0-testspeed >/dev/null 2>&1; then NOTE="release/1.0.0 + merged slice/1.0-testspeed (temp)"
   else git merge --abort >/dev/null 2>&1; git checkout -q --detach slice/1.0-testspeed; NOTE="slice/1.0-testspeed (merge with release conflicted)"; fi
 fi
 ln -s "$REPO/node_modules" node_modules
