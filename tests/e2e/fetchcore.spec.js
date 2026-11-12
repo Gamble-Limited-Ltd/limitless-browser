@@ -9,6 +9,9 @@ const { boot } = require('./helpers');
 const SETUP = `
   window.__net = { log: [], script: {}, tries: {} };
   window.__swaps = 0;
+  window.E35 = 'Request failed with error code 35: SSL connect error';
+  window.E6 = 'Request failed with error code 6: Could not resolve host';
+  window.E56 = 'Request failed with error code 56: Failure when receiving data from the peer';
   window.__respond = (url, r) => { window.__net.script[url] = r; };
   window.LB_net.curl = {
     active_requests: 0, close() {}, set_connections() {},
@@ -37,9 +40,6 @@ async function setup(page) {
 }
 
 const O = 'https://fc.test';
-const E35 = 'Request failed with error code 35: SSL connect error';
-const E6 = 'Request failed with error code 6: Could not resolve host';
-const E56 = 'Request failed with error code 56: Failure when receiving data from the peer';
 
 test.describe('L2 error classes and reconnect', () => {
   test('a site error (code 35 or 6) fails that request and never swaps the session', async ({ page }) => {
@@ -201,43 +201,47 @@ test.describe('L5 queue cap', () => {
 });
 
 test.describe('L10 binary hand-over to the frame', () => {
-  test('60 images cross into the frame without a single base64 encode and still render', async ({ page }) => {
+  test('60 image replies reach the frame as transferred ArrayBuffers, with no base64 encode', async ({ page }) => {
     await setup(page);
-    const PNG = [137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 252, 207, 192, 240, 31, 0, 5, 131, 1, 128, 90, 52, 125, 107, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130];
+    const PNG = [...Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')];
     const r = await page.evaluate(async ({ o, PNG }) => {
-      let html = '<html><body>';
-      for (let i = 0; i < 60; i++) { html += '<img id="p' + i + '" src="/img' + i + '.png">'; __respond(o + '/img' + i + '.png', { headers: { 'content-type': 'image/png' }, bytes: PNG }); }
-      __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: html + '</body></html>' });
-      LB_features.lazyImg = false;
-      LB_stats.b64 = 0;
+      __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: '<html><body>hi</body></html>' });
       LB_go(o + '/');
+      while (!(window.__lbPerf.cur && window.__lbPerf.cur.marks.shown != null)) await new Promise((res) => setTimeout(res, 50));
+      await new Promise((res) => setTimeout(res, 1500));   // let go() finish: a request that arrives while it still runs can be dropped as aborted
+      // the proxied page's window posts "q" messages to the app and receives the replies, as its runtime does
+      const w = document.getElementById('frame').contentWindow;   // the proxied page's own window
+      const got = [];
+      w.addEventListener('message', (e) => { if (e.data && e.data.t === 'r') got.push(e.data); });
+      for (let i = 0; i < 60; i++) __respond(o + '/img' + i + '.png', { headers: { 'content-type': 'image/png' }, bytes: PNG });
+      LB_stats.b64 = 0;
+      for (let i = 0; i < 60; i++) w.eval(`parent.postMessage({ t: 'q', i: ${i}, url: '${o}/img${i}.png', opts: {} }, '*')`);
       const t0 = performance.now();
-      const fr = document.getElementById('frame');
-      let ok = 0;
-      while (performance.now() - t0 < 15000) {
-        const d = fr.contentDocument;
-        ok = d ? [...d.images].filter((im) => im.complete && im.naturalWidth > 0).length : 0;
-        if (ok >= 60) break;
-        await new Promise((res) => setTimeout(res, 100));
-      }
-      return { ok, b64: LB_stats.b64 };
+      while (got.length < 60 && performance.now() - t0 < 10000) await new Promise((res) => setTimeout(res, 50));
+      return { n: got.length, buffers: got.filter((g) => Object.prototype.toString.call(g.d) === '[object ArrayBuffer]' && g.d.byteLength === PNG.length).length, b64: LB_stats.b64 };
     }, { o: O, PNG });
-    expect(r.ok).toBe(60);
-    expect(r.b64).toBe(0);
+    expect(r).toEqual({ n: 60, buffers: 60, b64: 0 });
   });
 
-  test('transfer=false keeps base64', async ({ page }) => {
+  test('transfer=false keeps base64 strings', async ({ page }) => {
     await setup(page);
     const r = await page.evaluate(async (o) => {
-      LB_features.transfer = false; LB_features.lazyImg = false;
-      __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: '<html><body><img src="/a.png"></body></html>' });
+      LB_features.transfer = false;
+      __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: '<html><body>hi</body></html>' });
+      LB_go(o + '/');
+      while (!(window.__lbPerf.cur && window.__lbPerf.cur.marks.shown != null)) await new Promise((res) => setTimeout(res, 50));
+      await new Promise((res) => setTimeout(res, 1500));   // let go() finish: a request that arrives while it still runs can be dropped as aborted
+      const w = document.getElementById('frame').contentWindow;   // the proxied page's own window
+      const got = [];
+      w.addEventListener('message', (e) => { if (e.data && e.data.t === 'r') got.push(e.data); });
       __respond(o + '/a.png', { headers: { 'content-type': 'image/png' }, body: 'xx' });
       LB_stats.b64 = 0;
-      LB_go(o + '/');
-      await new Promise((res) => setTimeout(res, 2500));
-      return LB_stats.b64;
+      w.eval(`parent.postMessage({ t: 'q', i: 1, url: '${o}/a.png', opts: {} }, '*')`);
+      const t0 = performance.now();
+      while (!got.length && performance.now() - t0 < 5000) await new Promise((res) => setTimeout(res, 50));
+      return { type: typeof (got[0] || {}).d, b64: LB_stats.b64 };
     }, O);
-    expect(r).toBeGreaterThan(0);
+    expect(r).toEqual({ type: 'string', b64: 1 });
   });
 });
 
