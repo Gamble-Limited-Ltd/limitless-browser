@@ -5,7 +5,9 @@
 // then decide `loaded` = the page was shown, no error card, and the site's selector exists in the proxied frame.
 // Records shown / load ms and, on failure, a category: dns, connect, tls, http, blocked, script (selector missing and page
 // errors seen), csp (CSP or frame refusal in the console), render (shown, no errors, selector missing), timeout.
-// Output: test-results/sites-<sha>.json. Env: LB_SITES_REPS (3), LB_SITES_ONLY=a,b, LB_SPEED_SHA.
+// Output: test-results/sites-<sha>.json. Env: LB_SITES_REPS (3), LB_SITES_ONLY=a,b, LB_SITES_SMOKE=1 (only the 12 sites flagged
+// `smoke: true`), LB_SPEED_SHA. Rep 3 is skipped (counted as the same failure) when reps 1 and 2 failed with the same category.
+// An error card or a missing result ends a rep at once; run with --workers=1 (npm run test:sites).
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
@@ -17,6 +19,7 @@ const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
 const REPS = parseInt(process.env.LB_SITES_REPS || '3', 10);
 const SITES = JSON.parse(fs.readFileSync(path.join(__dirname, 'real-sites.json'), 'utf8'));
 const ONLY = process.env.LB_SITES_ONLY ? process.env.LB_SITES_ONLY.split(',') : null;
+const SMOKE = process.env.LB_SITES_SMOKE === '1';
 const SHOWN_TIMEOUT = 45000;
 const SEL_TIMEOUT = 12000;
 
@@ -146,10 +149,15 @@ test.describe('real sites', () => {
 
   for (const site of SITES) {
     if (ONLY && !ONLY.includes(site.name)) continue;
+    if (SMOKE && !site.smoke) continue;
     test(site.name, async ({ browser }, testInfo) => {
       test.setTimeout(30 * 60 * 1000);
       const runs = [];
-      for (let i = 0; i < REPS; i++) runs.push(await tryOnce(browser, testInfo, site));
+      for (let i = 0; i < REPS; i++) {
+        const [a, b] = runs.slice(-2);
+        if (i === 2 && a && b && !a.loaded && !b.loaded && a.category === b.category) { runs.push({ ...b, skipped: true }); continue; }
+        runs.push(await tryOnce(browser, testInfo, site));
+      }
       const ok = runs.filter((r) => r.loaded);
       const fails = runs.filter((r) => !r.loaded);
       const cats = {};
