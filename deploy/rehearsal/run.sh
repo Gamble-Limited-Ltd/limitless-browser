@@ -55,7 +55,7 @@ cleanup() {
   rc=$?
   if [ "${KEEP:-0}" = 1 ] && [ $rc -eq 0 ]; then
     echo "rehearsal: stack left up on 127.0.0.1:$REHEARSAL_WEB_PORT (mock on :$REHEARSAL_MOCK_PORT). Tear down:"
-    echo "  REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV ${DC[*]} down -v"
+    echo "  REHEARSAL_OWNER_SUB=x REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV ${DC[*]} down -v"
   else
     "${DC[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
     rm -rf "$RUN_DIR"

@@ -13,7 +13,10 @@
 // and script-rewrite timing (the app's own LB_rewrite.sync on the fixture scripts).
 // Output: test-results/speed-<sha>-<project>.json (medians). Gate only on `fixture: true` sites (public sites are
 // reported). Compare two runs with scripts/speed-compare.mjs.
-// Env: LB_SPEED_REPS (7), LB_SPEED_PUBLIC_REPS (3), LB_SPEED_ONLY=a,b, LB_SPEED_SHA.
+// Env: LB_SPEED_REPS (7), LB_SPEED_PUBLIC_REPS (3), LB_SPEED_PUBLIC=0 (fixtures only), LB_SPEED_ONLY=a,b, LB_SPEED_SHA.
+// Quick tier (npm run test:speed:quick): chromebook only, 3 reps, fixtures only. Release gate: npm run test:speed.
+// The mock sign-in runs once per project; later contexts start from the saved cookies only (every other store is empty).
+// A navigation that ends in the error card is recorded as an error and not waited out (T3).
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
@@ -27,6 +30,7 @@ const PUBLIC_REPS = parseInt(process.env.LB_SPEED_PUBLIC_REPS || '3', 10);
 const MARKS = ['firstBytes', 'dom', 'shown', 'load'];
 const EXTRA = ['rxBytes', 'txBytes', 'longTaskCount', 'longTaskMs'];
 const SITES = JSON.parse(fs.readFileSync(path.join(__dirname, 'speed-sites.json'), 'utf8'));
+const NO_PUBLIC = process.env.LB_SPEED_PUBLIC === '0';
 const ONLY = process.env.LB_SPEED_ONLY ? process.env.LB_SPEED_ONLY.split(',') : null;
 const FIXTURE_ORIGIN = 'http://10.89.85.10:8080';
 
@@ -65,12 +69,15 @@ function initScript() {
   const iv = setInterval(check, 20);
 }
 
+let SAVED = null; // cookies of the first sign-in (per worker process, so per project run)
 async function signIn(page) {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Sign in with GLL ID' }).click();
-  await page.waitForURL(`${MOCK}/oidc/authorize**`);
-  await page.locator('input[name=user][value=alice]').check();
-  await page.locator('#continue').click();
+  if (!SAVED) {
+    await page.getByRole('link', { name: 'Sign in with GLL ID' }).click();
+    await page.waitForURL(`${MOCK}/oidc/authorize**`);
+    await page.locator('input[name=user][value=alice]').check();
+    await page.locator('#continue').click();
+  }
   await page.waitForLoadState('load');
   await expect(page.locator('#url')).toBeVisible({ timeout: 90000 });
   // First-run overlays would not block navigation, but dismiss them so they cannot add noise.
@@ -78,11 +85,12 @@ async function signIn(page) {
   try { await skip.waitFor({ state: 'visible', timeout: 4000 }); await skip.click(); } catch (_) {}
   const no = page.locator('#lbRelayNo');
   if (await no.isVisible().catch(() => false)) await no.click();
+  if (!SAVED) { try { SAVED = await page.context().cookies(); } catch (_) {} }
 }
 
 /** New context + page with the project profile, byte counters and the init script. */
 async function openPage(browser, testInfo) {
-  const ctx = await browser.newContext({ baseURL: BASE });
+  const ctx = await browser.newContext({ baseURL: BASE, ...(SAVED ? { storageState: { cookies: SAVED, origins: [] } } : {}) });
   await ctx.addInitScript(initScript);
   const page = await ctx.newPage();
   const cdp = (await applyProfile(page, testInfo)) || (await ctx.newCDPSession(page));
@@ -124,12 +132,18 @@ async function navigate(page, bytes, url) {
   await page.keyboard.press('Enter');
   try {
     await page.waitForFunction(
-      (n) => { const r = window.__lbPerf.runs; return r.length > n && r[r.length - 1].marks.load != null; },
+      (n) => {
+        const f = document.getElementById('frame');
+        if (f && f.srcdoc && /Error - Limitless/.test(f.srcdoc)) return true;
+        const r = window.__lbPerf.runs; return r.length > n && r[r.length - 1].marks.load != null;
+      },
       before,
       { timeout: 60000, polling: 50 },
     );
   } catch (_) { /* record whatever marks exist */ }
   const marks = await page.evaluate(() => ({ ...window.__lbPerf.runs[window.__lbPerf.runs.length - 1].marks }));
+  const errText = await page.evaluate(() => { const f = document.getElementById('frame'); return f && f.srcdoc && /Error - Limitless/.test(f.srcdoc) ? f.srcdoc.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160) : null; });
+  if (errText) throw new Error('error card: ' + errText);
   const rxBytes = bytes.rx, txBytes = bytes.tx; // loading only; scrolling can fetch lazy content but is measured separately
   return { ...marks, rxBytes, txBytes, ...(await scrollLongTasks(page)) };
 }
@@ -184,6 +198,7 @@ test.describe('speed', () => {
 
     for (const site of SITES) {
       if (ONLY && !ONLY.includes(site.name)) continue;
+      if (NO_PUBLIC && !site.fixture) continue;
       const reps = site.fixture ? REPS : PUBLIC_REPS;
       const runs = { cold: [], warm: [] };
       let micro = null;
