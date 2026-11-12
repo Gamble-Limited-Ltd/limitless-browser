@@ -16,7 +16,7 @@ at `c88ce5e` (0.2.3) and will drift; search by the names given.
 | F-g | Warm tabs: `MAX_WARM_TABS = 8` blob documents kept; no per-history-entry cache, so Back is a full reload. | ~10788 | Back is as slow as a new load. |
 | F-h | Script rewriting is memoised per session only (`rewriteJsAsync`, 200 entries / 24 M chars). | ~17832 | Repeat visits rewrite the same scripts again. |
 | F-i | No in-flight de-duplication was found in `queueFetch` (~13792). To verify in S1: two stages asking for the same URL may fetch it twice. | | Possible duplicate fetches. |
-| F-j | The vendored libcurl.js build shows no HTTP/2 support in a text search (no `nghttp2`/`http2` strings outside the WASM). To confirm with the 0.7.5 review. | | Every origin connection is HTTP/1.1 with 6 per host. |
+| F-j | The vendored libcurl.js build shows no HTTP/2 support in a text search (no `nghttp2`/`http2` strings outside the WASM). To confirm with the 0.7.5 review. **Wrong (2026-11-12):** the WASM has nghttp2 and a live probe negotiated `http/2` with TLS 1.3, and `Accept-Encoding: deflate, gzip, br` is sent; see `LOADING-REVIEW.md` section 3. | | Every origin connection is HTTP/1.1 with 6 per host (not true, see the correction). |
 
 ## 2. S1: page pipeline (wave 1)
 Goal: the page appears as soon as its CSS and scripts are ready; images and late resources stream in after.
