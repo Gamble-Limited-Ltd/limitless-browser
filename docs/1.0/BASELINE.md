@@ -203,4 +203,12 @@ Measured with the S3 code **before** the last two changes (page-cache lookup mov
 - Boot measures the app on the mock GATE sign-in path, not the real GLL ID.
 - The `chromium` and `chromebook` public-site numbers include the VM's own internet path.
 
+## Test speed-up and first quick run (2026-11-12, `slice/1.0-testspeed`, release/1.0.0 plus test changes)
+- **e2e (`npm test`, 137 tests):** 140 s wall before, 114 s after (`fullyParallel`, `page.clock`, no fixed wait); VM load average was 6 to 9 from other agents, so both numbers are inflated.
+- **Quick speed run (`npm run test:speed:quick`, chromebook, fixtures, 3 reps):** 10.4 min of tests (plus the first image build, about 8 min on a cold Rust cache; quick wall 18.7 min). Old equivalent: about 35 to 40 min per project.
+- **Quick run vs 0.2.3 (`speed-compare.mjs`, medians of 3, loaded VM):** fx-slow cold shown 8354 to 3259 ms (-61 %), fx-article, fx-frames, fx-app cold unchanged within noise, warm shown 12 to 28 % faster on slow, article, app; fx-news cold rx 770 KB to 533 KB (-31 %). The tool flagged 9 regressions, all on fx-news and fx-app first-byte/dom/shown, which were the first pages after boot under load. Re-running only those two: fx-news cold shown 2961 ms (0.2.3: 3656, so faster), but then fx-app was the slow one (6239 ms), i.e. noise from a busy VM, not a code effect. Treat quick-run gates as advisory until run on a quiet machine; the release gate is the full run.
+- **Boot (3 reps):** cold 3659 ms, repeat 2119 ms (0.2.3: 5697 and 3848 ms).
+- **Real-site smoke list (12 sites):** not completed (stopped on Boss's wrap-up request). Resume: `flock /tmp/limitless-rehearsal.lock npm run test:sites:smoke`.
+- **Full release-gate set** (`scripts/speed-nightly.sh`) was not run: estimated about 2 h (speed about 1 h, 42 sites at 1 worker about 1 h). No timer is scheduled.
+
 Last verified: 2026-11-10
