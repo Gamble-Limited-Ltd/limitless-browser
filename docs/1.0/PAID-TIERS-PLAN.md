@@ -30,6 +30,16 @@ as possible before release, so published numbers will be measured ones.
 - Load Now: that page load gets first claim on relay bandwidth until it finishes. Others slow briefly, nobody is cut off. Not for big downloads.
 - Capacity check: Access 4 x 500 GB = 2 TB of the 5 TB. Remaining 3 TB covers about 34 Cardinal members at the full weekly cap (about 87 GB per month each). Real use will be lower. Measure before promising seat numbers.
 
+## 2b. Certificates, member cards and the QR (Boss, 2026-11-13)
+- Ordinal: no certificate. The member card (name first, number as a small footer) is the keepsake; Membership shows one line that certificates begin at Cardinal.
+- Cardinal: a nice certificate, silver foil, no QR (code printed as text).
+- Prime: a really nice certificate, crimson and obsidian, bigger seal, QR small in a corner.
+- Limitless Access: the best, aurora foil, issue line, same corner QR.
+- The QR only proves a paper copy is genuine: it opens the verify page for the code (genuine, superseded or void, number, tier, date, never a name). It appears only on Prime and Access certificates, small, clear of text and seal.
+- Open: should the QR point at the members-only page on the browser address (current `MEMBERSHIP.md` plan, which prints the browser address on a certificate Prime members may show) or at a public verify page on HALL that never shows the name or the browser address. Design room options `qr-target-members` and `qr-target-hall`.
+- `MEMBERSHIP.md` sections 7 and the "may show their certificate" table still say every member gets a certificate: update them when this plan is approved.
+- Design room round two (artifact "Limitless 1.0 Design Room", copy in `docs/1.0/design/design-room.html`) holds the options for marks, cards, plans page, comparison, buying flow, free-limit screens, account panel, certificates, themes, admin and wording.
+
 ## 3. Money
 - One purchase = one year (12 months from the day Boss grants access).
 - Cash only, handled by hand. The page has a request form or contact. Boss replies, collects cash, sets paid-until.

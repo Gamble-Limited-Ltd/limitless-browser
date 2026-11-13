@@ -1,9 +1,9 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Limitless 1.0 Design Room</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Pinyon+Script&family=Space+Grotesk:wght@400;500;600&display=swap">
 <style>
+/* Hallmark pre-emit critique: P4 H4 E4 S5 R4 V4 · round two, tiers: ordinal ice, cardinal silver, prime crimson, access aurora */
 /* Hallmark · custom (vibe: "private members' browser, midnight and ice foil") · tone: luxury
  * paper #070a10 (dark) · accent #BDFFFF ice / #4DA6FF · Space Grotesk + Cormorant Garamond + Pinyon Script
  * Layout: a long review room. Each area is a band; each option is a live mock with a pick bar under it.
@@ -356,34 +356,323 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
-</style>
 
+/* ===================== v2 additions (paid tiers, 2026-11-13) ===================== */
+:root { --crim: #e0304b; --silver: #dfe3e9; --silver-d: #9aa3ad; --gold: #f1dfb0; --aur: linear-gradient(115deg, #BDFFFF 0%, #cdbfff 48%, #f1dfb0 100%); --surf3: #19212f; }
+.t-ordinal { --tc: #BDFFFF; --tc2: #4DA6FF; --tcon: #07101a; }
+.t-cardinal { --tc: #dfe3e9; --tc2: #9aa3ad; --tcon: #0a0c10; }
+.t-prime { --tc: #ff5a73; --tc2: #e0304b; --tcon: #14060a; }
+.t-access { --tc: #f1dfb0; --tc2: #BDFFFF; --tcon: #0b0a06; }
+.lede-sm { color: var(--mut); max-width: 66ch; font-size: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+.chip.ph { border-style: dashed; }
+.chip.tier { color: var(--tc); border-color: color-mix(in srgb, var(--tc) 45%, var(--line)); }
+.callout { border: 1px solid var(--line); border-left: 3px solid var(--ice); border-radius: 8px; background: var(--surf); padding: var(--sp-4) var(--sp-5); display: grid; gap: var(--sp-2); max-width: 78ch; font-size: 14px; }
+.callout h3 { font-family: var(--f-serif); font-size: 1.3rem; }
+.callout p, .callout li { color: var(--mut); }
+.callout li b, .callout p b { color: var(--fg); font-weight: 500; }
+.callout ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.callout.warn { border-left-color: var(--warn); }
+.group-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--mut); margin: var(--sp-7) 0 var(--sp-4); display: flex; align-items: center; gap: var(--sp-3); }
+.group-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* ladder overview */
+.ladder { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.rung { border: 1px solid var(--line); border-top: 3px solid var(--tc); border-radius: 10px; background: var(--surf); padding: var(--sp-5) var(--sp-4); display: grid; gap: var(--sp-3); align-content: start; min-width: 0; }
+.rung h3 { font-family: var(--f-serif); font-size: 1.7rem; line-height: 1; color: var(--tc); }
+.rung .pr { font-size: 13px; color: var(--mut); }
+.rung ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--mut); }
+.rung li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; }
+.rung li::before { content: ""; width: 5px; height: 5px; margin-top: 7px; border-radius: 50%; background: var(--tc); }
+.rung li b { color: var(--fg); font-weight: 500; }
+.rung.hidden-tier { border-style: dashed; background: transparent; }
+
+/* tier mark sets and member cards */
+.markrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); background: var(--surf); border: 1px solid var(--line); border-radius: 12px; padding: var(--sp-5) var(--sp-3); }
+.markrow .tier svg { width: min(100%, 84px); }
+.markrow .tier .nm { color: var(--tc); font-size: 1.1rem; }
+.markrow .tier { min-width: 0; }
+@media (max-width: 520px) { .markrow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cards4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: var(--sp-4); }
+.mcard { container-type: inline-size; position: relative; aspect-ratio: 1.586; border-radius: 14px; padding: 6cqw 7cqw; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; border: 1px solid color-mix(in srgb, var(--tc) 40%, var(--line)); background: radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--tc) 16%, transparent), transparent 60%), #0a0e15; box-shadow: 0 14px 30px rgba(0,0,0,.4); }
+.mcard.t-prime { background: radial-gradient(ellipse at 20% 0%, rgba(224,48,75,.28), transparent 60%), #0b0507; }
+.mcard.t-access { background: radial-gradient(ellipse at 15% 0%, rgba(241,223,176,.2), transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(189,255,255,.14), transparent 55%), #07080b; border-color: transparent; }
+.mcard.t-access::before { content: ""; position: absolute; inset: 0; border-radius: 14px; padding: 1px; background: var(--aur); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+.mcard .top { display: flex; justify-content: space-between; align-items: center; font-size: 3.2cqw; letter-spacing: .3em; text-transform: uppercase; color: var(--mut); }
+.mcard .top svg { width: 9cqw; height: 9cqw; }
+.mcard .nm { align-self: center; font-family: var(--f-serif); font-size: 9cqw; line-height: 1.05; color: var(--fg); }
+.mcard .nm small { display: block; font-family: var(--f-ui); font-size: 3.4cqw; letter-spacing: .12em; text-transform: uppercase; color: var(--tc); margin-top: 1.5cqw; }
+.mcard .ft { font-family: var(--f-mono); font-size: 3cqw; letter-spacing: .1em; color: var(--mut); display: flex; justify-content: space-between; }
+.mcard.strip { aspect-ratio: auto; grid-template-rows: none; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4cqw; padding: 4cqw 5cqw; }
+.mcard.strip .nm { font-size: 6.4cqw; align-self: center; }
+.mcard.strip .nm small { font-size: 2.8cqw; }
+.mcard.strip .no { font-family: var(--f-mono); font-size: 3.4cqw; color: var(--tc); letter-spacing: .1em; }
+.mcard.strip svg { width: 11cqw; height: 11cqw; }
+.mcard.pass { aspect-ratio: auto; grid-template-rows: none; display: grid; gap: 2cqw; padding: 5cqw 6cqw; }
+.mcard.pass .nm { font-size: 8cqw; align-self: auto; }
+.mcard.pass .mrz { font-family: var(--f-mono); font-size: 2.7cqw; color: var(--mut); letter-spacing: .14em; border-top: 1px dashed var(--line); padding-top: 2cqw; overflow: hidden; white-space: nowrap; }
+
+/* pricing page mocks */
+.pg { container-type: inline-size; border: 1px solid var(--line); border-radius: 14px; background: #06090f; padding: clamp(18px, 5cqw, 40px); display: grid; gap: var(--sp-6); min-width: 0; }
+.pg .nav { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); font-size: 12px; color: var(--mut); }
+.pg .nav .b { display: flex; align-items: center; gap: 8px; color: var(--fg); font-family: var(--f-serif); font-size: 17px; }
+.pg .nav .b svg { width: 22px; height: 22px; }
+.pg-hero { display: grid; gap: var(--sp-3); max-width: 56ch; }
+.pg-hero .eb { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--ice); }
+.pg-hero h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: clamp(30px, 8cqw, 54px); line-height: 1.04; }
+.pg-hero p { color: var(--mut); font-size: 14px; }
+.pg-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); align-items: stretch; }
+@container (max-width: 640px) { .pg-tiers { grid-template-columns: minmax(0, 1fr); } }
+.pg-card { border: 1px solid var(--line); border-radius: 12px; background: var(--surf); padding: var(--sp-5); display: grid; gap: var(--sp-3); align-content: start; position: relative; min-width: 0; }
+.pg-card.feat { border-color: color-mix(in srgb, var(--tc) 55%, var(--line)); background: color-mix(in srgb, var(--tc) 5%, var(--surf)); }
+.pg-card h5 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.7rem; color: var(--tc); line-height: 1; }
+.pg-card .pr { font-family: var(--f-serif); font-size: 1.25rem; }
+.pg-card .pr small { font-family: var(--f-ui); font-size: 12px; color: var(--mut); display: block; }
+.pg-card p { color: var(--mut); font-size: 13px; }
+.pg-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+.pg-card li { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 6px; }
+.pg-card li::before { content: ""; width: 5px; height: 5px; margin-top: 7px; border-radius: 50%; background: var(--tc); }
+.pg-card .btn { justify-self: start; font-size: 13px; padding: 7px 16px; }
+.pg-card .btn.tc { background: var(--tc); border-color: var(--tc); color: var(--tcon); }
+.pg-fine { font-size: 12px; color: var(--mut); border-top: 1px solid var(--line); padding-top: var(--sp-3); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.rows { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.row-t { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) auto; gap: var(--sp-4); align-items: center; padding: var(--sp-4) var(--sp-5); background: var(--surf); border-top: 1px solid var(--line); border-left: 3px solid var(--tc); }
+.row-t:first-child { border-top: 0; }
+.row-t:nth-child(2) { margin-left: 3cqw; } .row-t:nth-child(3) { margin-left: 6cqw; }
+.row-t h5 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.5rem; color: var(--tc); line-height: 1; }
+.row-t .facts { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--mut); }
+.row-t .facts b { color: var(--fg); font-weight: 500; }
+@container (max-width: 640px) { .row-t { grid-template-columns: minmax(0, 1fr); } .row-t:nth-child(n) { margin-left: 0; } }
+
+/* compare */
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surf); }
+table.cmp { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+table.cmp th, table.cmp td { padding: 11px 14px; text-align: left; border-top: 1px solid var(--line); vertical-align: top; }
+table.cmp thead th { border-top: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.25rem; color: var(--tc); background: color-mix(in srgb, var(--tc) 5%, var(--surf)); }
+table.cmp th:first-child, table.cmp td:first-child { color: var(--mut); position: sticky; left: 0; background: var(--surf); width: 24%; font-weight: 400; }
+table.cmp thead th:first-child { color: var(--mut); font-size: 11px; font-family: var(--f-ui); letter-spacing: .12em; text-transform: uppercase; }
+table.cmp tr.sec td { background: var(--surf2); font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--mut); padding-block: 7px; }
+table.cmp .no { color: #55606f; }
+.diff { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.diff > div { padding: var(--sp-5) var(--sp-4); background: var(--surf); border-left: 1px solid var(--line); display: grid; gap: var(--sp-2); align-content: start; position: relative; }
+.diff > div:first-child { border-left: 0; }
+.diff > div::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tc); }
+.diff h5 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.45rem; color: var(--tc); }
+.diff .lab { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--mut); }
+.diff p { font-size: 13px; color: var(--mut); }
+.diff p b { color: var(--fg); font-weight: 500; }
+.diff .plus { display: grid; gap: 5px; font-size: 13px; }
+.diff .plus span::before { content: "+ "; color: var(--tc); font-family: var(--f-mono); }
+.need { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.need .q { display: grid; grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(0, 1fr)); gap: var(--sp-3); padding: 12px var(--sp-4); background: var(--surf); border-top: 1px solid var(--line); font-size: 13px; align-items: center; }
+.need .q:first-child { border-top: 0; background: var(--surf2); font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
+.need .q b { font-weight: 500; font-family: var(--f-serif); font-size: 16px; }
+.need .q .v { color: var(--mut); }
+.need .q .v.go { color: var(--fg); }
+@media (max-width: 640px) { .need .q { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .need .q:first-child { display: none; } .need .q b { grid-column: 1 / -1; } }
+
+/* buy flow */
+.form { container-type: inline-size; border: 1px solid var(--line); border-radius: 14px; background: var(--surf); padding: clamp(18px, 4cqw, 32px); display: grid; gap: var(--sp-4); }
+.form h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.8rem; }
+.field { display: grid; gap: 6px; font-size: 13px; }
+.field > span { color: var(--mut); }
+.field input[type=text], .field textarea, .field select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; color: var(--fg); font: inherit; padding: 9px 12px; width: 100%; }
+.field textarea { min-height: 70px; resize: vertical; }
+.field .ro { background: var(--bg); border: 1px dashed var(--line); border-radius: 8px; padding: 9px 12px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.rc label { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; cursor: pointer; background: var(--bg); }
+.rc label:has(input:checked) { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 8%, var(--bg)); }
+.rc label b { font-family: var(--f-serif); font-size: 1.2rem; font-weight: 500; color: var(--tc); }
+.rc label small { color: var(--mut); font-size: 12px; }
+.rc input { position: absolute; opacity: 0; pointer-events: none; }
+.sent { border: 1px solid color-mix(in srgb, var(--ok) 40%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--ok) 5%, var(--surf)); padding: var(--sp-5); display: grid; gap: var(--sp-2); }
+.sent h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.5rem; }
+.sent p { color: var(--mut); font-size: 14px; }
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--sp-4); counter-reset: f; }
+.flow > div { border: 1px solid var(--line); border-radius: 12px; background: var(--surf); padding: var(--sp-5) var(--sp-4); display: grid; gap: var(--sp-2); align-content: start; counter-increment: f; position: relative; }
+.flow > div::before { content: counter(f); font-family: var(--f-serif); font-size: 2.2rem; line-height: 1; color: var(--ice); }
+.flow h5 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.3rem; }
+.flow p { color: var(--mut); font-size: 13px; }
+.stages { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stages .pill.on { border-color: var(--ice); }
+.stages .arrow { color: var(--mut); }
+.terms { border: 1px solid var(--line); border-radius: 12px; background: var(--surf); display: grid; }
+.terms > div { padding: 14px var(--sp-5); border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); gap: var(--sp-4); font-size: 14px; }
+.terms > div:first-child { border-top: 0; }
+.terms b { font-family: var(--f-serif); font-weight: 500; font-size: 1.15rem; }
+.terms span { color: var(--mut); }
+@media (max-width: 560px) { .terms > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* limit moments */
+.lim { container-type: inline-size; border: 1px solid var(--line); border-radius: 14px; background: radial-gradient(ellipse at 50% -20%, rgba(77,166,255,.10), transparent 55%), #05070c; min-height: 360px; display: grid; place-items: center; padding: var(--sp-7) var(--sp-5); text-align: center; }
+.lim .in { display: grid; gap: var(--sp-3); justify-items: center; width: min(100%, 460px); }
+.lim h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: clamp(26px, 7cqw, 38px); line-height: 1.08; }
+.lim p { color: var(--mut); font-size: 14px; max-width: 42ch; }
+.lim .tabs-used { display: flex; gap: 6px; }
+.lim .tabs-used i { width: 22px; height: 28px; border-radius: 4px 4px 0 0; border: 1px solid var(--line); background: var(--surf2); }
+.lim .tabs-used i.x { border-color: var(--tc2); background: color-mix(in srgb, var(--tc2) 25%, transparent); }
+.mini-tiers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; text-align: left; }
+.mini-tiers > div { border: 1px solid var(--line); border-top: 2px solid var(--tc); border-radius: 10px; padding: 10px 12px; background: var(--surf); display: grid; gap: 2px; font-size: 12px; color: var(--mut); }
+.mini-tiers b { font-family: var(--f-serif); font-weight: 500; font-size: 1.15rem; color: var(--tc); }
+.clockring { width: 120px; height: 120px; }
+.toast { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: left; border: 1px solid var(--line); background: var(--surf); border-radius: 12px; padding: 12px 16px; font-size: 13px; width: min(100%, 420px); box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+.toast svg { width: 22px; height: 22px; color: var(--ice); }
+.toast b { font-weight: 500; display: block; }
+.toast small { color: var(--mut); }
+.stagebar { display: grid; gap: var(--sp-4); border: 1px solid var(--line); border-radius: 14px; background: #05070c; padding: var(--sp-5); }
+.ntline { text-align: center; font-size: 12px; color: var(--mut); }
+.ntline a { color: var(--ice); }
+
+/* account */
+.acct { container-type: inline-size; border: 1px solid var(--line); border-radius: 12px; background: var(--surf); padding: var(--sp-5); display: grid; gap: var(--sp-4); }
+.acct h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.6rem; }
+.meter { display: grid; gap: 6px; }
+.meter .h { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.meter .h span:last-child { color: var(--mut); font-variant-numeric: tabular-nums; }
+.meter .bar2 { height: 8px; border-radius: 99px; background: var(--surf3); overflow: hidden; }
+.meter .bar2 i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--tc2), var(--tc)); }
+.meter small { color: var(--mut); font-size: 12px; }
+.rings3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--sp-4); }
+.rings3 > div { display: grid; justify-items: center; gap: 4px; text-align: center; font-size: 12px; color: var(--mut); }
+.rings3 svg { width: 92px; height: 92px; }
+.rings3 .big { font-family: var(--f-serif); font-size: 1.5rem; color: var(--fg); line-height: 1; }
+.banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 10px; background: var(--surf); padding: 12px 16px; font-size: 13px; }
+.banner.info { border-left-color: var(--blue); } .banner.bad { border-left-color: var(--bad); } .banner.ok { border-left-color: var(--ok); }
+.banner b { font-weight: 500; display: block; }
+.banner small { color: var(--mut); }
+.banner .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
+.banner.info .dot { background: var(--blue); } .banner.bad .dot { background: var(--bad); } .banner.ok .dot { background: var(--ok); }
+.banners { display: grid; gap: 10px; }
+.banner .btn { font-size: 12px; padding: 5px 12px; }
+@media (max-width: 560px) { .banner { grid-template-columns: auto minmax(0, 1fr); } .banner .btn { grid-column: 1 / -1; justify-self: start; } }
+
+/* certificates by tier */
+.cert { --c-gl: 1; }
+.cert.tc { --c-paper: #090b10; --c-ink: #eceff3; --c-mut: #98a0ac; --c-foil: #dfe3e9; --c-foil2: #8f98a4; --c-script: #f4f6f9; background: radial-gradient(ellipse at 50% 30%, #131822, var(--c-paper) 70%); }
+.cert.tc.print { --c-paper: #f2f3f5; --c-ink: #14181f; --c-mut: #5a606b; --c-foil: #5b6676; --c-foil2: #3a4452; --c-script: #1a2330; background: #f2f3f5; }
+.cert.tp { --c-paper: #070508; --c-ink: #f1e8e8; --c-mut: #a9959a; --c-foil: #ff5a73; --c-foil2: #c9a2a8; --c-script: #ffd6dc; background: radial-gradient(ellipse at 50% 28%, #2a0b13, var(--c-paper) 72%); }
+.cert.tp.print { --c-paper: #f6f1f0; --c-ink: #1a1214; --c-mut: #6a5a5d; --c-foil: #b3162e; --c-foil2: #6a2b34; --c-script: #5c0f1b; background: #f6f1f0; }
+.cert.ta { --c-paper: #06070a; --c-ink: #f2eee4; --c-mut: #a6a28f; --c-foil: #f1dfb0; --c-foil2: #BDFFFF; --c-script: #fff4d6; background: radial-gradient(ellipse at 50% 26%, #17161a, var(--c-paper) 72%); }
+.cert.ta.print { --c-paper: #f5f2ea; --c-ink: #17150f; --c-mut: #6a6552; --c-foil: #8a6a1c; --c-foil2: #1a6e84; --c-script: #3b2f0a; background: #f5f2ea; }
+.cert.ta .c-title, .cert.ta .c-no { background: var(--aur); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cert.ta.print .c-title, .cert.ta.print .c-no { background: linear-gradient(115deg, #1a6e84, #5a4a9a 48%, #8a6a1c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cert.tp .c-title { text-shadow: 0 0 .6cqw rgba(255,90,115,.28); }
+.cert .rim { position: absolute; inset: 3cqw; border: 1px solid color-mix(in srgb, var(--c-foil) 60%, transparent); border-radius: 2px; pointer-events: none; }
+.cert.ta .rim { border-image: var(--aur) 1; border-width: 1.5px; border-style: solid; }
+.cert .corner { position: absolute; width: 7cqw; height: 7cqw; border: 1px solid var(--c-foil); opacity: .8; pointer-events: none; }
+.cert .corner.a { left: 5cqw; top: 5cqw; border-right: 0; border-bottom: 0; } .cert .corner.b { right: 5cqw; top: 5cqw; border-left: 0; border-bottom: 0; }
+.cert .corner.c { left: 5cqw; bottom: 5cqw; border-right: 0; border-top: 0; } .cert .corner.d { right: 5cqw; bottom: 5cqw; border-left: 0; border-top: 0; }
+.cert .wm { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-serif); font-size: 62cqw; line-height: 1; color: var(--c-foil); opacity: .05; pointer-events: none; letter-spacing: -.02em; }
+.cert .tierline { font-size: 2cqw; letter-spacing: .5em; text-transform: uppercase; color: var(--c-foil); }
+.cert .ed { font-family: var(--f-mono); font-size: 1.6cqw; letter-spacing: .24em; text-transform: uppercase; color: var(--c-mut); }
+.qrc { position: absolute; display: grid; justify-items: center; gap: .7cqw; z-index: 2; }
+.qrc canvas { width: 7.6cqw; height: 7.6cqw; image-rendering: pixelated; padding: .9cqw; background: var(--c-paper); border: 1px solid color-mix(in srgb, var(--c-foil) 55%, transparent); border-radius: .6cqw; box-sizing: content-box; }
+.qrc span { font-family: var(--f-mono); font-size: 1.35cqw; letter-spacing: .1em; color: var(--c-mut); }
+.qrc.br { right: 9cqw; bottom: 9cqw; }
+.qrstrip { position: absolute; left: 9cqw; right: 9cqw; bottom: 6.5cqw; display: flex; align-items: center; gap: 2cqw; border-top: 1px solid color-mix(in srgb, var(--c-foil) 40%, transparent); padding-top: 1.4cqw; z-index: 2; font-family: var(--f-mono); font-size: 1.4cqw; letter-spacing: .1em; color: var(--c-mut); }
+.qrstrip canvas { width: 5.2cqw; height: 5.2cqw; image-rendering: pixelated; }
+.qrstrip b { color: var(--c-foil); font-weight: 400; }
+.cert .c-foot.pad { padding-bottom: 9cqw; }
+.cert .c-foot .ver.code { font-size: 1.7cqw; }
+.cert.tc .c-title, .cert.tp .c-title, .cert.ta .c-title { font-size: 6cqw; }
+.cert-trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--sp-5); }
+.nocert { border: 1px dashed var(--line); border-radius: 12px; padding: var(--sp-5); display: grid; gap: var(--sp-3); background: var(--surf); max-width: 520px; }
+.nocert h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.4rem; }
+.nocert p { color: var(--mut); font-size: 13px; }
+.verify { border: 1px solid var(--line); border-radius: 12px; background: #05070c; padding: var(--sp-6) var(--sp-5); display: grid; gap: var(--sp-2); justify-items: start; }
+.verify .ok { display: inline-flex; align-items: center; gap: 8px; color: var(--ok); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.verify .ok::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+.verify h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.7rem; }
+.verify dl { display: grid; grid-template-columns: auto auto; gap: 4px 18px; margin: 0; font-size: 13px; }
+.verify dt { color: var(--mut); } .verify dd { margin: 0; font-family: var(--f-mono); font-size: 12px; }
+.verify p { color: var(--mut); font-size: 13px; max-width: 46ch; }
+
+/* extra themes */
+.p-crimson2 { --m-bg: #050506; --m-surf: #0e0e11; --m-fg: #e8e9ed; --m-mut: #8f9199; --m-line: #26272d; --m-acc: #ff4d66; --m-acc2: #e0304b; --m-on: #050506; --m-glow: rgba(224,48,75,.2); }
+.c-silver { --m-bg: #090b0f; --m-surf: #12151b; --m-fg: #e8ebef; --m-mut: #8f97a3; --m-line: #262b34; --m-acc: #dfe3e9; --m-acc2: #8f98a4; --m-on: #090b0f; --m-glow: rgba(223,227,233,.1); }
+.c-ink { --m-bg: #060a14; --m-surf: #0d1424; --m-fg: #e6ecf7; --m-mut: #8793ab; --m-line: #1f2a42; --m-acc: #7fb8ff; --m-acc2: #3f7fd6; --m-on: #060a14; --m-glow: rgba(77,166,255,.16); }
+.a-aurora { --m-bg: #05070b; --m-surf: #0d131d; --m-fg: #f1ece0; --m-mut: #9aa0ad; --m-line: #252d3c; --m-acc: #f1dfb0; --m-acc2: #BDFFFF; --m-on: #05070b; --m-glow: rgba(241,223,176,.16); }
+.a-pearl { --m-bg: #0a0b0f; --m-surf: #14161c; --m-fg: #f6f3ee; --m-mut: #a3a29f; --m-line: #2a2c34; --m-acc: #f6f3ee; --m-acc2: #cdbfff; --m-on: #0a0b0f; --m-glow: rgba(205,191,255,.14); }
+.a-eclipse { --m-bg: #000; --m-surf: #0a0d13; --m-fg: #eef2f6; --m-mut: #8a93a2; --m-line: #1a202c; --m-acc: #BDFFFF; --m-acc2: #f1dfb0; --m-on: #000; --m-glow: rgba(189,255,255,.1); }
+.mock .m-card .no { font-size: 20px; }
+
+/* admin v2 */
+.admin .pill.t { border-color: color-mix(in srgb, var(--tc) 50%, var(--line)); color: var(--tc); }
+.dlg { border: 1px solid var(--line); border-radius: 12px; background: var(--surf2); padding: var(--sp-5); display: grid; gap: var(--sp-3); font-size: 13px; box-shadow: 0 18px 44px rgba(0,0,0,.5); }
+.dlg h4 { margin: 0; font-family: var(--f-serif); font-weight: 500; font-size: 1.4rem; }
+.dlg .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.dlg .warnline { color: var(--warn); font-size: 12px; }
+.knobs { overflow-x: auto; }
+table.kn { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+table.kn th, table.kn td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+table.kn thead th { font-family: var(--f-serif); font-weight: 500; font-size: 1.1rem; color: var(--tc); }
+table.kn td:first-child { color: var(--mut); }
+table.kn input { width: 84px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--fg); font: inherit; font-size: 12px; padding: 5px 8px; font-variant-numeric: tabular-nums; }
+.gauge { display: grid; gap: 8px; }
+.gauge .track { position: relative; height: 16px; border-radius: 99px; background: var(--surf3); overflow: hidden; display: flex; }
+.gauge .track span { height: 100%; }
+.gauge .mk { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--mut); }
+.gauge .labs { position: relative; height: 16px; font-family: var(--f-mono); font-size: 10.5px; color: var(--mut); }
+.gauge .labs span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.gauge .labs span:first-child { transform: none; }
+.shares { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mut); }
+.shares i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.alerts { display: grid; gap: 8px; }
+.sw { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; background: var(--surf); font-size: 13px; }
+.sw small { color: var(--mut); display: block; }
+.sw .btn { font-size: 12px; padding: 5px 12px; }
+.sw.danger { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+
+/* wording sets */
+.words { display: grid; gap: var(--sp-3); }
+.words .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--mut); font-family: var(--f-mono); }
+.words .big { font-family: var(--f-serif); font-size: clamp(26px, 5cqw, 40px); line-height: 1.05; }
+.wset { container-type: inline-size; border: 1px solid var(--line); border-radius: 14px; background: #06090f; padding: var(--sp-6) var(--sp-5); display: grid; gap: var(--sp-5); }
+.wset .tri { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--sp-4); }
+.wset .tri > div { border-top: 2px solid var(--tc); padding-top: 10px; display: grid; gap: 4px; font-size: 13px; color: var(--mut); }
+.wset .tri b { font-family: var(--f-serif); font-weight: 500; font-size: 1.2rem; color: var(--tc); }
+.wset .fine { font-size: 12px; color: var(--mut); border-top: 1px solid var(--line); padding-top: 10px; }
+.wset .cta { justify-self: start; }
+.grid > *, .opt, .opt > *, .form, .sent, .stages, .wset, .pg { min-width: 0; max-width: 100%; }
+.stages .pill { white-space: normal; }
+.opt-title span, .opt > p.desc { overflow-wrap: anywhere; }
+
+</style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="orbit" viewBox="0 0 64 64"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="50.02" cy="19.38" r="5.5" fill="var(--dot, #4DA6FF)"/></symbol>
     <linearGradient id="foil" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#BDFFFF"/><stop offset="1" stop-color="#4DA6FF"/></linearGradient>
     <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9ced6"/><stop offset="1" stop-color="#6f7681"/></linearGradient>
+    <linearGradient id="crimG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb3bf"/><stop offset=".5" stop-color="#ff4d66"/><stop offset="1" stop-color="#8a1226"/></linearGradient>
+    <linearGradient id="aurG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BDFFFF"/><stop offset=".5" stop-color="#cdbfff"/><stop offset="1" stop-color="#f1dfb0"/></linearGradient>
   </defs>
 </svg>
 
 <header class="wrap mast">
   <div>
     <h1>Limitless <b>1.0</b> Design Room</h1>
-    <p class="lede">Every look for the 1.0 update, side by side. Mark each option <strong>Favourite</strong>, <strong>Maybe</strong> or <strong>No</strong> and add a note where you want a change. Your picks save as you go, and I read them back to write the plan. Names and numbers in the mocks are examples, not real members.</p>
+    <p class="lede">Second round, built on the paid-tier plan. Ordinal, Cardinal, Prime and the invite-only <strong>Limitless Access</strong> now each have their own look: marks, member cards, certificates, themes, limits screens, account panel, buy page and admin tools. Every area has several options. Mark each <strong>Favourite</strong>, <strong>Maybe</strong> or <strong>No</strong>; your earlier picks are still there. Names, prices and numbers are examples and placeholders until the relay is measured.</p>
   </div>
   <svg class="mark-lg" style="color:#BDFFFF;--dot:#4DA6FF" aria-label="Orbit mark"><use href="#orbit"/></svg>
 </header>
 
 <nav class="index" aria-label="Areas">
   <div class="wrap">
-    <a href="#prime">Prime theme</a>
-    <a href="#marks">Tier marks</a>
+    <a href="#plan">The plan</a>
+    <a href="#tiers">Tiers</a>
+    <a href="#plans">Plans page</a>
+    <a href="#compare">Compare</a>
+    <a href="#buy">Buying</a>
+    <a href="#limits">Free limits</a>
+    <a href="#account">Account</a>
     <a href="#ceremony">Ceremony</a>
-    <a href="#certificate">Certificate</a>
+    <a href="#certificate">Certificates</a>
+    <a href="#themes">Themes</a>
     <a href="#notices">Notices</a>
-    <a href="#chrome">App chrome</a>
+    <a href="#chrome">Chrome</a>
     <a href="#details">Details</a>
     <a href="#admin">Admin</a>
+    <a href="#words">Wording</a>
     <a href="#done">Finish</a>
     <span class="tally" id="tally"><b>0</b> picked</span>
     <span class="sync" id="sync" data-state="">connecting</span>
@@ -392,36 +681,105 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
 
 <main class="wrap">
 
-<!-- ===================== PRIME THEME ===================== -->
-<section class="area" id="prime">
+<!-- ===================== THE PLAN ===================== -->
+<section class="area" id="plan">
   <div class="area-head">
-    <h2>Prime theme</h2>
-    <p>The theme only Prime members (and you) can use. Each mock is the real start page with the member card. Pick as many favourites as you like; I'll refine the winner and run the 4.5:1 contrast check before it ships.</p>
+    <h2>The plan in one screen</h2>
+    <p>Four steps up. Ordinal is free and uses shared public relays. Cardinal and Prime run on our own relay. Limitless Access is invite-only: only people I grant it to can even see it. All limits and prices are placeholders that change once the relay is measured.</p>
   </div>
-  <div class="grid" id="primeGrid"></div>
+  <div class="ladder" id="ladder"></div>
+  <div class="callout" style="margin-top:var(--sp-5)">
+    <h3>Fixed rules behind every design below</h3>
+    <ul>
+      <li><b>One purchase is one year</b>, counted from the day I grant it. A plan that ends drops back to Ordinal, with notices 14 days and 3 days before.</li>
+      <li><b>Cash, by hand.</b> You ask on the page, I reply, we meet, and I set the paid-until date.</li>
+      <li><b>Refund:</b> a 24 hour trial first, then a full refund within 3 days, then none unless we end the service.</li>
+      <li><b>Certificates by tier:</b> none for Ordinal, a nice one for Cardinal, a really nice one for Prime, the best for Access. The QR code appears only on Prime and Access.</li>
+    </ul>
+  </div>
 </section>
 
-<!-- ===================== TIER MARKS ===================== -->
-<section class="area" id="marks">
+<!-- ===================== TIERS ===================== -->
+<section class="area" id="tiers">
   <div class="area-head">
-    <h2>Tier marks and seals</h2>
-    <p>Ordinal, Cardinal and Prime each get a variant of the Orbit mark and a seal colour (ice, silver, obsidian with an ice edge). These show on the certificate, the member card and in the admin panel.</p>
+    <h2>Tier marks and member cards</h2>
+    <p>Each tier gets a mark and a member card. The card shows your name first and a small number line at the foot. Ordinal has no certificate, so its card is the keepsake. Pick a mark set, then a card style.</p>
   </div>
-  <div class="grid" id="marksGrid"></div>
+  <div class="grid three" id="marksGrid"></div>
+  <h3 class="subhead">Member cards</h3>
+  <div class="grid one" id="cardsGrid"></div>
+</section>
+
+<!-- ===================== PLANS PAGE ===================== -->
+<section class="area" id="plans">
+  <div class="area-head">
+    <h2>Public plans page</h2>
+    <p>The page on HALL that compares our own three public tiers (Access is not shown). Prices are placeholders and no speed is claimed until it is measured. Three different structures to pick from.</p>
+  </div>
+  <div class="grid one" id="plansGrid"></div>
+</section>
+
+<!-- ===================== COMPARE ===================== -->
+<section class="area" id="compare">
+  <div class="area-head">
+    <h2>Comparison table</h2>
+    <p>The same facts, shown three ways. It can sit under the plans page or be a page of its own.</p>
+  </div>
+  <div class="grid one" id="compareGrid"></div>
+</section>
+
+<!-- ===================== BUY ===================== -->
+<section class="area" id="buy">
+  <div class="area-head">
+    <h2>Asking to join a plan</h2>
+    <p>No card form, no checkout. A member asks, I reply, we meet and I grant the plan. Three flows, then the states a request moves through, and the terms in plain words.</p>
+  </div>
+  <div class="grid" id="buyGrid"></div>
+  <h3 class="subhead">A request moves through five states</h3>
+  <div class="opt" data-opt="buy-states">
+    <div class="opt-title"><h3>Request states</h3><span>shown in the member's account and in my queue</span></div>
+    <div class="stages" id="stages"></div>
+  </div>
+  <h3 class="subhead">Terms in plain words</h3>
+  <div id="termsHost"></div>
+</section>
+
+<!-- ===================== FREE LIMITS ===================== -->
+<section class="area" id="limits">
+  <div class="area-head">
+    <h2>What free members see</h2>
+    <p>Ordinal has 4 tabs open at once and about 4 hours a day. The fifth tab goes straight to the plans. These are the moments where the free tier meets its limits. Prime never gets a buy prompt, only a plain "out of tabs".</p>
+  </div>
+  <div class="group-label">The fifth tab</div>
+  <div class="grid three" id="tab5Grid"></div>
+  <div class="group-label">Daily time</div>
+  <div class="grid" id="dailyGrid"></div>
+  <div class="group-label">Where the plans link lives</div>
+  <div class="grid" id="quietGrid"></div>
+</section>
+
+<!-- ===================== ACCOUNT ===================== -->
+<section class="area" id="account">
+  <div class="area-head">
+    <h2>Membership panel</h2>
+    <p>Settings, Membership. Name first, number second. It shows the plan, the paid-until date and GB used this week or month, plus the trial and extra data. Three layouts, then the notices that appear in it.</p>
+  </div>
+  <div class="grid" id="acctGrid"></div>
+  <h3 class="subhead">Notices in the panel</h3>
+  <div class="grid" id="bannerGrid"></div>
 </section>
 
 <!-- ===================== CEREMONY ===================== -->
 <section class="area" id="ceremony">
   <div class="area-head">
     <h2>Welcome ceremony</h2>
-    <p>Six steps, about two minutes, the first time a member arrives (and once for every existing member). Each step below is live: press Replay to see the motion again.</p>
+    <p>Six steps, the first time a member arrives. Your earlier picks stay: the invitation card, the charter signing and the serif engraving. The number step is now typed in, as you asked. Step 5 depends on the tier: Ordinal gets the member card, Cardinal and above get the certificate.</p>
   </div>
   <ol class="steps" aria-label="Ceremony steps">
-    <li class="on">Invitation</li><li class="on">Number</li><li class="on">Charter</li><li class="on">Reveal</li><li class="on">Certificate</li><li class="on">Tour</li>
+    <li class="on">Invitation</li><li class="on">Number</li><li class="on">Charter</li><li class="on">Reveal</li><li class="on">Card or certificate</li><li class="on">Tour</li>
   </ol>
-
   <div class="grid">
-    <div class="opt" data-opt="cer-invite-a">
+        <div class="opt" data-opt="cer-invite-a">
       <div class="opt-title"><h3>Invitation card</h3><span>step 1</span></div>
       <div class="stage">
         <div class="card">
@@ -434,21 +792,8 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
         </div>
       </div>
     </div>
-
-    <div class="opt" data-opt="cer-number-a">
-      <div class="opt-title"><h3>Choose your number</h3><span>step 2</span></div>
-      <div class="stage">
-        <div class="card numpick">
-          <div class="cer-kicker">Your number</div>
-          <div class="cer-h" id="npShow">No. 048</div>
-          <p class="cer-p">The next free number is chosen for you. Pick another if you like. It is yours for good and never reissued.</p>
-          <div class="numgrid" id="numgrid" role="group" aria-label="Free numbers"></div>
-          <div class="legend"><span>struck: taken</span><span style="color:var(--warn)">dashed: reserved</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="opt" data-opt="cer-sign-a">
+    <div id="numHost" style="display:contents"></div>
+        <div class="opt" data-opt="cer-sign-a">
       <div class="opt-title"><h3>Read and sign the charter</h3><span>step 3</span></div>
       <div class="stage">
         <button class="btn ghost replay" data-replay="sig">Replay</button>
@@ -467,10 +812,9 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
       </div>
     </div>
   </div>
-
   <h3 class="subhead">Number reveal, step 4</h3>
-  <div class="grid three" id="revealGrid">
-    <div class="opt" data-opt="reveal-engrave-serif">
+  <div class="grid three">
+        <div class="opt" data-opt="reveal-engrave-serif">
       <div class="opt-title"><h3>Engrave, serif numerals</h3><span>your pick, version A</span></div>
       <div class="stage">
         <button class="btn ghost replay" data-replay="eng1">Replay</button>
@@ -483,20 +827,7 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
         </svg>
       </div>
     </div>
-    <div class="opt" data-opt="reveal-engrave-script">
-      <div class="opt-title"><h3>Engrave, script numerals</h3><span>version B</span></div>
-      <div class="stage">
-        <button class="btn ghost replay" data-replay="eng2">Replay</button>
-        <svg class="engrave script run" id="eng2" viewBox="0 0 380 220" role="img" aria-label="Member number 047">
-          <defs><radialGradient id="g2"><stop offset="0" stop-color="#BDFFFF" stop-opacity=".55"/><stop offset="1" stop-color="#BDFFFF" stop-opacity="0"/></radialGradient></defs>
-          <ellipse class="glow" cx="190" cy="130" rx="150" ry="60" fill="url(#g2)"/>
-          <text class="lbl" x="190" y="46" text-anchor="middle" font-size="18" letter-spacing="9">MEMBER</text>
-          <text class="num" x="190" y="160" text-anchor="middle" font-size="120">No. 047</text>
-          <line class="rule" x1="70" y1="186" x2="310" y2="186"/>
-        </svg>
-      </div>
-    </div>
-    <div class="opt" data-opt="reveal-seal">
+        <div class="opt" data-opt="reveal-seal">
       <div class="opt-title"><h3>Engrave inside the seal</h3><span>version C</span></div>
       <div class="stage">
         <button class="btn ghost replay" data-replay="seal">Replay</button>
@@ -515,34 +846,64 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
       </div>
     </div>
   </div>
+  <h3 class="subhead">Step 5 depends on the tier</h3>
+  <div class="grid" id="step5Grid"></div>
 </section>
 
-<!-- ===================== CERTIFICATE ===================== -->
+<!-- ===================== CERTIFICATES ===================== -->
 <section class="area" id="certificate">
   <div class="area-head">
-    <h2>Certificate and invitation letter</h2>
-    <p>One PDF, three pages: the certificate, a personal letter signed by you as Director, and the signed charter. Midnight paper with ice foil on screen, with a cream print copy generated alongside. Use the switch to see either.</p>
+    <h2>Certificates, by tier</h2>
+    <p>Ordinal gets none. Cardinal gets a nice one in silver foil. Prime gets a really nice one in crimson and obsidian with a verification QR. Limitless Access gets the best: aurora foil, an edition line and the same QR. Page 2 is still the personal letter and page 3 the signed charter. Switch between the midnight screen copy and the cream print copy.</p>
   </div>
   <div class="cert-tools" role="group" aria-label="Paper">
     <button class="btn" id="paperDark" aria-pressed="true">Midnight (screen)</button>
     <button class="btn ghost" id="paperPrint" aria-pressed="false">Cream (print copy)</button>
   </div>
-  <h3 class="subhead">Page 1, layout</h3>
-  <div class="cert-pair" id="certLayouts"></div>
-  <h3 class="subhead">Pages 2 and 3</h3>
+  <div class="group-label">Ordinal: no certificate</div>
+  <div class="grid" id="certOrdinal"></div>
+  <div class="group-label">Cardinal: a nice one</div>
+  <div class="cert-pair" id="certCardinal"></div>
+  <div class="group-label">Prime: a really nice one</div>
+  <div class="cert-pair" id="certPrimeG"></div>
+  <div class="group-label">Limitless Access: the best</div>
+  <div class="cert-pair" id="certAccess"></div>
+  <div class="group-label">Pages 2 and 3, all tiers</div>
   <div class="cert-pair" id="certPages"></div>
-  <h3 class="subhead">Prime certificate</h3>
-  <div class="cert-pair" id="certPrime"></div>
+
+  <div class="group-label">The QR code</div>
+  <div class="callout">
+    <h3>What the QR code does</h3>
+    <p>It is a proof of authenticity, nothing else. Scanning it opens the verify page for that certificate's code (like <b>LMT-007-7K4Q</b>). The page says <b>genuine</b>, <b>superseded</b> (a newer certificate replaced it) or <b>void</b> (the membership ended), plus the number, the tier and the date admitted. It never shows the name. It is not a sign-in and unlocks nothing.</p>
+    <p>Only Prime and Access certificates carry it, because those are the ones members are allowed to show to others. It is small and sits clear of the text and the seal.</p>
+  </div>
+  <div class="grid three" id="qrPlace" style="margin-top:var(--sp-5)"></div>
+  <h3 class="subhead">Where the QR should point</h3>
+  <div class="grid" id="qrTarget"></div>
+</section>
+
+<!-- ===================== THEMES ===================== -->
+<section class="area" id="themes">
+  <div class="area-head">
+    <h2>Themes by tier</h2>
+    <p>Prime keeps the crimson direction you picked, refined. Cardinal gets a quieter theme of its own, and Limitless Access gets the richest. Ordinal keeps the standard Limitless themes. Every mock shows the start page with the member card, name first.</p>
+  </div>
+  <div class="group-label">Cardinal</div>
+  <div class="grid" id="themeC"></div>
+  <div class="group-label">Prime</div>
+  <div class="grid" id="themeP"></div>
+  <div class="group-label">Limitless Access</div>
+  <div class="grid three" id="themeA"></div>
 </section>
 
 <!-- ===================== NOTICES ===================== -->
 <section class="area" id="notices">
   <div class="area-head">
-    <h2>Suspension and removal notices</h2>
-    <p>What a member sees at sign-in when a rule step applies. You set each suspension's length. Removal voids the certificate and retires the number.</p>
+    <h2>Rule notices and plan notices</h2>
+    <p>The suspension and removal notices you picked stay. New: what a member sees when I end a plan, with the refund line spelled out.</p>
   </div>
   <div class="grid">
-    <div class="opt" data-opt="notice-formal">
+        <div class="opt" data-opt="notice-formal">
       <div class="opt-title"><h3>Formal notice</h3><span>stamped, centred</span></div>
       <div class="notice">
         <span class="stamp">Membership ended</span>
@@ -552,7 +913,7 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
         <div class="row-btns" style="margin-top:8px"><button class="btn ghost">Sign out</button></div>
       </div>
     </div>
-    <div class="opt" data-opt="notice-letter">
+        <div class="opt" data-opt="notice-letter">
       <div class="opt-title"><h3>Letter from the Director</h3><span>left-aligned, signed</span></div>
       <div class="notice letterform">
         <span class="stamp" style="color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,transparent)">Suspended until 24 November 2026</span>
@@ -562,14 +923,15 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
         <p style="font-size:12px">Director, Gamble Limited Ltd.</p>
       </div>
     </div>
+    <div id="voidHost" style="display:contents"></div>
   </div>
 </section>
 
-<!-- ===================== APP CHROME ===================== -->
+<!-- ===================== CHROME ===================== -->
 <section class="area" id="chrome">
   <div class="area-head">
     <h2>App chrome</h2>
-    <p>The everyday frame. Classic tabs by default, vertical tabs as a member setting. The address bar shows the full address with the domain picked out. Developer tools, history, fullscreen and themes move into one Limitless menu. The thin bar under the address is the new loading progress.</p>
+    <p>Classic and vertical tabs you picked are unchanged, with the menu now showing the plan and a Plans entry. Prime and Access use their own theme colours.</p>
   </div>
   <div class="grid" id="chromeGrid"></div>
 </section>
@@ -577,22 +939,23 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
 <!-- ===================== DETAILS ===================== -->
 <section class="area" id="details">
   <div class="area-head">
-    <h2>Splash, notices, errors and settings</h2>
-    <p>The smaller screens members meet every day.</p>
+    <h2>Splash, notices and errors</h2>
+    <p>Splash now shows your name first and the number as a small footer line, as you asked.</p>
   </div>
   <div class="grid">
     <div class="opt" data-opt="splash-member">
-      <div class="opt-title"><h3>Splash</h3><span>mark draws in, member line</span></div>
+      <div class="opt-title"><h3>Splash</h3><span>name first, number as a footer</span></div>
       <div class="splash" id="splashBox">
         <button class="btn ghost replay" data-replay="splash">Replay</button>
-        <div class="inner">
+        <div class="inner" style="gap:10px">
           <svg class="mk run" id="splashMk" viewBox="0 0 64 64" aria-hidden="true"><path class="arc" d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="#BDFFFF" stroke-width="5" stroke-linecap="round"/><circle class="dot" cx="50.02" cy="19.38" r="5" fill="#4DA6FF"/></svg>
-          <div class="wb run" id="splashWb">Welcome back, No. 047</div>
+          <div class="wb run" id="splashWb" style="font-size:26px">Welcome back, Alex</div>
           <div class="bar" aria-hidden="true"></div>
+          <div class="wb run" id="splashNo" style="font-family:var(--f-mono);font-size:11px;letter-spacing:.2em;color:var(--mut)">Nº 047 · CARDINAL</div>
         </div>
       </div>
     </div>
-    <div class="opt" data-opt="bulletin-engraved">
+        <div class="opt" data-opt="bulletin-engraved">
       <div class="opt-title"><h3>Broadcast notice</h3><span>engraved bulletin on the start page</span></div>
       <div class="splash" style="padding:24px">
         <div style="display:grid;gap:22px;width:100%">
@@ -601,7 +964,7 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
         </div>
       </div>
     </div>
-    <div class="opt" data-opt="error-calm">
+        <div class="opt" data-opt="error-calm">
       <div class="opt-title"><h3>Error page</h3><span>calm themed card</span></div>
       <div class="splash" style="padding:24px">
         <div class="errcard">
@@ -614,20 +977,6 @@ relay: own (home) · stream 41 · port 443</pre></details>
         </div>
       </div>
     </div>
-    <div class="opt" data-opt="settings-6">
-      <div class="opt-title"><h3>Settings in six groups</h3><span>Membership page shown</span></div>
-      <div class="settings">
-        <nav aria-label="Settings groups"><a>General</a><a>Appearance</a><a>Privacy and data</a><a>Connection</a><a class="on">Membership</a><a>About</a></nav>
-        <div class="pane">
-          <h4>Membership</h4>
-          <div class="memhead"><div class="thumb">047</div><div><div style="font-family:var(--f-serif);font-size:20px">No. 047 · Ordinal</div><div style="color:var(--mut);font-size:13px">Member since 10 November 2026</div></div></div>
-          <div class="mrow"><div><span class="k">Standing</span><small>No notes on your membership.</small></div><span class="pill"><i style="background:var(--ok)"></i>Good standing</span></div>
-          <div class="mrow"><div><span class="k">Certificate</span><small>Verification code LMT-047-7K4Q</small></div><button class="btn ghost" style="font-size:13px;padding:6px 14px">Download PDF</button></div>
-          <div class="mrow"><div><span class="k">Nominate someone</span><small>1 nomination left this month</small></div><button class="btn ghost" style="font-size:13px;padding:6px 14px">Nominate</button></div>
-          <div class="mrow"><div><span class="k">Charter</span><small>Signed 10 November 2026, version 2026-11-10</small></div><a href="#done" style="font-size:13px">Read the full Rules</a></div>
-        </div>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -635,28 +984,29 @@ relay: own (home) · stream 41 · port 443</pre></details>
 <section class="area" id="admin">
   <div class="area-head">
     <h2>Admin panel</h2>
-    <p>Members with search and filters, a profile beside the list, the invite and nomination queue, live and 30-day charts, and per-hop timing on Health. Totals only: the panel never shows which sites anyone visits. All rows and figures below are example data.</p>
+    <p>The members list gains plan and paid-until columns and a Payment tab. New: a void dialog with reason and refund, live plan limits, and a transfer board with the staged brake. Totals only; the panel never shows which sites anyone visits. All figures are examples.</p>
   </div>
   <div class="grid one">
     <div class="opt" data-opt="admin-members">
-      <div class="opt-title"><h3>Members and profile</h3><span>click a row</span></div>
+      <div class="opt-title"><h3>Members, plan and payment</h3><span>click a row</span></div>
       <div class="admin">
         <div class="adm-top">
           <h4>Members</h4>
           <input id="admSearch" type="search" placeholder="Search number or name" aria-label="Search members">
           <div class="chips" id="admChips" role="group" aria-label="Filter">
-            <button aria-pressed="true" data-f="all">All</button><button aria-pressed="false" data-f="Prime">Prime</button><button aria-pressed="false" data-f="Cardinal">Cardinal</button><button aria-pressed="false" data-f="Ordinal">Ordinal</button><button aria-pressed="false" data-f="warn">Warned or suspended</button>
+            <button aria-pressed="true" data-f="all">All</button><button aria-pressed="false" data-f="Access">Access</button><button aria-pressed="false" data-f="Prime">Prime</button><button aria-pressed="false" data-f="Cardinal">Cardinal</button><button aria-pressed="false" data-f="Ordinal">Ordinal</button><button aria-pressed="false" data-f="soon">Ends within 14 days</button>
           </div>
         </div>
         <div class="adm-body">
-          <div class="tbl-wrap"><table class="mem"><thead><tr><th>No.</th><th>Name</th><th>Tier</th><th>Standing</th><th>Last seen</th></tr></thead><tbody id="memRows"></tbody></table></div>
+          <div class="tbl-wrap"><table class="mem"><thead><tr><th>No.</th><th>Name</th><th>Plan</th><th>Paid until</th><th>Standing</th></tr></thead><tbody id="memRows"></tbody></table></div>
           <div class="profile" id="profile"></div>
         </div>
       </div>
     </div>
   </div>
-  <div class="grid" style="margin-top:var(--sp-6)">
-    <div class="opt" data-opt="admin-queue">
+  <div class="grid" style="margin-top:var(--sp-6)" id="admGrid2">
+    <div id="voidDlg" style="display:contents"></div>
+        <div class="opt" data-opt="admin-queue">
       <div class="opt-title"><h3>Invites and nominations</h3><span>queue</span></div>
       <div class="admin" style="padding:16px;display:grid;gap:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-family:var(--f-serif);font-size:20px">Waiting for you</span><button class="btn solid" style="font-size:13px;padding:6px 14px">Create invite</button></div>
@@ -667,15 +1017,16 @@ relay: own (home) · stream 41 · port 443</pre></details>
         </div>
       </div>
     </div>
-    <div class="opt" data-opt="admin-charts">
+  </div>
+  <div class="grid one" style="margin-top:var(--sp-6)" id="admGrid3"></div>
+  <div class="grid" style="margin-top:var(--sp-6)">
+        <div class="opt" data-opt="admin-charts">
       <div class="opt-title"><h3>Live and 30 days</h3><span>charts</span></div>
       <div class="admin" style="padding:16px;display:grid;gap:14px">
         <div class="charts" id="charts"></div>
       </div>
     </div>
-  </div>
-  <div class="grid one" style="margin-top:var(--sp-6)">
-    <div class="opt" data-opt="admin-hops">
+        <div class="opt" data-opt="admin-hops">
       <div class="opt-title"><h3>Health: where the time goes</h3><span>median page load, split by hop</span></div>
       <div class="admin" style="padding:18px;display:grid;gap:14px">
         <div class="hops" id="hops"></div>
@@ -685,16 +1036,33 @@ relay: own (home) · stream 41 · port 443</pre></details>
   </div>
 </section>
 
+<!-- ===================== WORDING ===================== -->
+<section class="area" id="words">
+  <div class="area-head">
+    <h2>Wording and what we say</h2>
+    <p>Three voices for the plans page, the buttons and the fine print. No speed or price is claimed. Everything in square brackets waits for measured numbers.</p>
+  </div>
+  <div class="grid one" id="wordsGrid"></div>
+  <div class="callout warn" style="margin-top:var(--sp-5)">
+    <h3>Said honestly about the free plan</h3>
+    <ul>
+      <li>Free runs on shared public relays. Speed varies and can slow at busy times.</li>
+      <li>Public relays can go down, and we do not promise they will not.</li>
+      <li>The operator of a public relay can see which sites your connection reaches, not what you type.</li>
+    </ul>
+  </div>
+</section>
+
 <section class="summary" id="done">
   <h2>Your picks so far</h2>
   <ul id="sumList"><li>Nothing picked yet.</li></ul>
   <label for="finalNote" style="font-size:13px;color:var(--mut)">Anything else for the plan (colours to change, things missing, what to try next)</label>
   <textarea id="finalNote" placeholder="Write here. It saves as you type."></textarea>
-  <p style="color:var(--mut);font-size:13px">When you are done, tell me in the terminal. I read these picks and write the plan in docs/1.0/.</p>
+  <p style="color:var(--mut);font-size:13px">When you are done, tell me in the terminal. I read these picks and update the plan in docs/1.0/.</p>
 </section>
 </main>
 
-<footer class="wrap end">Limitless Browser 1.0 design room · Gamble Limited Ltd. · mocks only, nothing here is live</footer>
+<footer class="wrap end">Limitless Browser 1.0 design room, round two · Gamble Limited Ltd. · mocks only, nothing here is live</footer>
 
 <script>
 (function () {
@@ -730,60 +1098,189 @@ relay: own (home) · stream 41 · port 443</pre></details>
       <div class="m-card"><span class="no">No. ${no}</span><span><b style="font-weight:500">${tier}</b><small>${sub}</small></span></div></div></div>`;
   const sw = (pairs) => `<div class="m-swatches">${pairs.map(([n, c]) => `<span><i style="background:${c}"></i>${n} ${c}</span>`).join('')}</div>`;
 
-  /* Prime directions */
-  const primes = [
-    ['prime-oxblood', 'p-oxblood', 'Oxblood and ice', 'deep red, Limitless ice kept as the accent', 'Red enough to feel like a different room, still clearly Limitless because the ice accent and Orbit stay.', [['bg', '#120709'], ['surf', '#1d0d11'], ['accent', '#BDFFFF'], ['oxblood', '#a3243a']]],
-    ['prime-crimson', 'p-crimson', 'Crimson and obsidian', 'pure black, crimson accent, silver text', 'The most dramatic. Crimson on black is strong for marks and rules; body text stays silver for contrast.', [['bg', '#050506'], ['surf', '#0e0e11'], ['accent', '#e0304b'], ['silver', '#f0f1f4']]],
-    ['prime-garnet', 'p-garnet', 'Garnet glass', 'translucent surfaces, soft rose glow', 'Glass panels over a garnet ground with a gentle glow. Richest look; the blur costs a little on old Chromebooks, so it would fall back to solid there.', [['bg', '#160a12'], ['glass', 'rgba(255,235,242,.05)'], ['accent', '#ff6f8c'], ['garnet', '#8c2347']]],
-    ['prime-platinum', 'p-platinum', 'Obsidian and platinum', 'the non-red comparison', 'Black and platinum, no colour at all. Quiet and expensive, like a metal card.', [['bg', '#060708'], ['surf', '#101215'], ['accent', '#dfe3e8'], ['steel', '#9aa3ad']]]
-  ];
-  $('#primeGrid').innerHTML = primes.map(([id, cls, t, s, d, p]) => opt(id, t, s, d,
-    `<div class="mock ${cls}">${tabs(['Start', 'Wikipedia', 'Docs'])}${bar('https://en.wikipedia.org/wiki/Orbit')}${start('007', 'Prime', 'Member since October 2026')}${sw(p)}</div>`) + '').join('');
-
-  /* Tier marks: three sets */
-  const markSet = (variant) => {
-    const base = (c, d) => `<g style="color:${c};--dot:${d}"><use href="#orbit" x="16" y="16" width="64" height="64"/></g>`;
-    const v = {
-      rings: [
-        base('#BDFFFF', '#4DA6FF'),
-        base('#e4e7ec', '#9aa3ad') + '<circle cx="48" cy="48" r="44" fill="none" stroke="url(#silver)" stroke-width="1.2"/>',
-        '<circle cx="48" cy="48" r="46" fill="#0b0d11" stroke="#BDFFFF" stroke-width="1.4"/><circle cx="48" cy="48" r="41" fill="none" stroke="#BDFFFF" stroke-width=".6" stroke-dasharray="1.5 3"/>' + base('#BDFFFF', '#ffffff')
-      ],
-      moons: [
-        base('#BDFFFF', '#4DA6FF'),
-        base('#e4e7ec', '#9aa3ad') + '<circle cx="22" cy="74" r="4" fill="#c9ced6"/>',
-        '<circle cx="48" cy="48" r="46" fill="#0b0d11"/>' + base('#BDFFFF', '#ffffff') + '<circle cx="22" cy="74" r="4" fill="#BDFFFF"/><circle cx="14" cy="38" r="3" fill="#BDFFFF"/>'
-      ],
-      core: [
-        base('#BDFFFF', '#4DA6FF'),
-        base('#e4e7ec', '#9aa3ad') + '<circle cx="48" cy="48" r="7" fill="url(#silver)"/>',
-        '<circle cx="48" cy="48" r="46" fill="#0b0d11" stroke="#BDFFFF" stroke-width="1"/>' + base('#BDFFFF', '#ffffff') + '<path d="M48 38l2.6 7.4H58l-6 4.4 2.3 7.2L48 52.6 41.7 57l2.3-7.2-6-4.4h7.4z" fill="#BDFFFF"/>'
-      ]
-    }[variant];
-    const names = [['Ordinal', 'ice seal'], ['Cardinal', 'silver seal'], ['Prime', 'obsidian, ice edge']];
-    return `<div class="tiers">${v.map((g, i) => `<div class="tier"><svg viewBox="0 0 96 96" aria-hidden="true">${g}</svg><span class="nm">${names[i][0]}</span><small>${names[i][1]}</small></div>`).join('')}
-      <div class="seals"><span class="seal-chip"><i class="s-ice"></i>Ordinal</span><span class="seal-chip"><i class="s-silver"></i>Cardinal</span><span class="seal-chip"><i class="s-obs"></i>Prime</span></div></div>`;
+  /* ================= round two: data ================= */
+  const T = {
+    ordinal: { n: 'Ordinal', cls: 't-ordinal', price: 'Free', note: 'Shared public relays' },
+    cardinal: { n: 'Cardinal', cls: 't-cardinal', price: 'About $15 a year', note: 'placeholder, set at release' },
+    prime: { n: 'Prime', cls: 't-prime', price: 'Price to be announced', note: 'set once the relay is measured' },
+    access: { n: 'Limitless Access', cls: 't-access', price: 'By invitation', note: 'only people I grant it to can see it' }
   };
+  const FACTS = {
+    ordinal: ['<b>Shared public relays</b>, speed varies', '<b>4</b> tabs open at once', 'About <b>4 hours</b> a day', 'Downloads: <b>10 MB</b> a file, 10 a day', 'A member card, no certificate'],
+    cardinal: ['<b>Our own relay</b>, steadier loading', '<b>15</b> tabs, no daily limit', 'About <b>20 GB a week</b>, resets Monday', 'Faster downloads, same allowance', 'Silver certificate, badge and theme', 'A 24 hour Prime trial each month'],
+    prime: ['Our relay, <b>higher priority</b>', '<b>25</b> tabs', 'About <b>250 GB a month</b>', 'Larger downloads, their own allowance', 'Crimson theme, certificate with a verification QR', 'No moderation immunity'],
+    access: ['The <b>most</b> our relay offers', '<b>50</b> tabs', 'About <b>500 GB a month</b> fast, then a slower speed that never stops', 'Best downloads and a <b>Load Now</b> button (10 a day)', 'Aurora certificate and themes', 'A direct line to the Director']
+  };
+  const ph = (t) => `<span class="chip ph">${t || 'placeholder'}</span>`;
+  const glyph = (stroke, dot, w = 6) => `<path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"/><circle cx="50.02" cy="19.38" r="5.5" fill="${dot}"/>`;
+  const g96 = (stroke, dot, s = 1, x = 16, y = 16) => `<g transform="translate(${x} ${y}) scale(${s})">${glyph(stroke, dot)}</g>`;
+  const markSvg = (tier, variant = 'rings') => {
+    if (variant === 'metals') return {
+      ordinal: '<circle cx="48" cy="48" r="44" fill="none" stroke="#BDFFFF" stroke-width="1.4"/>' + g96('#BDFFFF', '#4DA6FF'),
+      cardinal: '<circle cx="48" cy="48" r="44" fill="url(#silver)"/>' + g96('#0a0c10', '#4a525e'),
+      prime: '<circle cx="48" cy="48" r="44" fill="url(#crimG)"/>' + g96('#14060a', '#ffe3e8'),
+      access: '<circle cx="48" cy="48" r="44" fill="url(#aurG)"/>' + g96('#0b0a06', '#ffffff')
+    }[tier];
+    if (variant === 'pips') { const n = { ordinal: 1, cardinal: 2, prime: 3, access: 4 }[tier], col = { ordinal: '#BDFFFF', cardinal: '#dfe3e9', prime: '#ff5a73', access: 'url(#aurG)' }[tier];
+      return g96(col, { ordinal: '#4DA6FF', cardinal: '#9aa3ad', prime: '#ffffff', access: '#f1dfb0' }[tier], .8, 19, 6) + Array.from({ length: n }, (_, i) => `<circle cx="${48 + (i - (n - 1) / 2) * 11}" cy="80" r="3.4" fill="${col}"/>`).join(''); }
+    return {
+      ordinal: g96('#BDFFFF', '#4DA6FF'),
+      cardinal: g96('#e4e7ec', '#9aa3ad') + '<circle cx="48" cy="48" r="44" fill="none" stroke="url(#silver)" stroke-width="1.2"/>',
+      prime: '<circle cx="48" cy="48" r="46" fill="#0b0507" stroke="url(#crimG)" stroke-width="1.6"/><circle cx="48" cy="48" r="41" fill="none" stroke="#ff5a73" stroke-width=".7" stroke-dasharray="1.5 3"/>' + g96('#ff6b81', '#ffffff'),
+      access: '<circle cx="48" cy="48" r="46" fill="#07080b" stroke="url(#aurG)" stroke-width="1.8"/><circle cx="48" cy="48" r="41" fill="none" stroke="url(#aurG)" stroke-width=".8" stroke-dasharray="1.5 3"/><circle cx="48" cy="48" r="36" fill="none" stroke="url(#aurG)" stroke-width=".5"/>' + g96('url(#aurG)', '#ffffff') + [[48, 7], [89, 48], [48, 89], [7, 48]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="url(#aurG)"/>`).join('')
+    }[tier];
+  };
+  const tierSvg = (tier, variant, cls = '') => `<svg viewBox="0 0 96 96" class="${cls}" aria-hidden="true">${markSvg(tier, variant)}</svg>`;
+  const TK = ['ordinal', 'cardinal', 'prime', 'access'];
+
+  /* ---- ladder ---- */
+  $('#ladder').innerHTML = TK.map(k => `<div class="rung ${T[k].cls}${k === 'access' ? ' hidden-tier' : ''}">${tierSvg(k, 'rings').replace('<svg', '<svg style="width:54px;height:54px"')}<h3>${T[k].n}</h3>
+    <div class="pr">${T[k].price}${k === 'cardinal' ? ' ' + ph() : ''}<br>${T[k].note}</div><ul>${FACTS[k].map(f => `<li><span>${f}</span></li>`).join('')}</ul></div>`).join('');
+
+  /* ---- marks ---- */
+  const markGroup = (variant, note) => `<div class="markrow">${TK.map(k => `<div class="tier ${T[k].cls}">${tierSvg(k, variant)}<span class="nm">${T[k].n === 'Limitless Access' ? 'Access' : T[k].n}</span><small>${note[k]}</small></div>`).join('')}</div>`;
   $('#marksGrid').innerHTML = [
-    opt('marks-rings', 'Rings', 'a ring per tier', 'Cardinal gains a silver ring; Prime sits in an obsidian disc with a fine ice ring.', markSet('rings')),
-    opt('marks-moons', 'Moons', 'extra orbiting dots', 'Each tier adds a small moon to the orbit. Reads well even at 16 px.', markSet('moons')),
-    opt('marks-core', 'Core', 'something at the centre', 'Cardinal gets a silver core; Prime gets a four-point star at the centre of the orbit.', markSet('core'))
+    opt('marks-rings', 'Rings', 'your earlier pick, extended', 'Cardinal gains a silver ring, Prime a crimson disc, Access a triple aurora ring with four points.', markGroup('rings', { ordinal: 'ice', cardinal: 'silver ring', prime: 'crimson disc', access: 'aurora rings' })),
+    opt('marks-metals', 'Metals', 'a filled coin per tier', 'Each tier is a solid disc of its own metal: ice outline, silver, crimson, aurora foil. Reads at 16 px.', markGroup('metals', { ordinal: 'ice line', cardinal: 'silver', prime: 'crimson', access: 'aurora foil' })),
+    opt('marks-pips', 'Pips', 'one to four dots below', 'The orbit stays the same; a row of one to four small dots shows the step. Simple and quiet.', markGroup('pips', { ordinal: 'one pip', cardinal: 'two', prime: 'three', access: 'four' }))
   ].join('');
 
-  /* Number grid */
-  const taken = new Set([0, 1, 2, 3, 5, 7, 12, 18, 21, 26, 31, 33, 40, 44, 46, 47]);
-  const reserved = new Set([4, 6, 8, 9, 10, 100, 777]);
-  const ng = $('#numgrid');
-  for (let n = 40; n < 64; n++) {
-    const b = document.createElement('button');
-    const s = String(n).padStart(3, '0');
-    b.textContent = s;
-    if (taken.has(n)) { b.disabled = true; b.setAttribute('aria-label', s + ' taken'); }
-    else if (reserved.has(n)) { b.className = 'res'; b.setAttribute('aria-label', s + ' reserved'); }
-    b.setAttribute('aria-pressed', n === 48 ? 'true' : 'false');
-    b.addEventListener('click', () => { if (b.disabled || b.classList.contains('res')) return; $$('button', ng).forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); $('#npShow').textContent = 'No. ' + s; });
-    ng.appendChild(b);
-  }
+  /* ---- member cards ---- */
+  const cardSet = (kind) => `<div class="cards4">${TK.map(k => {
+    const t = T[k], no = { ordinal: '047', cardinal: '047', prime: '007', access: '001' }[k], nm = k === 'access' ? 'Limitless Access' : t.n;
+    if (kind === 'strip') return `<div class="mcard strip ${t.cls}">${tierSvg(k, 'rings')}<div class="nm">Alex Morgan<small>${nm}</small></div><span class="no">Nº ${no}</span></div>`;
+    if (kind === 'pass') return `<div class="mcard pass ${t.cls}"><div class="top"><span>Limitless</span><span style="color:var(--tc)">${nm}</span></div><div class="nm">Alex Morgan</div><div class="mrz">LMT&lt;${no}&lt;${nm.toUpperCase().replace(/ /g, '')}&lt;&lt;2026&lt;11&lt;10&lt;&lt;&lt;</div></div>`;
+    return `<div class="mcard ${t.cls}"><div class="top"><span>Limitless</span>${tierSvg(k, 'rings')}</div><div class="nm">Alex Morgan<small>${nm}</small></div><div class="ft"><span>Nº ${no}</span><span>Since Nov 2026</span></div></div>`;
+  }).join('')}</div>`;
+  $('#cardsGrid').innerHTML = [
+    opt('cards-foil', 'Foil card', 'name large, number as a footer', 'A card with the mark top right, the name in serif and the number and date at the foot. Access has an aurora edge.', cardSet('foil')),
+    opt('cards-strip', 'Strip', 'a compact row', 'One slim row: mark, name, small number. Suits the menu and the account panel.', cardSet('strip')),
+    opt('cards-pass', 'Passport line', 'a machine-readable footer', 'The name leads, with a dashed line of code at the foot like a passport page. The most unusual of the three.', cardSet('pass'))
+  ].join('');
+
+  /* ---- plans page ---- */
+  const hero = (eb, h, p) => `<div class="pg-hero"><span class="eb">${eb}</span><h4>${h}</h4><p>${p}</p></div>`;
+  const pgNav = `<div class="nav"><span class="b"><svg style="color:#BDFFFF;--dot:#4DA6FF"><use href="#orbit"/></svg>Limitless</span><span>Plans</span></div>`;
+  const fine = `<div class="pg-fine"><span>One year from the day I grant it</span><span>24 hour trial, then a full refund within 3 days</span><span>Cash, in person</span>${ph('prices set at release')}</div>`;
+  const cardP = (k, feat, btn) => `<div class="pg-card ${T[k].cls}${feat ? ' feat' : ''}"><h5>${T[k].n}</h5><div class="pr">${T[k].price}<small>${k === 'ordinal' ? 'Shared public relays' : k === 'cardinal' ? 'a year on our relay, price is a placeholder' : 'a year on our relay, price to come'}</small></div><ul>${FACTS[k].slice(0, 5).map(f => `<li><span>${f}</span></li>`).join('')}</ul><button class="btn ${feat ? 'tc' : 'ghost'}">${btn}</button></div>`;
+  const hd = hero('Plans', 'Faster loading on our own relay.', 'Limitless is free to use. Our paid plans move you to a relay we run, so pages load more steadily and you get more room.');
+  const cmpRows = [
+    ['Loading', null], ['Relay', ['Shared public relays', 'Our own relay', 'Our own relay, higher priority']], ['Speed', ['Varies, not promised', '[measured speed]', '[measured speed]']],
+    ['Room', null], ['Open tabs', ['4', '15', '25']], ['Daily time', ['About 4 hours', 'No limit', 'No limit']], ['Data', ['Set by the public relay', 'About 20 GB a week', 'About 250 GB a month']], ['Extra data', ['No', 'Limited top-ups', 'More top-ups']],
+    ['Downloads', null], ['File size', ['10 MB', '[larger]', '[largest]']], ['Per day', ['10', 'Within the weekly allowance', 'Their own allowance']],
+    ['Membership', null], ['Certificate', ['None, a member card', 'Silver certificate', 'Crimson certificate with a QR']], ['Theme and badge', ['Standard themes', 'Silver theme, badge', 'Crimson theme, badge']], ['24 hour trial', ['Cardinal, once a month', 'Prime, once a month', 'Not needed']], ['Support', ['Same for everyone', 'Answered first', 'Answered first']]
+  ];
+  const cmpTable = (ids) => `<div class="tw"><table class="cmp"><thead><tr><th>&nbsp;</th><th class="t-ordinal">Ordinal</th><th class="t-cardinal">Cardinal</th><th class="t-prime">Prime</th></tr></thead><tbody>${cmpRows.map(r => r[1] ? `<tr><td>${r[0]}</td>${r[1].map(v => `<td>${v}</td>`).join('')}</tr>` : `<tr class="sec"><td colspan="4">${r[0]}</td></tr>`).join('')}</tbody></table></div>`;
+  $('#plansGrid').innerHTML = [
+    opt('plans-columns', 'Three columns', 'cards side by side, Cardinal featured', 'The familiar shape. Cardinal is lifted as the first step up; Prime sits beside it without shouting.',
+      `<div class="pg">${pgNav}${hd}<div class="pg-tiers">${cardP('ordinal', false, 'Start free')}${cardP('cardinal', true, 'Request Cardinal')}${cardP('prime', false, 'Request Prime')}</div>${fine}</div>`),
+    opt('plans-ladder', 'The ladder', 'three steps up, one row each', 'Each tier is a row indented one step further, with its facts in a line. Reads like climbing, and stacks cleanly on a phone.',
+      `<div class="pg">${pgNav}${hd}<div class="rows">${['ordinal', 'cardinal', 'prime'].map((k, i) => `<div class="row-t ${T[k].cls}"><div><h5>${T[k].n}</h5><div style="font-size:13px;color:var(--mut)">${T[k].price}</div></div><div class="facts">${FACTS[k].slice(0, 4).map(f => `<span>${f}</span>`).join('')}</div><button class="btn ${i === 1 ? 'solid' : 'ghost'}" style="font-size:13px;padding:7px 16px">${['Start free', 'Request Cardinal', 'Request Prime'][i]}</button></div>`).join('')}</div>${fine}</div>`),
+    opt('plans-sheet', 'One sheet', 'the comparison is the page', 'A short pitch and the table straight away. Best for people who want to see everything at once; fewer words, more facts.',
+      `<div class="pg">${pgNav}${hero('Plans', 'Pick how much room you need.', 'Free works for a few tabs. A plan gives you our relay and more room.')}${cmpTable()}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost">Start free</button><button class="btn solid">Request Cardinal</button><button class="btn ghost">Request Prime</button></div>${fine}</div>`)
+  ].join('');
+
+  /* ---- compare ---- */
+  const plus = { cardinal: ['Our own relay', '15 tabs, no daily limit', 'About 20 GB a week', 'Faster downloads', 'Silver certificate, badge, theme', '24 hour Prime trial'], prime: ['Higher priority on our relay', '25 tabs', 'About 250 GB a month', 'Larger downloads, own allowance', 'Crimson theme and certificate with a QR'] };
+  $('#compareGrid').innerHTML = [
+    opt('compare-table', 'Table', 'every fact, side by side', 'Sections for loading, room, downloads and membership, with the first column fixed while you scroll sideways on a phone.', cmpTable()),
+    opt('compare-diff', 'What each step adds', 'only what is new', 'Each column lists just what you gain over the one before. Short, and easy to read when you are choosing.',
+      `<div class="diff"><div class="t-ordinal"><h5>Ordinal</h5><span class="lab">Free</span><p><b>Where everyone starts.</b> Shared public relays, 4 tabs, about 4 hours a day and small downloads.</p></div>
+      <div class="t-cardinal"><h5>Cardinal</h5><span class="lab">Everything in Ordinal, plus</span><div class="plus">${plus.cardinal.map(x => `<span>${x}</span>`).join('')}</div></div>
+      <div class="t-prime"><h5>Prime</h5><span class="lab">Everything in Cardinal, plus</span><div class="plus">${plus.prime.map(x => `<span>${x}</span>`).join('')}</div></div></div>`),
+    opt('compare-need', 'By what you need', 'rows are questions', 'Starts from what the member does, not from the plan. The highlighted column is the one that answers it best.',
+      `<div class="need"><div class="q"><span>If you</span><span>Ordinal</span><span>Cardinal</span><span>Prime</span></div>
+      ${[['keep many tabs open', '4 tabs', '15 tabs', '25 tabs', 2], ['browse all day', 'About 4 hours', 'No daily limit', 'No daily limit', 1], ['watch a lot of video', 'Set by public relays', 'About 20 GB a week', 'About 250 GB a month', 2], ['save big files', '10 MB a file', '[larger] files', '[largest] files', 2], ['want something to keep', 'A member card', 'Silver certificate', 'Crimson certificate', 1]].map(r => `<div class="q"><b>${r[0]}</b>${[1, 2, 3].map(i => `<span class="v${i === r[4] ? ' go' : ''}">${r[i]}</span>`).join('')}</div>`).join('')}</div>`)
+  ].join('');
+
+  /* ---- buying ---- */
+  const formBody = `<div class="form"><h4>Ask for a plan</h4>
+      <div class="field"><span>Signed in as</span><div class="ro"><span>Alex Morgan</span><span style="color:var(--mut)">Nº 047 · Ordinal</span></div></div>
+      <div class="field"><span>Plan</span><div class="rc"><label class="t-cardinal"><input type="radio" name="pl1" checked><b>Cardinal</b><small>About $15 a year</small></label><label class="t-prime"><input type="radio" name="pl1"><b>Prime</b><small>Price to come</small></label></div></div>
+      <div class="field"><span>How long</span><div class="ro"><span>One year from the day I grant it</span></div></div>
+      <label class="chk"><input type="checkbox" id="minor1"> I am under 18 and a parent or guardian agrees</label>
+      <div class="field"><span>Anything to tell me (optional)</span><textarea id="msg1" placeholder="For example, when you can meet"></textarea></div>
+      <div><button class="btn solid">Send request</button></div></div>
+      <div class="sent"><h4>Request sent</h4><p>I will reply in your messages. When we meet, you pay in cash and I switch your plan on. You can ask for a full refund in the first 3 days.</p></div>`;
+  $('#buyGrid').innerHTML = [
+    opt('buy-form', 'One page form', 'plan, a checkbox, one note', 'Everything on one screen. Your name and number come from your sign-in, so nothing to type but a note. The confirmation sits below.', `<div style="display:grid;gap:var(--sp-4)">${formBody}</div>`),
+    opt('buy-steps', 'Four plain steps', 'explain first, ask last', 'A short page that says how it works before showing any form. Good for people who have never paid for anything here.',
+      `<div class="flow"><div><h5>Choose</h5><p>Read the plans and pick Cardinal or Prime.</p></div><div><h5>Ask</h5><p>Send a request. It carries your name and plan, nothing else.</p></div><div><h5>Meet</h5><p>I reply. You pay in cash, in person. We never take card details.</p></div><div><h5>Start</h5><p>I switch it on. Your year and your 3-day refund window start that day.</p></div></div><div><button class="btn solid">Ask for a plan</button></div>`),
+    opt('buy-message', 'One button', 'no form at all', 'The button opens a ready-written message to me. The least to build, and it keeps the feel of asking a person.',
+      `<div class="form" style="justify-items:start"><h4>Ask to join Cardinal</h4><p class="lede-sm">Tap the button and a message opens, ready to send. You pay in cash, in person.</p><div class="sent" style="background:var(--bg);border-color:var(--line);width:100%"><p style="color:var(--fg)">Hi, I would like Cardinal for a year. Alex Morgan, Nº 047.</p></div><button class="btn solid">Open message</button></div>`)
+  ].join('');
+  const stg = ['Sent', 'Seen', 'Waiting for cash', 'Active, refund window open', 'Ends in 14 days'];
+  $('#stages').innerHTML = stg.map((s, i) => `<span class="pill ${i === 3 ? 'on' : ''}"><i style="background:${['var(--mut)', 'var(--blue)', 'var(--warn)', 'var(--ok)', 'var(--warn)'][i]}"></i>${s}</span>${i < 4 ? '<span class="arrow">→</span>' : ''}`).join('');
+  const termsRows = [['What you get', 'One year of the plan from the day I grant it. After that you drop back to Ordinal and keep your settings.'], ['Refunds', 'Try the plan free for 24 hours. After you pay, ask for a full refund within 3 days. After that there is no refund, unless we shut the service down: then you get back the unused months.'], ['Extra data', 'Not refundable. It lasts to the end of your plan and carries over if you renew.'], ['When I can end it', 'With no refund: if you are banned for breaking the rules, share or sell your account, or abuse the relay. If I end it by mistake, you get back the unused months.'], ['Changes', 'Limits can change, and I will tell you first. If you are under 18, a parent or guardian needs to agree.'], ['Paying', 'Cash, in person. We never ask for card details or a bank account.']];
+  $('#termsHost').innerHTML = opt('buy-terms', 'Plain-words terms', 'six short rows beside the form', 'The rules a student can read in a minute. The long legal version stays on the Terms page.', `<div class="terms">${termsRows.map(r => `<div><b>${r[0]}</b><span>${r[1]}</span></div>`).join('')}</div>`);
+
+  /* ---- free limits ---- */
+  const tabsRow = (n, over) => `<div class="tabs-used" aria-hidden="true">${Array.from({ length: n }, (_, i) => `<i class="${over && i === n - 1 ? 'x' : ''}"></i>`).join('')}</div>`;
+  $('#tab5Grid').innerHTML = [
+    opt('limit-tab5-door', 'Doorway', 'calm, one idea', 'Shows the five tabs, the fifth marked, and one clear next step. The page you land on when the fifth tab opens.',
+      `<div class="lim t-cardinal"><div class="in">${tabsRow(5, true)}<h4>Four tabs is the free limit</h4><p>That fifth tab did not open. Close one of your tabs to open another, or see the plans for more room.</p><div class="row-btns" style="justify-content:center"><button class="btn solid">See the plans</button><button class="btn ghost">Back to my tabs</button></div></div></div>`),
+    opt('limit-tab5-ladder', 'Next steps', 'shows what the next tab count is', 'Puts the two plans on the page so the answer to "what do I get" is right there.',
+      `<div class="lim"><div class="in">${tabsRow(5, true)}<h4>You have used your four tabs</h4><div class="mini-tiers"><div class="t-cardinal"><b>Cardinal</b><span>15 tabs, no daily limit</span></div><div class="t-prime"><b>Prime</b><span>25 tabs, a bigger allowance</span></div></div><div class="row-btns" style="justify-content:center"><button class="btn solid">Compare plans</button><button class="btn ghost">Close a tab</button></div></div></div>`),
+    opt('limit-tab5-compact', 'Compact', 'smallest, least pushy', 'A small card over the start page. Says what happened in one line and offers both ways out.',
+      `<div class="lim"><div class="in"><div class="toast" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg><span><b>Four tabs at a time on the free plan</b><small>Close one, or see what a plan adds.</small></span><button class="btn ghost" style="font-size:12px;padding:5px 12px">Plans</button></div></div></div>`)
+  ].join('');
+  const ringSvg = (pct, tc) => `<svg class="clockring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="60" cy="60" r="50" fill="none" stroke="${tc}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(314.16 * pct).toFixed(1)} 314.16" transform="rotate(-90 60 60)"/><text x="60" y="66" text-anchor="middle" font-family="Cormorant Garamond" font-size="26" fill="#eae6dc">4 h</text></svg>`;
+  $('#dailyGrid').innerHTML = [
+    opt('limit-daily-page', 'Day finished', 'a page when the time is up', 'A full ring, a plain sentence about midnight, and the plans. No countdown to a ban, just a rest.',
+      `<div class="lim"><div class="in">${ringSvg(1, '#BDFFFF')}<h4>That is today's browsing</h4><p>Free members get about four hours a day. It starts again at midnight.</p><div class="row-btns" style="justify-content:center"><button class="btn solid">See the plans</button><button class="btn ghost">Sign out</button></div></div></div>`),
+    opt('limit-daily-start', 'On the start page', 'the limit shown in place', 'Instead of a separate page, the start page greets you with the limit and keeps the search box disabled.',
+      `<div class="lim"><div class="in"><svg style="width:30px;height:30px;color:#BDFFFF;--dot:#4DA6FF"><use href="#orbit"/></svg><h4>Back at midnight</h4><div class="m-search" style="width:100%;opacity:.45;border:1px solid var(--line);border-radius:999px;padding:8px 14px;color:var(--mut);text-align:left">Search is paused until midnight</div><p>You have had about four hours today. Plans have no daily limit.</p><button class="btn ghost">See the plans</button></div></div>`)
+  ].join('');
+  $('#quietGrid').innerHTML = [
+    opt('limit-15min', 'Fifteen minutes left', 'one gentle notice', 'Shown once, bottom right, easy to dismiss. It also tells people what happens at the end of the time.',
+      `<div class="stagebar"><div class="toast" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><b>15 minutes left today</b><small>Free time starts again at midnight.</small></span><button class="btn ghost" style="font-size:12px;padding:5px 12px">OK</button></div></div>`),
+    opt('limit-newtab', 'Plans link on the start page', 'always there, never loud', 'One quiet line under the search box, and a Plans entry in the menu. Prime and Cardinal members do not see it.',
+      `<div class="stagebar"><div class="m-start" style="margin:auto"><svg viewBox="0 0 64 64" style="width:30px;height:30px;color:#BDFFFF;--dot:#4DA6FF"><use href="#orbit"/></svg><div class="m-date">Good evening, Tuesday 10 November</div><div class="m-clock" style="font-size:44px">21:40</div><div class="m-search">${ic.search}<span>Search the web or type an address</span></div><div class="ntline">Free plan · 2 h 10 m left today · <a href="#plans">See the plans</a></div></div></div>`),
+    opt('limit-prime-out', 'Prime out of tabs', 'plain, no buy prompt', 'Prime members never see a sales page. It only says the number and how to get a tab free.',
+      `<div class="lim t-prime"><div class="in">${tabsRow(5, true).replace(/<i class/g, '<i class')}<h4>Out of tabs</h4><p>Prime keeps up to 25 tabs open at once. Close one to open another.</p><button class="btn ghost">Close a tab</button></div></div>`)
+  ].join('');
+
+  /* ---- account ---- */
+  const rowsAcct = `<div class="mrow"><div><span class="k">Plan</span><small>Cardinal, our relay</small></div><span class="pill t-cardinal"><i style="background:var(--tc)"></i>Active</span></div>
+    <div class="mrow"><div><span class="k">Paid until</span><small>One year from 10 Nov 2026. Refund window closed.</small></div><span class="v">10 Nov 2027</span></div>
+    <div class="mrow"><div><span class="k">Extra data</span><small>5 GB bought, lasts to the end of your plan</small></div><button class="btn ghost" style="font-size:13px;padding:6px 14px">Ask for more</button></div>
+    <div class="mrow"><div><span class="k">Try Prime for 24 hours</span><small>Once a month. Available now.</small></div><button class="btn ghost" style="font-size:13px;padding:6px 14px">Start trial</button></div>
+    <div class="mrow"><div><span class="k">Certificate</span><small>Silver, verification code LMT-047-7K4Q</small></div><button class="btn ghost" style="font-size:13px;padding:6px 14px">Download PDF</button></div>`;
+  const ring3 = (pct, big, lab) => `<div><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="38" fill="none" stroke="var(--surf3)" stroke-width="7"/><circle cx="50" cy="50" r="38" fill="none" stroke="var(--tc)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(238.76 * pct).toFixed(1)} 238.76" transform="rotate(-90 50 50)"/></svg><span class="big">${big}</span><span>${lab}</span></div>`;
+  const meterRow = (h, v, p, s) => `<div class="meter"><div class="h"><span>${h}</span><span>${v}</span></div><div class="bar2"><i style="width:${p}%"></i></div><small>${s}</small></div>`;
+  const setNav = (on) => `<nav aria-label="Settings groups"><a>General</a><a>Appearance</a><a>Privacy and data</a><a>Connection</a><a${on ? ' class="on"' : ''}>Membership</a><a>About</a></nav>`;
+  $('#acctGrid').innerHTML = [
+    opt('acct-meter', 'Meters first', 'usage at the top', 'Three rings answer the first questions: how much data is left, how many tabs are open, how much of the year remains. Details underneath.',
+      `<div class="settings t-cardinal">${setNav(1)}<div class="pane"><h4>Alex Morgan</h4><div style="color:var(--mut);font-size:13px;margin-top:-10px">Cardinal · Nº 047 · member since 10 November 2026</div><div class="rings3">${ring3(.57, '11.4', 'of 20 GB this week')}${ring3(.4, '6', 'of 15 tabs open')}${ring3(.98, '363', 'days left in your year')}</div><div>${rowsAcct}</div></div></div>`),
+    opt('settings-6', 'Card first', 'your earlier pick, with the plan added', 'The member card leads, name before number, then the plan rows. Closest to what you picked before.',
+      `<div class="settings t-cardinal">${setNav(1)}<div class="pane"><h4>Membership</h4><div class="mcard strip t-cardinal">${tierSvg('cardinal', 'rings')}<div class="nm">Alex Morgan<small>Cardinal</small></div><span class="no">Nº 047</span></div>${meterRow('This week', '11.4 of 20 GB', 57, 'Resets on Monday. At the limit you move to public relays until then.')}<div class="mrow"><div><span class="k">Standing</span><small>No notes on your membership.</small></div><span class="pill"><i style="background:var(--ok)"></i>Good standing</span></div>${rowsAcct}</div></div>`),
+    opt('acct-ledger', 'Ledger', 'one list, nothing decorative', 'Plain rows with the numbers aligned. Quickest to scan, and the closest to how I see you in the admin panel.',
+      `<div class="acct t-prime"><h4>Alex Morgan</h4><div style="color:var(--mut);font-size:13px;margin-top:-10px">Prime · Nº 007</div>${meterRow('This month', '82 of 250 GB', 33, 'Resets on the first of the month.')}${meterRow('Extra data', '12 of 20 GB left', 60, 'Lasts to the end of your plan.')}${meterRow('Downloads this month', '4.1 GB', 18, 'Their own allowance, separate from browsing.')}<div class="mrow"><div><span class="k">Paid until</span><small>Refund window closed</small></div><span class="v">18 Jun 2027</span></div></div>`)
+  ].join('');
+  const bn = (cls, t, s, b) => `<div class="banner ${cls}"><span class="dot"></span><span><b>${t}</b><small>${s}</small></span>${b ? `<button class="btn ghost">${b}</button>` : ''}</div>`;
+  $('#bannerGrid').innerHTML = [
+    opt('banner-strip', 'Strips', 'one line each, colour by urgency', 'Info, warning and danger strips across the top of the panel. Quiet until a date is close.',
+      `<div class="banners">${bn('info', 'Your Prime trial ends in 21 hours', 'You are on the 24 hour trial. Cardinal limits apply after it.', 'See Prime') + bn('', 'Your plan ends in 14 days', 'On 24 November you drop back to Ordinal. Nothing is lost.', 'Renew') + bn('bad', 'Your plan ends in 3 days', 'Ask me to renew before then to keep the same settings.', 'Ask to renew') + bn('ok', 'Weekly allowance used', 'Your next pages use public relays until Monday. Your plan is still active.', '') + bn('', 'Your plan has ended', 'You are on Ordinal. Your settings are kept; renew any time.', 'Ask to renew')}</div>`),
+    opt('banner-countdown', 'Countdown card', 'one card, big numbers', 'Replaces the strips with a single card that grows louder as the date nears: a calm day count, then the same card in amber and red.',
+      `<div class="grid three" style="gap:var(--sp-3)">${[['14', 'days left', 'var(--warn)'], ['3', 'days left', 'var(--bad)'], ['0', 'plan ended', 'var(--mut)']].map(([n, l, c]) => `<div class="acct" style="border-top:3px solid ${c};justify-items:start"><span style="font-family:var(--f-serif);font-size:3rem;line-height:1;color:${c}">${n}</span><span style="color:var(--mut);font-size:13px">${l}</span><button class="btn ghost" style="font-size:12px;padding:5px 12px">Ask to renew</button></div>`).join('')}</div>`)
+  ].join('');
+
+  /* ---- ceremony: typed number + step 5 ---- */
+  const takenN = new Set([0, 1, 2, 3, 5, 7, 12, 18, 21, 26, 31, 33, 40, 44, 46, 47]), resN = new Set([4, 6, 8, 9, 10, 100, 777]);
+  const numStatus = (v) => { if (!/^\d{1,3}$/.test(v)) return ['bad', 'Type up to three digits.']; const n = +v, s = String(n).padStart(3, '0'); if (takenN.has(n)) return ['bad', `Nº ${s} is taken.`]; if (resN.has(n)) return ['warn', `Nº ${s} is reserved.`]; return ['ok', `Nº ${s} is free. It is yours for good and never reissued.`]; };
+  const numCard = (id, withChips) => `<div class="stage"><div class="card numpick"><div class="cer-kicker">Your number</div><div class="field" style="width:min(100%,240px);justify-items:center"><div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:var(--f-serif);font-size:34px">Nº</span><input type="text" inputmode="numeric" id="${id}" maxlength="3" value="048" style="width:130px;text-align:center;font-family:var(--f-serif);font-size:44px;background:transparent;border:0;border-bottom:1px solid var(--ice);color:var(--fg);padding:2px 0" aria-label="Member number"></div></div><p class="cer-p" id="${id}s">Nº 048 is free. It is yours for good and never reissued.</p>${withChips ? `<div class="row-btns" id="${id}c" style="justify-content:center"></div>` : ''}<button class="btn solid">Take this number</button></div></div>`;
+  $('#numHost').innerHTML = opt('cer-number-a', 'Type your number', 'step 2, typed as you asked', 'A field you type into, and a live line that says free, taken or reserved. No grid.', numCard('numA', false)) + opt('cer-number-b', 'Type, with nearby numbers', 'step 2, with suggestions', 'The same typed field, plus the closest free numbers and a "surprise me" button for people who do not mind.', numCard('numB', true));
+  const bindNum = (id) => { const inp = $('#' + id), st = $('#' + id + 's'); const run = () => { const [k, t] = numStatus(inp.value); st.textContent = t; st.style.color = k === 'ok' ? 'var(--ok)' : k === 'warn' ? 'var(--warn)' : 'var(--bad)'; }; inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, ''); run(); }); run(); return { inp, run }; };
+  bindNum('numA'); const nB = bindNum('numB');
+  const freeNear = (c) => { const out = []; for (let d = 1; out.length < 3 && d < 60; d++) for (const n of [c + d, c - d]) if (n > 0 && n < 1000 && !takenN.has(n) && !resN.has(n) && out.length < 3) out.push(n); return out; };
+  const chips = $('#numBc'); chips.innerHTML = freeNear(48).map(n => `<button class="btn ghost" style="font-size:12px;padding:4px 12px">${String(n).padStart(3, '0')}</button>`).join('') + '<button class="btn ghost" style="font-size:12px;padding:4px 12px">Surprise me</button>';
+  $$('button', chips).forEach((b, i, all) => b.addEventListener('click', () => { if (i === all.length - 1) { let n; do { n = 100 + Math.floor(Math.random() * 899); } while (takenN.has(n) || resN.has(n)); nB.inp.value = String(n); } else nB.inp.value = b.textContent; nB.run(); }));
+  $('#step5Grid').innerHTML = [
+    opt('step5-card', 'Ordinal: your member card', 'no certificate', 'The last step shows the card, and one line that certificates begin at Cardinal. It does not read as a sales page.',
+      `<div class="stage"><div class="card" style="width:min(100%,360px)"><div class="cer-kicker">You are in</div><div class="mcard t-ordinal" style="width:100%;text-align:left"><div class="top"><span>Limitless</span>${tierSvg('ordinal', 'rings')}</div><div class="nm">Alex Morgan<small>Ordinal</small></div><div class="ft"><span>Nº 047</span><span>Since Nov 2026</span></div></div><p class="cer-p">This is your member card. Certificates come with Cardinal and above.</p><button class="btn solid">Continue</button></div></div>`),
+    opt('step5-cert', 'Cardinal and above: your certificate', 'certificate ready', 'The same step for paying members: a small certificate preview and the download.',
+      `<div class="stage"><div class="card" style="width:min(100%,360px)"><div class="cer-kicker">Your certificate</div><div class="cert tc" style="width:60%;box-shadow:0 18px 40px rgba(0,0,0,.5)" data-cert data-mini><canvas aria-hidden="true"></canvas><div class="in" style="inset:8cqw;display:grid;place-items:center"><span class="c-title" style="font-size:9cqw;margin:0">Certificate of Membership</span></div></div><p class="cer-p">It is ready. It is a PDF of three pages, and you can download it again from Membership.</p><div class="row-btns"><button class="btn solid">Download PDF</button><button class="btn ghost">Continue</button></div></div></div>`)
+  ].join('');
 
   /* Signature live */
   const sigIn = $('#sigName'), sigV = $('#sigView');
@@ -797,7 +1294,6 @@ relay: own (home) · stream 41 · port 443</pre></details>
     else if (k === 'splash') { restart($('#splashMk')); restart($('#splashWb')); }
     else restart($('#' + k));
   }));
-
   /* Guilloche for certificates */
   function guilloche(canvas, foil, foil2) {
     const r = canvas.getBoundingClientRect();
@@ -847,29 +1343,6 @@ relay: own (home) · stream 41 · port 443</pre></details>
       } else if (rnd() > .52) c.fillRect(x, y, 1, 1);
     }
   }
-  const sealSvg = (prime) => `<svg class="c-seal" viewBox="0 0 120 120" aria-hidden="true">
-    <circle cx="60" cy="60" r="56" fill="${prime ? '#1b0a0e' : '#0b1019'}" stroke="url(#foil)" stroke-width="1.4"/>
-    <circle cx="60" cy="60" r="49" fill="none" stroke="url(#foil)" stroke-width=".6" stroke-dasharray="1.5 3"/>
-    <g style="color:${prime ? '#BDFFFF' : '#BDFFFF'};--dot:${prime ? '#a3243a' : '#4DA6FF'}"><use href="#orbit" x="32" y="32" width="56" height="56"/></g></svg>`;
-  const certPage1 = (layout, prime) => `
-    <div class="cert ${layout === 'B' ? 'ledger' : ''} ${prime ? 'prime' : ''}" data-cert>
-      <canvas aria-hidden="true"></canvas>
-      <div class="in">
-        <div class="c-top">${orbit('var(--c-foil)', 'var(--c-foil2)')}<div><div class="c-org">Limitless Browser · Gamble Limited Ltd.</div></div></div>
-        <div class="c-title">Certificate of Membership</div>
-        <div class="c-body">
-          <span class="muted">This is to certify that</span>
-          <span class="c-name">Alex Morgan</span>
-          <span>has been admitted as a ${prime ? 'Prime ' : ''}Member of Limitless Browser<br>on the nomination of Member No. 012,<br>with effect from the tenth day of November, 2026.</span>
-          <span class="c-no">Nº ${prime ? '007' : '047'} · ${prime ? 'PRIME' : 'ORDINAL'}</span>
-        </div>
-        <div class="c-foot">
-          <div class="sig"><span class="s">Your Name</span><span>Director, Gamble Limited Ltd.</span></div>
-          ${sealSvg(prime)}
-          <div class="ver"><canvas class="qr" data-qr="${prime ? 7 : 47}" aria-hidden="true"></canvas><span>LMT-${prime ? '007' : '047'}-7K4Q</span></div>
-        </div>
-      </div>
-    </div>`;
   const letterPage = () => `
     <div class="cert letter" data-cert><canvas aria-hidden="true"></canvas><div class="in">
       <div class="c-top">${orbit('var(--c-foil)', 'var(--c-foil2)')}<div class="c-org">Office of the Director</div></div>
@@ -896,25 +1369,72 @@ relay: own (home) · stream 41 · port 443</pre></details>
       </div>
       <div class="c-foot"><div class="sig"><span class="s">Alex Morgan</span><span>Signed 10 November 2026</span></div><span></span><div class="ver"><span>LMT-047-7K4Q</span></div></div>
     </div></div>`;
-  $('#certLayouts').innerHTML = [
-    opt('cert-layout-a', 'A. Centred classic', 'symmetrical, seal centred at the foot', '', certPage1('A', false)),
-    opt('cert-layout-b', 'B. Ledger', 'left-aligned, larger title', '', certPage1('B', false))
+
+  /* ================= certificates by tier ================= */
+  const CT = {
+    cardinal: { cls: 'tc', label: 'Cardinal', role: 'as a Cardinal Member of Limitless Browser<br>on the nomination of Member No. 012,', no: '047', code: 'LMT-047-7K4Q', tag: 'CARDINAL' },
+    prime: { cls: 'tp', label: 'Prime', role: 'as a Prime Member of Limitless Browser<br>on the nomination of Member No. 012,', no: '007', code: 'LMT-007-9M2X', tag: 'PRIME' },
+    access: { cls: 'ta', label: 'Limitless Access', role: 'to Limitless Access, the highest order of Limitless Browser,<br>by invitation of the Director,', no: '001', code: 'LMT-001-3R8W', tag: 'LIMITLESS ACCESS' }
+  };
+  const sealSvg = (tier) => {
+    const st = { cardinal: ['url(#silver)', '#e4e7ec', '#9aa3ad', '#0b0e13'], prime: ['url(#crimG)', '#ff6b81', '#ffffff', '#14060a'], access: ['url(#aurG)', 'url(#aurG)', '#ffffff', '#07080b'] }[tier];
+    return `<svg class="c-seal" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="56" fill="${st[3]}" stroke="${st[0]}" stroke-width="1.6"/><circle cx="60" cy="60" r="49" fill="none" stroke="${st[0]}" stroke-width=".6" stroke-dasharray="1.5 3"/>${tier === 'access' ? '<circle cx="60" cy="60" r="44" fill="none" stroke="url(#aurG)" stroke-width=".5"/>' : ''}<g transform="translate(32 32) scale(.875)">${glyph(st[1], st[2])}</g></svg>`;
+  };
+  const certFront = (tier, style, qrMode) => {
+    const c = CT[tier], dec = (style === 'plate' || style === 'edition') ? '<i class="rim"></i><i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>' : style === 'slab' ? `<i class="rim"></i><div class="wm" aria-hidden="true">${c.no}</div>` : '';
+    const qrEl = qrMode === 'br' ? `<div class="qrc br"><canvas data-qr="${+c.no}" aria-hidden="true"></canvas><span>${c.code}</span></div>` : qrMode === 'strip' ? `<div class="qrstrip"><canvas data-qr="${+c.no}" aria-hidden="true"></canvas><span>Scan to verify · <b>${c.code}</b></span></div>` : '';
+    return `<div class="cert ${c.cls} ${style}" data-cert><canvas aria-hidden="true"></canvas>${dec}
+      <div class="in">
+        <div class="c-top">${orbit('var(--c-foil)', 'var(--c-foil2)')}<div class="c-org">Limitless Browser · Gamble Limited Ltd.</div><div class="tierline">${c.label}</div></div>
+        <div class="c-title">Certificate of Membership</div>
+        <div class="c-body"><span class="muted">This is to certify that</span><span class="c-name">Alex Morgan</span>
+          <span>has been admitted ${c.role}<br>with effect from the tenth day of November, 2026.</span>
+          <span class="c-no">Nº ${c.no} · ${c.tag}</span>${style === 'edition' ? '<span class="ed">Limitless Access · issued by the Director</span>' : ''}</div>
+        <div class="c-foot ${qrMode === 'strip' ? 'pad' : ''}"><div class="sig"><span class="s">Your Name</span><span>Director, Gamble Limited Ltd.</span></div>${sealSvg(tier)}<div class="ver code">${qrMode === 'none' ? `<span>${c.code}</span>` : ''}</div></div>
+      </div>${qrEl}</div>`;
+  };
+  const tierPage = (html, tier, strip) => {
+    let s = html.replace(/class="cert (letter|charter)"/, `class="cert $1 ${CT[tier].cls}"`);
+    return strip ? s.replace(/<\/div>$/, `<div class="qrstrip"><canvas data-qr="7" aria-hidden="true"></canvas><span>Scan to verify · <b>${CT[tier].code}</b></span></div></div>`) : s;
+  };
+  $('#certOrdinal').innerHTML = opt('cert-ordinal-none', 'No certificate for Ordinal', 'the member card is the keepsake', 'The Membership panel simply has no certificate row for free members, and one quiet line says where certificates begin.',
+    `<div class="nocert t-ordinal"><h4>Membership</h4><div class="mrow" style="border-top:0"><div><span class="k">Member card</span><small>Alex Morgan, Nº 047, Ordinal</small></div><span class="pill"><i style="background:var(--ok)"></i>Good standing</span></div><div class="mrow"><div><span class="k">Certificate</span><small>Certificates come with Cardinal and above.</small></div><button class="btn ghost" style="font-size:13px;padding:6px 14px">See the plans</button></div></div>`);
+  $('#certCardinal').innerHTML = [
+    opt('cert-layout-a', 'Silver classic', 'your earlier layout A, in silver foil, no QR', 'The centred classic you picked, now in silver foil on midnight paper. A nice certificate, with the code in text only.', certFront('cardinal', 'classic', 'none')),
+    opt('cert-cardinal-plate', 'Silver plate', 'a framed border with corner marks', 'A thin inner frame and four corner marks, so it feels like an engraved plate. Still no QR.', certFront('cardinal', 'plate', 'none'))
+  ].join('');
+  $('#certPrimeG').innerHTML = [
+    opt('cert-prime', 'Crimson classic', 'QR small in the bottom-right corner', 'Crimson foil on obsidian, a bigger seal with a dotted crimson ring, and a small QR tucked in the corner, clear of the text.', certFront('prime', 'classic', 'br')),
+    opt('cert-prime-slab', 'Obsidian slab', 'the number as a watermark', 'A huge faint number behind the text and a fine frame. The most striking, and the QR is just as small.', certFront('prime', 'slab', 'br'))
+  ].join('');
+  $('#certAccess').innerHTML = [
+    opt('cert-access-classic', 'Aurora classic', 'ice, lilac and gold foil', 'The title and number are in aurora foil, with a triple-ring seal. The same corner QR as Prime.', certFront('access', 'classic', 'br')),
+    opt('cert-access-edition', 'Edition plate', 'framed, with an issue line', 'Framed like a numbered plate, with a line saying it was issued by the Director. The best one we make.', certFront('access', 'edition', 'br'))
   ].join('');
   $('#certPages').innerHTML = [
-    opt('cert-letter', 'Personal letter', 'page 2, signed as Director', '', letterPage()),
+    opt('cert-letter', 'Personal letter', 'page 2, signed as Director', 'Same for every tier that has a certificate.', letterPage()),
     opt('cert-charter', 'Signed charter', 'page 3, member signature', 'Draft wording, for layout only. The rules text gets its own question round before it is final.', charterPage())
   ].join('');
-  $('#certPrime').innerHTML = opt('cert-prime', 'Prime certificate', 'oxblood paper, shown with the first Prime direction', 'Only Prime members and you may show a certificate. This follows whichever Prime theme wins.', certPage1('A', true));
-
+  $('#qrPlace').innerHTML = [
+    opt('qr-corner', 'Small, bottom-right corner', 'my earlier request', 'About a twelfth of the page width, with its code under it. Clear of the seal and the signature.', certFront('prime', 'classic', 'br')),
+    opt('qr-strip', 'Footer strip', 'one thin line at the bottom', 'A hairline across the foot with a tiny QR at the left and "Scan to verify" beside it. Most of the page stays clean.', certFront('prime', 'classic', 'strip')),
+    opt('qr-back', 'Back page only', 'nothing on the front', 'The front shows the code as text; the QR sits in a strip on page 3 with the charter. The front is the cleanest.',
+      `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">${certFront('prime', 'classic', 'none')}${tierPage(charterPage(), 'prime', true)}</div>`)
+  ].join('');
+  const verifyMock = (url, extra) => `<div class="verify t-prime"><span class="ok">Genuine</span><h4>Nº 007 · Prime</h4><dl><dt>Admitted</dt><dd>10 Nov 2026</dd><dt>Code</dt><dd>LMT-007-9M2X</dd></dl><p>${extra}</p><span class="chip">${url}</span></div>`;
+  $('#qrTarget').innerHTML = [
+    opt('qr-target-members', 'On the browser address, members only', 'the earlier plan', 'A stranger who scans it only reaches the sign-in page, so it cannot prove anything to them. It also prints the browser address on a certificate that Prime members may show, and the Charter asks members to keep that address private.', verifyMock('limitless.taps-holdings.org/verify/LMT-007-9M2X', 'Shown to signed-in members only. It never shows a name.')),
+    opt('qr-target-hall', 'On a public page on HALL', 'new idea', 'Anyone who scans sees genuine, superseded or void, the number and the tier, and nothing else. The browser address is never printed, so showing the certificate leaks nothing.', verifyMock('hall.taps-holdings.org/verify/LMT-007-9M2X', 'Anyone can check this page. It never shows a name or the browser address.'))
+  ].join('');
   const paint = () => {
     $$('[data-cert]').forEach(c => {
       const cs = getComputedStyle(c);
       guilloche($('canvas', c), cs.getPropertyValue('--c-foil').trim(), cs.getPropertyValue('--c-foil2').trim());
-      const q = $('canvas.qr', c); if (q) qr(q, +q.dataset.qr * 7919, cs.getPropertyValue('--c-ink').trim());
+      $$('canvas[data-qr]', c).forEach(q => qr(q, +q.dataset.qr * 7919, cs.getPropertyValue('--c-ink').trim()));
     });
   };
   const setPaper = (print) => {
-    $$('#certLayouts .cert, #certPages .cert').forEach(c => c.classList.toggle('print', print));
+    $$('#certificate .cert').forEach(c => c.classList.toggle('print', print));
     $('#paperDark').setAttribute('aria-pressed', String(!print)); $('#paperPrint').setAttribute('aria-pressed', String(print));
     $('#paperDark').classList.toggle('ghost', print); $('#paperPrint').classList.toggle('ghost', !print);
     paint();
@@ -924,40 +1444,88 @@ relay: own (home) · stream 41 · port 443</pre></details>
   let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(paint, 150); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(paint);
 
-  /* App chrome */
-  const menu = `<div class="m-menu" role="menu"><div class="who"><span class="no">047</span><span>Alex Morgan<small>Ordinal · good standing</small></span></div><hr>
-    <div class="row">New tab <kbd>Ctrl T</kbd></div><div class="row">History <kbd>Alt H</kbd></div><div class="row">Bookmarks</div><div class="row">Theme</div><div class="row">Fullscreen <kbd>F11</kbd></div><hr>
-    <div class="row">Membership</div><div class="row">Report a problem</div><div class="row">Settings</div><hr><div class="row" style="color:var(--m-mut)">Developer mode</div></div>`;
-  const vt = `<div class="mock vt"><div class="m-frame"><div class="vt-rail"><span class="grp">Today</span>
-      <div class="m-tab on"><i></i><span>Orbit, Wikipedia</span></div><div class="m-tab"><i></i><span>Start</span></div><div class="m-tab"><i></i><span>Physics notes</span></div><div class="m-tab"><i></i><span>Weather</span></div><span class="grp">Pinned</span><div class="m-tab"><i></i><span>Mail</span></div><div class="m-tab"><i></i><span>+ New tab</span></div></div>
-      <div style="min-width:0">${bar('https://en.wikipedia.org/wiki/Orbit')}${start('047', 'Ordinal', 'Member since November 2026')}</div></div></div>`;
-  $('#chromeGrid').innerHTML = [
-    opt('chrome-classic', 'Classic tabs', 'default, with the Limitless menu open', '', `<div class="mock" style="position:relative">${tabs(['Orbit, Wikipedia', 'Start', 'Physics notes'])}${bar('https://en.wikipedia.org/wiki/Orbit#Planetary_orbits')}${menu}${start('047', 'Ordinal', 'Member since November 2026')}</div>`),
-    opt('chrome-vertical', 'Vertical tabs', 'member setting', 'Collapses to icons on narrow windows so 1366 x 768 keeps its width.', vt)
+  /* ================= themes ================= */
+  const start2 = (name, no, tier, sub) => `<div class="m-body"><div class="m-start">${orbit('var(--m-acc)', 'var(--m-acc2)')}
+      <div class="m-date">Good evening, Tuesday 10 November</div><div class="m-clock">21:40</div>
+      <div class="m-search">${ic.search}<span>Search the web or type an address</span></div>
+      <div class="m-card"><span class="no">${name}</span><span><b style="font-weight:500">${tier}</b><small>Nº ${no} · ${sub}</small></span></div></div></div>`;
+  const themeMock = (cls, tier, no, pairs) => `<div class="mock ${cls}">${tabs(['Start', 'Wikipedia', 'Docs'])}${bar('https://en.wikipedia.org/wiki/Orbit')}${start2('Alex Morgan', no, tier, 'since Nov 2026')}${sw(pairs)}</div>`;
+  $('#themeC').innerHTML = [
+    opt('theme-c-silver', 'Silver', 'neutral, quiet', 'Near-black with a silver accent. The calmest of the paid themes.', themeMock('c-silver', 'Cardinal', '047', [['bg', '#090b0f'], ['surf', '#12151b'], ['accent', '#dfe3e9'], ['steel', '#8f98a4']])),
+    opt('theme-c-ink', 'Ink blue', 'Limitless ice, deepened', 'A deep navy with a softer blue accent, close to the standard look but richer.', themeMock('c-ink', 'Cardinal', '047', [['bg', '#060a14'], ['surf', '#0d1424'], ['accent', '#7fb8ff'], ['blue', '#3f7fd6']]))
+  ].join('');
+  $('#themeP').innerHTML = [
+    opt('prime-crimson', 'Crimson and obsidian', 'your earlier pick, refined', 'Black and crimson with a slightly brighter accent so small text clears the contrast check. This stays the Prime theme.', themeMock('p-crimson2', 'Prime', '007', [['bg', '#050506'], ['surf', '#0e0e11'], ['accent', '#ff4d66'], ['crimson', '#e0304b']])),
+    opt('prime-platinum', 'Obsidian and platinum', 'the non-red alternative', 'Kept as a comparison. No colour at all, like a metal card.', themeMock('p-platinum', 'Prime', '007', [['bg', '#060708'], ['surf', '#101215'], ['accent', '#dfe3e8'], ['steel', '#9aa3ad']]))
+  ].join('');
+  $('#themeA').innerHTML = [
+    opt('theme-a-aurora', 'Aurora', 'gold accent, ice highlights', 'Black with a warm gold accent and an ice secondary. Matches the aurora certificate.', themeMock('a-aurora', 'Limitless Access', '001', [['bg', '#05070b'], ['surf', '#0d131d'], ['accent', '#f1dfb0'], ['ice', '#BDFFFF']])),
+    opt('theme-a-pearl', 'Pearl', 'white accent, lilac highlights', 'Near-black with a pearl-white accent and a soft lilac. Quietest of the three, and clearly not Prime.', themeMock('a-pearl', 'Limitless Access', '001', [['bg', '#0a0b0f'], ['surf', '#14161c'], ['accent', '#f6f3ee'], ['lilac', '#cdbfff']])),
+    opt('theme-a-eclipse', 'Eclipse', 'true black, ice and gold', 'Pure black so the screen disappears, with ice and gold only on the marks. The most dramatic.', themeMock('a-eclipse', 'Limitless Access', '001', [['bg', '#000000'], ['surf', '#0a0d13'], ['accent', '#BDFFFF'], ['gold', '#f1dfb0']]))
   ].join('');
 
-  /* Admin data (examples) */
-  const members = [
-    ['000', 'You', 'Prime', 'good', 'online'], ['007', 'Example member', 'Prime', 'good', '2 h ago'], ['012', 'Example member', 'Cardinal', 'good', 'online'],
-    ['021', 'Example member', 'Cardinal', 'warned', 'yesterday'], ['031', 'Example member', 'Ordinal', 'removed', '9 days ago'], ['046', 'Example member', 'Ordinal', 'good', 'online'], ['047', 'Alex Morgan (example)', 'Ordinal', 'suspended', '3 days ago']
-  ];
+  /* ================= void notice ================= */
+  const vn = (stamp, h, p, dl) => `<div class="notice letterform" style="min-height:0;padding:var(--sp-6)"><span class="stamp" style="color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,transparent)">${stamp}</span><h4>${h}</h4><p>${p}</p>${dl}<span class="sig">Your Name</span><p style="font-size:12px">Director, Gamble Limited Ltd.</p></div>`;
+  $('#voidHost').innerHTML = opt('notice-void', 'Plan ended by the Director', 'with and without a refund', 'What a member sees after I end a plan. The first is for a rule break, so no refund. The second is my own mistake, so the unused months come back.',
+    `<div style="display:grid;gap:var(--sp-4)">${vn('Plan ended', 'Your Prime plan has ended', 'Under the Membership Rules your plan ended on 20 November 2026 because the account was shared. No refund applies. You are back on Ordinal and your membership continues.', '<dl><dt>Reason</dt><dd>Account shared</dd><dt>Refund</dt><dd>None</dd></dl>')}${vn('Plan ended, refund', 'Your Cardinal plan was ended in error', 'I ended your plan by mistake. You are back on Ordinal, and the unused months are yours to have back. I will arrange it with you.', '<dl><dt>Reason</dt><dd>My mistake</dd><dt>Refund</dt><dd>[amount] for 9 unused months</dd></dl>')}</div>`);
+
+  /* ================= app chrome ================= */
+  const menu = `<div class="m-menu" role="menu"><div class="who"><span class="no" style="font-size:16px">Alex Morgan</span><span style="color:var(--m-mut);font-size:10px">Cardinal · Nº 047</span></div><hr>
+    <div class="row">New tab <kbd>Ctrl T</kbd></div><div class="row">History <kbd>Alt H</kbd></div><div class="row">Bookmarks</div><div class="row">Theme</div><div class="row">Fullscreen <kbd>F11</kbd></div><hr>
+    <div class="row">Membership</div><div class="row">Plans</div><div class="row">Report a problem</div><div class="row">Settings</div><hr><div class="row" style="color:var(--m-mut)">Developer mode</div></div>`;
+  const vt = `<div class="mock vt p-crimson2"><div class="m-frame"><div class="vt-rail"><span class="grp">Today</span>
+      <div class="m-tab on"><i></i><span>Orbit, Wikipedia</span></div><div class="m-tab"><i></i><span>Start</span></div><div class="m-tab"><i></i><span>Physics notes</span></div><div class="m-tab"><i></i><span>Weather</span></div><span class="grp">Pinned</span><div class="m-tab"><i></i><span>Mail</span></div><div class="m-tab"><i></i><span>+ New tab</span></div></div>
+      <div style="min-width:0">${bar('https://en.wikipedia.org/wiki/Orbit')}${start2('Alex Morgan', '007', 'Prime', 'since Oct 2026')}</div></div></div>`;
+  $('#chromeGrid').innerHTML = [
+    opt('chrome-classic', 'Classic tabs', 'default, with the Limitless menu open', 'Shown in the standard theme with a Cardinal member.', `<div class="mock" style="position:relative">${tabs(['Orbit, Wikipedia', 'Start', 'Physics notes'])}${bar('https://en.wikipedia.org/wiki/Orbit#Planetary_orbits')}${menu}${start2('Alex Morgan', '047', 'Cardinal', 'since Nov 2026')}</div>`),
+    opt('chrome-vertical', 'Vertical tabs', 'member setting, shown in the Prime theme', 'Collapses to icons on narrow windows so 1366 x 768 keeps its width.', vt)
+  ].join('');
+
+  /* ================= admin ================= */
+  const memb = [['000', 'You, the Director', 'Access', 'Owner', 0, 'good'], ['001', 'Example member', 'Access', '2 Sep 2027', 0, 'good'], ['007', 'Example member', 'Prime', '18 Jun 2027', 0, 'good'], ['012', 'Example member', 'Cardinal', '1 Mar 2027', 0, 'good'],
+    ['021', 'Example member', 'Cardinal', '24 Nov 2026', 1, 'warned'], ['031', 'Example member', 'Ordinal', 'none', 0, 'removed'], ['046', 'Example member', 'Ordinal', 'none', 0, 'good'], ['047', 'Alex Morgan (example)', 'Cardinal', '10 Nov 2027', 0, 'good']];
+  const planCls = { Access: 't-access', Prime: 't-prime', Cardinal: 't-cardinal', Ordinal: 't-ordinal' };
   const stand = { good: ['var(--ok)', 'Good standing'], warned: ['var(--warn)', 'Warned'], suspended: ['var(--warn)', 'Suspended'], removed: ['var(--bad)', 'Removed'] };
-  let filt = 'all', q = '', sel = '047';
+  let filt = 'all', qstr = '', sel = '047';
+  const planPill = (p) => `<span class="pill t ${planCls[p]}"><i style="background:var(--tc)"></i>${p}</span>`;
   const renderMembers = () => {
-    const rows = members.filter(m => (filt === 'all' || m[2] === filt || (filt === 'warn' && (m[3] === 'warned' || m[3] === 'suspended'))) && (!q || (m[0] + m[1]).toLowerCase().includes(q)));
-    $('#memRows').innerHTML = rows.map(m => `<tr data-no="${m[0]}" class="${m[0] === sel ? 'sel' : ''}" tabindex="0"><td class="no">${m[0]}</td><td>${m[1]}</td><td>${m[2]}</td><td><span class="pill"><i style="background:${stand[m[3]][0]}"></i>${stand[m[3]][1]}</span></td><td>${m[4]}</td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--mut)">No members match.</td></tr>';
+    const rows = memb.filter(m => (filt === 'all' || m[2] === filt || (filt === 'soon' && m[4])) && (!qstr || (m[0] + m[1]).toLowerCase().includes(qstr)));
+    $('#memRows').innerHTML = rows.map(m => `<tr data-no="${m[0]}" class="${m[0] === sel ? 'sel' : ''}" tabindex="0"><td class="no">${m[0]}</td><td>${m[1]}</td><td>${planPill(m[2])}</td><td>${m[3]}${m[4] ? ' <span class="chip" style="color:var(--warn)">13 days</span>' : ''}</td><td><span class="pill"><i style="background:${stand[m[5]][0]}"></i>${stand[m[5]][1]}</span></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--mut)">No members match.</td></tr>';
     $$('#memRows tr[data-no]').forEach(tr => { const go = () => { sel = tr.dataset.no; renderMembers(); renderProfile(); }; tr.addEventListener('click', go); tr.addEventListener('keydown', e => { if (e.key === 'Enter') go(); }); });
   };
   const renderProfile = () => {
-    const m = members.find(x => x[0] === sel) || members[0];
-    $('#profile').innerHTML = `<div class="ph"><span class="no">${m[0]}</span><div><div style="font-size:15px">${m[1]}</div><span class="pill" style="margin-top:4px"><i style="background:${stand[m[3]][0]}"></i>${stand[m[3]][1]}</span></div></div>
-      <dl><dt>Tier</dt><dd>${m[2]}</dd><dt>Admitted</dt><dd>10 Nov 2026</dd><dt>Invited by</dt><dd>No. 012</dd><dt>Invited</dt><dd>none yet</dd><dt>Charter</dt><dd>2026-11-10</dd><dt>Usage, 30 d</dt><dd>4.2 GB · 61 sessions</dd><dt>Sessions now</dt><dd>1 · Chromebook · since 18:02</dd></dl>
-      <div class="timeline"><div><time>11-06</time>Warning: shared invite link in a group chat</div><div><time>11-07</time>Suspended 14 days (Article II)</div></div>
-      <div class="row-btns"><button class="btn ghost" style="font-size:12px;padding:5px 12px">Promote</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Warn</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Sign out everywhere</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Re-issue certificate</button></div>`;
+    const m = memb.find(x => x[0] === sel) || memb[0], paid = m[2] !== 'Ordinal';
+    $('#profile').innerHTML = `<div class="ph"><span class="no">${m[0]}</span><div><div style="font-size:15px">${m[1]}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${planPill(m[2])}<span class="pill"><i style="background:${stand[m[5]][0]}"></i>${stand[m[5]][1]}</span></div></div></div>
+      <dl><dt>Plan</dt><dd>${m[2]}${paid ? ', one year' : ', free'}</dd><dt>Paid until</dt><dd>${m[3]}</dd>${paid ? '<dt>Amount</dt><dd>$15 <span class="chip ph">placeholder</span></dd><dt>Receipt note</dt><dd>Cash, met after school</dd><dt>Refund window</dt><dd>closed</dd><dt>Top-ups</dt><dd>1 pack, 5 GB left</dd>' : ''}<dt>Trial</dt><dd>${paid ? 'Prime trial used 2 Nov' : 'none used'}</dd><dt>This week</dt><dd>${paid ? '11.4 of 20 GB' : 'public relays'}</dd><dt>Invited by</dt><dd>No. 012</dd></dl>
+      <div class="timeline"><div><time>11-10</time>Plan granted, cash recorded</div><div><time>11-02</time>24 hour trial started</div></div>
+      <div class="row-btns"><button class="btn ghost" style="font-size:12px;padding:5px 12px">Record payment</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Add top-up</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Start trial</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Void plan</button><button class="btn ghost" style="font-size:12px;padding:5px 12px">Limitless Access flag</button></div>`;
   };
-  $('#admSearch').addEventListener('input', e => { q = e.target.value.toLowerCase(); renderMembers(); });
+  $('#admSearch').addEventListener('input', e => { qstr = e.target.value.toLowerCase(); renderMembers(); });
   $$('#admChips button').forEach(b => b.addEventListener('click', () => { filt = b.dataset.f; $$('#admChips button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderMembers(); }));
   renderMembers(); renderProfile();
+  const dlgs = `<div class="grid" style="gap:var(--sp-4)"><div class="dlg"><h4>Void plan: Nº 047, Cardinal</h4>
+      <div class="two"><div class="field"><span>Reason</span><select aria-label="Reason"><option>Ban for breaking rules</option><option>Shared or sold account</option><option>Relay abuse</option><option>Illegal use</option><option>Error</option><option>Duplicate</option><option>Late request</option><option>Service ended</option></select></div><div class="field"><span>Refund</span><input type="text" value="$0" aria-label="Refund amount"></div></div>
+      <p style="color:var(--mut)">Suggested: $0, no refund for a rule ban. Prorated for the unused months: $12.</p><p class="warnline">Zero is allowed. Click Void plan once more to confirm.</p><div class="row-btns"><button class="btn ghost" style="font-size:12px;padding:5px 12px">Cancel</button><button class="btn solid" style="font-size:12px;padding:5px 12px">Void plan</button></div></div>
+    <div class="dlg"><h4>Record payment: Nº 047</h4><div class="two"><div class="field"><span>Plan</span><select aria-label="Plan"><option>Cardinal, one year</option><option>Prime, one year</option><option>Top-up pack</option></select></div><div class="field"><span>Amount</span><input type="text" value="$0" aria-label="Amount"></div></div><div class="field"><span>Receipt note</span><input type="text" value="Gift from the Director" aria-label="Receipt note"></div><p class="warnline">$0 is allowed. Are you sure? Click again to confirm.</p><div class="row-btns"><button class="btn ghost" style="font-size:12px;padding:5px 12px">Cancel</button><button class="btn solid" style="font-size:12px;padding:5px 12px">Save</button></div></div></div>`;
+  $('#voidDlg').innerHTML = opt('admin-dialogs', 'Void and payment dialogs', 'reason, refund and amount', 'Voiding asks for a reason code and a refund amount. Recording a payment accepts $0, with a second click to confirm.', dlgs);
+  const kn = [['Max speed (Mbit/s)', ['[relay]', '50', '100', '150']], ['Weekly data (GB)', ['none', '20', 'none', 'none']], ['Monthly data (GB)', ['none', 'none', '250', '500']], ['Slow speed after the allowance (Mbit/s)', ['n/a', 'n/a', 'n/a', '[2]']], ['Open tabs', ['4', '15', '25', '50']], ['Daily time (hours)', ['4', 'none', 'none', 'none']], ['Download size (MB)', ['10', '[larger]', '[largest]', '[best]']], ['Downloads a day', ['10', 'in allowance', '[own]', '[own]']], ['Load Now a day', ['none', 'none', 'none', '10']]];
+  $('#admGrid3').innerHTML = opt('admin-limits', 'Plan limits, live', 'every number from the plans page', 'Edit any number and it applies to everyone on that plan within a minute. Every plan has a speed knob, free included, so I can rate-limit in a hurry.',
+    `<div class="admin" style="padding:16px;display:grid;gap:14px"><div class="knobs"><table class="kn"><thead><tr><th></th>${TK.map(k => `<th class="${T[k].cls}">${T[k].n === 'Limitless Access' ? 'Access' : T[k].n}</th>`).join('')}</tr></thead><tbody>${kn.map(r => `<tr><td>${r[0]}</td>${r[1].map(v => `<td><input type="text" value="${v}" aria-label="${r[0]}"></td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="row-btns" style="align-items:center"><button class="btn solid" style="font-size:13px;padding:6px 16px">Save and apply</button><span class="chip ph">all values are placeholders until measured</span></div></div>`)
+    + opt('admin-transfer', 'Transfer board and brakes', 'the 5 TB month', 'Where the month stands, the staged brake at 70, 85 and 95 percent, and the switches for an emergency. Download limits are the first thing the brake tightens.',
+      `<div class="admin" style="padding:18px;display:grid;gap:16px"><div class="gauge"><div style="display:flex;justify-content:space-between;font-size:13px"><span>This month</span><span style="font-family:var(--f-serif);font-size:22px">2.1 of 5 TB</span></div><div class="track"><span style="width:6%;background:#f1dfb0"></span><span style="width:12%;background:#ff5a73"></span><span style="width:21%;background:#dfe3e9"></span><span style="width:3%;background:#4DA6FF"></span><i class="mk" style="left:70%"></i><i class="mk" style="left:85%"></i><i class="mk" style="left:95%"></i></div><div class="labs"><span style="left:0">0</span><span style="left:70%">70% warn</span><span style="left:85%">85% slower</span><span style="left:96%">95% fallback</span></div><div class="shares"><span><i style="background:#f1dfb0"></i>Access</span><span><i style="background:#ff5a73"></i>Prime</span><span><i style="background:#dfe3e9"></i>Cardinal</span><span><i style="background:#4DA6FF"></i>Trials</span></div></div>
+      <div class="alerts"><div class="sw"><span>Nº 112, Cardinal<small>6 hours at top speed, throttled to a low speed automatically</small></span><div class="row-btns"><button class="btn ghost">Restore</button><button class="btn ghost">Void plan</button></div></div><div class="sw"><span>Our server<small>Healthy. If it goes down, paid members move to public relays and only Access uses the home line.</small></span><span class="pill"><i style="background:var(--ok)"></i>Up</span></div></div>
+      <div class="alerts"><div class="sw danger"><span>Send all paid members to public relays<small>The emergency switch. Takes effect within a minute.</small></span><button class="btn ghost">Switch</button></div><div class="sw"><span>Pause new trials<small>Stops the monthly 24 hour trials while the server is busy.</small></span><button class="btn ghost">Pause</button></div></div></div>`);
+
+  /* ================= wording ================= */
+  const wset = (id, name, sub, eb, h, p, tri, cta, fineTxt) => opt(id, name, sub, '', `<div class="wset"><div class="words"><span class="k">${eb}</span><span class="big">${h}</span><p class="lede-sm">${p}</p></div><div class="tri">${['ordinal', 'cardinal', 'prime'].map((k, i) => `<div class="${T[k].cls}"><b>${T[k].n}</b><span>${tri[i]}</span></div>`).join('')}</div><button class="btn solid cta">${cta}</button><div class="fine">${fineTxt}</div></div>`);
+  $('#wordsGrid').innerHTML = [
+    wset('words-plain', 'Plain and direct', 'says what it is', 'Plans', 'Faster loading on our own relay.', 'Limitless is free to use. Paid plans move you to a relay we run, so pages load more steadily and you get more room.', ['Free. Uses shared public relays, so speed varies and can slow at busy times.', 'A year on our relay, more tabs, a weekly allowance and a silver certificate.', 'More of everything: a bigger allowance, priority, the crimson theme and a certificate with a verification QR.'], 'Request Cardinal', 'A plan lasts one year from the day I grant it. Refund within 3 days. Prices are set at release.'),
+    wset('words-quiet', 'Quiet luxury', 'fewer words, more weight', 'Membership', 'Limitless, at its best.', 'Ordinal is yours for free. Cardinal and Prime are for members who want Limitless to feel immediate.', ['The everyday way in.', 'Our own relay, and a certificate in silver foil.', 'Crimson and obsidian. The fullest allowance we offer, and a certificate with its own verification seal.'], 'Ask to join Cardinal', 'Granted by the Director, in person. One year. Fully refundable for three days.'),
+    wset('words-student', 'Student friendly', 'speaks to the person waiting', 'For your school year', 'Stop waiting on slow pages.', 'Free is fine for a few tabs. If you want more tabs and steadier loading, pick a plan for the year.', ['4 tabs and about 4 hours a day.', '15 tabs, no daily limit.', '25 tabs and a bigger allowance.'], 'Get a plan', 'Under 18? A parent or guardian needs to agree. You pay in person, in cash. You can try a plan free for 24 hours first.')
+  ].join('');
+
+  /* splash number line replays with the splash */
+  $$('[data-replay="splash"]').forEach(b => b.addEventListener('click', () => restart($('#splashNo'))));
 
   /* Charts (example series) */
   const series = (seed, n, lo, hi) => { let s = seed; return Array.from({ length: n }, () => { s = (s * 9301 + 49297) % 233280; return lo + (hi - lo) * (s / 233280); }); };
@@ -981,7 +1549,6 @@ relay: own (home) · stream 41 · port 443</pre></details>
   $('#hops').innerHTML = `<div style="display:flex;justify-content:space-between;font-size:13px"><span>Median page shown</span><span style="font-family:var(--f-serif);font-size:22px">${(total / 1000).toFixed(2)} s</span></div>
     <div class="hopbar">${hops.map(h => `<span style="flex:${h[1]};background:${h[2]}" title="${h[0]} ${h[1]} ms">${h[1] > 150 ? h[1] + ' ms' : ''}</span>`).join('')}</div>
     <div class="hoplegend">${hops.map(h => `<span><i style="background:${h[2]}"></i>${h[0]} ${h[1]} ms</span>`).join('')}</div>`;
-
   /* ---------- Picks: inject bars, persist ---------- */
   $$('.opt[data-opt]').forEach(o => o.insertAdjacentHTML('beforeend', pickBar(o.dataset.opt)));
   const titles = {}; $$('.opt[data-opt]').forEach(o => titles[o.dataset.opt] = $('h3', o).textContent);
@@ -1029,5 +1596,3 @@ relay: own (home) · stream 41 · port 443</pre></details>
   requestAnimationFrame(paint);
 })();
 </script>
-
-</body></html>
