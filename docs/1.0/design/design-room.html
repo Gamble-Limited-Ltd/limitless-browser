@@ -394,21 +394,21 @@ footer.end { padding-block: var(--sp-6) var(--sp-8); color: var(--mut); font-siz
 .markrow .tier { min-width: 0; }
 @media (max-width: 520px) { .markrow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .cards4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: var(--sp-4); }
-.mcard { container-type: inline-size; position: relative; aspect-ratio: 1.586; border-radius: 14px; padding: 6cqw 7cqw; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; border: 1px solid color-mix(in srgb, var(--tc) 40%, var(--line)); background: radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--tc) 16%, transparent), transparent 60%), #0a0e15; box-shadow: 0 14px 30px rgba(0,0,0,.4); }
+.mcard { container-type: inline-size; position: relative; aspect-ratio: 1.586; border-radius: 14px; padding: 6% 7%; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; border: 1px solid color-mix(in srgb, var(--tc) 40%, var(--line)); background: radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--tc) 16%, transparent), transparent 60%), #0a0e15; box-shadow: 0 14px 30px rgba(0,0,0,.4); }
 .mcard.t-prime { background: radial-gradient(ellipse at 20% 0%, rgba(224,48,75,.28), transparent 60%), #0b0507; }
 .mcard.t-access { background: radial-gradient(ellipse at 15% 0%, rgba(241,223,176,.2), transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(189,255,255,.14), transparent 55%), #07080b; border-color: transparent; }
 .mcard.t-access::before { content: ""; position: absolute; inset: 0; border-radius: 14px; padding: 1px; background: var(--aur); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
-.mcard .top { display: flex; justify-content: space-between; align-items: center; font-size: 3.2cqw; letter-spacing: .3em; text-transform: uppercase; color: var(--mut); }
+.mcard .top { display: flex; justify-content: space-between; align-items: center; font-size: 3.8cqw; letter-spacing: .26em; text-transform: uppercase; color: var(--mut); }
 .mcard .top svg { width: 9cqw; height: 9cqw; }
-.mcard .nm { align-self: center; font-family: var(--f-serif); font-size: 9cqw; line-height: 1.05; color: var(--fg); }
-.mcard .nm small { display: block; font-family: var(--f-ui); font-size: 3.4cqw; letter-spacing: .12em; text-transform: uppercase; color: var(--tc); margin-top: 1.5cqw; }
-.mcard .ft { font-family: var(--f-mono); font-size: 3cqw; letter-spacing: .1em; color: var(--mut); display: flex; justify-content: space-between; }
-.mcard.strip { aspect-ratio: auto; grid-template-rows: none; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4cqw; padding: 4cqw 5cqw; }
+.mcard .nm { align-self: center; font-family: var(--f-serif); font-size: 10.5cqw; line-height: 1.05; color: var(--fg); }
+.mcard .nm small { display: block; font-family: var(--f-ui); font-size: 3.8cqw; letter-spacing: .12em; text-transform: uppercase; color: var(--tc); margin-top: 1.5cqw; }
+.mcard .ft { font-family: var(--f-mono); font-size: 3.8cqw; letter-spacing: .1em; color: var(--mut); display: flex; justify-content: space-between; }
+.mcard.strip { aspect-ratio: auto; grid-template-rows: none; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4%; padding: 4% 5%; }
 .mcard.strip .nm { font-size: 6.4cqw; align-self: center; }
 .mcard.strip .nm small { font-size: 2.8cqw; }
 .mcard.strip .no { font-family: var(--f-mono); font-size: 3.4cqw; color: var(--tc); letter-spacing: .1em; }
 .mcard.strip svg { width: 11cqw; height: 11cqw; }
-.mcard.pass { aspect-ratio: auto; grid-template-rows: none; display: grid; gap: 2cqw; padding: 5cqw 6cqw; }
+.mcard.pass { aspect-ratio: auto; grid-template-rows: none; display: grid; gap: 2%; padding: 5% 6%; }
 .mcard.pass .nm { font-size: 8cqw; align-self: auto; }
 .mcard.pass .mrz { font-family: var(--f-mono); font-size: 2.7cqw; color: var(--mut); letter-spacing: .14em; border-top: 1px dashed var(--line); padding-top: 2cqw; overflow: hidden; white-space: nowrap; }
 
