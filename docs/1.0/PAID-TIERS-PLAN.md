@@ -40,6 +40,11 @@ as possible before release, so published numbers will be measured ones.
 - `MEMBERSHIP.md` sections 7 and the "may show their certificate" table still say every member gets a certificate: update them when this plan is approved.
 - Design room round two (artifact "Limitless 1.0 Design Room", copy in `docs/1.0/design/design-room.html`) holds the options for marks, cards, plans page, comparison, buying flow, free-limit screens, account panel, certificates, themes, admin and wording.
 
+## 2c. Naming and picks update (Boss, 2026-11-13)
+- The top invite-only tier is now **Limitless Executive** (was Limitless Access), with more gold and a pure black theme. Older text in this file and the design room still says Access.
+- The trial pause in the transfer brake starts at 70% of the 5 TB.
+- Round two picks: `docs/1.0/design/picks-round2.md`. Opus will polish the designs later and may propose new looks beyond the favourites.
+
 ## 3. Money
 - One purchase = one year (12 months from the day Boss grants access).
 - Cash only, handled by hand. The page has a request form or contact. Boss replies, collects cash, sets paid-until.
