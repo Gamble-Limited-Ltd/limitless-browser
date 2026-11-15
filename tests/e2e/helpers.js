@@ -24,4 +24,4 @@ async function boot(page, { init, arg, tourTimeout = 12000, features = LEGACY_FE
   return errors;
 }
 
-module.exports = { boot };
+module.exports = { boot, LEGACY_FEATURES };

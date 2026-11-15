@@ -486,3 +486,28 @@ html[data-lb-theme="vault"]:not([data-skin]) {
 .lb-adm-done td { opacity: .6; }
 .lb-adm td input[type="number"] { height: 26px; }
 @media (min-width: 1100px) { .lb-adm-in { max-width: 1060px; } }
+
+/* Downloads panel (1.0 S8): .lb-dl-* */
+.lb-dl { position: fixed; top: 56px; right: 12px; z-index: 9000; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 80px); overflow: auto;
+  background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-lg); box-shadow: 0 12px 36px rgba(0,0,0,.35); padding: 12px; font: 13px var(--ui); }
+.lb-dl[hidden] { display: none; }
+.lb-dl-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.lb-dl-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.lb-dl-add { display: flex; gap: 6px; margin-bottom: 10px; }
+.lb-dl-add input { flex: 1; min-width: 0; height: 30px; padding: 0 9px; border-radius: var(--radius-sm); border: 1px solid var(--bd); background: var(--bg0); color: var(--tx); font: inherit; }
+.lb-dl-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-dl-row { border: 1px solid var(--bd); border-radius: var(--radius-md); padding: 8px 10px; background: var(--bg0); }
+.lb-dl-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-dl-bar { height: 6px; margin: 6px 0; border-radius: 99px; background: var(--bg2); overflow: hidden; }
+.lb-dl-bar i { display: block; height: 100%; width: 0; background: var(--ac); transition: width .15s linear; }
+.lb-dl-bar.lb-dl-ind i { width: 35% !important; animation: lb-dl-slide 1.2s ease-in-out infinite alternate; }
+@keyframes lb-dl-slide { from { margin-left: 0; } to { margin-left: 65%; } }
+.lb-dl-st { color: var(--tx2); font-size: 12.5px; min-height: 16px; }
+.lb-dl-row[data-status="error"] .lb-dl-st, .lb-dl-row[data-status="refused"] .lb-dl-st { color: var(--err); }
+.lb-dl-btns { display: flex; gap: 6px; margin-top: 6px; }
+.lb-dl-b { height: 26px; padding: 0 11px; border-radius: var(--radius-sm); border: 1px solid var(--bd); background: var(--surface); color: var(--tx); font: 500 12.5px var(--ui); cursor: pointer; }
+.lb-dl-b:hover { background: var(--surface2); }
+.lb-dl-go { background: var(--ac); border-color: transparent; color: var(--lb-on, #000); }
+.lb-dl-link { color: var(--ac); text-underline-offset: 2px; }
+.lb-dl-empty, .lb-dl-fine { color: var(--tx3); margin: 8px 0 0; font-size: 12px; }
+.lb-dl-b:focus-visible, .lb-dl-add input:focus-visible, .lb-dl-link:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }

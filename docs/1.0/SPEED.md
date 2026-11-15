@@ -156,6 +156,8 @@ Panel in the menu: queue, progress (bytes, rate), pause and resume with HTTP Ran
 Files are saved through the browser's own download (blob + `<a download>`) when complete. Large files over 2 GB are
 refused with a clear message (memory). Test: e2e with a routed range-capable fixture.
 
+*Status 2026-11-15: built (slice 1.0-downloads). Module `LB_downloads` at the end of `app/main.js` (before `init()`), styles `.lb-dl-*` at the end of `theme/chrome.css`, spec `tests/e2e/downloads.spec.js`. Limits come from `LB_member.plan.limits` (`downloadMbPerFile`, `downloadsPerDay`, 0 = none; the gate already had both knobs and the S7 Plans card lists them, so no gate change). Early refusal from Content-Length or Content-Range of the first response (body never read); no length: stops at the limit; over 2 GB refused; Ordinal daily count in `limitless:dlcount:v1` (local day); 2 downloads at once, 1 with Data saver; `features.downloads` / `LB_FEATURE_DOWNLOADS` kill switch. Navigation to a file (the viewer path) still fetches the whole body in `go()`: it is only checked against the same limits afterwards (`LB_downloads.adopt`), not paused or resumed.*
+
 ## 7. Not doing (and why)
 - Link-hover prefetch: Boss preferred other options (fetches pages the member did not ask for).
 - Moving all app code to `src/` + esbuild (step 3 of the original plan): not needed for these gains, and it makes manual
