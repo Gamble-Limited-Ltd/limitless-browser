@@ -70,12 +70,13 @@ FEAT_BLOBSCRIPTS="${LB_FEATURE_BLOBSCRIPTS:-true}"
 FEAT_ERRCLASS="${LB_FEATURE_ERRCLASS:-true}"
 FEAT_DEADLINES="${LB_FEATURE_DEADLINES:-true}"
 FEAT_TRANSFER="${LB_FEATURE_TRANSFER:-true}"
+FEAT_DOWNLOADS="${LB_FEATURE_DOWNLOADS:-true}"
 [[ "$FEAT_SOCKETS" =~ ^[0-4]$ ]] || { echo "build-static: LB_FEATURE_OWNSOCKETS must be 0 to 4" >&2; exit 1; }
-for v in "$FEAT_OWNRELAY" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" "$FEAT_NODIRECT" "$FEAT_BLOBSCRIPTS" "$FEAT_ERRCLASS" "$FEAT_DEADLINES" "$FEAT_TRANSFER"; do
-  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_OWNRELAY, LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE, LB_FEATURE_LAZYIMG, LB_FEATURE_TABSLEEP, LB_FEATURE_REWRITECACHE, LB_FEATURE_PAGECACHE, LB_FEATURE_WARM, LB_FEATURE_INSTANTBACK, LB_FEATURE_NODIRECT, LB_FEATURE_BLOBSCRIPTS, LB_FEATURE_ERRCLASS, LB_FEATURE_DEADLINES and LB_FEATURE_TRANSFER must be true or false" >&2; exit 1; }
+for v in "$FEAT_OWNRELAY" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" "$FEAT_NODIRECT" "$FEAT_BLOBSCRIPTS" "$FEAT_ERRCLASS" "$FEAT_DEADLINES" "$FEAT_TRANSFER" "$FEAT_DOWNLOADS"; do
+  [[ "$v" =~ ^(true|false)$ ]] || { echo "build-static: LB_FEATURE_OWNRELAY, LB_FEATURE_WORKER, LB_FEATURE_RESPCACHE, LB_FEATURE_SW, LB_FEATURE_PIPELINE, LB_FEATURE_LAZYIMG, LB_FEATURE_TABSLEEP, LB_FEATURE_REWRITECACHE, LB_FEATURE_PAGECACHE, LB_FEATURE_WARM, LB_FEATURE_INSTANTBACK, LB_FEATURE_NODIRECT, LB_FEATURE_BLOBSCRIPTS, LB_FEATURE_ERRCLASS, LB_FEATURE_DEADLINES, LB_FEATURE_TRANSFER and LB_FEATURE_DOWNLOADS must be true or false" >&2; exit 1; }
 done
-printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownRelay":%s,"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s,"tabSleep":%s,"rewriteCache":%s,"pageCache":%s,"warm":%s,"instantBack":%s,"noDirect":%s,"blobScripts":%s,"errClass":%s,"deadlines":%s,"transfer":%s}}\n' \
-  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_OWNRELAY" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" "$FEAT_NODIRECT" "$FEAT_BLOBSCRIPTS" "$FEAT_ERRCLASS" "$FEAT_DEADLINES" "$FEAT_TRANSFER" > "$OUT/version.json"
+printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"ownRelay":%s,"ownSockets":%s,"worker":%s,"respCache":%s,"sw":%s,"pipeline":%s,"lazyImg":%s,"tabSleep":%s,"rewriteCache":%s,"pageCache":%s,"warm":%s,"instantBack":%s,"noDirect":%s,"blobScripts":%s,"errClass":%s,"deadlines":%s,"transfer":%s,"downloads":%s}}\n' \
+  "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$FEAT_OWNRELAY" "$FEAT_SOCKETS" "$FEAT_WORKER" "$FEAT_CACHE" "$FEAT_SW" "$FEAT_PIPELINE" "$FEAT_LAZYIMG" "$FEAT_TABSLEEP" "$FEAT_REWRITECACHE" "$FEAT_PAGECACHE" "$FEAT_WARM" "$FEAT_INSTANTBACK" "$FEAT_NODIRECT" "$FEAT_BLOBSCRIPTS" "$FEAT_ERRCLASS" "$FEAT_DEADLINES" "$FEAT_TRANSFER" "$FEAT_DOWNLOADS" > "$OUT/version.json"
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"

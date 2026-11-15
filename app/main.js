@@ -661,7 +661,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -692,7 +692,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -9982,6 +9982,7 @@ _VIEWER_DL_JS +
                         }
 
                         if (_ftype === 'binary') {
+                            if (!window.LB_downloads.adopt(url, _filename, r.buf.byteLength)) { window.LB_downloads.open(); loadViewerPage(makeUnknownFilePage(_filename, r.mime || 'application/octet-stream', r.buf.byteLength, url), _filename, url, initiatorTabId); return; }
                             if (mediaPref('limitless:media:download:v1')) {
                                 loadViewerPage(makeBinaryDownloadPage(r.buf, _filename, r.mime || 'application/octet-stream'), _filename, url, initiatorTabId);
                             } else {
@@ -14808,7 +14809,7 @@ _VIEWER_DL_JS +
                         const btn = (w && w.classList.contains('hidden')) ? $('showBookmarksBtn') : $('bookmarksToggle');
                         if (btn) btn.click();
                     }),
-                    downloads: mi('fa-solid fa-download', 'Downloads', () => go('limitless://settings/filesandmedia')),
+                    downloads: mi('fa-solid fa-download', 'Downloads', () => { if (!window.LB_downloads.open()) go('limitless://settings/filesandmedia'); }),
                     find: mi('fa-solid fa-magnifying-glass', 'Find in page…', () => { try { toggleFindBar(); } catch (_) {} }),
                     metrics: mi('fa-solid fa-gauge-high', 'Browser metrics', () => { const b = $('metricsBtn'); if (b) b.click(); }),
                     inspector: mi('fa-solid fa-code', 'Page inspector', () => { const b = $('codeBtn'); if (b) b.click(); }),
@@ -18720,6 +18721,172 @@ _VIEWER_DL_JS +
 
                 LimitlessExt.onChange(renderIcons);
                 LimitlessExt.init().then(renderIcons);
+            })();
+
+            // ── Downloads panel (1.0 S8, docs/1.0/SPEED.md 6, PLAN.md S8 card) ───────────────────────────────────────────────────────
+            // Self-contained: queue, progress, pause and resume (HTTP Range), retry with backoff, cancel; the finished file is saved with a
+            // blob and <a download>. Limits are the plan's `downloadMbPerFile` and `downloadsPerDay` from /_lb/me (window.LB_member), 0 = none;
+            // the Ordinal numbers are enforced here because Ordinal rides public relays (paid tiers' bytes are counted by the gate).
+            // Anything over 2 GB is refused. `features.downloads` false (build LB_FEATURE_DOWNLOADS) turns the whole thing off. Styles: `.lb-dl-*` in theme/chrome.css.
+            window.LB_downloads = (function () {
+                const MB = 1048576, HARD = 2048 * MB, KEY = 'limitless:dlcount:v1', PLANS = 'https://hall.taps-holdings.org/';
+                const cfg = { backoff: [1000, 3000, 8000] };
+                const items = []; const rows = new Map(); let seq = 0, panel = null, list = null, meAt = 0, tick = 0;
+                const enabled = () => !(window.LB_features && window.LB_features.downloads === false);
+                const lim = () => { const p = window.LB_member && window.LB_member.plan; return (p && p.limits) || {}; };
+                const day = () => new Date().toLocaleDateString('en-CA');
+                const used = () => { try { const j = JSON.parse(ls.getItem(KEY)); return j && j.d === day() ? j.n : 0; } catch (_) { return 0; } };
+                const bump = () => ls.setItem(KEY, JSON.stringify({ d: day(), n: used() + 1 }));
+                const fmt = (n) => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= MB ? (n / MB).toFixed(n >= 10 * MB ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+                const nameOf = (url) => { try { return decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() || '') || new URL(url).hostname; } catch (_) { return 'download'; } };
+                const pub = (it) => ({ id: it.id, url: it.url, name: it.name, status: it.status, got: it.got, total: it.total, rate: it.rate, note: it.note });
+                const find = (id) => items.find((x) => x.id === id);
+                const slots = () => (lbDataSaver() ? 1 : 2);
+                const busy = () => items.filter((x) => x.status === 'active' || x.status === 'retrying').length;
+
+                function refuse(it, msg, plans) { it.status = 'refused'; it.note = msg; it.plans = !!plans; it.parts = []; paint(it); pump(); }
+                // the early checks: 2 GB first, then the plan's per-file limit (size known from Content-Length or Content-Range)
+                function vet(total) {
+                    if (total > HARD) return { msg: 'This file is over 2 GB. Limitless keeps a download in memory, so 2 GB is the most it can take.' };
+                    const mb = Number(lim().downloadMbPerFile) || 0;
+                    if (mb > 0 && total > mb * MB) return { msg: 'This file is ' + fmt(total) + '. Your plan allows ' + mb + ' MB per file.', plans: true };
+                    return null;
+                }
+                function dayMsg() { const n = Number(lim().downloadsPerDay) || 0; return n > 0 && used() >= n ? { msg: 'Your plan allows ' + n + ' downloads a day, and you have used them today.', plans: true } : null; }
+                async function refreshMe() {
+                    if (Date.now() - meAt < 60000 || (location.protocol !== 'http:' && location.protocol !== 'https:')) return;
+                    meAt = Date.now();
+                    try {
+                        const c = new AbortController(); const t = setTimeout(() => c.abort(), 2500);
+                        const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin', signal: c.signal }); clearTimeout(t);
+                        const j = r.ok ? await r.json() : null;
+                        if (j && j.membership === 'on') window.LB_member = j;
+                    } catch (_) {}
+                }
+                async function run(it) {
+                    it.status = 'active'; it.intent = ''; const ctl = it.ctl = new AbortController(); paint(it);
+                    try {
+                        if (!it.vetted) { await refreshMe(); const d = dayMsg(); if (d) return refuse(it, d.msg, d.plans); }
+                        const h = {}; if (it.got > 0 && it.ranges) h.Range = 'bytes=' + it.got + '-'; if (lbDataSaver()) h['Save-Data'] = 'on';
+                        const resp = await curl.fetch(it.url, { method: 'GET', headers: h, signal: ctl.signal });
+                        if (resp.status !== 200 && resp.status !== 206) { it.fatal = true; throw new Error('The site answered ' + resp.status + '.'); }
+                        if (resp.status === 200 && it.got > 0) { it.parts = []; it.got = 0; }   // the server ignored Range: start again
+                        const g = (k) => resp.headers && resp.headers.get && resp.headers.get(k);
+                        const cr = /\/(\d+)\s*$/.exec(g('content-range') || ''), cl = parseInt(g('content-length') || '', 10);
+                        const total = cr ? +cr[1] : (resp.status === 200 && cl >= 0 ? cl : null);
+                        it.ranges = resp.status === 206 || /bytes/i.test(g('accept-ranges') || '');
+                        it.mime = g('content-type') || it.mime;
+                        const cd = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(g('content-disposition') || '');
+                        if (cd && !it.named) { try { it.name = decodeURIComponent(cd[1]).replace(/[\\/:*?"<>|]/g, '_'); } catch (_) {} it.named = 1; }
+                        if (total != null) it.total = total;
+                        if (!it.vetted) {
+                            const v = total != null ? vet(total) : null;
+                            if (v) { try { ctl.abort(); } catch (_) {} return refuse(it, v.msg, v.plans); }
+                            it.vetted = true; bump();
+                        }
+                        const mb = Number(lim().downloadMbPerFile) || 0, cap = mb > 0 ? mb * MB : HARD;
+                        const rd = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+                        const take = (v) => {
+                            it.parts.push(v); it.got += v.length;
+                            const now = Date.now(); if (now - it.rt >= 500) { it.rate = (it.got - it.rb) * 1000 / (now - it.rt); it.rt = now; it.rb = it.got; }
+                            if (it.total == null && it.got > cap) { try { ctl.abort(); } catch (_) {} refuse(it, 'Stopped at ' + (mb > 0 ? mb + ' MB' : '2 GB') + ': the site did not say how big this file is, and ' + (mb > 0 ? 'your plan allows ' + mb + ' MB per file.' : 'Limitless takes 2 GB at most.'), mb > 0); return false; }
+                            paint(it); return true;
+                        };
+                        it.rt = Date.now(); it.rb = it.got;
+                        if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; if (!take(value)) return; } }
+                        else { const b = new Uint8Array(await resp.arrayBuffer()); if (!take(b)) return; }
+                        if (it.total != null && it.got < it.total) throw new Error('short body');
+                        save(it);
+                    } catch (e) {
+                        if (it.status === 'refused') return;
+                        if (it.intent === 'pause') { it.status = 'paused'; it.note = ''; }
+                        else if (it.intent === 'cancel') { it.status = 'cancelled'; it.parts = []; it.got = 0; it.note = ''; }
+                        else if (it.fatal) { it.status = 'error'; it.note = e.message; }
+                        else if (it.tries < cfg.backoff.length) {
+                            it.status = 'retrying'; it.note = 'Connection lost, trying again';
+                            const ms = cfg.backoff[it.tries++]; paint(it);
+                            it.timer = setTimeout(() => { it.timer = 0; if (it.status === 'retrying') run(it); }, ms); return;
+                        } else { it.status = 'error'; it.note = 'The connection dropped. Check your connection and try again.'; }
+                    }
+                    paint(it); pump();
+                }
+                function save(it) {
+                    const u = URL.createObjectURL(new Blob(it.parts, { type: (it.mime || 'application/octet-stream').split(';')[0] }));
+                    const a = document.createElement('a'); a.href = u; a.download = it.name; a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(() => URL.revokeObjectURL(u), 30000);
+                    it.parts = []; it.status = 'done'; it.note = 'Saved'; paint(it); pump();
+                }
+                function pump() { for (const it of items) { if (busy() >= slots()) break; if (it.status === 'queued') run(it); } }
+                function add(url, name) {
+                    if (!enabled()) return null;
+                    let u; try { u = new URL(url, 'https://x.invalid/'); if (!/^https?:$/.test(u.protocol) || u.hostname === 'x.invalid') throw 0; } catch (_) { return null; }
+                    const it = { id: ++seq, url: u.href, name: name || nameOf(u.href), status: 'queued', got: 0, total: null, rate: 0, note: '', parts: [], tries: 0, ranges: false, vetted: false };
+                    items.push(it); paint(it); pump(); return it.id;
+                }
+                // The older viewer path (go() already fetched the whole file): same limits and daily count, then it is listed.
+                function adopt(url, name, size) {
+                    if (!enabled()) return true;
+                    const it = { id: ++seq, url, name, status: 'done', got: size, total: size, rate: 0, note: 'Ready in the viewer', parts: [] };
+                    const v = vet(size) || dayMsg();
+                    if (v) { it.status = 'refused'; it.note = v.msg; it.plans = !!v.plans; } else bump();
+                    items.push(it); paint(it); return !v;
+                }
+                const act = {
+                    pause(it) { if (it.status === 'active' || it.status === 'retrying') { it.intent = 'pause'; clearTimeout(it.timer); it.timer = 0; if (it.status === 'retrying') { it.status = 'paused'; paint(it); pump(); } else it.ctl.abort(); } else if (it.status === 'queued') { it.status = 'paused'; paint(it); } },
+                    resume(it) { if (it.status !== 'paused') return; if (!it.ranges) { it.parts = []; it.got = 0; } it.tries = 0; it.status = 'queued'; paint(it); pump(); },
+                    retry(it) { if (it.status !== 'error') return; it.tries = 0; it.fatal = false; it.note = ''; it.status = 'queued'; paint(it); pump(); },
+                    cancel(it) { if (it.status === 'active') { it.intent = 'cancel'; it.ctl.abort(); } else if (it.status === 'queued' || it.status === 'paused' || it.status === 'retrying') { clearTimeout(it.timer); it.status = 'cancelled'; it.parts = []; it.got = 0; paint(it); pump(); } },
+                    remove(it) { items.splice(items.indexOf(it), 1); const r = rows.get(it.id); if (r) r.el.remove(); rows.delete(it.id); paint(); },
+                };
+                const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+                const BTN = { queued: ['Cancel'], active: ['Pause', 'Cancel'], retrying: ['Pause', 'Cancel'], paused: ['Resume', 'Cancel'], error: ['Retry', 'Remove'], refused: ['Remove'], cancelled: ['Remove'], done: ['Remove'] };
+                function text(it) {
+                    const s = it.status;
+                    if (s === 'queued') return 'Waiting';
+                    if (s === 'active') return fmt(it.got) + ' of ' + (it.total != null ? fmt(it.total) : 'unknown size') + (it.rate > 0 ? ' at ' + fmt(it.rate) + '/s' : '');
+                    if (s === 'paused') return 'Paused at ' + fmt(it.got);
+                    if (s === 'cancelled') return 'Cancelled';
+                    return it.note || '';
+                }
+                function paint(it) {
+                    if (!panel) return;
+                    const q = panel.querySelector('.lb-dl-empty'); if (q) q.hidden = items.length > 0;
+                    if (!it) return;
+                    let r = rows.get(it.id);
+                    if (!r) { r = { el: el('li', 'lb-dl-row'), n: el('div', 'lb-dl-name'), bar: el('div', 'lb-dl-bar'), fill: el('i'), s: el('div', 'lb-dl-st'), b: el('div', 'lb-dl-btns'), st: '' }; r.bar.setAttribute('role', 'progressbar'); r.bar.setAttribute('aria-label', 'Progress'); r.bar.appendChild(r.fill); r.el.append(r.n, r.bar, r.s, r.b); list.prepend(r.el); rows.set(it.id, r); }
+                    r.n.textContent = it.name; r.n.title = it.url;
+                    const pct = it.total ? Math.min(100, Math.round(it.got * 100 / it.total)) : (it.status === 'done' ? 100 : 0);
+                    r.fill.style.width = pct + '%'; r.bar.setAttribute('aria-valuenow', String(pct)); r.bar.classList.toggle('lb-dl-ind', it.status === 'active' && it.total == null);
+                    r.el.dataset.status = it.status; r.s.textContent = text(it);
+                    if (it.plans && it.status === 'refused' || it.plans && it.status === 'error') {
+                        const open = window.LB_member && window.LB_member.plan && window.LB_member.plan.plansOpen === true;
+                        if (open) { const a = el('a', 'lb-dl-link', ' See the plans'); a.href = PLANS; a.target = '_blank'; a.rel = 'noopener'; r.s.appendChild(a); } else r.s.appendChild(document.createTextNode(' Paid plans are coming soon.'));
+                    }
+                    if (r.st !== it.status) {
+                        r.st = it.status; r.b.textContent = '';
+                        for (const l of BTN[it.status] || []) { const b = el('button', 'lb-dl-b', l); b.type = 'button'; b.onclick = () => act[l.toLowerCase()](it); r.b.appendChild(b); }
+                    }
+                }
+                function open() {
+                    if (!enabled()) return false;
+                    if (!panel) {
+                        panel = el('section', 'lb-dl'); panel.id = 'lbDl'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Downloads');
+                        const hd = el('header', 'lb-dl-hd'); hd.appendChild(el('h2', '', 'Downloads'));
+                        const x = el('button', 'lb-dl-b', 'Close'); x.type = 'button'; x.onclick = close; hd.appendChild(x);
+                        const f = el('form', 'lb-dl-add'); const i = el('input'); i.type = 'url'; i.placeholder = 'Paste a file address'; i.setAttribute('aria-label', 'File address'); i.required = true;
+                        const go2 = el('button', 'lb-dl-b lb-dl-go', 'Download'); go2.type = 'submit';
+                        f.append(i, go2); f.onsubmit = (e) => { e.preventDefault(); if (add(i.value.trim())) i.value = ''; else i.setCustomValidity('Enter an http or https address'), i.reportValidity(), i.setCustomValidity(''); };
+                        list = el('ul', 'lb-dl-list'); const em = el('p', 'lb-dl-empty', 'No downloads yet.');
+                        panel.append(hd, f, list, em, el('p', 'lb-dl-fine', 'Files over 2 GB are refused. Downloads count against your data cap.'));
+                        panel.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+                        document.body.appendChild(panel);
+                        for (const it of items.slice().reverse()) paint(it); paint();
+                    }
+                    panel.hidden = false; const f = panel.querySelector('input'); if (f) f.focus(); return true;
+                }
+                function close() { if (panel) panel.hidden = true; }
+                return { enabled, open, close, add, adopt, items: () => items.map(pub), pause: (id) => { const it = find(id); if (it) act.pause(it); }, resume: (id) => { const it = find(id); if (it) act.resume(it); },
+                    retry: (id) => { const it = find(id); if (it) act.retry(it); }, cancel: (id) => { const it = find(id); if (it) act.cancel(it); }, cfg, ls };
             })();
 
             init();

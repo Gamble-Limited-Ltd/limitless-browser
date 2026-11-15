@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## Unreleased 1.0.0
+
+- New Downloads panel in the menu: a queue with progress, pause and resume, retry and cancel. Files over your plan's size limit, or over 2 GB, are refused before they start.
+
 ## 0.3.0
 
 - Limitless now browses through public relays, run by other operators, until Limitless 1.0 brings its own relay. They can see connection metadata, such as which sites you connect to, but not what is inside secure (https) connections. You see a short note about this the first time you open Limitless, and Settings, Connection shows "Public relays (until 1.0)".
