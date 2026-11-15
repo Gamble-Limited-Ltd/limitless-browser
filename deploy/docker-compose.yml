@@ -53,7 +53,11 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     pids_limit: 512
-    depends_on: [relay]
+    # 0.3.0: relay is off by default (profile). Not required, so rotation recreates the gate without it.
+    depends_on:
+      relay:
+        condition: service_started
+        required: false
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
       interval: 30s
@@ -65,6 +69,8 @@ services:
 
   relay:
     image: limitless-relay:${RELAY_SHA:-dev}
+    # Off in prod since 0.3.0 (public relays only until 1.0). Start with: docker compose --profile relay ...
+    profiles: ["relay"]
     build:
       context: ./relay
     restart: unless-stopped
@@ -88,6 +94,7 @@ services:
   # Relay DNS cache (RELAY.md 3.2). Fixed address on lb_relay (epoxy needs an IP); lb_egress is its way out (DoT to 1.1.1.1, 9.9.9.9).
   dns:
     image: limitless-dns:${DNS_SHA:-dev}
+    profiles: ["relay"]
     build:
       context: ./dns
     restart: unless-stopped

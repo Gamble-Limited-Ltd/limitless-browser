@@ -49,7 +49,7 @@ test('tab sleeping: a tab with typed text does not sleep; the setting 0 and feat
 });
 
 test('tab sleeping: switch off in version.json', async ({ page }) => {
-  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"tabSleep":false}}' }));
+  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"ownRelay":true,"tabSleep":false}}' }));
   await setup(page);
   await page.evaluate(([o, a, b]) => { __respond(o + '/a', { headers: { 'content-type': 'text/html' }, body: a }); __respond(o + '/b', { headers: { 'content-type': 'text/html' }, body: b }); }, [O, FORM('A'), FORM('B')]);
   await page.evaluate(() => window.LB_featuresReady);

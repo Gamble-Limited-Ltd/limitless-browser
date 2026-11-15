@@ -76,6 +76,7 @@ Measure before/after (transfer size, load time, time to interactive) and record 
   default. The app checks our relay; if it is unreachable it shows a notice that the fallback relays are not run
   by Gamble Limited Ltd. (our caps, logging policy and privacy page do not cover them) with a link to switch them
   on. The Discord client's separate relay list goes with the Discord client.
+- **0.3.0: the relay is off (decided 2026-11-14).** Compose `relay` and `dns` sit under `profiles: ["relay"]` (not started by `up`; `docker compose --profile relay ...` starts them), the gate's dependency on `relay` is `required: false`, `RELAY_URL` and the `lb_relay` network stay so the file is compatible with 0.2.3 and 0.3.0 (the 06:00 rotation recreates the gate from the working tree). nginx answers `410` on `/wisp/` (`deploy/web/wisp.sh`; `WISP_RELAY=1` on the web container proxies as before and is set only by the rehearsal compose, so the stack tests keep a working relay). The client uses public relays (feature `ownRelay` false). 1.0 flips the switch back and replaces this relay with the VPS design (`docs/1.0/RELAY.md`).
 - Later option: separate VM, Boss's 2nd PC, or a second relay region.
 
 ## 3. Order of work

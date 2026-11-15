@@ -30,7 +30,7 @@ test('rewrite cache: a second visit (new page load, empty memo) reads the rewrit
 });
 
 test('rewrite cache: features.rewriteCache=false reads and writes nothing', async ({ page }) => {
-  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"rewriteCache":false}}' }));
+  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"ownRelay":true,"rewriteCache":false}}' }));
   await setup(page);
   const r = await page.evaluate(async () => {
     await window.LB_featuresReady;

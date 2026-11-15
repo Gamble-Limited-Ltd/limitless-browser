@@ -136,7 +136,8 @@ test('theme drawer opens from the toolbar, switches theme, closes on Escape and 
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('relay notice is themed, and Not now dismisses it', async ({ page }) => {
+test('relay notice is themed, and Not now dismisses it (ownRelay on, the 1.0 path)', async ({ page }) => {
+  await page.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'x', sha: 'dev', features: { ownRelay: true } }) }));
   await page.goto('/index.html');
   const notice = page.locator('#lbRelayNotice');
   await expect(notice).toBeVisible({ timeout: 30000 });

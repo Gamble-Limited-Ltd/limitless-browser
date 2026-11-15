@@ -30,3 +30,22 @@ test('fixture relay config allows non-global but blocks every private literal ex
     expect(blocked(h), h).toBe(false);
   }
 });
+
+test('0.3.0: relay and dns are compose profile relay, the gate does not require the relay, the network stays', () => {
+  const c = read('deploy/docker-compose.yml');
+  const svc = (n) => (c.match(new RegExp(`^  ${n}:\\n([\\s\\S]*?)(?=^  \\w|^networks:)`, 'm')) || [])[1] || '';
+  expect(svc('relay')).toMatch(/profiles: \["relay"\]/);
+  expect(svc('dns')).toMatch(/profiles: \["relay"\]/);
+  expect(svc('lbgate')).toMatch(/relay:\n\s+condition: service_started\n\s+required: false/);
+  expect(svc('lbgate')).toContain('RELAY_URL: ws://relay:4000/');
+  expect(svc('lbgate')).toContain('lb_relay');
+  expect(svc('web')).not.toContain('profiles');
+});
+
+test('0.3.0: prod nginx answers 410 on /wisp/ unless WISP_RELAY=1 (rehearsal only)', () => {
+  expect(read('deploy/web/nginx.conf')).toMatch(/location \^~ \/wisp\/ \{\n\s+include \/tmp\/wisp\.conf;/);
+  expect(read('deploy/web/wisp.sh')).toContain("echo 'return 410;'");
+  expect(read('deploy/web/Dockerfile')).toContain('41-wisp.sh');
+  expect(read('deploy/docker-compose.yml')).not.toContain('WISP_RELAY');
+  expect(read('deploy/rehearsal/docker-compose.rehearsal.yml')).toContain('WISP_RELAY: "1"');
+});

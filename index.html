@@ -5225,8 +5225,8 @@ html.zen-split-on #zenSplitClose { display: block; }
                                     <div class="settings-card-body">
                                         <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-route"></i></span>
                                             <div>
-                                                <div class="settings-switch-label">Allow third-party relays</div>
-                                                <div class="settings-hint">Off by default. Limitless uses its own relay. Third-party relays are not run by Gamble Limited Ltd. Changing this reloads the page.</div>
+                                                <div class="settings-switch-label" id="settingsRelayFallbackLabel">Allow third-party relays</div>
+                                                <div class="settings-hint" id="settingsRelayFallbackHint">Off by default. Limitless uses its own relay. Third-party relays are not run by Gamble Limited Ltd. Changing this reloads the page.</div>
                                             </div>
                                             <div class="settings-switch" id="settingsRelayFallbackSwitch">
                                                 <div class="settings-switch-track"><div class="settings-switch-thumb"></div></div>
@@ -8658,7 +8658,7 @@ window._libcurlReady = true;
             head(secUsage, 'Usage', 'Data used through the proxy today and over 30 days. Limits are per user.');
             if (!d) { secUsage.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
             var warns = d.rows.filter(function (r) { return r.warn.bytes || r.warn.sockets; });
-            secUsage.appendChild(el('p', 'lb-adm-note', 'Live now: ' + d.live.sockets + ' connections, ' + d.live.streams + ' streams. Default: ' +
+            secUsage.appendChild(el('p', 'lb-adm-note', (window.LB_features && window.LB_features.ownRelay === true ? 'Live now: ' + d.live.sockets + ' connections, ' + d.live.streams + ' streams. ' : 'Public relays until 1.0: no live connection counts. ') + 'Default: ' +
                 (d.defaults.bandwidthMbps > 0 ? d.defaults.bandwidthMbps + ' Mbit/s' : 'no speed limit') + ', ' + fmtBytes(d.defaults.dailyByteCap) + ' a day, ' + d.defaults.maxSockets + ' connections.'));
             if (warns.length) {
                 var w = el('p', 'lb-adm-note'); w.style.color = 'var(--warn)';
@@ -8740,9 +8740,10 @@ window._libcurlReady = true;
             if (!h) { secHealth.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
             var dl = el('dl');
             function kv(k, v, cls) { var dd = el('dd'); dd.appendChild(el('span', cls ? 'lb-adm-chip ' + cls : '', v)); dl.append(el('dt', '', k), dd); }
-            kv('Relay', h.relay.ok ? 'Up' : 'Down', h.relay.ok ? 'ok' : 'err');
+            var ownRelay = !(window.LB_features && window.LB_features.ownRelay === false);   // 0.3.0: no relay of our own, nothing to be "down"
+            if (ownRelay) kv('Relay', h.relay.ok ? 'Up' : 'Down', h.relay.ok ? 'ok' : 'err'); else kv('Relay', 'Public relays', '');
             kv('GLL ID', h.gateId.ok ? 'Reachable' : 'Not reachable', h.gateId.ok ? 'ok' : 'err');
-            dl.append(el('dt', '', 'Live now'), el('dd', '', h.live.users + (h.live.users === 1 ? ' user, ' : ' users, ') + h.live.sockets + ' connections, ' + h.live.streams + ' streams'));
+            dl.append(el('dt', '', 'Live now'), el('dd', '', h.live.users + (h.live.users === 1 ? ' user' : ' users') + (ownRelay ? ', ' + h.live.sockets + ' connections, ' + h.live.streams + ' streams' : '')));
             dl.append(el('dt', '', 'Version'), el('dd', '', h.version));
             dl.append(el('dt', '', 'Running for'), el('dd', '', dur(h.uptimeSec)));
             dl.append(el('dt', '', 'Switches'), el('dd', '', 'Sign-ins ' + (h.flags.signinsPaused ? 'paused' : 'on') + ', maintenance ' + (h.flags.maintenance ? 'on' : 'off')));

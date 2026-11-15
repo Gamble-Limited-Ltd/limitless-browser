@@ -8,3 +8,4 @@ COPY errors/ /usr/share/nginx/errors/
 COPY dist/ /usr/share/nginx/html/
 COPY dist-br/ /usr/share/nginx/br/
 COPY --chmod=755 legal-v2.sh /docker-entrypoint.d/40-legal-v2.sh
+COPY --chmod=755 wisp.sh /docker-entrypoint.d/41-wisp.sh

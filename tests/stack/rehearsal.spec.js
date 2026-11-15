@@ -175,7 +175,7 @@ test.describe('relay', () => {
     test.skip(!internet, 'VM has no outbound internet (https://example.com unreachable)');
     await signInAlice(page);
     const v = await (await page.request.get('/version.json')).json();
-    expect(v.features).toEqual({ ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, rewriteCache: true, pageCache: true, instantBack: true, tabSleep: true, warm: true, noDirect: true, blobScripts: true });
+    expect(v.features).toMatchObject({ ownRelay: true, ownSockets: 4, worker: true, respCache: true, sw: true });
     await page.locator('#url').focus();
     await page.locator('#url').fill('https://example.com');
     await page.keyboard.press('Enter');

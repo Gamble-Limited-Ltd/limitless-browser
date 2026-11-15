@@ -237,17 +237,24 @@
             // Relay defaults (Limitless): our own same-origin relay is the default. The third-party relays
             // in WISP_POOL_DEFAULTS are used only when "Allow third-party relays" is on (limitless:relay-fallback:v1).
             const LB_RELAY_FALLBACK_KEY = 'limitless:relay-fallback:v1';
-            const LB_fallbackAllowed = (function () { try { return ls.getItem(LB_RELAY_FALLBACK_KEY) === '1'; } catch { return false; } })();
-            const LB_OUR_WISP = (location.protocol === 'https:' || location.protocol === 'http:') ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/wisp/' : '';
+            // 0.3.0: our relay is off (features.ownRelay false, set from version.json by LB_applyRelayMode before the session starts).
+            // Off: LB_OUR_WISP is '' (no candidate, no probe, no notice), public relays are always on and a saved '0' is ignored
+            // (the key is kept for 1.0). On (1.0): the old behaviour, our /wisp/ first, public relays only when the key is '1'.
+            const LB_OWN_URL = (location.protocol === 'https:' || location.protocol === 'http:') ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/wisp/' : '';
+            const LB_savedFallback = () => { try { return ls.getItem(LB_RELAY_FALLBACK_KEY) === '1'; } catch { return false; } };
+            let LB_ownRelay = false;
+            let LB_OUR_WISP = '';
+            let LB_fallbackAllowed = true;
             try { localStorage.removeItem('gust_ai_ctx'); } catch (e) {} // AI assistant removed: drop its stored context
-            let WISP = (function () { try { return ls.getItem('limitless:wisp:v1') || (LB_fallbackAllowed && ls.getItem('limitless:wisp:fastest:v1')) || LB_OUR_WISP || (LB_fallbackAllowed ? "wss://wisp.mercurywork.shop/" : ""); } catch { return LB_OUR_WISP; } })();
+            const LB_initialWisp = () => { try { return ls.getItem('limitless:wisp:v1') || (LB_fallbackAllowed && ls.getItem('limitless:wisp:fastest:v1')) || LB_OUR_WISP || (LB_fallbackAllowed ? "wss://wisp.mercurywork.shop/" : ""); } catch { return LB_OUR_WISP; } };
+            let WISP = LB_initialWisp();
             // Default fallback relay used when the primary WISP is unreachable
             // (e.g. the primary is down or blocking the client's network). The
             // fallback path is enabled by default but previously shipped with no
             // server configured, so it never engaged — leaving fresh installs
             // dead whenever the primary was unreachable. A distinct public relay
             // here lets Limitless self-heal; users can override it in Settings.
-            const DEFAULT_FALLBACK_WISP = LB_fallbackAllowed ? "wss://mages.io/wisp/" : "";
+            let DEFAULT_FALLBACK_WISP = LB_fallbackAllowed ? "wss://mages.io/wisp/" : "";
 
             // ── WISP pool: round-robin across a list of public relays ──────
             // Benchmarked by raw WebSocket handshake time; the pool is only
@@ -269,15 +276,9 @@
                 "wss://mages.io/wisp/",                // 114ms
                 "wss://lichology.com/wisp/",           // 118ms
                 "wss://motor-cycle-part.org/wisp/",    // 127ms
-                "wss://area.forwardersoft.com/wisp/",  // 154ms
-                "wss://truf.the-nest.at/wisp/",        // 168ms
-                "wss://thoughts.forwardersoft.com/wisp/", // 198ms
                 "wss://wisp.terbiumon.top/wisp/",      // 223ms
                 "wss://anura.pro/",                    // 280ms
                 "wss://wisp.mercurywork.shop/",        // 294ms
-                "wss://nebulaproxy.io/wisp/",          // 304ms
-                "wss://invisiproxy.com/wisp/",         // 369ms
-                "wss://english.algebra.teacher.vocabulary.homework.forwardersoft.com/wisp/" // 361ms
             ])];
             let wispHealth = (function () { try { return JSON.parse(ls.getItem('limitless:wisp:health:v1') || '{}'); } catch { return {}; } })();
             function saveWispHealth() { try { ls.setItem('limitless:wisp:health:v1', JSON.stringify(wispHealth)); } catch {} }
@@ -309,7 +310,7 @@
             // LB_relayStatus(): { ours: 'ok' | 'down' | 'unknown', fallbackAllowed }.
             // 'unknown' until the startup probe of our own relay finishes (and always on file://).
             let _lbRelayOurs = 'unknown';
-            window.LB_relayStatus = function () { return { ours: _lbRelayOurs, fallbackAllowed: LB_fallbackAllowed }; };
+            window.LB_relayStatus = function () { return { ours: _lbRelayOurs, fallbackAllowed: LB_fallbackAllowed, ownRelay: LB_ownRelay }; };
             // Themed relay notice (docs/DESIGN.md section 4). Enabling is remembered per device; undo it in Settings > Connection.
             function LB_showRelayNotice() {
                 if (document.getElementById('lbRelayNotice') || !document.body) return;
@@ -329,12 +330,78 @@
                 m.querySelector('#lbRelayYes').onclick = () => { try { ls.setItem(LB_RELAY_FALLBACK_KEY, '1'); } catch (_) {} location.reload(); };
                 m.querySelector('#lbRelayYes').focus();
             }
-            if (LB_OUR_WISP) {
-                probeWispLatency(LB_OUR_WISP, 5000).then(ms => {
-                    _lbRelayOurs = ms == null ? 'down' : 'ok';
-                    if (ms == null && !LB_fallbackAllowed) LB_showRelayNotice();
-                }, () => {});
+            // First-load notice (0.3.0, once per device): plain words about public relays. Reuses the relay notice look and the
+            // #lbRelayNo id, so every existing "dismiss the relay notice" step also dismisses this one.
+            const LB_PUBLIC_NOTICE_KEY = 'limitless:notice-publicrelays:v1';
+            function LB_showPublicRelaysNotice() {
+                try { if (ls.getItem(LB_PUBLIC_NOTICE_KEY) === '1') return; } catch (_) {}
+                if (document.getElementById('lbRelayNotice') || !document.body) return;
+                const m = document.createElement('div');
+                m.className = 'lb-notice-wrap'; m.id = 'lbRelayNotice';
+                m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lbRelayHead');
+                m.innerHTML = '<div class="lb-notice"><span class="lb-tag">Public relays</span>' +
+                    '<h3 id="lbRelayHead">Browsing now goes through public relays.</h3>' +
+                    '<p>They are run by other operators, who can see connection metadata such as which sites you connect to. This stays until Limitless 1.0 brings its own relay.</p>' +
+                    '<div class="lb-notice-btns"><button type="button" class="lb-btn p" id="lbRelayNo">Got it</button></div></div>';
+                document.body.appendChild(m);
+                const close = () => { try { ls.setItem(LB_PUBLIC_NOTICE_KEY, '1'); } catch (_) {} m.remove(); document.removeEventListener('keydown', onKey, true); };
+                const onKey = (e) => { if (e.key === 'Escape') close(); };
+                document.addEventListener('keydown', onKey, true);
+                m.querySelector('#lbRelayNo').onclick = close;
+                m.querySelector('#lbRelayNo').focus();
             }
+            // All public relays down: a small calm card, retried by itself with a growing wait (10 s, doubling, at most 5 min).
+            // Reads the health the pool benchmark leaves in wispHealth; starts only after the boot access check passed.
+            function LB_watchRelays() {
+                let delay = window.LB_RELAY_RETRY_MS || 10000;
+                const allDown = () => { const p = getWispPool(); return p.length > 0 && p.every((u) => wispHealth[u] && wispHealth[u].healthy === false); };
+                const paint = (down) => {
+                    let el = document.getElementById('lbRelaysDown');
+                    if (!down) { if (el) el.remove(); return; }
+                    if (el) return;
+                    const mainEl = document.querySelector('main');
+                    if (!mainEl || !mainEl.parentNode) return;
+                    el = document.createElement('div');
+                    el.className = 'lb-ub show'; el.id = 'lbRelaysDown'; el.setAttribute('role', 'status');
+                    const dot = document.createElement('i'); dot.className = 'lb-ub-dot';
+                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg';
+                    msg.append('The public relays are not answering right now. Limitless keeps trying. ');
+                    const a = document.createElement('a'); a.href = 'https://status.taps-holdings.org'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Status page';
+                    msg.append(a);
+                    el.append(dot, msg);
+                    mainEl.parentNode.insertBefore(el, mainEl);
+                };
+                const tick = async () => {
+                    const down = allDown();
+                    paint(down);
+                    if (!down) return;
+                    await new Promise((r) => setTimeout(r, delay));
+                    delay = Math.min(delay * 2, 300000);
+                    try { await benchmarkWispPool(); rememberFastestRelay(); } catch (_) {}
+                    tick();
+                };
+                tick();
+            }
+            window.LB_watchRelays = LB_watchRelays;
+            // Called once, after version.json answered and before the libcurl session starts (init). Idempotent.
+            function LB_applyRelayMode(f) {
+                LB_ownRelay = !!(f && f.ownRelay === true);
+                LB_OUR_WISP = LB_ownRelay ? LB_OWN_URL : '';
+                LB_fallbackAllowed = LB_ownRelay ? LB_savedFallback() : true;
+                DEFAULT_FALLBACK_WISP = LB_fallbackAllowed ? "wss://mages.io/wisp/" : "";
+                WISP = LB_initialWisp();
+                if (LB_OUR_WISP) {
+                    probeWispLatency(LB_OUR_WISP, 5000).then(ms => {
+                        _lbRelayOurs = ms == null ? 'down' : 'ok';
+                        if (ms == null && !LB_fallbackAllowed) LB_showRelayNotice();
+                    }, () => {});
+                }
+                if (!LB_ownRelay && window.LB_access === 'ok') LB_showPublicRelaysNotice();
+                LB_paintRelaySwitch();
+                if (typeof LB_paintMultiRelay === 'function') LB_paintMultiRelay();
+            }
+            window.LB_applyRelayMode = LB_applyRelayMode;
+            window.LB_pool = () => getWispPool();   // test hook
             // Busy line hint (RELAY 3.6): when the gate reports fair share is limiting (/_lb/me busy), say once per
             // session that Data saver helps. Never turns Data saver on by itself.
             (function () {
@@ -367,12 +434,21 @@
                 };
                 setTimeout(poll, 4000);
             })();
-            (function () {
+            // Settings > Connection switch. While our relay is off it reads "Public relays (until 1.0)", on and disabled; the saved key is untouched.
+            function LB_paintRelaySwitch() {
                 const sw = document.getElementById('settingsRelayFallbackSwitch');
                 if (!sw) return;
                 sw.classList.toggle('on', LB_fallbackAllowed);
-                sw.onclick = () => { try { ls.setItem(LB_RELAY_FALLBACK_KEY, LB_fallbackAllowed ? '0' : '1'); } catch (_) {} location.reload(); };
-            })();
+                sw.classList.toggle('disabled', !LB_ownRelay);
+                sw.setAttribute('aria-disabled', LB_ownRelay ? 'false' : 'true');
+                const lab = document.getElementById('settingsRelayFallbackLabel'), hint = document.getElementById('settingsRelayFallbackHint');
+                if (lab) lab.textContent = LB_ownRelay ? 'Allow third-party relays' : 'Public relays (until 1.0)';
+                if (hint) hint.textContent = LB_ownRelay
+                    ? 'Off by default. Limitless uses its own relay. Third-party relays are not run by Gamble Limited Ltd. Changing this reloads the page.'
+                    : 'Until Limitless 1.0 brings its own relay, browsing goes through public relays run by other operators. They can see connection metadata. This cannot be turned off for now.';
+                sw.onclick = () => { if (!LB_ownRelay) return; try { ls.setItem(LB_RELAY_FALLBACK_KEY, LB_fallbackAllowed ? '0' : '1'); } catch (_) {} location.reload(); };
+            }
+            LB_paintRelaySwitch();
             // Single-shot latency is noisy (one slow handshake can make a fast
             // server look bad, or vice versa). Sample up to 10x sequentially and
             // average the successes — but bail after 3 straight failures so a
@@ -398,6 +474,7 @@
             // boot gate can await full completion no matter who kicked it off.
             function benchmarkWispPool(onProgress) {
                 if (!LB_fallbackAllowed) return Promise.resolve(); // only our own relay: nothing to rank
+                if (window.LB_access !== 'ok') return Promise.resolve(); // boot access check not passed (yet): touch no third-party relay
                 if (wispBenchmarking) return _wispBenchmarkPromise;
                 wispBenchmarking = true;
                 _wispBenchmarkPromise = (async () => {
@@ -468,26 +545,32 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true };
+            window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
-                if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
+                if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
                 try {
                     const ctl = new AbortController();
-                    const t = setTimeout(() => ctl.abort(), 4000);
+                    const t = setTimeout(() => ctl.abort(), 8000);
                     const r = await fetch(new URL('version.json', location.href).href, { cache: 'no-store', credentials: 'same-origin', signal: ctl.signal });
                     clearTimeout(t);
-                    // The gate answers 401/403 when the session is gone or revoked: load the page again through the gate (it
-                    // returns the sign-in or invite page for a document request). One try per tab session, so no loop.
+                    // Boot access check, fail closed (SPEED.md 3.5): the libcurl session starts only when this fetch answered 200.
+                    // 401: sign-in page, 403: invite page (the gate serves both); the page never gets to browsing. A 404 means a plain
+                    // static server with no gate (dev, tests): nothing to check. Anything else (5xx, gate down, no network): "Cannot reach".
                     if (r.status === 401 || r.status === 403) {
-                        let again = false;
-                        try { again = sessionStorage.getItem('limitless:gate-reload:v1') === '1'; sessionStorage.setItem('limitless:gate-reload:v1', '1'); } catch (_) {}
-                        if (!again) { location.reload(); return window.LB_features; }
-                    } else { try { sessionStorage.removeItem('limitless:gate-reload:v1'); } catch (_) {} }
-                    if (!r.ok) return window.LB_features;
+                        window.LB_access = r.status === 401 ? 'signin' : 'invite';
+                        location.replace(r.status === 401 ? '/auth/signin' : '/auth/invite');
+                        return new Promise(() => {});
+                    }
+                    // Only an unstamped dev build may skip on 404; a deployed build fails closed (Boss, REVIEW Q4).
+                    if (r.status === 404 && (window.LB_BUILD_SHA || 'dev') === 'dev') { window.LB_access = 'ok'; return window.LB_features; }
+                    if (!r.ok) { window.LB_access = 'offline'; return window.LB_features; }
+                    window.LB_access = 'ok';
                     const j = await r.json();
                     const f = j && j.features;
                     if (f && typeof f === 'object') {
                         if ('ownSockets' in f) { const n = Math.floor(Number(f.ownSockets)); window.LB_features.ownSockets = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; }
+                        if ('ownRelay' in f) window.LB_features.ownRelay = f.ownRelay === true || f.ownRelay === 1;
                         if ('worker' in f) window.LB_features.worker = f.worker !== false && f.worker !== 0;
                         if ('respCache' in f) window.LB_features.respCache = f.respCache !== false && f.respCache !== 0;
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
@@ -495,7 +578,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
-                } catch (_) {}
+                } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
             })();
 
@@ -769,7 +852,7 @@
                 const mode = document.getElementById('settingsMultiRelayMode');
                 const note = document.getElementById('settingsMultiRelayNote');
                 if (!sw || !mode) return;
-                const locked = !LB_fallbackAllowed;
+                let locked = !LB_fallbackAllowed;
                 const on = () => { try { return ls.getItem(LB_MULTI_KEY) === '1'; } catch { return false; } };
                 const paint = () => {
                     sw.classList.toggle('disabled', locked);
@@ -795,6 +878,7 @@
                     LB_router.reset();
                 });
                 paint();
+                window.LB_paintMultiRelay = () => { locked = !LB_fallbackAllowed; paint(); if (note) note.textContent = (locked ? lockedNote : '') + unlockedNote; };
             })();
 
             const $ = s => document.getElementById(s);
@@ -4839,6 +4923,20 @@
                 const el = _bootSplashEl; _bootSplashEl = null;
                 el.style.transition = 'opacity .25s'; el.style.opacity = '0';
                 setTimeout(() => el.remove(), 260);
+            }
+
+            // Boot access check failed (offline, gate or server down): the shell stays, nothing can be browsed.
+            function LB_cannotReach() {
+                if (_overlayDotsInterval) { clearInterval(_overlayDotsInterval); _overlayDotsInterval = null; }
+                overlay.classList.remove('hidden');
+                overlayText.textContent = 'Cannot reach Limitless. Check your connection and try again.';
+                if (!document.getElementById('lbCannotReach')) {
+                    const b = document.createElement('button');
+                    b.id = 'lbCannotReach'; b.type = 'button'; b.className = 'overlay-err-btn reload'; b.textContent = 'Try again';
+                    b.onclick = () => location.reload();
+                    overlayText.parentNode.appendChild(b);
+                }
+                window.addEventListener('online', () => location.reload(), { once: true });
             }
 
             function hideOverlay() {
@@ -12114,6 +12212,9 @@ _VIEWER_DL_JS +
                     await initCache();
                     log("Cache initialized", "info");
 
+                    LB_applyRelayMode(await window.LB_featuresReady);   // our relay on or off, decided before any session exists
+                    if (window.LB_access !== 'ok') { LB_cannotReach(); return; }   // fail closed: no session, no browsing
+
                     try {
                         // If the script tag itself failed (CDN unreachable, blocked, etc.)
                         // the onerror handler sets window._libcurlLoadError with a reason string.
@@ -12171,7 +12272,11 @@ _VIEWER_DL_JS +
                     // boot forever — after the cap the benchmark finishes in the
                     // background and navigation proceeds.
                     // ponytail: 25s cap; raise only if huge pools routinely exceed it.
-                    if (poolModeOn() && LB_fallbackAllowed && typeof curl !== 'undefined' && curl) {
+                    // 0.3.0 (our relay off): public relays are the only path, so a 25 s hold would delay every start. The benchmark runs
+                    // behind the first page instead; pickPoolWisp ranks on whatever health data exists by then.
+                    if (!LB_ownRelay && poolModeOn() && typeof curl !== 'undefined' && curl) {
+                        benchmarkWispPool().then(() => { try { rememberFastestRelay(); } catch (e) {} LB_watchRelays(); }, () => {});
+                    } else if (poolModeOn() && LB_fallbackAllowed && typeof curl !== 'undefined' && curl) {
                         try {
                             showBootBenchmark();
                             const bench = benchmarkWispPool(setBootBenchmarkProgress).then(() => { try { rememberFastestRelay(); } catch (e) {} });

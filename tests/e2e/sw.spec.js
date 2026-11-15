@@ -51,13 +51,29 @@ test('features.sw = false unregisters the worker and clears its caches on the ne
   await expect.poll(() => cacheKeys(page)).toEqual([]);
 });
 
-test('a 401 or 403 from version.json at boot sends the page back through the gate (one reload, no loop)', async ({ page }) => {
-  await withVersion(page, {}, 401);
-  let docLoads = 0;
-  page.on('request', (r) => { if (r.isNavigationRequest() && r.frame() === page.mainFrame()) docLoads++; });
-  await page.addInitScript(stamp, SHA);
-  await page.goto('/index.html');
-  await expect.poll(() => docLoads, { timeout: 15000 }).toBe(2);
-  await page.waitForTimeout(3000);
-  expect(docLoads).toBe(2);
+test('a 401 or 403 from version.json at boot sends the page to the sign-in or invite page, and no session starts', async ({ page }) => {
+  for (const [status, path] of [[401, '/auth/signin'], [403, '/auth/invite']]) {
+    await page.unroute('**/version.json').catch(() => {});
+    await withVersion(page, {}, status);
+    await page.route('**' + path, (r) => r.fulfill({ contentType: 'text/html', body: '<title>gate page</title>' }));
+    await page.addInitScript(stamp, SHA);
+    await page.goto('/index.html');
+    await expect.poll(() => new URL(page.url()).pathname, { timeout: 15000 }).toBe(path);
+  }
+});
+
+test('worker active and version.json unreachable: "Cannot reach Limitless", no session (version.json is never answered by the worker)', async ({ page }) => {
+  await withVersion(page, { sw: true });
+  await boot(page, { init: stamp, arg: SHA });
+  await expect.poll(() => registrations(page)).toHaveLength(1);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
+  expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  await expect.poll(async () => (await cacheKeys(page)).join('\n')).toContain('/app/main.js');
+  await page.unroute('**/version.json');
+  await page.route('**/version.json', (r) => r.abort('internetdisconnected'));   // the worker never answers version.json, so the page sees the network error
+  await page.reload();
+  await expect(page.locator('#overlayText')).toHaveText(/Cannot reach Limitless/, { timeout: 30000 });
+  expect(await page.evaluate(() => ({ access: window.LB_access, curl: window.LB_net.curl }))).toEqual({ access: 'offline', curl: null });
 });

@@ -40,7 +40,7 @@ function mockApi(page, over = {}) {
     if (path === 'flags' && method === 'GET') return route.fulfill(json(st.flags));
     if (path === 'health') {
       return route.fulfill(json({
-        version: 'abc1234', uptimeSec: 3700, relay: { ok: true, checkedAt: Date.now() }, gateId: { ok: false, checkedAt: Date.now() },
+        version: 'abc1234', uptimeSec: 3700, relay: { ok: !over.relayDown, checkedAt: Date.now() }, gateId: { ok: false, checkedAt: Date.now() },
         live: { sockets: 3, streams: 8, users: 2 }, flags: st.flags, totals: { wisp_opened: 42, login_ok: 7 },
       }));
     }
@@ -68,8 +68,9 @@ function mockApi(page, over = {}) {
   return st;
 }
 
-async function boot(page) {
+async function boot(page, { features = { ownRelay: true } } = {}) {
   const errors = [];
+  await page.context().route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'dev', sha: 'dev', features }) }));
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto('/index.html');
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
@@ -107,6 +108,17 @@ test.describe('admin panel entry', () => {
 });
 
 test.describe('admin page', () => {
+  for (const [ownRelay, want, not] of [[false, 'Public relays', 'Down'], [true, 'Down', 'Public relays']]) {
+    test(`Health relay row with features.ownRelay=${ownRelay} and a relay that is down`, async ({ page }) => {
+      mockApi(page, { relayDown: true });
+      await boot(page, { features: { ownRelay } });
+      await openAdmin(page);
+      const row = page.locator('#lbAdmin dt', { hasText: 'Relay' }).locator('xpath=following-sibling::dd[1]');
+      await expect(row).toHaveText(want);
+      await expect(row).not.toHaveText(not);
+    });
+  }
+
   test('renders Users, Usage, Switches and Health from the API', async ({ page }) => {
     const st = mockApi(page);
     const errors = await boot(page);

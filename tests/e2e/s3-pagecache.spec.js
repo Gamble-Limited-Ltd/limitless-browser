@@ -80,7 +80,7 @@ test('page cache: nothing is stored without explicit freshness, and features.pag
 });
 
 test('page cache off by switch', async ({ page }) => {
-  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"pageCache":false}}' }));
+  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"ownRelay":true,"pageCache":false}}' }));
   await setup(page);
   await page.evaluate(async ([o, h, b]) => { await window.LB_featuresReady; __respond(o + '/p', { headers: h, body: b }); }, [O, HEAD, DOC('One')]);
   await visit(page, O + '/p');

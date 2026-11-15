@@ -40,7 +40,7 @@ test('instant Back: no network, under 150 ms, scroll restored; Forward too', asy
 });
 
 test('instant Back off (features.instantBack=false): Back fetches again', async ({ page }) => {
-  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"instantBack":false}}' }));
+  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"abc","features":{"ownRelay":true,"instantBack":false}}' }));
   await setup(page);
   await page.evaluate(async ([o, a, b]) => {
     await window.LB_featuresReady;

@@ -2,6 +2,14 @@
 
 What changed, in plain language. Newest first.
 
+## Unreleased 0.3.0
+
+- Limitless now browses through public relays, run by other operators, until Limitless 1.0 brings its own relay. They can see connection metadata, such as which sites you connect to, but not what is inside secure (https) connections. You see a short note about this the first time you open Limitless, and Settings, Connection shows "Public relays (until 1.0)".
+- If every public relay stops answering, a small note says so, links to the status page and keeps trying by itself.
+- Limitless now checks your access before it connects to anything. If you are signed out you go to the sign-in page, and if you are offline you see "Cannot reach Limitless" instead of a half working page.
+- The list of public relays was cleaned up: six that no longer answer were removed.
+- Remembering pages for the next visit and warming up favourite sites are switched off for now. They come back in a later release.
+
 ## Unreleased 1.0.0
 
 - Ad and tracker blocking now uses a maintained list of about 90,000 domains and checks them much faster. A site is blocked when its address, or the main domain above it, is on the list. Similar-looking names and links that only mention a blocked name are not blocked. Your own filters and the per-site exceptions work as before.
