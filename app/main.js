@@ -2880,18 +2880,48 @@
                 return [...DEFAULT_BLOCKED_SELECTORS, ...getCustomFilters().cosmetic];
             }
 
+            // SPEED 4.7: host-suffix blocklist (Set, one lookup per label). Until vendor/blocklist loads, SKIP_DOMAINS (substring) is the fallback.
+            const LB_blocklist = (() => {
+                const FILE = 'vendor/blocklist/2026-11-14/hosts.txt';
+                let set = null, pending = null;
+                const legacy = () => SKIP_DOMAINS.filter(d => /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d));   // domain-like old entries stay blocked after the list loads
+                function hostBlocked(host) {
+                    if (!set) return false;
+                    for (let h = host; ; ) {
+                        if (set.has(h)) return true;
+                        const i = h.indexOf('.');
+                        if (i < 0) return false;
+                        h = h.slice(i + 1);
+                    }
+                }
+                function setList(arr) { set = new Set(arr); legacy().forEach(d => set.add(d)); }
+                function load() {
+                    if (set) return Promise.resolve(true);
+                    if (!pending) pending = fetch(FILE, { cache: 'force-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+                        .then(t => { setList(t.split('\n').filter(l => l && l.charCodeAt(0) !== 35)); return true; })
+                        .catch(() => { pending = null; return false; });
+                    return pending;
+                }
+                return { hostBlocked, setList, load, loaded: () => !!set, size: () => set ? set.size : 0, reset: () => { set = null; pending = null; } };
+            })();
+            window.LB_blocklist = LB_blocklist;
+            if (location.protocol !== 'file:') setTimeout(() => LB_blocklist.load(), 2500);   // after boot; cached immutable by the service worker
+
             function shouldSkip(url) {
                 if (!blockEnabled) return false;
                 try {
                     const urlObj = new URL(url);
                     const host = urlObj.hostname.toLowerCase();
                     const full = url.toLowerCase();
-                    const allSkipped = [...SKIP_DOMAINS, ...getCustomFilters().network];
-                    return allSkipped.some(d => host.includes(d) || full.includes(d));
+                    if (getCustomFilters().network.some(d => host.includes(d) || full.includes(d))) return true;
+                    if (LB_blocklist.loaded()) return LB_blocklist.hostBlocked(host);
+                    return SKIP_DOMAINS.some(d => host.includes(d) || full.includes(d));
                 } catch {
                     return false;
                 }
             }
+            window.LB_shouldSkip = shouldSkip;
+            window.LB_setBlock = (on) => setBlockEnabled(on);
 
             function loadBookmarks() {
                 try {
@@ -5752,8 +5782,9 @@
                 }
             }
 
+            window.LB_makeProxyScript = (...a) => makeProxyScript(...a);
             function makeProxyScript(baseUrl, blockEnabled = true, webrtcBlock = false, pageUA = null, spellcheck = false) {
-                const proxySkipList = [...SKIP_DOMAINS, ...getCustomFilters().network];
+                const proxySkipList = getCustomFilters().network;
                 return `(function(){
 if(window.__P) return;
 window.__P = true;
@@ -5772,6 +5803,7 @@ const Base64=(()=>{const C='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 const BASE = ${JSON.stringify(baseUrl)};
 const ORIGIN = new URL(BASE).origin;
 const SKIP = ${JSON.stringify(proxySkipList)};
+const SKIP_LEGACY = ${JSON.stringify(SKIP_DOMAINS)};   // used until the top window has loaded vendor/blocklist
 const BLOCK_ENABLED = ${JSON.stringify(!!blockEnabled)};
 const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
@@ -5784,7 +5816,12 @@ const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl
 
 function shouldSkip(url) {
   if (!BLOCK_ENABLED) return false;
-  try { const h = new URL(url).hostname.toLowerCase(); return SKIP.some(d => h.includes(d)); } catch { return false; }
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    if (SKIP.some(d => h.includes(d))) return true;
+    let bl = null; try { bl = window.top.LB_blocklist; } catch {}
+    return bl && bl.loaded() ? bl.hostBlocked(h) : SKIP_LEGACY.some(d => h.includes(d));
+  } catch { return false; }
 }
 
 const assetsPath = BASE.substring(0, BASE.lastIndexOf('/') + 1);
