@@ -420,6 +420,7 @@
             // boot gate can await full completion no matter who kicked it off.
             function benchmarkWispPool(onProgress) {
                 if (!LB_fallbackAllowed) return Promise.resolve(); // only our own relay: nothing to rank
+                if (window.LB_access !== 'ok') return Promise.resolve(); // boot access check not passed (yet): touch no third-party relay
                 if (wispBenchmarking) return _wispBenchmarkPromise;
                 wispBenchmarking = true;
                 _wispBenchmarkPromise = (async () => {
@@ -491,21 +492,25 @@
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
             window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true };
+            window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
-                if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
+                if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
                 try {
                     const ctl = new AbortController();
-                    const t = setTimeout(() => ctl.abort(), 4000);
+                    const t = setTimeout(() => ctl.abort(), 8000);
                     const r = await fetch(new URL('version.json', location.href).href, { cache: 'no-store', credentials: 'same-origin', signal: ctl.signal });
                     clearTimeout(t);
-                    // The gate answers 401/403 when the session is gone or revoked: load the page again through the gate (it
-                    // returns the sign-in or invite page for a document request). One try per tab session, so no loop.
+                    // Boot access check, fail closed (SPEED.md 3.5): the libcurl session starts only when this fetch answered 200.
+                    // 401: sign-in page, 403: invite page (the gate serves both); the page never gets to browsing. A 404 means a plain
+                    // static server with no gate (dev, tests): nothing to check. Anything else (5xx, gate down, no network): "Cannot reach".
                     if (r.status === 401 || r.status === 403) {
-                        let again = false;
-                        try { again = sessionStorage.getItem('limitless:gate-reload:v1') === '1'; sessionStorage.setItem('limitless:gate-reload:v1', '1'); } catch (_) {}
-                        if (!again) { location.reload(); return window.LB_features; }
-                    } else { try { sessionStorage.removeItem('limitless:gate-reload:v1'); } catch (_) {} }
-                    if (!r.ok) return window.LB_features;
+                        window.LB_access = r.status === 401 ? 'signin' : 'invite';
+                        location.replace(r.status === 401 ? '/auth/signin' : '/auth/invite');
+                        return new Promise(() => {});
+                    }
+                    if (r.status === 404) { window.LB_access = 'ok'; return window.LB_features; }
+                    if (!r.ok) { window.LB_access = 'offline'; return window.LB_features; }
+                    window.LB_access = 'ok';
                     const j = await r.json();
                     const f = j && j.features;
                     if (f && typeof f === 'object') {
@@ -518,7 +523,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
-                } catch (_) {}
+                } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
             })();
 
@@ -4833,6 +4838,20 @@
                 const el = _bootSplashEl; _bootSplashEl = null;
                 el.style.transition = 'opacity .25s'; el.style.opacity = '0';
                 setTimeout(() => el.remove(), 260);
+            }
+
+            // Boot access check failed (offline, gate or server down): the shell stays, nothing can be browsed.
+            function LB_cannotReach() {
+                if (_overlayDotsInterval) { clearInterval(_overlayDotsInterval); _overlayDotsInterval = null; }
+                overlay.classList.remove('hidden');
+                overlayText.textContent = 'Cannot reach Limitless. Check your connection and try again.';
+                if (!document.getElementById('lbCannotReach')) {
+                    const b = document.createElement('button');
+                    b.id = 'lbCannotReach'; b.type = 'button'; b.className = 'overlay-err-btn reload'; b.textContent = 'Try again';
+                    b.onclick = () => location.reload();
+                    overlayText.parentNode.appendChild(b);
+                }
+                window.addEventListener('online', () => location.reload(), { once: true });
             }
 
             function hideOverlay() {
@@ -12102,6 +12121,7 @@ _VIEWER_DL_JS +
                     log("Cache initialized", "info");
 
                     LB_applyRelayMode(await window.LB_featuresReady);   // our relay on or off, decided before any session exists
+                    if (window.LB_access !== 'ok') { LB_cannotReach(); return; }   // fail closed: no session, no browsing
 
                     try {
                         // If the script tag itself failed (CDN unreachable, blocked, etc.)

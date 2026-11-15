@@ -33,3 +33,29 @@ test('libcurl loads its WASM from the vendored file and boots', async ({ page })
   expect(await page.evaluate(() => libcurl.ready || new Promise((ok) => document.addEventListener('libcurl_load', () => ok(true), { once: true })))).toBe(true);
   expect(errors).toEqual([]);
 });
+
+// SPEED 3.5, fail closed: the libcurl session is created only after the gated version.json answered 200.
+test('boot: no session until version.json answers 200', async ({ page }) => {
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await page.route('**/version.json*', async (r) => { await held; await r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'x', sha: 'dev', features: { ownRelay: true } }) }); });
+  await page.goto('/index.html');
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => ({ access: window.LB_access, curl: window.LB_net.curl }))).toEqual({ access: 'pending', curl: null });
+  release();
+  await expect.poll(() => page.evaluate(() => !!window.LB_net.curl), { timeout: 30000 }).toBe(true);
+  expect(await page.evaluate(() => window.LB_access)).toBe('ok');
+});
+
+for (const mode of ['network error', 'server 503']) {
+  test(`boot: ${mode} shows "Cannot reach Limitless" and starts no session`, async ({ page }) => {
+    await page.route('**/version.json*', (r) => (mode === 'network error' ? r.abort('connectionrefused') : r.fulfill({ status: 503, body: 'down' })));
+    const ws = [];
+    page.on('websocket', (w) => ws.push(w.url()));
+    await page.goto('/index.html');
+    await expect(page.locator('#overlayText')).toHaveText(/Cannot reach Limitless/, { timeout: 30000 });
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => ({ access: window.LB_access, curl: window.LB_net.curl }))).toEqual({ access: 'offline', curl: null });
+    expect(ws).toEqual([]);
+  });
+}
