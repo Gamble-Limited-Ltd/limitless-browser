@@ -4088,6 +4088,159 @@
                 const aboutWn = $('lbAboutWhatsNew');
                 if (aboutWn) aboutWn.addEventListener('click', (e) => { e.preventDefault(); go(LB_WHATS_NEW, true); });
             }
+            // ===== S9 plans (docs/1.0/PAID-TIERS-PLAN.md 10c): plans page, account panel, request form, expiry and fallback notices.
+            // Kept in separate lb-plans* functions so the S6 notices merge stays trivial. Display only: every decision is the gate's.
+            {
+                const PLANS_URL = 'limitless://plans';
+                const TIER_NAME = { ordinal: 'Ordinal', cardinal: 'Cardinal', prime: 'Prime', executive: 'Executive' };
+                const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+                const fmtDate = (ms) => new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                const money = (n) => (n === null || n === undefined ? 'by invitation' : n === 0 ? 'Free' : '$' + n + ' per year');
+                const planPost = async (path, body) => {
+                    try {
+                        const r = await fetch(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+                        let j = {}; try { j = await r.json(); } catch (_) {}
+                        return { status: r.status, json: j };
+                    } catch (_) { return { status: 0, json: {} }; }
+                };
+                const css = document.createElement('style');
+                css.textContent = '.lb-pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}.lb-pl-card{border:1px solid var(--bd);border-radius:10px;padding:14px;background:var(--bg1,var(--bg0))}.lb-pl-card h3{margin:0 0 6px}.lb-pl-card.now{border-color:var(--ac)}.lb-pl-card ul{margin:6px 0;padding-left:18px}.lb-pl-card li{margin:2px 0}.lb-pl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.lb-pl-in{font:inherit;color:var(--tx);background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:8px;max-width:100%}.lb-pl-btn{font:inherit;color:var(--tx);background:var(--bg1,var(--bg0));border:1px solid var(--ac);border-radius:8px;padding:8px 14px;cursor:pointer}.lb-pl-btn:disabled{opacity:.5;cursor:default}.lb-pl-btn:focus-visible,.lb-pl-in:focus-visible{outline:2px solid var(--ac);outline-offset:2px}.lb-pl-msg{min-height:1.4em;color:var(--tx2)}.lb-pl-msg.err{color:var(--err)}@media (max-width:720px){.lb-pl-grid{grid-template-columns:1fr}}';
+                document.head.appendChild(css);
+
+                function lbPlansCatalog(me) {
+                    const p = me.plan || {}, cat = p.catalog || {};
+                    const wrap = el('div', 'lb-pl-grid');
+                    for (const t of ['ordinal', 'cardinal', 'prime']) {
+                        const c = cat[t]; if (!c) continue;
+                        const card = el('div', 'lb-pl-card' + (p.tier === t ? ' now' : '')); card.dataset.tier = t;
+                        card.appendChild(el('h3', '', TIER_NAME[t]));
+                        card.appendChild(el('p', '', money(c.priceUsdYear)));
+                        const ul = el('ul');
+                        ul.appendChild(el('li', '', c.tabs + ' open tabs'));
+                        ul.appendChild(el('li', '', t === 'ordinal' ? 'Public relays, no data allowance of ours' : (c.weeklyGb ? c.weeklyGb + ' GB per week' : c.monthlyGb + ' GB per month')));
+                        if (t !== 'ordinal') ul.appendChild(el('li', '', 'Our own relay, up to about ' + c.speedMbps + ' Mbit/s'));
+                        ul.appendChild(el('li', '', 'Downloads up to ' + c.downloadMbPerFile + ' MB per file'));
+                        card.appendChild(ul);
+                        wrap.appendChild(card);
+                    }
+                    return wrap;
+                }
+                function lbPlansAccount(me) {
+                    const p = me.plan || {};
+                    const box = el('div', 'lb-pl-account'); box.id = 'lbPlansAccount';
+                    box.appendChild(el('h2', '', 'Your plan'));
+                    box.appendChild(el('p', '', 'Member ' + (me.number || '') + ': ' + (TIER_NAME[p.tier] || 'Ordinal') + (p.paidUntil ? ', paid until ' + fmtDate(p.paidUntil) : '')));
+                    if (p.trial) box.appendChild(el('p', '', 'Trial of ' + TIER_NAME[p.trial.tier] + ' until ' + new Date(p.trial.endsAt).toLocaleString() + '.'));
+                    if (p.cap && p.cap.period) box.appendChild(el('p', '', 'Used ' + p.cap.usedGb + ' of ' + p.cap.capGb + ' GB this ' + p.cap.period + (p.topupGbLeft ? ', plus ' + p.topupGbLeft + ' GB of top-up left' : '') + '.'));
+                    if (p.fallback === 'cap') box.appendChild(el('p', 'lb-pl-msg', 'Your allowance is used up, so pages load through public relays until it resets.'));
+                    if (p.fallback === 'brake') box.appendChild(el('p', 'lb-pl-msg', 'Our relay is resting for now, so pages load through public relays.'));
+                    if (p.tier === 'executive') box.appendChild(el('p', '', 'Load Now uses left today: ' + p.loadNowLeft));
+                    const r = p.request;
+                    if (r && r.status === 'open') box.appendChild(el('p', '', 'Your request for ' + TIER_NAME[r.tier] + ' is waiting for an answer.'));
+                    if (r && r.status === 'declined' && r.retryAfter && r.retryAfter > Date.now()) box.appendChild(el('p', '', 'Your last request was not accepted. You can ask again after ' + new Date(r.retryAfter).toLocaleString() + '.'));
+                    const rc = me.receipts || [];
+                    box.appendChild(el('h3', '', 'Receipts'));
+                    if (!rc.length) box.appendChild(el('p', 'lb-wn-state', 'No payments yet.'));
+                    else { const ul = el('ul'); for (const x of rc) ul.appendChild(el('li', '', fmtDate(x.paidOn) + ': ' + (TIER_NAME[x.tier] || x.tier) + ' ' + x.kind + (x.amount != null ? ', $' + x.amount : '') + (x.howPaid ? ', ' + x.howPaid : '') + (x.paidUntil ? ', until ' + fmtDate(x.paidUntil) : '') + (x.voided ? ' (voided)' : ''))); box.appendChild(ul); }
+                    return box;
+                }
+                function lbPlansRequestForm(me, rerender) {
+                    const p = me.plan || {};
+                    const form = el('form', 'lb-pl-form'); form.id = 'lbPlansRequest';
+                    form.appendChild(el('h2', '', 'Ask for a plan'));
+                    const higher = ['cardinal', 'prime'].filter((t) => ['ordinal', 'cardinal', 'prime', 'executive'].indexOf(t) > ['ordinal', 'cardinal', 'prime', 'executive'].indexOf(p.tier));
+                    if (!p.plansOpen) { form.appendChild(el('p', 'lb-wn-state', 'Plans are not open for requests yet.')); return form; }
+                    if (!higher.length) { form.appendChild(el('p', 'lb-wn-state', 'You already have the highest plan you can ask for.')); return form; }
+                    const sel = el('select', 'lb-pl-in'); sel.id = 'lbPlansTier'; sel.setAttribute('aria-label', 'Plan');
+                    for (const t of higher) { const o = el('option', '', TIER_NAME[t] + ' (' + money(p.catalog && p.catalog[t] ? p.catalog[t].priceUsdYear : null) + ')'); o.value = t; sel.appendChild(o); }
+                    const note = el('textarea', 'lb-pl-in'); note.id = 'lbPlansNote'; note.maxLength = 500; note.rows = 3; note.placeholder = 'Why would you like it? One or two sentences.'; note.setAttribute('aria-label', 'Reason');
+                    const lab = el('label', 'lb-pl-row'); const box = el('input'); box.type = 'checkbox'; box.id = 'lbPlansAllowed'; lab.append(box, el('span', '', 'I am allowed to do this'));
+                    const send = el('button', 'lb-pl-btn', 'Send request'); send.type = 'submit';
+                    const msg = el('p', 'lb-pl-msg'); msg.id = 'lbPlansMsg'; msg.setAttribute('role', 'status');
+                    form.append(el('p', '', 'Boss answers every request by hand and arranges payment in person. Nothing is charged here and we never ask for card details. We aim to reply within 3 days.'), sel, note, lab, send, msg);
+                    form.onsubmit = async (e) => {
+                        e.preventDefault(); msg.className = 'lb-pl-msg'; 
+                        if (!note.value.trim()) { msg.className = 'lb-pl-msg err'; msg.textContent = 'Please say why in a sentence.'; return; }
+                        if (!box.checked) { msg.className = 'lb-pl-msg err'; msg.textContent = 'Please tick the box to continue.'; return; }
+                        send.disabled = true; msg.textContent = 'Sending';
+                        const r = await planPost('/_lb/plan-request', { tier: sel.value, note: note.value.trim(), allowed: true });
+                        send.disabled = false;
+                        if (r.status === 200) { rerender(); return; }
+                        msg.className = 'lb-pl-msg err';
+                        msg.textContent = r.status === 0 ? 'You look to be offline. Try again when you are back.' : r.status === 429 ? 'You asked recently. Please try again a little later.' : r.status === 409 ? 'You already have a request waiting, or already hold this plan.' : 'The request could not be sent. Try again in a moment.';
+                    };
+                    return form;
+                }
+                function lbPlansTrial(me, rerender) {
+                    const p = me.plan || {};
+                    if (!p.plansOpen || !p.trialAvailable) return null;
+                    const nextTier = p.tier === 'ordinal' ? 'cardinal' : 'prime';
+                    const row = el('div', 'lb-pl-row');
+                    const b = el('button', 'lb-pl-btn', 'Try ' + TIER_NAME[nextTier] + ' for 24 hours'); b.type = 'button'; b.id = 'lbPlansTrial';
+                    const msg = el('span', 'lb-pl-msg'); msg.setAttribute('role', 'status');
+                    b.onclick = async () => { b.disabled = true; const r = await planPost('/_lb/trial'); if (r.status === 200) rerender(); else { b.disabled = false; msg.className = 'lb-pl-msg err'; msg.textContent = 'The trial could not start right now.'; } };
+                    row.append(b, msg);
+                    return row;
+                }
+                function lbPlansRender(root, me) {
+                    const inner = el('div', 'lb-wn-in');
+                    inner.appendChild(el('h1', '', 'Plans'));
+                    inner.appendChild(el('p', '', 'Typical limits for each plan. They may change with notice. Prices are per year.'));
+                    inner.appendChild(lbPlansCatalog(me));
+                    inner.appendChild(el('p', 'lb-wn-state', 'Further plans are granted by invitation.'));
+                    inner.appendChild(lbPlansAccount(me));
+                    const tr = lbPlansTrial(me, () => lbPlansOpen(root)); if (tr) inner.appendChild(tr);
+                    inner.appendChild(lbPlansRequestForm(me, () => lbPlansOpen(root)));
+                    root.replaceChildren(inner);
+                }
+                let plansToken = 0;
+                async function lbPlansOpen(root) {
+                    const my = ++plansToken;
+                    const state = (t, retry) => { const d = el('div', 'lb-wn-in'); d.appendChild(el('h1', '', 'Plans')); d.appendChild(el('p', 'lb-wn-state', t)); if (retry) { const b = el('button', 'lb-pl-btn', 'Try again'); b.type = 'button'; b.onclick = () => lbPlansOpen(root); d.appendChild(b); } root.replaceChildren(d); };
+                    if (navigator.onLine === false) { state('You look to be offline. Plans need a connection.', true); return; }
+                    state('Loading');
+                    try {
+                        const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin' });
+                        if (!r.ok) throw new Error('http ' + r.status);
+                        const me = await r.json();
+                        if (my !== plansToken) return;
+                        if (me.membership !== 'on') { state('Plans are not available yet.'); return; }
+                        window.LB_member = me;
+                        lbPlansRender(root, me);
+                    } catch (_) { if (my === plansToken) state('Plans could not be loaded.', true); }
+                }
+                // Notices: 14 and 3 days before the plan ends, and once when a fallback to public relays starts. Each shows once.
+                function lbPlansBanner(id, text) {
+                    const mainEl = document.querySelector('main');
+                    if (!mainEl || !mainEl.parentNode || document.getElementById(id)) return;
+                    const ub = el('div', 'lb-ub show'); ub.id = id; ub.setAttribute('role', 'status');
+                    const msg = el('span', 'lb-ub-msg', text);
+                    const open = el('button', 'lb-ub-x', 'Plans'); open.type = 'button'; open.onclick = () => { ub.remove(); go(PLANS_URL, true); };
+                    const x = el('button', 'lb-ub-x'); x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.title = 'Dismiss'; x.innerHTML = '<i class="fas fa-xmark"></i>'; x.onclick = () => ub.remove();
+                    ub.append(el('i', 'lb-ub-dot'), msg, el('span', 'lb-ub-gap'), open, x);
+                    mainEl.parentNode.insertBefore(ub, mainEl);
+                }
+                const once = (key) => { try { if (localStorage.getItem(key)) return false; localStorage.setItem(key, '1'); } catch (_) {} return true; };
+                function lbPlansExpiryNotice(me) {
+                    const p = me && me.plan; if (!p || !p.paidUntil || p.tier === 'ordinal') return;
+                    const left = p.paidUntil - Date.now(); if (left <= 0) return;
+                    const days = left / 86400000;
+                    const stage = days <= 3 ? '3' : days <= 14 ? '14' : null; if (!stage) return;
+                    if (once('limitless:plan-expiry:' + p.paidUntil + ':' + stage)) lbPlansBanner('lbPlansExpiry', 'Your ' + TIER_NAME[p.tier] + ' plan ends on ' + fmtDate(p.paidUntil) + '.');
+                }
+                function lbPlansFallbackNotice(me) {
+                    const f = me && me.plan && me.plan.fallback; if (!f) return;
+                    if (once('limitless:plan-fallback:' + f + ':' + new Date().toISOString().slice(0, 7))) lbPlansBanner('lbPlansFallback', f === 'cap' ? 'Your allowance is used up, so pages load through public relays until it resets.' : 'Our relay is resting, so pages load through public relays for now.');
+                }
+                document.addEventListener('lb-member', (e) => { try { lbPlansExpiryNotice(e.detail); lbPlansFallbackNotice(e.detail); } catch (_) {} });
+                {
+                    const plEl = el('div', 'lb-wn'); plEl.id = 'lbPlans';
+                    newtab.parentElement.appendChild(plEl);
+                    SKIN_PAGES[PLANS_URL] = { title: 'Plans', open: () => { plEl.classList.add('show'); lbPlansOpen(plEl); }, close: () => { plansToken++; plEl.classList.remove('show'); } };
+                    const link = $('lbAboutPlans');
+                    if (link) link.addEventListener('click', (e) => { e.preventDefault(); go(PLANS_URL, true); });
+                }
+            }
             // Hooks for self-contained internal pages that live in their own script (the owner admin panel).
             window.LB_pages = SKIN_PAGES;
             window.LB_go = (u) => go(u, true);

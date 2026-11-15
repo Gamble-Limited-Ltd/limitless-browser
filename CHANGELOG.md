@@ -4,6 +4,7 @@ What changed, in plain language. Newest first.
 
 ## Unreleased 1.0.0
 
+- New Plans page (About, Plans): the three plans with typical limits, your own plan and usage, your receipts, a 24 hour trial button and a short form to ask for a plan. Nothing is charged in the app and no card details are ever asked for. A note appears 14 and 3 days before a plan ends, and the first time your allowance sends you to public relays. Plans are not open for requests until the switch is turned on.
 - New Downloads panel in the menu: a queue with progress, pause and resume, retry and cancel. Files over your plan's size limit, or over 2 GB, are refused before they start.
 
 ## 0.3.0

@@ -1,5 +1,7 @@
 # Limitless Browser paid tiers: plan (DRAFT, thinking only)
 
+Status 2026-11-15: S9 built on `slice/1.0-plans` (gate, Browser, HALL `feat/limitless-plans`), none merged or deployed. `plans_open` ships OFF. The email copy to support is an outbox table only (no mail path exists). Placeholder numbers unchanged.
+
 Status: planning from Boss's answers, 2026-11-13. Nothing is bought, built or announced. All numbers are
 placeholders until the relay VM exists and the automated tests have measured real speeds. Boss plans to test as much
 as possible before release, so published numbers will be measured ones.
