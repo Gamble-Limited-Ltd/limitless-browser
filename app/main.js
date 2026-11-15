@@ -542,6 +542,8 @@
                     try {
                         const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin' });
                         const j = r.ok ? await r.json() : null;
+                        // Membership reader (S5): the gate's /_lb/me fields for the UI slice (S6); read-only, display only.
+                        if (j && j.membership === 'on') { window.LB_member = j; try { document.dispatchEvent(new CustomEvent('lb-member', { detail: j })); } catch (_) {} }
                         if (j && j.busy === true) { show(); return; }
                     } catch (_) {}
                     setTimeout(poll, 120000);

@@ -10,6 +10,14 @@ Everything that decides access is enforced by the gate and nginx. The app only d
 > status; never the name or the browser address). No plan has moderation immunity. Number rules by tier: section 4 (four digits;
 > Ordinal and Cardinal non-prime, Prime prime only, Executive its own block). Libraries fixed: `pdf-lib` and `qrcode` (both MIT).
 
+> **S5 build status (2026-11-15, branch `slice/1.0-membership` in `~/limitless-gate` and here, not merged, not deployed):**
+> built: sections 2 (reasons, WISP verdicts, kill switch `MEMBERSHIP`, default **off**), 3 (Executive invites, Boss-only, 7 days, single use, kmlhs.org; no email is ever sent, Boss copies the link),
+> 3.5 lbgate side (any signed-in GLL ID gets an Ordinal row), 4 (numbers, migration script), 5 (plans table, limits engine, placeholders, `plans_open` OFF), 6 (a minimal functional ceremony: number, charter and name, done page; the designed
+> ceremony and tour are S6), 7 (certificate PDF with placeholder standard fonts), 9 (tables, name encryption, hourly sweep), 11 (`/_lb/me`, certificate.pdf, public `/_lb/verify/<code>`), 12 gate tests and the migration rehearsal.
+> **Not built:** the `access_requests`, `notices`, `reports`, `perf_daily` tables (dropped or S7/S9); trial, top-up and plan-request flows (S9); the read-only suspended view of the membership page (S6: `/_lb/me` is behind the same gate that refuses a suspended member); stack specs for the full invite to certificate path (they need the rehearsal stack, not run in S5); Pinyon Script and Cormorant Garamond fonts in the PDF.
+> Deviations: Prime and Executive caps use the review example (100 and 250 GB per month); a plan grant needs `number` when the member's number does not fit the tier.
+> HALL text needed (S9 or release): verify page (genuine, lapsed, superseded, void; number, tier, admitted date; never a name or address; distinct look per tier), Privacy lines for every table in section 9 (legal name of members aged 13 to 17 and why, signature, standing history, receipts 7 years, invites with a kmlhs.org email 30 days, certificate rows, usage counters 30 days), Rules text for numbers (four digits, retired forever, Prime primes only, reserved on request), Charter and the Director's letter text (placeholder in `src/charter.ts`), the "no refund and certificate stays a keepsake after expiry" wording, and the Executive invitation wording note.
+
 ## 1. Concepts
 - **Member:** a GLL ID account approved for Limitless (GATE per-app approval, client `limitless-browser`) that has a
   membership row in the gate. Boss (`OWNER_SUB`) is No. 0000, tier Executive.
@@ -247,4 +255,4 @@ round trip and wrong-key failure, purge sweep, `MEMBERSHIP=off` behaviour.
 Stack (rehearsal): full invite -> redeem -> sign-in -> ceremony -> certificate -> verify; existing member ceremony;
 suspend and remove while a socket is open (closed within 2 s); invite refused for a non-kmlhs.org email.
 
-Last verified: 2026-11-14
+Last verified: 2026-11-15
