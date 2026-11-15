@@ -1,0 +1,12 @@
+/* Limitless Browser 1.0 UI (slice S6, docs/1.0/UI.md). Tokens only (--lb-*, mapped vars from chrome.css). Skins keep upstream
+   behaviour: new chrome is scoped to html[data-lb-theme]:not([data-skin]) where it would clash with a skin. */
+
+.lb-i { width: 18px; height: 18px; flex: none; display: inline-block; vertical-align: middle; }
+
+/* ---------- Paid theme tiles ---------- */
+.lb-tcard { position: relative; }
+.lb-tplan { font: 500 10px var(--lb-fm); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); }
+.lb-seal { display: none; position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; padding: 3px; border-radius: 50%; background: var(--lb-bg); color: var(--lb-fg); border: 1px solid var(--lb-line); }
+.lb-tcard[data-locked] .lb-seal { display: block; }
+.lb-tcard[data-locked] .lb-tprev { opacity: .55; }
+.lb-drow[data-locked] { color: var(--tx3); }

@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.0.0 (in progress, not released)
+
+- Five new themes for paid plans: Ink blue and Silver (Cardinal), Garnet (Prime), Gilt and Onyx (Executive). Vault now belongs to the paid plans too.
+- A theme your plan does not include shows a small seal and a short note. If a plan ends, Limitless moves you back to the last free theme you used.
+
 ## 0.3.0
 
 - Limitless now browses through public relays, run by other operators, until Limitless 1.0 brings its own relay. They can see connection metadata, such as which sites you connect to, but not what is inside secure (https) connections. You see a short note about this the first time you open Limitless, and Settings, Connection shows "Public relays (until 1.0)".

@@ -31,6 +31,12 @@ font, `--lb-fm` mono font (GLL themes: DM Mono; others fall back to `ui-monospac
 | mono | GLL Monochrome | dark | #0d0d0d | #171717 | #f2f2f2 | #9a9a9a | #2e2e2e | #f2f2f2 | #bdbdbd | #0d0d0d | #1f1f1f |
 | mono | | light | #f4f4f2 | #ffffff | #141414 | #6a6a6a | #d8d8d8 | #141414 | #555555 | #ffffff | #ededeb |
 | vault | Vault | dark only | #000000 | #0b0912 | #ffffff | #d7ceb4 | #c9a84c | #e2c87a | #c9a84c | #000000 | #0b0912 |
+| ink | Ink blue (Cardinal) | dark only | #0a1224 | #111b34 | #e6ecf8 | #93a1c0 | #26345a | #7aa2ff | #b9ccf5 | #07122b | #2a3b6b |
+| silver | Silver (Cardinal) | dark | #0f1114 | #181b20 | #eceef2 | #9aa1ad | #2c3038 | #c9d0da | #8f9bb0 | #0f1114 | #232830 |
+| silver | | light | #eef0f3 | #fafbfc | #14171c | #5c6370 | #cfd3da | #3b4656 | #566174 | #ffffff | #e2e6ec |
+| garnet | Garnet (Prime) | dark only | #0d0709 | #170c10 | #efe6e8 | #a8949a | #3a1d26 | #e5506a | #f0d9dd | #0d0709 | #2a1119 |
+| gilt | Gilt (Executive) | dark only | #0c0a05 | #16120a | #f4ecd6 | #b8a982 | #3d3318 | #e6c15a | #f7e3a0 | #0c0a05 | #241c0c |
+| onyx | Onyx (Executive) | dark only | #000000 | #0a0a0a | #f5f5f5 | #a0a0a0 | #262626 | #e8d8a8 | #9aa0a8 | #000000 | #141414 |
 
 GLL theme values come from gll-shared tokens (`packages/tokens/core.css`, `ledger.css`); log the copy in `SHARDS.md`.
 
@@ -42,6 +48,10 @@ GLL theme values come from gll-shared tokens (`packages/tokens/core.css`, `ledge
 | minimal | Figtree 300 to 600 | Figtree | 8px | Almost no borders: toolbar, address bar and footer have no visible rules; search is an underline; light clock weight 300. |
 | soft | Quicksand 400 to 700 | Nunito 400 to 700 | 20px | Pill search and address bar, pastel radial fields of acc2/acc3, tiles cycle acc / acc2 / acc3 tints, soft shadows. |
 | retro | VT323 | IBM Plex Mono 400/500 | 0 | 2px lines, hard 4px offset shadows in `--lb-line`, uppercase labels; dark mode adds faint scanlines. |
+| ink | Fraunces | Outfit | 10px | Paid (Cardinal). Same chrome as the Limitless themes. |
+| silver | Bodoni Moda | Jost | 2px | Paid (Cardinal). |
+| garnet, gilt | Playfair Display | DM Sans | 2px | Paid (Prime, Executive). |
+| onyx | Bodoni Moda | Jost | 0 | Paid (Executive). Pure black. |
 | ledger, mono, vault | Playfair Display 400 to 700 | DM Sans 400 to 600 | 2px | Labels, tabs, footer and address bar in DM Mono uppercase .12em at small size; one short accent rule under the wordmark; tiles on acc3. Mono greys the GLL stamp (`filter: grayscale(1)`); Vault draws borders in full gilt. |
 
 All fonts are SIL OFL and are self-hosted as woff2 under `fonts/` with `font-display: swap` (no Google Fonts calls).

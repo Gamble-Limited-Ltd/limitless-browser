@@ -537,18 +537,23 @@
                     ub.append(dot, msg, gap, x);
                     mainEl.parentNode.insertBefore(ub, mainEl);
                 };
+                // S6: the poll never stops. It refreshes window.LB_member every two minutes (plan, standing, notices, expiry)
+                // and only the busy note is once per session. A suspended or removed member gets a 403 here and the page
+                // is replaced by the gate's notice on the next navigation, so nothing else to do.
+                let timer = 0;
                 const poll = async () => {
-                    if (seen()) return;
+                    clearTimeout(timer);
                     try {
                         const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin' });
                         const j = r.ok ? await r.json() : null;
-                        // Membership reader (S5): the gate's /_lb/me fields for the UI slice (S6); read-only, display only.
+                        // Membership reader (S5): the gate's /_lb/me fields for the UI (S6); read-only, display only.
                         if (j && j.membership === 'on') { window.LB_member = j; try { document.dispatchEvent(new CustomEvent('lb-member', { detail: j })); } catch (_) {} }
-                        if (j && j.busy === true) { show(); return; }
+                        if (j && j.busy === true && !seen()) show();
                     } catch (_) {}
-                    setTimeout(poll, 120000);
+                    timer = setTimeout(poll, 120000);
                 };
-                setTimeout(poll, 4000);
+                window.LB_meRefresh = poll;
+                timer = setTimeout(poll, 1500);
             })();
             // Settings > Connection switch. While our relay is off it reads "Public relays (until 1.0)", on and disabled; the saved key is untouched.
             function LB_paintRelaySwitch() {

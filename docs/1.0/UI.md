@@ -125,4 +125,11 @@ Run Hallmark audit and Impeccable critique on the round 2 page before showing it
 When a site shows a human check, the app shows a plain card: "This site asked for a human check. It may not work through a shared relay." No evasion
 (repo rule); the card links Report a problem (category "bot check").
 
-Last verified: 2026-11-14
+## 10. S6 build status (branch `slice/1.0-ui`, 2026-11-15)
+Gate fields the UI reads from `/_lb/me` (all exist in S5 except where marked mocked): `membership`, `number`, `tier`, `standing`,
+`standingUntil`, `name`, `admittedAt`, `certificateCode`, `plan.tier` (effective plan), `plan.paidUntil`, `plan.limits` (`tabs`,
+`dailyMinutes`), `plan.lastFreeTheme` (read; the gate has no route that writes it, so the app keeps `limitless:lastfree:v1` itself),
+`plan.plansOpen`, `notices[]` (S5 sends `[]`; the UI expects `{id, text, date}` objects, mocked in tests).
+- Done: section 1 (paid themes, Vault lock, lapse fallback, tier marks, icon sprite `theme/icons.svg`). Newer sections are listed below as they land.
+
+Last verified: 2026-11-15

@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const KEY = 'limitless:theme:v1';
-const THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault'];
+const THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'];
 // --lb-bg per docs/DESIGN.md section 1.
 const BG = {
   'luxury/dark': '#070a10', 'luxury/light': '#eeece6',
