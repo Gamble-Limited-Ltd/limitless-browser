@@ -138,7 +138,7 @@ services:
     profiles: ["loadtest"]
     image: limitless-gate:${GATE_SHA:-dev}
     # keys.json (from `node scripts/relay-keys.ts --json`) is mounted from ./lt; reports land in ./lt/out
-    command: ["node", "scripts/relay-loadtest.ts", "--relay", "ws://relaygate-lt:8080/wisp/", "--keys-file", "/lt/keys.json", "--home-port", "9100", "--mode", "${LT_MODE:-http}", "--target", "${LT_TARGET:?set LT_TARGET host:port}", "--path", "${LT_PATH:-/}", "--members", "${LT_MEMBERS:-20}", "--seconds", "${LT_SECONDS:-30}", "--max-bytes", "${LT_MAX_BYTES:-500000000}", "--cpu-file", "/lt/cpu.txt", "--out", "/lt/out"]
+    command: ["node", "scripts/relay-loadtest.ts", "--relay", "ws://relaygate-lt:8080/wisp/", "--keys-file", "/lt/keys.json", "--home-port", "9100", "--mode", "${LT_MODE:-http}", "--target", "${LT_TARGET:-set-LT_TARGET.invalid:80}", "--path", "${LT_PATH:-/}", "--members", "${LT_MEMBERS:-20}", "--seconds", "${LT_SECONDS:-30}", "--max-bytes", "${LT_MAX_BYTES:-500000000}", "--cpu-file", "/lt/cpu.txt", "--out", "/lt/out"]
     networks: [box_lt]
     read_only: true
     tmpfs: [/tmp]
