@@ -129,7 +129,7 @@ as 0.3.0 first. Sections 0.1, 0.4 and the build cards still show the old recomme
 - **Standing approval:** agents may do VPS work (`limitless-relay`), GLL ID changes and DNS records when 1.0 needs them, each logged in
   `~/gll-agents/logs/changelog.md` (host and DNS also in the vault Homelab Work Log). Still Boss's: home ports, tunnel changes, prod deploys,
   and the prod GLL ID client flip to open (done at the 1.0 deploy, not before, so 0.3.0 stays invite only).
-- **No fixed stops:** Boss steps in as it goes. **Opus reviews:** R1 after S4 + S5 merge into `release/1.0.0` (relay tokens, revoke,
+- **One fixed stop:** before any automated test on the real VPS (load, speed, revoke, failure drill); Boss says when they run, to get detailed numbers. Otherwise Boss steps in as it goes. **Opus reviews:** R1 after S4 + S5 merge into `release/1.0.0` (relay tokens, revoke,
   server-side gating, member data, migration) before S6/S7 build on the S5 API; R2 after S7 + S9 (admin, money path, `plans_open`, HALL)
   before the release gates; R3 end-of-dev review of the whole `release/1.0.0` diff before the release record.
 
