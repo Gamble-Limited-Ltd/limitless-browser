@@ -53,21 +53,26 @@ test.describe('blocklist', () => {
     expect(r.ok).toBe(false);
   });
 
-  // 0.3.0 speed gate: the 570 KB list must not compete with the first page, so it waits for an idle fetch queue.
-  test('list download waits until the fetch queue is idle', async ({ page }) => {
+  // 0.3.0 speed gate: the 570 KB list must not compete with the first page, so it waits for a finished page and an idle fetch queue.
+  test('list download waits for a finished page and an idle fetch queue', async ({ page }) => {
     const r = await page.evaluate(async () => {
       const real = window.LB_queueState;
+      const wait = (ms) => new Promise(res => setTimeout(res, ms));
       let busy = true;
       window.LB_queueState = () => ({ fetching: busy ? 3 : 0, queued: 0 });
+      window.__lbPerf.runs = [];
       LB_blocklist.reset();
       LB_blocklist.loadWhenIdle(200, 50);
-      await new Promise(res => setTimeout(res, 600));
+      await wait(600);
       const whileBusy = LB_blocklist.loaded();
       busy = false;
-      for (let i = 0; i < 40 && !LB_blocklist.loaded(); i++) await new Promise(res => setTimeout(res, 100));
+      await wait(600);
+      const idleNoPage = LB_blocklist.loaded();
+      window.__lbPerf.runs.push({ marks: { load: 10 } });
+      for (let i = 0; i < 40 && !LB_blocklist.loaded(); i++) await wait(100);
       window.LB_queueState = real;
-      return { whileBusy, after: LB_blocklist.loaded() };
+      return { whileBusy, idleNoPage, after: LB_blocklist.loaded() };
     });
-    expect(r).toEqual({ whileBusy: false, after: true });
+    expect(r).toEqual({ whileBusy: false, idleNoPage: false, after: true });
   });
 });

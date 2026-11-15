@@ -2995,12 +2995,14 @@
                         .catch(() => { pending = null; return false; });
                     return pending;
                 }
-                // The list is ~570 KB: start it only after the fetch queue has been idle for idleMs, so it never competes with a page (0.3.0 speed gate).
+                // The list is ~570 KB: start it only after a page has finished loading and the fetch queue has been idle for idleMs,
+                // so it never competes with the first page (0.3.0 speed gate; an idle queue during boot is not enough on slow devices).
                 function loadWhenIdle(idleMs = 3000, step = 500) {
                     let idle = 0;
                     const t = setInterval(() => {
                         const q = window.LB_queueState ? window.LB_queueState() : { fetching: 0, queued: 0 };
-                        idle = q.fetching || q.queued ? 0 : idle + step;
+                        const pageDone = (window.__lbPerf?.runs || []).some(r => r.marks.load != null);
+                        idle = !pageDone || q.fetching || q.queued ? 0 : idle + step;
                         if (idle >= idleMs) { clearInterval(t); load(); }
                     }, step);
                 }
