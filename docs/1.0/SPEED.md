@@ -91,7 +91,7 @@ path, e.g. `app/<sha>/inspector.js`, served `immutable`). This is the "staged hy
 
 3.6 **Boot work.** Splash hides on the first frame where the start page is interactive, not after the relay probe;
 the relay probe and `initCache` (already non-blocking since 0.2.1) run in parallel. Fonts: preload the two body faces;
-`font-display: swap` is already set.
+`font-display: swap` is already set. **Built in 0.3.0 (2026-11-14):** per theme, from the head theme script, only the boot theme's faces. **3.4 lazy subsystems moved to 1.0 (Boss, 2026-11-14).**
 
 3.7 **Patcher.** `patcher.html` matches identifiers and storage keys in `index.html`: re-check every patch definition after
 the split and update the ones that pointed into moved code.

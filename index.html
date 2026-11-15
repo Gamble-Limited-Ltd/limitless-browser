@@ -54,6 +54,14 @@
         };
         if (mq) { var cb = function () { if (st.mode === 'auto') apply(); }; if (mq.addEventListener) mq.addEventListener('change', cb); else if (mq.addListener) mq.addListener(cb); }
         apply();
+        // SPEED 3.6: preload the active theme's display and body faces (same URLs as theme/fonts.css), boot theme only.
+        var PL = { luxury: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'], fancy: ['fraunces/fraunces-normal-400-700', 'outfit/outfit-normal-300-600'],
+            minimal: ['figtree/figtree-normal-300-600'], soft: ['quicksand/quicksand-normal-400-700', 'nunito/nunito-normal-400-700'],
+            retro: ['vt323/vt323-normal-400', 'ibmplexmono/ibmplexmono-normal-400'] };
+        (PL[st.theme] || ['playfairdisplay/playfairdisplay-normal-400-700', 'dmsans/dmsans-normal-400-600']).forEach(function (f) {
+            var l = document.createElement('link'); l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous';
+            l.href = 'theme/fonts/' + f + '.woff2'; document.head.appendChild(l);
+        });
     })();
     </script>
     <link rel="stylesheet" href="theme/fonts.css" />

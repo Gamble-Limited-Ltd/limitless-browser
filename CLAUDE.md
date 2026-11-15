@@ -203,7 +203,8 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   (sessionStorage `limitless:gate-reload:v1`) so the gate shows sign-in or invite. Update: `lbCheckForUpdate` calls `registration.update()`; the banner's Reload posts `{type:'skip'}` to the waiting worker
   (it never skips waiting by itself) and then reloads.
 - **Kill switch:** `LB_FEATURE_SW=false ./deploy.sh` puts `"sw": false` in `version.json`; the next load unregisters `/sw.js` registrations and deletes `lb-shell-*` caches (index.html is network first, so a bad worker cannot block this).
-- **Not done:** lazy subsystems (inspector, extensions, log panel, PDF viewer as `app/<sha>/*.js`): they share closure state with the 1 MB main script (`selectedElement`, `elementsEl`, `ls`, `go`, ...), so moving them needs an API refactor.
+- **Font preload (SPEED 3.6, 0.3.0):** the head theme script adds `<link rel=preload as=font crossorigin>` for the boot theme's display and body faces only (map `PL`, URLs must match `theme/fonts.css`; a new theme needs an entry). Test `tests/e2e/fontpreload.spec.js`.
+- **Not done:** lazy subsystems (moved to 1.0, Boss 2026-11-14) (inspector, extensions, log panel, PDF viewer as `app/<sha>/*.js`): they share closure state with the 1 MB main script (`selectedElement`, `elementsEl`, `ls`, `go`, ...), so moving them needs an API refactor.
   `build-static.sh` already copies a source `app/` dir to `dist/app/<sha>/` and nginx serves `/app/` immutable and gated, ready for it.
 - **Tests:** `tests/e2e/boot.spec.js`, `skins.spec.js`, `sw.spec.js`; stack `tests/stack/sw.spec.js` (signed-out and revoked with a warm worker, run under `flock /tmp/limitless-rehearsal.lock`).
 
