@@ -8,7 +8,9 @@ Stamp, not the full Gilded Ledger chrome. Copy neutral: "private browsing proxy"
 Read both before touching names, credits, license text or features.
 - **State (checked 2026-11-09):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
   `c88ce5e` (0.2.3, legal v2, `LEGAL_VERSION=2026-11-08`, deployed by Boss 2026-11-08; the hash was written by hand on 2026-11-09, see Deploy).
-- **Next (planned, nothing started, 2026-11-14):** 0.3.0 speed release (S1, S2a, S2b, S3) with the home relay switched off (public relays only), then
+- **In progress (2026-11-14):** 0.3.0 speed release on `release/0.3.0` (worktree `~/gll-worktrees/Browser-0.3.0`). S1, S2a, S2b, S3 and fetch core were
+  already built 2026-11-10 to 11-12 on `slice/1.0-*` and merged via `release/1.0.0`; Boss chose to reuse them (2026-11-14). Building now:
+  relay off (public relays only) and the blocklist. `slice/1.0-edge` (relay box) is held for 1.0 S4. Then
   1.0.0 (VPS relay, membership, UI, admin, paid tiers). Plan and decisions: `docs/1.0/PLAN.md` section 0.2b; build cards in section 8.
 - Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are
   cherry-picked by hand; the fork was in step with `upstream/main` 08515a7 as of 2026-10-18.
