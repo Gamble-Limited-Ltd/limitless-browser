@@ -30,7 +30,7 @@ No build system, lint or CI. `package.json` exists only for the Playwright test 
   same-origin `./index.html`; served behind the gate.
 - `vendor/` and `fonts/` (stage 2): self-hosted third-party assets, each with its license file:
   `vendor/fontawesome/6.7.2/` (standardised on 6.7.2), `vendor/pdfjs/4.2.67/`, `vendor/iso-639-1/2.1.11/`, `fonts/`
-  (JetBrains Mono, Space Grotesk, `fonts/fonts.css`), plus (S2) `vendor/libcurl/0.7.4/` (`libcurl.wasm`, LGPL notice) and `vendor/acorn/8.14.0/` (`acorn.min.js` = acorn + acorn-walk, MIT). Documents the app generates (error page, viewers) must use the
+  (JetBrains Mono, Space Grotesk, `fonts/fonts.css`), plus (S2) `vendor/libcurl/0.7.5/` (`libcurl.wasm`, LGPL notice) and `vendor/acorn/8.14.0/` (`acorn.min.js` = acorn + acorn-walk, MIT). Documents the app generates (error page, viewers) must use the
   absolute `LB_FA`, `LB_PDFJS`, `LB_FONTS_CSS` URLs, not relative paths.
 - Relays (0.3.0): our home relay is OFF (public relays only until 1.0). One feature switch `ownRelay` (`features.ownRelay` in `version.json`, build `LB_FEATURE_OWNRELAY`, default false) drives it; `LB_applyRelayMode(features)` runs in `init()` after the boot access check and before any session.
   Off: `LB_OUR_WISP` is `''` (our `/wisp/` is no candidate, no startup probe, no relay notice), public relays are always on, a saved `limitless:relay-fallback:v1` = `0` is ignored and kept for 1.0, Settings > Connection shows "Public relays (until 1.0)" disabled, the pool benchmark runs behind the first page (no 25 s boot hold), the router and `ownSockets` stay in code but inert (`LB_FEATURE_OWNSOCKETS` default 0). On (1.0, `LB_FEATURE_OWNRELAY=true LB_FEATURE_OWNSOCKETS=4`): the stage 2 behaviour, our same-origin `/wisp/` first, the 7-entry public pool (+ `mages.io`) only when the key is `1`, startup probe and notice.
@@ -188,7 +188,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 - **Tests:** `tests/e2e/fetchcore.spec.js` (stub curl, in `npm test`); `tests/stack/failures.spec.js` (fault fixtures in `tests/fixtures/sites/server.js`): `flock /tmp/limitless-rehearsal.lock env LB_FAULTS=1 deploy/rehearsal/run.sh tests/stack/failures.spec.js`. Never `git stash` in a worktree here: the stash list is shared by every checkout.
 
 ## Startup (1.0 slice S2, docs/1.0/SPEED.md section 3)
-- **Moved out of `index.html`:** the libcurl WASM binary (`vendor/libcurl/0.7.4/libcurl.wasm`, 1.4 MB; the Emscripten single-file data URI is gone, `wasmBinaryFile` is the vendored URL and
+- **Moved out of `index.html`:** the libcurl WASM binary (`vendor/libcurl/0.7.5/libcurl.wasm`, 1.4 MB; the Emscripten single-file data URI is gone, `wasmBinaryFile` is the vendored URL and
   libcurl starts `fetch` + `WebAssembly.instantiateStreaming` as soon as its inline script runs; `load_wasm()` only waits); acorn + acorn-walk (`vendor/acorn/8.14.0/acorn.min.js`, a normal
   render-blocking `<script src>` in `<head>`, cached); the skin-scoped CSS (`theme/skins.css`, rules for `html[data-skin=...]`). The unscoped skin defaults (hidden skin buttons, Settings skin tiles
   and previews) stay inline in `<style id="skinStylesSlot">`: without them the toolbar overflows. `lbEnsureSkins()` adds `<link id="skinStyles">` after the slot when a skin is active

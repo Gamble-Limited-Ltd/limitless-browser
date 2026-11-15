@@ -8,7 +8,7 @@ Detail lives in the topic docs: `REBRAND-PLAN.md` (names, credits, license), `AC
 - Fork of `nautilus-os/GUST`. Our `main` equals `upstream/main` (08515a7, 2026-10-03), so we are on the latest
   upstream. The only other upstream branch (`copilot/fix-gust-browser-errors`, 2026-04-25) is an unmerged
   experiment that deletes the SVG variant; not a release, not taken.
-- Upstream version: "GUST 2.0" (README badge only). Vendored libcurl.js 0.7.4, WISP 1.1.1, PDF.js 4.2.67.
+- Upstream version: "GUST 2.0" (README badge only). Vendored libcurl.js 0.7.5, WISP 1.1.1, PDF.js 4.2.67.
 - `index.html`: 28,664 lines, LF endings. 56 unique literal `gust:*` storage keys (docs said ~130; some keys
   are built at runtime, so the migration must scan by prefix, not by a fixed list).
 - GATE (GLL ID) v1 is live since 2026-10-17 and already has per-app approvals and `POST /oidc/access-check`
