@@ -4,6 +4,7 @@
 // verify route answers without a name. Run:
 //   flock /tmp/limitless-rehearsal.lock env LB_REHEARSAL_MEMBERSHIP=1 GATE_CONTEXT=$HOME/gll-worktrees/lbgate-s9 deploy/rehearsal/run.sh tests/stack/plans.spec.js
 const { test, expect } = require('@playwright/test');
+const { finishCeremony } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -38,8 +39,8 @@ test('plans_open off refuses; on, a request reaches the queue and the support co
   const owner = await signIn(browser, 'owner');
   expect((await admin(owner.req, '/step-up', { login: 'owner', password: 'owner-pass-1' })).status()).toBe(200);
   const alice = await signIn(browser, 'alice');
-  expect((await form(alice.req, '/auth/welcome/number', { n: '0104' })).status()).toBe(303);
-  expect((await form(alice.req, '/auth/welcome/sign', { name: 'Alice Example', agree: 'on' })).status()).toBe(303);
+  await finishCeremony(alice.req); // earlier specs may have done it already, so her number is read, not fixed
+  const aliceMe = await (await alice.req.get('/_lb/me')).json();
   const ask = { tier: 'cardinal', note: 'For school research', allowed: true };
 
   const closed = await alice.req.post('/_lb/plan-request', { data: ask, headers: json });
@@ -53,10 +54,10 @@ test('plans_open off refuses; on, a request reaches the queue and the support co
 
   const queue = await (await owner.req.get(`${API}/membership/requests`)).json();
   expect(queue.requests).toHaveLength(1);
-  expect(queue.requests[0]).toMatchObject({ tier: 'cardinal', number: '0104', note: 'For school research' });
+  expect(queue.requests[0]).toMatchObject({ tier: 'cardinal', number: aliceMe.number, note: 'For school research' });
   const mail = (await (await owner.req.get(`${API}/membership/outbox`)).json()).mail;
   expect(mail[0].to).toBe('gamblelimitedsupport@taps-holdings.org');
-  expect(mail[0].body).not.toContain('Alice Example');
+  expect(mail[0].body).not.toContain('Stack Tester');
 
   expect((await admin(owner.req, '/membership/requests/approve', { id: queue.requests[0].id, amount: 15, howPaid: 'cash' })).status()).toBe(200);
   const me = await (await alice.req.get('/_lb/me')).json();
@@ -66,7 +67,7 @@ test('plans_open off refuses; on, a request reaches the queue and the support co
 
   const v = await fetch(`${BASE}/_lb/verify/${encodeURIComponent(me.certificateCode)}`);
   expect(v.status).toBe(200);
-  expect(JSON.stringify(await v.json())).not.toContain('Alice');
+  expect(JSON.stringify(await v.json())).not.toContain('Stack');
   await alice.context.close();
   await owner.context.close();
 });

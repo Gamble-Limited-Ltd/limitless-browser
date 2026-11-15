@@ -2,6 +2,7 @@
 // S2: the service worker must never undermine invite-only access (docs/1.0/SPEED.md 3.5, docs/ACCESS-CONTROL.md).
 // Run through deploy/rehearsal/run.sh (use flock /tmp/limitless-rehearsal.lock). Real nginx + gate + relay, mock GATE.
 const { test, expect } = require('@playwright/test');
+const { finishCeremony } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -17,6 +18,9 @@ async function signIn(page, who = 'alice') {
   await page.waitForURL(`${MOCK}/oidc/authorize**`);
   await page.locator(`input[name=user][value=${who}]`).check();
   await page.locator('#continue').click();
+  await page.waitForLoadState('load');
+  await finishCeremony(page.context().request);
+  await page.goto('/');
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
 }
 

@@ -3,6 +3,7 @@
 // Run through deploy/rehearsal/run.sh (starts the stack, sets REHEARSAL_BASE / REHEARSAL_MOCK).
 // Mock users: alice (approved, password alice-pass-1), bob (not approved, password bob-pass-1).
 const { test, expect } = require('@playwright/test');
+const { finishCeremony } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -25,6 +26,8 @@ async function signInRedirect(page, who = 'alice') {
 
 async function signInAlice(page) {
   await signInRedirect(page, 'alice');
+  await finishCeremony(page.context().request);
+  await page.goto('/');
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
 }
 
@@ -114,6 +117,9 @@ test.describe('alice (approved)', () => {
     await page.fill('#identifier', 'alice');
     await page.fill('#password', 'alice-pass-1');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.waitForLoadState('load');
+    await finishCeremony(page.context().request);
+    await page.goto('/');
     await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
   });
 
@@ -221,6 +227,8 @@ test.describe('revocation', () => {
     const bobCtx = await browser.newContext({ baseURL: BASE });
     const bob = await bobCtx.newPage();
     await signInRedirect(bob, 'bob');
+    await finishCeremony(bob.context().request);
+    await bob.goto('/');
     await expect(bob.locator('#url')).toBeVisible({ timeout: 30000 });
     await mock('/lenient/off');
     await signInAlice(page);

@@ -3,6 +3,7 @@
 // Run through deploy/rehearsal/run.sh under `flock /tmp/limitless-rehearsal.lock`.
 // Invite only must hold: signed-out, unapproved and revoked users are refused (app files and /wisp/); 401/403 are never cached.
 const { test, expect } = require('@playwright/test');
+const { finishCeremony } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -22,6 +23,8 @@ async function user(browser, who) {
   const context = await browser.newContext({ baseURL: BASE });
   const page = await context.newPage();
   await signInRedirect(page, who);
+  await finishCeremony(context.request);
+  await page.goto('/');
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
   return { context, page, req: context.request };
 }
