@@ -60,6 +60,15 @@ for (const mode of ['network error', 'server 503']) {
   });
 }
 
+// A stamped (deployed) build always has version.json behind the gate: a 404 there is a fault, not "no gate", so it fails closed.
+test('boot: a stamped build treats a 404 version.json as offline', async ({ page }) => {
+  await page.addInitScript(() => { window.LB_BUILD_SHA = 'abc1234'; });
+  await page.route('**/version.json*', (r) => r.fulfill({ status: 404, body: 'nope' }));
+  await page.goto('/index.html');
+  await expect(page.locator('#overlayText')).toHaveText(/Cannot reach Limitless/, { timeout: 30000 });
+  expect(await page.evaluate(() => ({ access: window.LB_access, curl: window.LB_net.curl }))).toEqual({ access: 'offline', curl: null });
+});
+
 // Rollback (REVIEW 2 item 7): deploy.sh puts scripts/sw-rollback-stub.js at /sw.js when the rolled-back commit has no worker.
 // An installed 0.3.0 worker must pick it up, clear its caches and unregister itself.
 test('rollback stub: an installed worker is replaced by the stub, which removes its caches and itself', async ({ page, baseURL }) => {

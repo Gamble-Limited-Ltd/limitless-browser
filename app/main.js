@@ -562,7 +562,8 @@
                         location.replace(r.status === 401 ? '/auth/signin' : '/auth/invite');
                         return new Promise(() => {});
                     }
-                    if (r.status === 404) { window.LB_access = 'ok'; return window.LB_features; }
+                    // Only an unstamped dev build may skip on 404; a deployed build fails closed (Boss, REVIEW Q4).
+                    if (r.status === 404 && (window.LB_BUILD_SHA || 'dev') === 'dev') { window.LB_access = 'ok'; return window.LB_features; }
                     if (!r.ok) { window.LB_access = 'offline'; return window.LB_features; }
                     window.LB_access = 'ok';
                     const j = await r.json();
