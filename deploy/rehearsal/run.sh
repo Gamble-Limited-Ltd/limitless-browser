@@ -68,6 +68,11 @@ RELAY_TOKEN_PRIVATE_KEY=$(key RELAY_TOKEN_PRIVATE_KEY)
 RELAY_SYNC_SECRET=$(key RELAY_SYNC_SECRET)
 ENV
 )
+# LB_REHEARSAL_MEMBERSHIP=1: gate with MEMBERSHIP=on (S5), for tests/stack/membership.spec.js. Off by default: the other specs sign in
+# fresh accounts, which membership would hold at the welcome ceremony.
+if [ "${LB_REHEARSAL_MEMBERSHIP:-0}" = 1 ]; then
+  printf 'MEMBERSHIP=on\nMEMBER_DATA_KEY=%s\n' "$(head -c 32 /dev/urandom | base64)" >> "$REHEARSAL_GATE_ENV"
+fi
 
 DC=(docker compose -p "$PROJECT" -f "$HERE/docker-compose.rehearsal.yml")
 cleanup() {
