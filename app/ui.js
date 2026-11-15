@@ -153,9 +153,65 @@
         }
     };
 
+    /* ---------- Address bar: the domain picked out (UI.md 3.2). Focus selects all and shows the raw URL. ---------- */
+    var TWO = /^(co|com|org|net|gov|edu|ac)\.[a-z]{2}$/;
+    function splitUrl(v) {
+        var u; try { u = new URL(v); } catch (_) { return null; }
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+        var labels = u.hostname.split('.'), keep = labels.length > 2 && TWO.test(labels.slice(-2).join('.')) ? 3 : 2;
+        var dom = /^[\d.]+$|:/.test(u.hostname) || labels.length <= keep ? u.hostname : labels.slice(-keep).join('.');
+        var sub = u.hostname.slice(0, u.hostname.length - dom.length);
+        var rest = v.slice(v.indexOf(u.hostname) + u.hostname.length);
+        return [v.slice(0, v.indexOf(u.hostname)) + sub, dom, rest];
+    }
+    window.LBUI.splitUrl = splitUrl;
+    function buildUrlView() {
+        var inp = $('url'), box = inp && inp.closest('.omnibox'); if (!inp || !box || $('lbUrlView')) return;
+        var view = el('div', 'lb-urlview'); view.id = 'lbUrlView'; view.setAttribute('aria-hidden', 'true');
+        var a = el('span', 'lb-uv-m'), b = el('span', 'lb-uv-d'), c = el('span', 'lb-uv-m lb-uv-p');
+        view.append(a, b, c); box.appendChild(view);
+        function paint() {
+            var parts = !document.documentElement.hasAttribute('data-skin') && document.activeElement !== inp ? splitUrl(inp.value) : null;
+            box.classList.toggle('lb-uv-on', !!parts);
+            if (!parts) return;
+            a.textContent = parts[0]; b.textContent = parts[1]; c.textContent = parts[2];
+            var br = inp.getBoundingClientRect(), xr = box.getBoundingClientRect();
+            view.style.left = (br.left - xr.left) + 'px'; view.style.width = br.width + 'px';
+        }
+        // The app sets url.value from code in many places; a setter hook repaints without touching those callers.
+        var d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        Object.defineProperty(inp, 'value', { configurable: true, get: function () { return d.get.call(inp); }, set: function (v) { d.set.call(inp, v); paint(); } });
+        inp.addEventListener('focus', function () { paint(); setTimeout(function () { inp.select(); }, 0); });
+        inp.addEventListener('blur', paint); inp.addEventListener('input', paint);
+        window.addEventListener('resize', paint);
+        new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin'] });
+        paint();
+    }
+
+    /* ---------- Tab layout: top (classic, default) or side rail (UI.md 3.1), limitless:tablayout:v1 ---------- */
+    var TL = 'limitless:tablayout:v1';
+    function tabLayout() { return store(TL) === 'side' ? 'side' : 'top'; }
+    function applyTabs() {
+        var side = tabLayout() === 'side', h = document.documentElement;
+        h.setAttribute('data-lb-tabs', tabLayout());
+        h.toggleAttribute('data-lb-rail-min', side && (window.innerWidth < 1200 || store('limitless:tabrail:v1') === 'min'));
+        document.querySelectorAll('#lbTabLayoutSeg button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === tabLayout() ? 'true' : 'false'); });
+        var t = $('lbRailToggle'); if (t) t.hidden = !side;
+    }
+    window.LBUI.setTabLayout = function (v) { store(TL, v === 'side' ? 'side' : 'top'); applyTabs(); };
+    function buildTabs() {
+        var tb = document.querySelector('.titlebar'); if (!tb || $('lbRailToggle')) return;
+        var t = el('button', 'tool-btn'); t.id = 'lbRailToggle'; t.type = 'button'; t.hidden = true; t.setAttribute('aria-label', 'Collapse or expand the tab rail'); t.title = 'Collapse or expand tabs';
+        t.appendChild(icon('sidebar')); t.addEventListener('click', function () { var min = document.documentElement.hasAttribute('data-lb-rail-min'); store('limitless:tabrail:v1', min ? 'full' : 'min'); document.documentElement.toggleAttribute('data-lb-rail-min', !min); });
+        tb.insertBefore(t, tb.firstChild);
+        document.querySelectorAll('#lbTabLayoutSeg button').forEach(function (b) { b.addEventListener('click', function () { window.LBUI.setTabLayout(b.dataset.v); }); });
+        window.addEventListener('resize', applyTabs);
+        applyTabs();
+    }
+
     function ready(fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
     ready(function () {
-        buildMenu(); placeShield(); applyDev();
+        buildMenu(); placeShield(); applyDev(); buildUrlView(); buildTabs();
         new MutationObserver(placeShield).observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin'] });
     });
 })();

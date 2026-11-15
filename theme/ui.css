@@ -49,3 +49,34 @@ html:not([data-lb-dev])[data-lb-theme]:not([data-skin]) :is(#devToggle, #codeBtn
 .lb-btn { padding: 8px 16px; background: var(--bg2); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-sm); font: inherit; font-size: 13px; cursor: pointer; }
 .lb-btn-p { background: var(--ac); color: var(--lb-on, #000); border-color: var(--ac); }
 .lb-btn:disabled { opacity: .5; cursor: default; }
+
+/* ---------- Address bar: domain picked out (UI.md 3.2) ---------- */
+.omnibox { position: relative; }
+.lb-urlview { display: none; position: absolute; top: 0; bottom: 0; align-items: center; pointer-events: none; font: 14px var(--lb-fm); white-space: nowrap; overflow: hidden; }
+.omnibox.lb-uv-on .lb-urlview { display: flex; }
+.omnibox.lb-uv-on .url-input { color: transparent; }
+.lb-uv-m { color: var(--tx3); flex: none; }
+.lb-uv-d { color: var(--tx); flex: none; font-weight: 500; }
+.lb-uv-p { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Side tabs (UI.md 3.1). Rail 220 px, 52 px collapsed. Skins keep their own strip. ---------- */
+#lbRailToggle { display: none; }
+html[data-lb-tabs="side"][data-lb-theme]:not([data-skin]) {
+  --lb-rail: 220px;
+  & #lbRailToggle:not([hidden]) { display: inline-grid; }
+  & .app { padding-left: var(--lb-rail); box-sizing: border-box; }
+  & .titlebar { position: absolute; left: 0; top: 0; bottom: 0; width: var(--lb-rail); flex-direction: column; align-items: stretch; padding: 10px 8px; gap: 8px; border-right: 1px solid var(--lb-line); background: var(--lb-strip); overflow: hidden; }
+  & .titlebar > .tool-btn, & .titlebar > .status-pill { align-self: flex-start; margin-bottom: 0; }
+  & .tab-strip-wrapper { flex: 1; flex-direction: column; align-items: stretch; min-height: 0; }
+  & .tab-strip { flex-direction: column; align-items: stretch; overflow-y: auto; overflow-x: hidden; gap: 2px; }
+  & .tab-strip::before { content: "Today"; font: 500 10.5px var(--lb-fm); letter-spacing: .14em; text-transform: uppercase; color: var(--tx3); padding: 4px 8px; }
+  & .tab { max-width: none; width: 100%; flex: none; border-radius: var(--radius-sm); height: 36px; }
+  & .tab-add { align-self: flex-start; }
+  & .tab-strip-scroll-btn { display: none; }
+}
+html[data-lb-tabs="side"][data-lb-rail-min][data-lb-theme]:not([data-skin]) {
+  --lb-rail: 52px;
+  & .tab-strip::before { content: ""; padding: 0; }
+  & .tab-title, & .tab-close, & .titlebar > .status-pill { display: none; }
+  & .tab { justify-content: center; padding: 0; }
+}

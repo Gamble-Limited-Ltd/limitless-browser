@@ -9,6 +9,8 @@ What changed, in plain language. Newest first.
 - The toolbar is quieter: Back, Forward, Reload, the address bar (with the bookmark star and the ad blocker shield inside it), Extensions and one Limitless menu. New tab, History, Theme, Fullscreen, Membership, Report a problem, Settings and Developer mode are in the menu.
 - Developer mode (in the menu) shows the logs, inspector and metrics buttons. It is off by default.
 - Report a problem is now in the menu.
+- The address bar shows the whole address with the site's main domain in strong type and the rest quieter. Click it to see and edit the plain address.
+- Tabs can sit on the left (Settings, Appearance, Tab layout). The rail folds to icons on a narrow window or with the button at its top.
 
 ## 0.3.0
 

@@ -132,6 +132,7 @@ Gate fields the UI reads from `/_lb/me` (all exist in S5 except where marked moc
 `plan.plansOpen`, `notices[]` (S5 sends `[]`; the UI expects `{id, text, date}` objects, mocked in tests).
 - Done: section 1 (paid themes, Vault lock, lapse fallback, tier marks, icon sprite `theme/icons.svg`). 
 - Done: section 2 (toolbar, Limitless menu in `app/ui.js`, developer mode, Report a problem dialog; `POST /_lb/reports` does not exist in the gate yet, the dialog says so). Kept `+` on the tab strip. Downloads item waits for S8. Under a skin the old toolbar returns.
+- Done: section 3 (address bar domain emphasis through a value setter hook on `#url`, side tab rail 220/52 px, setting in Appearance). Not built: the "Pinned" tab group (there is no pinning in the app), the progress bar was already done in S1.
 - Newer sections are listed below as they land.
 
 Last verified: 2026-11-15
