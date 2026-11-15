@@ -1,8 +1,9 @@
 // @ts-check
 // Membership (1.0 S5, MEMBERSHIP.md 12) through the rehearsal: Executive invite -> redeem by the named account -> sign-in -> ceremony ->
 // certificate PDF -> public verify (no name) -> suspend cuts the VPS stand-in socket within 2 s.
+// Named 00- so it runs first: it needs bob untouched (no ceremony yet); the other specs finish bob's ceremony via helpers-member.js.
 // Needs the gate with MEMBERSHIP=on:
-//   LB_REHEARSAL_MEMBERSHIP=1 flock /tmp/limitless-rehearsal.lock deploy/rehearsal/run.sh tests/stack/membership.spec.js
+//   LB_REHEARSAL_MEMBERSHIP=1 flock /tmp/limitless-rehearsal.lock deploy/rehearsal/run.sh tests/stack/00-membership.spec.js
 const { test, expect } = require('@playwright/test');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
@@ -135,6 +136,8 @@ test('Executive invite, redeem, sign-in, ceremony, certificate, public verify, s
   // Page requests are gated by nginx with a 5 s auth cache (200 only), so the page itself is closed within that window.
   await expect.poll(async () => (await bob.req.get('/_lb/me', { maxRedirects: 0 })).status(), { timeout: 10000 }).not.toBe(200);
 
+  // Cleanup so the later specs can use bob: lift the suspension (the refusals above are already asserted).
+  expect((await post(owner.req, '/membership/standing', { sub: bobSub, action: 'lift' })).status()).toBe(200);
   await bob.context.close();
   await owner.context.close();
 });

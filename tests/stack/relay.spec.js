@@ -5,6 +5,7 @@
 // app marks our relay down and shows the relay notice, public relays are the way on; recovers by itself).
 // Run through deploy/rehearsal/run.sh:  flock /tmp/limitless-rehearsal.lock deploy/rehearsal/run.sh tests/stack/relay.spec.js
 const { test, expect } = require('@playwright/test');
+const { finishCeremony, membershipOn, grantRelayPlan } = require('./helpers-member');
 const { execFileSync } = require('child_process');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
@@ -28,6 +29,9 @@ async function user(browser, who) {
   await page.locator(`input[name=user][value=${who}]`).check();
   await page.locator('#continue').click();
   await page.waitForLoadState('load');
+  await finishCeremony(context.request);
+  if (who === 'alice' && (await membershipOn(context.request))) await grantRelayPlan(browser, 'alice'); // Ordinal has no VPS relay
+  await page.goto('/');
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
   return { context, page, req: context.request };
 }
@@ -70,9 +74,14 @@ test.describe('token and the VPS', () => {
     expect(t.ttl).toBe(300);
     // The token names the member by an opaque id, not the GLL ID sub.
     const claims = JSON.parse(Buffer.from(t.token.split('.')[1], 'base64url').toString());
-    expect(claims.sub).toHaveLength(22);
-    expect(claims.sub).toMatch(/^[A-Za-z0-9_-]{22}$/);
-    expect(claims).toMatchObject({ plan: 'ordinal', lv: 1 });
+    if (await membershipOn(alice.context.request)) {
+      expect(claims.sub).toMatch(/^m_[0-9a-f]{24}$/); // membership: the member id, and a plan that has the relay
+      expect(claims.plan).toBe('cardinal');
+    } else {
+      expect(claims.sub).toHaveLength(22);
+      expect(claims.sub).toMatch(/^[A-Za-z0-9_-]{22}$/);
+      expect(claims).toMatchObject({ plan: 'ordinal', lv: 1 });
+    }
 
     for (const id of ['a', 'b']) await alice.page.evaluate(OPEN, { id, token: t.token, port: VPS_PORT });
     for (const id of ['a', 'b']) {

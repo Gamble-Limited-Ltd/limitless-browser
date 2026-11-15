@@ -2,6 +2,7 @@
 // Owner admin panel through the real stack (nginx, check service, relay) against the mock GATE.
 // Run through deploy/rehearsal/run.sh. Mock users: owner (owner-pass-1, the gate's OWNER_SUB), alice (approved), bob (not approved).
 const { test, expect } = require('@playwright/test');
+const { finishCeremony } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -26,6 +27,8 @@ async function user(browser, who) {
   const context = await browser.newContext({ baseURL: BASE });
   const page = await context.newPage();
   await signInRedirect(page, who);
+  await finishCeremony(context.request);
+  await page.goto('/');
   await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
   return { context, page, req: context.request };
 }
@@ -141,7 +144,7 @@ test.describe('maintenance', () => {
 });
 
 // 1.0 S7: the new routes through the real nginx and gate (membership routes are covered by the gate's own tests and
-// tests/stack/membership.spec.js: with MEMBERSHIP=on a fresh account stops at the ceremony, which this spec cannot pass).
+// tests/stack/00-membership.spec.js; with MEMBERSHIP=on helpers-member.js finishes the ceremony for fresh accounts).
 const del = (req, path) => req.delete(`${API}${path}`, { headers: { origin: BASE, 'content-type': 'application/json' }, data: {} });
 const S7_GET = ['/usage/live', '/usage/30d', '/notices', '/reports', '/audit', '/membership/members'];
 
