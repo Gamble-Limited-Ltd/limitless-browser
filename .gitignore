@@ -7,3 +7,6 @@ deploy/gate.env
 .last-deploy-hash
 test-results-stack/
 deploy/.env
+
+# Claude Code worktree folders (deploy.sh needs a clean tree)
+.claude/

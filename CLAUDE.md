@@ -8,9 +8,10 @@ Stamp, not the full Gilded Ledger chrome. Copy neutral: "private browsing proxy"
 Read both before touching names, credits, license text or features.
 - **State (checked 2026-11-09):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
   `c88ce5e` (0.2.3, legal v2, `LEGAL_VERSION=2026-11-08`, deployed by Boss 2026-11-08; the hash was written by hand on 2026-11-09, see Deploy).
-- **In progress (2026-11-14):** 0.3.0 speed release on `release/0.3.0` (worktree `~/gll-worktrees/Browser-0.3.0`). S1, S2a, S2b, S3 and fetch core were
-  already built 2026-11-10 to 11-12 on `slice/1.0-*` and merged via `release/1.0.0`; Boss chose to reuse them (2026-11-14). Building now:
-  relay off (public relays only) and the blocklist. `slice/1.0-edge` (relay box) is held for 1.0 S4. Then
+- **0.3.0 built, not deployed (2026-11-15):** merged to `main`, release record `docs/releases/0.3.0.md` (Minor; speed gate fails on the fx-frames
+  fixture only, rows that already failed before 0.3, so it ships only on Boss's override; HALL legal text must change first, notes section 6).
+  S1, S2a, S2b, S3 and fetch core were built 2026-11-10 to 11-12 and reused (Boss, 2026-11-14); relay off, blocklist, fault fixes, libcurl 0.7.5
+  and font preload were added 2026-11-14/15. `slice/1.0-edge` (relay box) is held for 1.0 S4. Then
   1.0.0 (VPS relay, membership, UI, admin, paid tiers). Plan and decisions: `docs/1.0/PLAN.md` section 0.2b; build cards in section 8.
 - Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are
   cherry-picked by hand; the fork was in step with `upstream/main` 08515a7 as of 2026-10-18.
@@ -251,4 +252,4 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 ## Legal v2 dark launch (2026-11-01, contract in ~/gll-planning/legal-hall/PLAN.md)
 `LEGAL_VERSION` (YYYY-MM-DD) on the `web` container, from `deploy/.env` (gitignored; compose pass-through, empty default). nginx cannot read env, so `deploy/web/legal-v2.sh` (an nginx `docker-entrypoint.d` script) writes `/tmp/legal-v2.conf` at container start, included by the `/legal/` location. Unset, empty or invalid: empty file, `/legal/` exactly as before. Set: `/legal/terms(.html)` and `/legal/privacy(.html)` 302 to `https://hall.taps-holdings.org/legal/terms|privacy`; `/legal/` itself stays served (it holds the AGPL source link). No consent storage here: GATE sign-in is acceptance. Go-live: put `LEGAL_VERSION=<date>` in `deploy/.env` and `docker compose -p limitless-browser -f deploy/docker-compose.yml up -d web` (recreate, no rebuild); gate side is `LEGAL_VERSION` in `deploy/gate.env`. Test: `npm run test:legal` (throwaway nginx container).
 
-Last verified: 2026-11-11
+Last verified: 2026-11-15
