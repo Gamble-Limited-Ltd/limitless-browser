@@ -35,6 +35,9 @@ async function open(browser) {
 const swaps = (page) => page.evaluate(() => window.LB_stats.swaps);
 const shown = (page, ms) => page.waitForFunction(() => { const c = window.__lbPerf && window.__lbPerf.cur; return !!(c && c.marks.shown != null); }, null, { timeout: ms });
 
+// The fixtures container only exists with LB_FAULTS=1, so a plain test:stack skips this file.
+test.skip(process.env.LB_FAULTS !== '1', 'needs LB_FAULTS=1 (fixtures container)');
+
 test.describe('fault fixtures', () => {
   test('a dead host (connection refused) fails that request fast and leaves the session alone', async ({ browser }) => {
     const { ctx, page } = await open(browser);
