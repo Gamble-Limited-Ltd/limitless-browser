@@ -133,6 +133,7 @@ Gate fields the UI reads from `/_lb/me` (all exist in S5 except where marked moc
 - Done: section 1 (paid themes, Vault lock, lapse fallback, tier marks, icon sprite `theme/icons.svg`). 
 - Done: section 2 (toolbar, Limitless menu in `app/ui.js`, developer mode, Report a problem dialog; `POST /_lb/reports` does not exist in the gate yet, the dialog says so). Kept `+` on the tab strip. Downloads item waits for S8. Under a skin the old toolbar returns.
 - Done: section 3 (address bar domain emphasis through a value setter hook on `#url`, side tab rail 220/52 px, setting in Appearance). Not built: the "Pinned" tab group (there is no pinning in the app), the progress bar was already done in S1.
+- Done: section 5 (six groups with all old sections kept, opening on General; Membership page; developer mode card; plan limits and expiry notice helper; the old tutorial removed from `index.html` and `app/main.js`). `patcher.html` still has tutorial patch definitions that now match nothing: clean-up is open (see report). Tab sleeping stays inside the Privacy and data group (Resource Cache card).
 - Newer sections are listed below as they land.
 
 Last verified: 2026-11-15

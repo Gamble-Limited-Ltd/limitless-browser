@@ -209,9 +209,110 @@
         applyTabs();
     }
 
+    /* ---------- Settings in six groups (UI.md 5): each group shows its old sections together; keys and handlers are untouched ---------- */
+    var GROUPS = [
+        ['search', 'General', ['search', 'homescreen', 'shortcuts', 'language']],
+        ['appearance', 'Appearance', ['appearance', 'skins']],
+        ['privacy', 'Privacy and data', ['privacy', 'cache', 'filesandmedia']],
+        ['connection', 'Connection', ['connection', 'fallback']],
+        ['membership', 'Membership', ['membership']],
+        ['about', 'About', ['about']]
+    ];
+    function groupOf(sec) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][2].indexOf(sec) >= 0) return GROUPS[i]; return null; }
+    window.LBUI.groupTitle = function (sec) { var g = groupOf(sec); return g ? g[1] : null; };
+    var settleGuard = false;
+    function settle() {
+        if (settleGuard) return;
+        var secs = document.querySelectorAll('.settings-section[data-lb-group]');
+        var shown = null; secs.forEach(function (e) { if (!shown && e.style.display !== 'none' && e.style.display !== '') shown = e; });
+        if (!shown) return;
+        var g = groupOf(shown.dataset.section); if (!g) return;
+        settleGuard = true;
+        g[2].forEach(function (id) { var e = document.querySelector('.settings-section[data-section="' + id + '"]'); if (e) e.style.display = 'flex'; });
+        document.querySelectorAll('.settings-nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.section === g[0]); });
+        settleGuard = false;
+        if (g[0] === 'membership') paintMembership();
+    }
+    function buildSettings() {
+        var page = $('settingsPage'); if (!page) return;
+        GROUPS.forEach(function (g) { g[2].forEach(function (id) { var e = document.querySelector('.settings-section[data-section="' + id + '"]'); if (e) e.dataset.lbGroup = g[0]; }); });
+        var mo = new MutationObserver(settle);
+        document.querySelectorAll('.settings-section').forEach(function (e) { mo.observe(e, { attributes: true, attributeFilter: ['style'] }); });
+        // Developer mode card (General)
+        var gen = document.querySelector('.settings-section[data-section="search"]');
+        if (gen && !$('lbDevCard')) {
+            var card = el('div', 'settings-card'); card.id = 'lbDevCard';
+            var head = el('div', 'settings-card-head'); head.appendChild(icon('code')); head.appendChild(document.createTextNode(' Developer mode'));
+            var body = el('div', 'settings-card-body'); var row = el('div', 'lb-row-set');
+            var t = el('div'); t.appendChild(el('div', 'settings-switch-label', 'Show developer tools')); t.appendChild(el('div', 'lb-note', 'Adds the logs, page inspector and metrics buttons to the toolbar. The keyboard shortcuts work either way.'));
+            var sw = el('button', 'lb-switch'); sw.id = 'lbDevSwitch'; sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-label', 'Developer mode');
+            sw.addEventListener('click', function () { setDev(!devOn()); });
+            row.append(t, sw); body.appendChild(row); card.append(head, body); gen.appendChild(card); applyDev();
+        }
+    }
+
+    /* ---------- Membership page, plan limits and expiry notices (UI.md 6.4, PAID-TIERS-PLAN) ---------- */
+    function fmtDate(ms) { return new Date(ms).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    function fmtMonth(ms) { return new Date(ms).toLocaleDateString('en', { month: 'long', year: 'numeric' }); }
+    function gib(b) { return (b / 1073741824).toFixed(b >= 10737418240 ? 0 : 1) + ' GiB'; }
+    function limitLines(m) {
+        var l = (m && m.plan && m.plan.limits) || {}, out = [];
+        if (l.tabs) out.push(['Open tabs', String(l.tabs)]);
+        if (l.dailyMinutes) out.push(['Daily time', l.dailyMinutes >= 60 ? (l.dailyMinutes / 60) + ' hours' : l.dailyMinutes + ' minutes']);
+        if (l.weeklyGb) out.push(['Data per week', l.weeklyGb + ' GB']);
+        if (l.monthlyGb) out.push(['Data per month', l.monthlyGb + ' GB']);
+        if (l.speedMbps) out.push(['Speed', l.speedMbps + ' Mbit/s']);
+        if (l.downloadMbPerFile != null && l.downloadsPerDay != null) out.push(['Downloads', 'up to ' + l.downloadMbPerFile + ' MB each, ' + l.downloadsPerDay + ' a day']);
+        return out;
+    }
+    /* Expiry notice: 14 days and 3 days before paidUntil (in app only). Executive and Ordinal have no end date. */
+    function expiry(m, now) {
+        var p = m && m.plan; if (!p || !p.paidUntil || p.tier === 'ordinal') return null;
+        var days = Math.ceil((p.paidUntil - (now || Date.now())) / 864e5);
+        if (days > 14 || days < 1) return null;
+        return { days: days, level: days <= 3 ? 'soon' : 'near', text: days <= 3 ? 'Your ' + TIER_NAME[p.tier] + ' plan ends in ' + days + (days === 1 ? ' day' : ' days') + ', on ' + fmtDate(p.paidUntil) + '.' : 'Your ' + TIER_NAME[p.tier] + ' plan ends on ' + fmtDate(p.paidUntil) + '.' };
+    }
+    window.LBUI.expiry = expiry;
+    function plansLine(m) {
+        var open = m && m.plan && m.plan.plansOpen === true, n = el('div', 'lb-pl');
+        if (!open) { n.textContent = 'Paid plans are coming soon.'; n.dataset.state = 'soon'; return n; }
+        n.dataset.state = 'open'; n.appendChild(document.createTextNode('Paid plans are open. '));
+        var a = el('a', null, 'See the plans'); a.href = 'https://hall.taps-holdings.org/'; a.target = '_blank'; a.rel = 'noopener'; n.appendChild(a); return n;
+    }
+    window.LBUI.plansLine = plansLine;
+    function paintMembership() {
+        var root = $('lbMemberPage'); if (!root) return;
+        var m = member(); root.textContent = '';
+        var card = el('div', 'settings-card'), body = el('div', 'settings-card-body');
+        if (!m) { body.appendChild(el('div', 'settings-hint', 'Membership details appear here once you are signed in with a member account.')); card.appendChild(body); root.appendChild(card); return; }
+        var tier = tierOf(m), top = el('div', 'lb-mp-top'); top.appendChild(markSvg(tier));
+        var id = el('div'); id.appendChild(el('div', 'lb-mp-name', m.name || 'Member'));
+        id.appendChild(el('div', 'lb-mp-num', 'No. ' + pad(m.number)));
+        var bits = [TIER_NAME[tier], STANDING[m.standing] + (m.standing === 'suspended' && m.standingUntil ? ' until ' + fmtDate(m.standingUntil) : '')];
+        if (m.admittedAt) bits.push('Member since ' + fmtMonth(m.admittedAt));
+        id.appendChild(el('div', 'lb-note', bits.join(' · ')));
+        top.appendChild(id); body.appendChild(top); card.appendChild(body); root.appendChild(card);
+        var pc = el('div', 'settings-card'), ph = el('div', 'settings-card-head'); ph.appendChild(icon('card')); ph.appendChild(document.createTextNode(' Your plan'));
+        var pb = el('div', 'settings-card-body'); pb.appendChild(el('div', 'settings-switch-label', TIER_NAME[tier] + ' plan'));
+        var ex = expiry(m); if (m.plan && m.plan.paidUntil && tier !== 'ordinal') pb.appendChild(el('div', 'lb-note' + (ex ? ' lb-warn' : ''), ex ? ex.text : 'Paid until ' + fmtDate(m.plan.paidUntil) + '.'));
+        var dl = el('dl', 'lb-dl'); limitLines(m).forEach(function (r) { dl.appendChild(el('dt', null, r[0])); dl.appendChild(el('dd', null, r[1])); });
+        var u = m.plan && m.plan.used; if (u) { dl.appendChild(el('dt', null, 'Used today')); dl.appendChild(el('dd', null, gib(u.todayBytes || 0))); }
+        pb.appendChild(dl); if (tier === 'ordinal' || tier === 'cardinal' || tier === 'prime') pb.appendChild(plansLine(m));
+        pc.append(ph, pb); root.appendChild(pc);
+        var cc = el('div', 'settings-card'), ch = el('div', 'settings-card-head'); ch.appendChild(icon('check')); ch.appendChild(document.createTextNode(' Certificate and Charter'));
+        var cb = el('div', 'settings-card-body');
+        if (m.certificateCode) {
+            cb.appendChild(el('div', 'lb-note', 'Certificate code ' + m.certificateCode));
+            ['screen', 'print'].forEach(function (v) { var a = el('a', 'lb-btn', v === 'screen' ? 'Download PDF (screen)' : 'Download PDF (print)'); a.href = '/_lb/me/certificate.pdf?variant=' + v; a.download = ''; a.style.marginRight = '8px'; cb.appendChild(a); });
+        } else cb.appendChild(el('div', 'lb-note', 'Certificates begin at the Cardinal plan. Your member card is on the start page.'));
+        var ch2 = el('div', 'lb-note', 'Charter version ' + (m.charterVersion || 'not signed') + '. '); var ra = el('a', null, 'Read the Rules'); ra.href = '/legal/terms.html'; ra.target = '_blank'; ra.rel = 'noopener'; ch2.appendChild(ra);
+        cb.appendChild(ch2); cc.append(ch, cb); root.appendChild(cc);
+    }
+    document.addEventListener('lb-member', function () { var g = document.querySelector('.settings-section[data-section="membership"]'); if (g && g.style.display === 'flex') paintMembership(); });
+
     function ready(fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
     ready(function () {
-        buildMenu(); placeShield(); applyDev(); buildUrlView(); buildTabs();
+        buildMenu(); placeShield(); applyDev(); buildUrlView(); buildTabs(); buildSettings();
         new MutationObserver(placeShield).observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin'] });
     });
 })();

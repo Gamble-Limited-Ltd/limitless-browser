@@ -10,6 +10,9 @@ What changed, in plain language. Newest first.
 - Developer mode (in the menu) shows the logs, inspector and metrics buttons. It is off by default.
 - Report a problem is now in the menu.
 - The address bar shows the whole address with the site's main domain in strong type and the rest quieter. Click it to see and edit the plain address.
+- Settings now has six groups: General, Appearance, Privacy and data, Connection, Membership and About. Settings opens on General. Nothing was removed, controls only moved.
+- The Membership page shows your name first, then your number, your plan, its limits and your certificate. When your plan is about to end, a note appears 14 days and 3 days before.
+- The old interactive tour is gone. A short tour after the welcome replaces it.
 - Tabs can sit on the left (Settings, Appearance, Tab layout). The rail folds to icons on a narrow window or with the button at its top.
 
 ## 0.3.0

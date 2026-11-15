@@ -1189,7 +1189,7 @@
 
             const VALID_SETTINGS_SECTIONS = new Set([
                 'connection','search','privacy','cache','filesandmedia',
-                'appearance','skins','homescreen','shortcuts','language','tutorial','about','fallback'
+                'appearance','skins','homescreen','shortcuts','language','about','fallback','membership'
             ]);
 
             function isSettingsPage(url) {
@@ -2356,8 +2356,8 @@
                 if (tab.url === HOME_INTERNAL) {
                     showNewTab(false);
                 } else if (isSettingsPage(tab.url) && !tab.hasError) {
-                    const section = tab.url.replace("limitless://settings/", "") || "skins";
-                    showSettingsPage(false, section === "limitless://settings" ? "skins" : section);
+                    const section = tab.url.replace("limitless://settings/", "") || "search";
+                    showSettingsPage(false, section === "limitless://settings" ? "search" : section);
                 } else if ((tab.url === EXTSTORE_INTERNAL || tab.url.startsWith("limitless://extensions/")) && !tab.hasError) {
                     const sm = tab.url.match(/^limitless:\/\/extensions\/search\/(.+)$/);
                     showExtensionsStore(false, sm ? decodeURIComponent(sm[1]) : '');
@@ -9624,8 +9624,8 @@ _VIEWER_DL_JS +
                     return;
                 }
                 if (url === SETTINGS_INTERNAL || url.startsWith("limitless://settings/")) {
-                    const section = url.replace("limitless://settings/", "") || "skins";
-                    const cleanSection = section === "limitless://settings" ? "skins" : section.split("/")[0];
+                    const section = url.replace("limitless://settings/", "") || "search";
+                    const cleanSection = section === "limitless://settings" ? "search" : section.split("/")[0];
                     if (url !== SETTINGS_INTERNAL && !VALID_SETTINGS_SECTIONS.has(cleanSection)) {
                         // Unknown settings section — show error page
                         if (activeTabId === initiatorTabId) {
@@ -12059,7 +12059,7 @@ _VIEWER_DL_JS +
                     const settingsUrl = `limitless://settings/${section}`;
                     urlInput.value = settingsUrl;
                     pageUrl = settingsUrl;
-                    setTabTitle(`Settings - ${section.charAt(0).toUpperCase() + section.slice(1)}`);
+                    setTabTitle(`Settings - ${(window.LBUI && window.LBUI.groupTitle ? window.LBUI.groupTitle(section) : null) || section.charAt(0).toUpperCase() + section.slice(1)}`);
                     updateTabUrl(settingsUrl);
 
                     hist = hist.slice(0, histIdx + 1);
@@ -12071,14 +12071,6 @@ _VIEWER_DL_JS +
                     navBtn.classList.add('active');
                     document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
                     const target = document.querySelector('.settings-section[data-section="' + section + '"]');
-                    if (section === 'tutorial') {
-                        document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
-                        const tutSec = document.querySelector('.settings-section[data-section="tutorial-page"]');
-                        if (tutSec) tutSec.style.display = 'flex';
-                        document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
-                        document.querySelector('.settings-nav-item[data-section="tutorial"]')?.classList.add('active');
-                        return;
-                    }
                     if (target) {
                         target.style.display = 'flex';
                     }
@@ -12453,8 +12445,8 @@ _VIEWER_DL_JS +
                         } else if (activeTab && activeTab.url === HOME_INTERNAL) {
                             showNewTab(false);
                         } else if (activeTab && isSettingsPage(activeTab.url)) {
-                            const section = activeTab.url.replace("limitless://settings/", "") || "skins";
-                            showSettingsPage(false, section === "limitless://settings" ? "skins" : section);
+                            const section = activeTab.url.replace("limitless://settings/", "") || "search";
+                            showSettingsPage(false, section === "limitless://settings" ? "search" : section);
                         }
                     } else {
                         go(urlInput.value);
@@ -12485,7 +12477,7 @@ _VIEWER_DL_JS +
                 if (!section && pageUrl && pageUrl.startsWith("limitless://settings/")) {
                     section = pageUrl.replace("limitless://settings/", "");
                 }
-                if (!section) section = "skins";
+                if (!section) section = "search";
 
                 if (newtab) newtab.classList.remove("active");
                 settingsEl.style.display = "block";
@@ -12504,14 +12496,14 @@ _VIEWER_DL_JS +
                     updateNav();
                 }
                 updateTabUrl(settingsUrl);
-                setTabTitle(`Settings - ${section.charAt(0).toUpperCase() + section.slice(1)}`);
+                setTabTitle(`Settings - ${(window.LBUI && window.LBUI.groupTitle ? window.LBUI.groupTitle(section) : null) || section.charAt(0).toUpperCase() + section.slice(1)}`);
                 setStatus("idle", "Ready");
 
                 document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
                 const navBtn = document.querySelector(`.settings-nav-item[data-section="${section}"]`);
                 if (navBtn) navBtn.classList.add('active');
 
-                const sectionElKey = section === 'tutorial' ? 'tutorial-page' : section;
+                const sectionElKey = section;
 
                 document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
                 const targetSection = document.querySelector(`.settings-section[data-section="${sectionElKey}"]`);
@@ -13882,519 +13874,17 @@ _VIEWER_DL_JS +
             });
 
 
-            const TUTORIAL_KEY = 'limitless:tutorial:v1';
-
-            const tutSteps = [
-                {
-                    target: null,
-                    icon: '<svg class="lb-mk" viewBox="0 0 64 64" width="34" height="34" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>',
-                    title: 'Welcome to Limitless Browser',
-                    body: 'A private browsing proxy from Gamble Limited Ltd. This tour covers all the key controls and takes under a minute, and can be restarted anytime from Settings.',
-                    pos: 'center'
-                },
-                {
-                    target: '#historyBtn',
-                    icon: '<i class="fas fa-clock-rotate-left"></i>',
-                    title: 'Recent History',
-                    body: 'Jump back to recently visited pages. If you close a tab by accident, open history to recover the URL. No browsing data ever leaves your device, or is saved longer than 10 entries.',
-                    pos: 'below'
-                },
-                {
-                    target: '#settingsBtn',
-                    icon: '<i class="fas fa-gear"></i>',
-                    title: 'Settings',
-                    body: 'Configure the WISP server, search engine, wallpaper, font size, cache, shortcuts and more. You can also read about Limitless Browser or restart the tutorial from here.',
-                    pos: 'below'
-                },
-                {
-                    target: '#navPillGroup',
-                    icon: '<i class="fas fa-arrow-left"></i>',
-                    title: 'Navigation Buttons',
-                    body: 'Back (<i class="fas fa-arrow-left" style="font-size:0.8em;"></i>), forward (<i class="fas fa-arrow-right" style="font-size:0.8em;"></i>), reload and home. The home button returns to the new tab page, and you can pause a page reloading by clicking the square in its place.',
-                    pos: 'below'
-                },
-                {
-                    target: '#newTab',
-                    icon: '<i class="fas fa-plus"></i>',
-                    title: 'New Tab',
-                    body: 'Open a new tab with this button or Alt+T. Tabs show favicons and scroll horizontally when you have many open. Use the <i class="fas fa-arrow-left"></i> <i class="fas fa-arrow-right"></i> arrows to scroll them.',
-                    pos: 'below'
-                },
-                {
-                    target: '#url',
-                    icon: '<i class="fas fa-magnifying-glass"></i>',
-                    title: 'Address and Search Bar',
-                    pad: 10,
-                    body: 'Type a URL or search term and press Enter. The lock icon shows connection security, and clicking on it shows site info. The bookmark icon saves the current page instantly.',
-                    pos: 'below'
-                },
-                {
-                    target: '#findOmniBtn',
-                    icon: '<i class="fa-solid fa-magnifying-glass-arrow-right"></i>',
-                    title: 'Find in Page',
-                    body: 'Search for text on the active page. Toggle the find bar with this button, Alt+F, or Ctrl+F. You can go to the next or previous match using the arrow buttons or Enter/Shift+Enter.',
-                    pos: 'below'
-                },
-                {
-                    target: '#bookmarkBtn',
-                    icon: '<i class="fas fa-bookmark"></i>',
-                    title: 'Bookmarks',
-                    body: 'Bookmark the current page with this button or Ctrl+D. Your bookmarks appear in the bar below the address bar. Right-click any bookmark to edit or remove it.',
-                    pos: 'below'
-                },
-                {
-                    target: '#extPuzzleBtn',
-                    icon: '<i class="fas fa-puzzle-piece"></i>',
-                    title: 'Extensions',
-                    body: 'Open the extensions button to manage installed add-ons, launch extension popups, and install new ones from the built-in store.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#devToggle',
-                    icon: '<i class="fas fa-server"></i>',
-                    title: 'Browser Logs',
-                    body: 'Opens the request log panel. See every fetch, cache hit, blocked tracker and error in real time. Essential for diagnosing proxy or network issues.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#codeBtn',
-                    icon: '<i class="fas fa-code"></i>',
-                    title: 'Page Inspector',
-                    body: 'Inspect the live DOM of any page. Browse the element tree, view computed styles, box model and attributes. Works even if devtools are disabled in your browser.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#blockToggle',
-                    icon: '<i class="fas fa-shield-halved"></i>',
-                    title: 'Ad and Tracker Blocking',
-                    body: 'Limitless blocks ads and trackers by default. The badge shows your current status. Click on it to toggle it off if a site is not loading correctly.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#bookmarksToggle',
-                    icon: '<i class="fas fa-chevron-up"></i>',
-                    title: 'Bookmarks Bar',
-                    body: 'Click the chevron to show or hide the bookmarks bar if it takes up too much space. To reenable click the down chevron that appears next to settings.',
-                    pos: 'below',
-                    targetFallback: '#showBookmarksBtn'
-                },
-                {
-                    target: '#metricsBtn',
-                    icon: '<i class="fas fa-chart-bar"></i>',
-                    title: 'Browser Metrics',
-                    body: 'Live stats at a glance: active requests, queue depth, memory, cache hit rate, network info and page performance. Useful for debugging slow sites.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#ntFavAddBtn',
-                    icon: '<i class="fas fa-star"></i>',
-                    title: 'Add Favorite',
-                    body: 'Pin your most-visited sites as favorites on the new tab page for instant access. You can add up to 6.',
-                    pos: 'below',
-                    requiresNewTab: true,
-                    targetFallback: '.nt-fav-add'
-                },
-                {
-                    target: null,
-                    icon: '<i class="fas fa-check-circle"></i>',
-                    title: "You're all set!",
-                    body: "That's the full tour! You can restart it any time from Settings. Enjoy Limitless Browser.",
-                    pos: 'center'
-                }
-            ];
-
-            let tutIdx = 0;
-            let tutActive = false;
-
-            function startTutorial(force = false) {
-                if (!force) {
-                    try {
-                        if (ls.getItem(TUTORIAL_KEY) === 'done') return;
-                    } catch (e) { }
-                }
-                tutIdx = 0;
-                tutActive = true;
-                const ov = document.getElementById('tutorialOverlay');
-                ov.style.display = 'block';
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    const bd = document.getElementById('tutorialBackdrop');
-                    if (bd) bd.style.opacity = '1';
-                    const svg = document.getElementById('tutorialSpotSvg');
-                    if (svg) svg.style.opacity = '0';
-                    showTutStep(0);
-                }));
-            }
-
-            function endTutorial(completed = false) {
-                tutActive = false;
-                const ov = document.getElementById('tutorialOverlay');
-                const card = document.getElementById('tutorialCard');
-
-                if (completed === true) {
-                    triggerSparks(card);
-                }
-
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(8px)';
-                const bd = document.getElementById('tutorialBackdrop');
-                if (bd) bd.style.opacity = '0';
-                const svg = document.getElementById('tutorialSpotSvg');
-                if (svg) svg.style.opacity = '0';
-                setTimeout(() => { ov.style.display = 'none'; }, 350);
-                try { ls.setItem(TUTORIAL_KEY, 'done'); } catch (e) { }
-               
-                _lbAnimLocked = false;
-                playLbAnimation(400);
-                const sr = document.getElementById('spotRect');
-                if (sr) { sr.setAttribute('width', '0'); sr.setAttribute('height', '0'); }
-                const cloneWrapEnd = document.getElementById('tutorialCloneWrap');
-                if (cloneWrapEnd) cloneWrapEnd.innerHTML = '';
-                const ringDivEnd = document.getElementById('tutorialRing');
-                if (ringDivEnd) ringDivEnd.style.display = 'none';
-                const so = document.getElementById('spotOverlay');
-                if (so) so.style.display = 'none';
-            }
-
-            function triggerSparks(el) {
-                if (!el) return;
-                const rect = el.getBoundingClientRect();
-                const count = 30;
-                const overlay = document.getElementById('tutorialOverlay');
-                const container = overlay || document.body;
-                const pad = 8;
-                for (let i = 0; i < count; i++) {
-                    const spark = document.createElement('div');
-                    spark.className = 'spark';
-                    const size = Math.random() * 10 + 10;
-                    spark.style.width = size + 'px';
-                    spark.style.height = size + 'px';
-                    let x, y;
-                    const edge = Math.floor(Math.random() * 4);
-                    if (edge === 0) {
-                        x = rect.left - pad + Math.random() * (rect.width + 2 * pad);
-                        y = rect.top - pad - Math.random() * 20;
-                    } else if (edge === 1) {
-                        x = rect.right + pad + Math.random() * 20;
-                        y = rect.top - pad + Math.random() * (rect.height + 2 * pad);
-                    } else if (edge === 2) {
-                        x = rect.left - pad + Math.random() * (rect.width + 2 * pad);
-                        y = rect.bottom + pad + Math.random() * 20;
-                    } else {
-                        x = rect.left - pad - Math.random() * 20;
-                        y = rect.top - pad + Math.random() * (rect.height + 2 * pad);
-                    }
-                    spark.style.left = x + 'px';
-                    spark.style.top = y + 'px';
-
-                    const angle = Math.random() * Math.PI * 2;
-                    const distance = Math.random() * 140 + 80;
-                    const tx = Math.cos(angle) * distance;
-                    const ty = Math.sin(angle) * distance;
-
-                    const duration = 1200 + Math.random() * 1200;
-                    spark.animate([
-                        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-                        { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
-                    ], {
-                        duration: duration,
-                        easing: 'cubic-bezier(0, .5, .5, 1)',
-                        fill: 'forwards'
-                    });
-
-                    container.appendChild(spark);
-                    setTimeout(() => spark.remove(), 2600);
-                }
-            }
-
-            function showTutStep(idx) {
-                const step = tutSteps[idx];
-                const card = document.getElementById('tutorialCard');
-                const arrow = document.getElementById('tutorialArrow');
-                const dots = document.getElementById('tutorialDots');
-                const title = document.getElementById('tutorialTitle');
-                const body = document.getElementById('tutorialBody');
-                const icon = document.getElementById('tutorialIcon');
-                const btnNext = document.getElementById('tutorialNext');
-                const btnBack = document.getElementById('tutorialBack');
-                const svgEl = document.getElementById('tutorialSpotSvg');
-                const so = document.getElementById('spotOverlay');
-
-                if (step.requiresNewTab && typeof showNewTab === 'function') {
-                    const isOnNewTab = document.getElementById('newtab')?.classList.contains('active');
-                    if (!isOnNewTab) { showNewTab(false); }
-                }
-
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.92) translateY(10px)';
-
-                dots.innerHTML = '';
-                tutSteps.forEach((_, i) => {
-                    const dot = document.createElement('button');
-                    dot.type = 'button';
-                    dot.className = 'tutorial-dot';
-                    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
-                    dot.style.cssText = `width:${i === idx ? '18px' : '7px'};height:7px;border:none;border-radius:3.5px;background:${i === idx ? 'var(--ac)' : 'rgba(255,255,255,0.2)'};transition:all .2s;cursor:pointer;padding:0;`;
-                    dot.addEventListener('click', () => {
-                        if (i === idx) return;
-                        tutIdx = i;
-                        showTutStep(i);
-                    });
-                    dots.appendChild(dot);
-                });
-
-                title.innerHTML = step.title;
-                body.innerHTML = step.body;
-                icon.innerHTML = step.icon;
-                btnNext.innerHTML = idx === tutSteps.length - 1 ? '<i class="fas fa-check" style="margin-right:5px;"></i>Done' : 'Next <i class="fas fa-arrow-right"></i>';
-                btnBack.style.display = idx > 0 ? 'block' : 'none';
-
-                const stepDelay = step.requiresNewTab ? 200 : 60;
-                setTimeout(() => {
-                    const sr = document.getElementById('spotRect');
-                    const cloneWrap = document.getElementById('tutorialCloneWrap');
-                    if (cloneWrap) cloneWrap.innerHTML = '';
-                    const ringDiv = document.getElementById('tutorialRing');
-
-                    if (step.target) {
-                        const el = document.querySelector(step.target) || (step.targetFallback ? document.querySelector(step.targetFallback) : null);
-                        if (el) {
-                            const r = el.getBoundingClientRect();
-                            const pad = step.pad !== undefined ? step.pad : 3;
-                            const computedRxRaw = parseFloat(getComputedStyle(el).borderRadius) || 0;
-                            const elRx = computedRxRaw > 40 ? 9999 : 8;
-
-                            sr.setAttribute('x', r.left - pad);
-                            sr.setAttribute('y', r.top - pad);
-                            sr.setAttribute('width', r.width + pad * 2);
-                            sr.setAttribute('height', r.height + pad * 2);
-                            sr.setAttribute('rx', elRx > 100 ? Math.min(sr.getAttribute('width'), sr.getAttribute('height')) / 2 + '' : elRx + pad + '');
-
-                            if (ringDiv) {
-                                ringDiv.style.left = (r.left - pad) + 'px';
-                                ringDiv.style.top = (r.top - pad) + 'px';
-                                ringDiv.style.width = (r.width + pad * 2) + 'px';
-                                ringDiv.style.height = (r.height + pad * 2) + 'px';
-                                ringDiv.style.borderRadius = elRx > 100 ? '50%' : (elRx + pad) + 'px';
-                                ringDiv.style.display = 'block';
-                            }
-
-                            if (cloneWrap) {
-                                cloneWrap.innerHTML = '';
-                                try {
-                                    const clone = el.cloneNode(true);
-                                    clone.removeAttribute('id');
-                                    const computedBR = getComputedStyle(el).borderRadius || elRx + 'px';
-                                    clone.style.cssText = '';
-                                    clone.style.position = 'absolute';
-                                    clone.style.left = r.left + 'px';
-                                    clone.style.top = r.top + 'px';
-                                    clone.style.width = r.width + 'px';
-                                    clone.style.height = r.height + 'px';
-                                    clone.style.margin = '0';
-                                    clone.style.pointerEvents = 'none';
-                                    clone.style.boxSizing = 'border-box';
-                                    clone.style.borderRadius = computedBR;
-                                    clone.style.overflow = 'hidden';
-                                    clone.style.transform = 'none';
-                                    clone.style.animation = 'none';
-                                    clone.style.transition = 'none';
-                                    clone.style.filter = 'none';
-                                    clone.style.backdropFilter = 'none';
-                                    clone.style.webkitBackdropFilter = 'none';
-                                    clone.style.boxShadow = 'none';
-                                    clone.style.opacity = '1';
-                                    clone.style.zIndex = '2';
-
-                                    const itemsToActivate = [];
-                                    if (clone.hasAttribute('disabled') || clone.classList.contains('disabled') || clone.classList.contains('bookmark-btn-disabled')) {
-                                        itemsToActivate.push(clone);
-                                    }
-                                    if (clone.querySelectorAll) {
-                                        clone.querySelectorAll('[disabled], .disabled, .bookmark-btn-disabled').forEach(item => {
-                                            itemsToActivate.push(item);
-                                        });
-                                    }
-                                    itemsToActivate.forEach(item => {
-                                        item.removeAttribute('disabled');
-                                        item.classList.remove('disabled', 'bookmark-btn-disabled');
-                                        item.style.opacity = '1';
-                                    });
-
-                                    cloneWrap.appendChild(clone);
-                                } catch (e) { }
-                            }
-
-                            const svgEl3 = document.getElementById('tutorialSpotSvg');
-                            if (svgEl3) svgEl3.style.opacity = '1';
-                            if (so) { so.setAttribute('mask', 'url(#spotMask)'); so.style.display = ''; }
-                            const bdReset = document.getElementById('tutorialBackdrop');
-                            if (bdReset) bdReset.style.background = '';
-
-                            positionCard(card, arrow, r, step.pos);
-                        } else {
-                            sr.setAttribute('width', '0'); sr.setAttribute('height', '0');
-                            if (ringDiv) ringDiv.style.display = 'none';
-                            centerCard(card, arrow);
-                        }
-                    } else {
-                        sr.setAttribute('width', '0'); sr.setAttribute('height', '0');
-                        if (ringDiv) ringDiv.style.display = 'none';
-                        const svgEl2 = document.getElementById('tutorialSpotSvg');
-                        if (svgEl2) svgEl2.style.opacity = '0';
-                        const bd2 = document.getElementById('tutorialBackdrop');
-                        if (bd2) bd2.style.background = 'rgba(0,0,0,0.48)';
-                        centerCard(card, arrow);
-                    }
-
-                    requestAnimationFrame(() => requestAnimationFrame(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'scale(1) translateY(0)';
-                    }));
-                }, 80);
-            }
-
-            function positionCard(card, arrow, targetRect, pos) {
-                const cw = 380;
-                const vw = window.innerWidth, vh = window.innerHeight;
-                const pad = 16;
-
-                function placeNub(cardLeft, cardTop, cardH, pr) {
-                    const cx = pr.left + pr.width / 2;
-                    const nubMin = 24, nubMax = cw - 24;
-                    const rawNub = cx - cardLeft - 6;
-                    arrow.style.left = Math.min(Math.max(rawNub, nubMin), nubMax) + 'px';
-                    arrow.style.right = '';
-                    if (cardTop + cardH <= pr.top + 4) {
-                        arrow.style.top = ''; arrow.style.bottom = '-7px';
-                        arrow.style.borderTop = 'none'; arrow.style.borderLeft = 'none';
-                        arrow.style.borderBottom = '1px solid var(--ac)';
-                        arrow.style.borderRight = '1px solid var(--ac)';
-                    } else {
-                        arrow.style.top = '-7px'; arrow.style.bottom = '';
-                        arrow.style.borderBottom = 'none'; arrow.style.borderRight = 'none';
-                        arrow.style.borderTop = '1px solid var(--ac)';
-                        arrow.style.borderLeft = '1px solid var(--ac)';
-                    }
-                    arrow.style.display = 'block';
-
-                    const nubPos = parseFloat(arrow.style.left);
-                    const card = arrow.parentElement;
-                    const isLeft = nubPos <= 28;
-                    const isRight = nubPos >= cw - 28;
-                    const isTop = arrow.style.top !== '';
-                    card.style.borderRadius = '16px';
-                    if (isLeft && isTop) card.style.borderTopLeftRadius = '6px';
-                    if (isRight && isTop) card.style.borderTopRightRadius = '6px';
-                    if (isLeft && !isTop) card.style.borderBottomLeftRadius = '6px';
-                    if (isRight && !isTop) card.style.borderBottomRightRadius = '6px';
-                }
-
-                if (pos === 'below' || pos === 'below-left') {
-                    let left = pos === 'below-left'
-                        ? Math.max(pad, targetRect.right - cw)
-                        : Math.max(pad, targetRect.left + targetRect.width / 2 - cw / 2);
-                    left = Math.min(left, vw - cw - pad);
-                    let top = targetRect.bottom + 26;
-                    const cardH = card.offsetHeight || 220;
-                    if (top + cardH + pad > vh) top = Math.max(pad, targetRect.top - cardH - 26);
-                    top = Math.max(pad, top);
-                    card.style.left = left + 'px'; card.style.top = top + 'px';
-                    card.style.bottom = ''; card.style.right = '';
-                    placeNub(left, top, card.offsetHeight || cardH, targetRect);
-                } else if (pos === 'above') {
-                    let left = Math.max(pad, targetRect.left + targetRect.width / 2 - cw / 2);
-                    left = Math.min(left, vw - cw - pad);
-                    const cardH = card.offsetHeight || 220;
-                    let top = targetRect.top - cardH - 26;
-                    if (top < pad) top = targetRect.bottom + 26;
-                    top = Math.min(top, vh - cardH - pad);
-                    top = Math.max(top, pad);
-                    card.style.left = left + 'px'; card.style.top = top + 'px';
-                    card.style.bottom = ''; card.style.right = '';
-                    placeNub(left, top, card.offsetHeight || cardH, targetRect);
-                }
-            }
-
-            function centerCard(card, arrow) {
-                const vw = window.innerWidth, vh = window.innerHeight;
-                card.style.left = (vw / 2 - 150) + 'px';
-                card.style.top = (vh / 2 - 100) + 'px';
-                card.style.bottom = '';
-                arrow.style.display = 'none';
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                var tn = document.getElementById('tutorialNext');
-                var tb = document.getElementById('tutorialBack');
-                var ts = document.getElementById('tutorialSkip');
-                if (tn) tn.addEventListener('click', () => {
-                    if (tutIdx >= tutSteps.length - 1) { endTutorial(true); return; }
-                    tutIdx++;
-                    showTutStep(tutIdx);
-                });
-                if (tb) tb.addEventListener('click', () => {
-                    if (tutIdx <= 0) return;
-                    tutIdx--;
-                    showTutStep(tutIdx);
-                });
-                if (ts) ts.addEventListener('click', endTutorial);
-            });
-
-            window.__lbStartTutorial = () => startTutorial(true);
-
             try {
                 if (ls.getItem('limitless:panelsleft') === '1') {
                     document.body.classList.add('panels-left');
                 }
             } catch (e) { }
 
-            setTimeout(() => {
-                const restartBtn = document.getElementById('restartTutorialBtn');
-                if (restartBtn) {
-                    restartBtn.addEventListener('click', () => {
-                        if (typeof hideSettingsPage === 'function') hideSettingsPage();
-                        if (typeof hideBookmarkModal === 'function') hideBookmarkModal();
-                        if (typeof hideShortcutEditModal === 'function') hideShortcutEditModal();
-                        if (typeof hideAddFavoriteModal === 'function') hideAddFavoriteModal();
-
-                        ["wallpaperModal", "metricsModal", "adblockModal", "historyPopup", "siteInfoPopup"].forEach(id => {
-                            const el = document.getElementById(id);
-                            if (el) el.style.display = "none";
-                        });
-
-                        const cm = document.getElementById("contextMenu");
-                        if (cm) cm.classList.remove("active");
-
-                        if (typeof logsEl !== "undefined" && logsEl) logsEl.classList.add("hidden");
-                        if (typeof elementsEl !== "undefined" && elementsEl) elementsEl.classList.add("hidden");
-
-                        setTimeout(() => {
-                            if (typeof showNewTab === 'function') showNewTab(false);
-                            setTimeout(() => startTutorial(true), 150);
-                        }, 80);
-                    });
-                }
-            }, 300);
-
-            // Delay tutorial until after libcurl init completes
-            let _libcurlInitDone = false;
-            let _tutorialWaiting = false;
-            function _maybeStartTutorial() {
-                if (_libcurlInitDone && _tutorialWaiting) {
-                    _tutorialWaiting = false;
-                    setTimeout(() => startTutorial(false), 400);
-                }
-            }
-            // Will be resolved by init() after libcurl is ready
+            // Called by init() after libcurl is ready (the old welcome tour that started here is gone: the ceremony tour replaces it).
             window._onLibcurlInitDone = function() {
-                // Drop the splash styling — subsequent overlay uses (page loading) stay as the normal small overlay
+                // Drop the splash styling, subsequent overlay uses (page loading) stay as the normal small overlay
                 overlay.classList.remove('splash');
-                _libcurlInitDone = true;
-                _maybeStartTutorial();
             };
-            // Re-enable the welcome tour so it appears automatically after the browser is ready.
-            _tutorialWaiting = true;
-            _maybeStartTutorial();
 
             // ── Fullscreen logic ──────────────────────────────────────────────
             function _doRequestFullscreen() {
