@@ -138,7 +138,7 @@ before choosing). Matching: exact host or parent-domain suffix in a `Set`, O(lab
 O(entries x URL length). The list ships as `vendor/blocklist/<date>/hosts.txt` (immutable) and updates with releases.
 Custom filters and the per-site allowlist (`limitless:adblock:allowlist:v1`) keep working.
 
-*Status 2026-11-14: built (slice 0.3-blocklist). `LB_blocklist` in `app/main.js`; list `vendor/blocklist/2026-11-14/hosts.txt` (HaGeZi Multi LIGHT, GPL-3.0, 91336 domains, 1.9 MB raw), source and licence choice in `SOURCE.md` there. Loaded 2.5 s after boot, old list is the fallback. Test: `tests/e2e/blocklist.spec.js`.*
+*Status 2026-11-14: built (slice 0.3-blocklist). `LB_blocklist` in `app/main.js`; list `vendor/blocklist/2026-11-14/hosts.txt` (HaGeZi Multi LIGHT, GPL-3.0, 91336 domains, 1.9 MB raw), source and licence choice in `SOURCE.md` there. Loaded once the fetch queue has been idle for 3 s (the first download used to start 2.5 s after boot and slowed cold first pages in the 0.3.0 speed gate), old list is the fallback. Test: `tests/e2e/blocklist.spec.js`.*
 
 4.8 **Verification:** e2e for sleep and wake, Back from memory, rewrite cache hit on second visit (`LB_rewrite.stats()`),
 page cache swap and chip, blocklist matching unit cases (subdomain, look-alike domain not blocked), harness repeat-visit

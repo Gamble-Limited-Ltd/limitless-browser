@@ -52,4 +52,22 @@ test.describe('blocklist', () => {
     expect(r.ga).toBe(true);
     expect(r.ok).toBe(false);
   });
+
+  // 0.3.0 speed gate: the 570 KB list must not compete with the first page, so it waits for an idle fetch queue.
+  test('list download waits until the fetch queue is idle', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const real = window.LB_queueState;
+      let busy = true;
+      window.LB_queueState = () => ({ fetching: busy ? 3 : 0, queued: 0 });
+      LB_blocklist.reset();
+      LB_blocklist.loadWhenIdle(200, 50);
+      await new Promise(res => setTimeout(res, 600));
+      const whileBusy = LB_blocklist.loaded();
+      busy = false;
+      for (let i = 0; i < 40 && !LB_blocklist.loaded(); i++) await new Promise(res => setTimeout(res, 100));
+      window.LB_queueState = real;
+      return { whileBusy, after: LB_blocklist.loaded() };
+    });
+    expect(r).toEqual({ whileBusy: false, after: true });
+  });
 });

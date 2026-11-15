@@ -2995,10 +2995,19 @@
                         .catch(() => { pending = null; return false; });
                     return pending;
                 }
-                return { hostBlocked, setList, load, loaded: () => !!set, size: () => set ? set.size : 0, reset: () => { set = null; pending = null; } };
+                // The list is ~570 KB: start it only after the fetch queue has been idle for idleMs, so it never competes with a page (0.3.0 speed gate).
+                function loadWhenIdle(idleMs = 3000, step = 500) {
+                    let idle = 0;
+                    const t = setInterval(() => {
+                        const q = window.LB_queueState ? window.LB_queueState() : { fetching: 0, queued: 0 };
+                        idle = q.fetching || q.queued ? 0 : idle + step;
+                        if (idle >= idleMs) { clearInterval(t); load(); }
+                    }, step);
+                }
+                return { hostBlocked, setList, load, loadWhenIdle, loaded: () => !!set, size: () => set ? set.size : 0, reset: () => { set = null; pending = null; } };
             })();
             window.LB_blocklist = LB_blocklist;
-            if (location.protocol !== 'file:') setTimeout(() => LB_blocklist.load(), 2500);   // after boot; cached immutable by the service worker
+            if (location.protocol !== 'file:') LB_blocklist.loadWhenIdle();   // cached immutable by the service worker
 
             function shouldSkip(url) {
                 if (!blockEnabled) return false;
