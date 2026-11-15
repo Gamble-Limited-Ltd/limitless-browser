@@ -39,10 +39,10 @@ grep -q "<script src=\"app/$SHA/main.js\"></script>" "$OUT/index.html" || { echo
 sed -i "/@LB_BUILD_SHA@/ s/|| 'dev';/|| '$SHA';/" "$OUT/app/$SHA/main.js"
 grep -q "|| '$SHA'; // @LB_BUILD_SHA@" "$OUT/app/$SHA/main.js" || { echo "build-static: could not stamp the build sha into app/main.js" >&2; exit 1; }
 # Lazy loaders in index.html read the sha from the same constant; the service worker gets it plus its precache list
-# (shell files a first visit needs: index, acorn, the WASM, font css, Latin faces, theme css, app/<sha>). Skins CSS and PDF.js are cached on use.
+# (shell files a first visit needs; no other HTML: the worker refuses it and the whole install fails. index, acorn, the WASM, font css, Latin faces, theme css, app/<sha>). Skins CSS and PDF.js are cached on use.
 sed -i "/@LB_BUILD_SHA@/ s/const SHA = 'dev';/const SHA = '$SHA';/" "$OUT/sw.js"
 PRE="$(cd "$OUT" && { echo index.html; find vendor/acorn vendor/libcurl vendor/iso-639-1 vendor/fontawesome/6.7.2/css vendor/fontawesome/6.7.2/webfonts fonts theme app -type f \
-  ! -name '*.gz' ! -name 'LICENSE*' ! -name '*.txt' ! -name 'skins.css' ! -name '*.md' ! -name '*.ttf' \
+  ! -name '*.gz' ! -name '*.html' ! -name 'LICENSE*' ! -name '*.txt' ! -name 'skins.css' ! -name '*.md' ! -name '*.ttf' \
   ! -regex '.*-\(latin-ext\|cyrillic-ext\|cyrillic\|greek\|vietnamese\)\.woff2' 2>/dev/null || true; } | sort | node -e 'const l=require("fs").readFileSync(0,"utf8").split("\n").filter(Boolean).map(x=>"/"+x);process.stdout.write(JSON.stringify(l))')"
 sed -i "s|^const PRECACHE = \[\]; // @LB_PRECACHE@|const PRECACHE = $PRE; // @LB_PRECACHE@|" "$OUT/sw.js"
 grep -q "const SHA = '$SHA';" "$OUT/sw.js" && grep -q '@LB_PRECACHE@' "$OUT/sw.js" && ! grep -q 'PRECACHE = \[\]' "$OUT/sw.js" || { echo "build-static: could not stamp sw.js" >&2; exit 1; }
