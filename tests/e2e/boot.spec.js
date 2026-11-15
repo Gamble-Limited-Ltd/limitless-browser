@@ -59,3 +59,40 @@ for (const mode of ['network error', 'server 503']) {
     expect(ws).toEqual([]);
   });
 }
+
+// Rollback (REVIEW 2 item 7): deploy.sh puts scripts/sw-rollback-stub.js at /sw.js when the rolled-back commit has no worker.
+// An installed 0.3.0 worker must pick it up, clear its caches and unregister itself.
+test('rollback stub: an installed worker is replaced by the stub, which removes its caches and itself', async ({ page, baseURL }) => {
+  const stub = fs.readFileSync(path.join(ROOT, 'scripts/sw-rollback-stub.js'), 'utf8');
+  expect(stub).not.toMatch(/addEventListener\(\s*['"]fetch['"]/);
+  expect(fs.readFileSync(path.join(ROOT, 'deploy.sh'), 'utf8')).toContain('inject-sw-stub.sh');
+  // A page route cannot answer the worker's own script request, so this test serves the tree itself and swaps /sw.js.
+  const http = require('http');
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.json': 'application/json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.md': 'text/markdown' };
+  let rolledBack = false;
+  const srv = http.createServer((req, res) => {
+    const u = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    if (u === '/sw.js') { res.writeHead(200, { 'content-type': 'text/javascript', 'cache-control': 'no-cache' }); return res.end(rolledBack ? stub : fs.readFileSync(path.join(ROOT, 'sw.js'))); }
+    if (u === '/version.json') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ version: '9', sha: 'stubtest', features: { sw: true } })); }
+    const f = path.join(ROOT, u === '/' ? 'index.html' : u);
+    if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('no'); }
+    res.writeHead(200, { 'content-type': types[path.extname(f)] || 'application/octet-stream' }); res.end(fs.readFileSync(f));
+  });
+  await new Promise((ok) => srv.listen(0, '127.0.0.1', ok));
+  try {
+    const base = `http://127.0.0.1:${srv.address().port}`;
+    await page.addInitScript(() => { window.LB_BUILD_SHA = 'stubtest'; window.LB_SW_DELAY = 0; });
+    await page.goto(base + '/index.html');
+    await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
+    const regs = () => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length);
+    await expect.poll(regs).toBe(1);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
+    await expect.poll(() => page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('lb-shell-')).length)).toBeGreaterThan(0);
+    rolledBack = true;
+    await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+    await expect.poll(regs, { timeout: 20000 }).toBe(0);
+    expect(await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('lb-shell-')))).toEqual([]);
+  } finally { srv.close(); }
+});

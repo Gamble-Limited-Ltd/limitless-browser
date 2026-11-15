@@ -27,6 +27,9 @@ cp "$REPO/deploy/gate.env" "$WORK/deploy/gate.env"
 [ -f "$REPO/deploy/.env" ] && cp "$REPO/deploy/.env" "$WORK/deploy/.env"
 
 "$WORK/scripts/build-static.sh" "$SHA"
+# Rollback to a commit that has no service worker (0.2.x): installed 0.3.0 workers must be told to remove themselves.
+# The working-tree script runs on the archived build output (the archived tree has no stub of its own).
+[ -e "$WORK/deploy/web/dist/sw.js" ] || "$REPO/scripts/inject-sw-stub.sh" "$WORK/deploy/web"
 
 export WEB_SHA="$SHA" RELAY_SHA="$SHA" GATE_SHA="$SHA" GATE_CONTEXT  # WEB_SHA also reaches the gate as BUILD_SHA
 COMPOSE=(-f "$WORK/deploy/docker-compose.yml")
