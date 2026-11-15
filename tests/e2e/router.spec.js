@@ -103,7 +103,7 @@ test.describe('own relay shards', () => {
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
     const f = await page.evaluate(() => ({ ...window.LB_features }));
-    expect(f).toEqual({ ownSockets: 1, worker: false, respCache: false, sw: true, pipeline: false, lazyImg: false, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true });
+    expect(f).toEqual({ ownSockets: 1, worker: false, respCache: false, sw: true, pipeline: false, lazyImg: false, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true });
     expect(await page.evaluate(() => window.LB_router.route('ws://' + location.host + '/wisp/a.test:443').url)).toBe(`ws://127.0.0.1:${PORT}/wisp/a.test:443`);
   });
 
@@ -111,7 +111,7 @@ test.describe('own relay shards', () => {
     await page.route('**/version.json*', (r) => r.fulfill({ status: 404, body: 'no' }));
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
-    expect(await page.evaluate(() => ({ ...window.LB_features }))).toEqual({ ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true });
+    expect(await page.evaluate(() => ({ ...window.LB_features }))).toEqual({ ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true });
   });
 });
 

@@ -14,10 +14,10 @@ export GATE_CONTEXT="${GATE_CONTEXT:-$HOME/limitless-gate}"
 # The mock GATE seeds an owner user with this id; the gate treats it as OWNER_SUB (admin panel tests).
 export REHEARSAL_OWNER_SUB="00000000-0000-4000-8000-0000000000a1"
 PROJECT=limitless-browser-rehearsal
-# Speed run: start the fixture sites container and give the relay the TEST-ONLY config that allows the fixture subnet
+# Speed run (LB_SPEED=1) or fault run (LB_FAULTS=1, tests/stack/failures.spec.js): start the fixture sites container and give the relay the TEST-ONLY config that allows the fixture subnet
 # (prod config.toml keeps allow_non_global = false; tests/e2e/relay-config.spec.js asserts it). Exported before every
 # compose call so `down` also removes the fixtures container.
-if [ "${LB_SPEED:-0}" = 1 ]; then
+if [ "${LB_SPEED:-0}" = 1 ] || [ "${LB_FAULTS:-0}" = 1 ]; then
   export COMPOSE_PROFILES=fixtures
   RELAY_SRC="$HERE/relay-fixtures.toml"
 fi

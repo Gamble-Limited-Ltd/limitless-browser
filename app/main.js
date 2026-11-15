@@ -468,7 +468,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true };
+            window.LB_features = { ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true };
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') return window.LB_features;
                 try {
@@ -493,7 +493,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) {}
                 return window.LB_features;
@@ -538,6 +538,8 @@
                 const rootOf = new Map();      // final base url -> relay root it came from
                 let shardCursor = 0, spreadCursor = 0;
                 const R = {
+                    epoch: 0,                  // L2: counts sockets the network (not we) closed or failed; doFetch compares it before and after a request
+                    noteDrop(base) { R.epoch++; try { d.onDrop && d.onDrop(base); } catch (_) {} },
                     pinned: null,              // set by LB_swapSession(url, {pin:true}) while a retry is on a chosen relay
                     sticky,
                     parse(raw) {
@@ -603,6 +605,13 @@
                         ws.addEventListener('open', () => { opened = true; });
                         ws.addEventListener('error', fail);
                         ws.addEventListener('close', fail);
+                        // A close we (or libcurl) asked for goes through ws.close() and is quiet; any other end of the socket is a relay drop.
+                        const origClose = ws.close;
+                        if (typeof origClose === 'function') ws.close = function () { ws.__lbQuiet = true; return origClose.apply(this, arguments); };
+                        let noted = false;
+                        const drop = () => { if (!noted && !ws.__lbQuiet) { noted = true; R.noteDrop(base); } };
+                        ws.addEventListener('error', drop);
+                        ws.addEventListener('close', drop);
                         return ws;
                     },
                     open(raw, p) {
@@ -705,6 +714,7 @@
                 mode: lbMultiMode,
                 candidates: (host) => rankPoolCandidates(host, null),
                 markFailed: markWispFailed,
+                onDrop: () => {},
                 get Socket() { return libcurl.wisp.WispWebSocket; },
             });
             window.LB_makeRouter = LB_makeRouter;
@@ -716,7 +726,9 @@
 
             // One place that swaps the libcurl session: points libcurl at `url`, creates the new session, applies the
             // connection limits, and closes the old one once it has no requests in flight (the old code leaked every one).
+            window.LB_stats = { swaps: 0, b64: 0 };   // test hooks: session swaps and base64 encodes for the frame
             async function LB_swapSession(url, opts) {
+                window.LB_stats.swaps++;
                 await libcurl.load_wasm();
                 libcurl.set_websocket(url);
                 LB_router.pinned = opts && opts.pin ? url : null;
@@ -1828,7 +1840,7 @@
             // Messages to the page frame go through the app window's own postMessage: the frame's runtime wraps its
             // window.postMessage (own property), so frame.postMessage(...) would run that wrapper and arrive with the frame
             // itself as event.source, which the runtime's `e.source !== parent` check drops (every reply lost).
-            function lbPostTo(w, m, o) { if (w) window.postMessage.call(w, m, o); }
+            function lbPostTo(w, m, o, t) { if (w) window.postMessage.call(w, m, o, t); }
             // L6: script blob: URLs of a page blob, revoked with it. A stored page (page cache) must not hold blob: URLs,
             // so lbBlobsToData swaps them for data: URLs first (same bytes the pre-blob path made).
             const lbScriptBlobs = new Map();
@@ -3829,6 +3841,7 @@
             // Hooks for self-contained internal pages that live in their own script (the owner admin panel).
             window.LB_pages = SKIN_PAGES;
             window.LB_go = (u) => go(u, true);
+            window.LB_goPost = (u, b) => go(u, true, 'POST', b);   // test hook
             window.LB_home = () => showNewTab(true);
             // Leave an overlay page the way it was entered: back to the previous page of this tab, or the start page.
             window.LB_back = () => { if (histIdx > 0) $("back").click(); else showNewTab(true); };
@@ -4606,84 +4619,87 @@
                 });
             }, 0);
 
-            function log(msg, type = "") {
+            // L11: log() only appends a plain object to a ring buffer (500). DOM is built while the log panel is open, and for the
+            // buffered entries when it opens. The dedup badge, filter and search behave as before.
+            const logRing = [];
+            const LOG_RING_MAX = 500;
+            const logPanelOpen = () => !!logsEl && !logsEl.classList.contains('hidden');
+            function renderLogEntry(en) {
+                if (en.el) return;
                 const d = document.createElement("div");
-                d.className = `log-entry ${type}`.trim();
-                d.dataset.type = type || 'default';
-
-                const now = new Date();
-                const ts = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-                // Plain-text version for dedup key and search
+                d.className = `log-entry ${en.type}`.trim();
+                d.dataset.type = en.type || 'default';
                 const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = msg;
-                const plainText = tempDiv.textContent || msg;
-                d.dataset.text = plainText.toLowerCase();
-
+                tempDiv.innerHTML = en.msg;
+                d.dataset.text = (tempDiv.textContent || en.msg).toLowerCase();
+                const tsSpan = document.createElement('span');
+                tsSpan.className = 'log-ts';
+                tsSpan.textContent = new Date(en.t).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const msgSpan = document.createElement('span');
+                msgSpan.className = 'log-msg';
+                msgSpan.innerHTML = en.msg;
+                d.appendChild(tsSpan);
+                d.appendChild(msgSpan);
+                if (en.count > 1) {
+                    const badge = document.createElement('span');
+                    badge.className = 'log-dup-badge';
+                    badge.textContent = `\u00d7${en.count}`;
+                    d.appendChild(badge);
+                }
+                en.el = d;
+                if (!_entryMatchesFilter(d)) d.classList.add('hidden-by-filter');
+                const noResults = document.getElementById('logNoResults');
+                if (noResults) logbox.insertBefore(d, noResults);
+                else logbox.appendChild(d);
+                if (logbox.querySelectorAll('.log-entry').length > 400) {
+                    const first = logbox.querySelector('.log-entry');
+                    if (first) logbox.removeChild(first);
+                }
+                _updateLogCountBadge();
+                const anyVisible = logbox.querySelector('.log-entry:not(.hidden-by-filter)');
+                const nr = document.getElementById('logNoResults');
+                if (nr) nr.classList.toggle('visible', !anyVisible);
+                if (_logAutoScroll) logbox.scrollTop = logbox.scrollHeight;
+            }
+            function flushLog() { for (const en of logRing) renderLogEntry(en); }
+            if (logsEl && typeof MutationObserver === 'function') new MutationObserver(() => { if (logPanelOpen()) flushLog(); }).observe(logsEl, { attributes: true, attributeFilter: ['class'] });
+            function log(msg, type = "") {
                 const msgKey = msg.slice(0, 500);
                 const lastSeen = recentLogs.get(msgKey);
-
-                // Deduplicate — increment badge on last entry instead of dropping
+                // Deduplicate: count a repeat on the last entry instead of adding one
                 if (lastSeen && (Date.now() - lastSeen.time) < 5000) {
                     lastSeen.count++;
-                    if (lastSeen.el) {
-                        let badge = lastSeen.el.querySelector('.log-dup-badge');
+                    const en = lastSeen.en;
+                    en.count = lastSeen.count + 1;
+                    if (en.el) {
+                        let badge = en.el.querySelector('.log-dup-badge');
                         if (!badge) {
                             badge = document.createElement('span');
                             badge.className = 'log-dup-badge';
-                            lastSeen.el.appendChild(badge);
+                            en.el.appendChild(badge);
                         }
-                        badge.textContent = `×${lastSeen.count + 1}`;
+                        badge.textContent = `\u00d7${en.count}`;
                     }
                     return;
                 }
-
-                recentLogs.set(msgKey, { time: Date.now(), count: 1, el: d });
-
+                const en = { msg: msgKey, type, t: Date.now(), count: 1, el: null };
+                recentLogs.set(msgKey, { time: en.t, count: 1, en });
                 if (recentLogs.size > 200) {
                     const cutoff = Date.now() - 10000;
                     for (const [k, v] of recentLogs.entries()) {
                         if (v.time < cutoff) recentLogs.delete(k);
                     }
                 }
-
-                // Build entry structure
-                const tsSpan = document.createElement('span');
-                tsSpan.className = 'log-ts';
-                tsSpan.textContent = ts;
-
-                const msgSpan = document.createElement('span');
-                msgSpan.className = 'log-msg';
-                msgSpan.innerHTML = msg.slice(0, 500);
-
-                d.appendChild(tsSpan);
-                d.appendChild(msgSpan);
-
-                // Apply filter immediately
-                if (!_entryMatchesFilter(d)) d.classList.add('hidden-by-filter');
-
-                // Insert before the no-results placeholder
-                const noResults = document.getElementById('logNoResults');
-                if (noResults) logbox.insertBefore(d, noResults);
-                else logbox.appendChild(d);
-
-                if (logbox.querySelectorAll('.log-entry').length > 400) {
-                    const first = logbox.querySelector('.log-entry');
-                    if (first) logbox.removeChild(first);
-                }
-
-                _updateLogCountBadge();
-
-                // Update no-results visibility
-                const anyVisible = logbox.querySelector('.log-entry:not(.hidden-by-filter)');
-                const nr = document.getElementById('logNoResults');
-                if (nr) nr.classList.toggle('visible', !anyVisible);
-
-                if (_logAutoScroll) logbox.scrollTop = logbox.scrollHeight;
+                logRing.push(en);
+                if (logRing.length > LOG_RING_MAX) { const old = logRing.shift(); if (old.el && old.el.parentNode) old.el.remove(); }
+                if (logPanelOpen()) renderLogEntry(en);
             }
+            window.LB_log = log;   // test hooks
+            window.LB_logState = () => ({ ring: logRing.length });
 
             $("clear").onclick = () => {
                 logbox.querySelectorAll('.log-entry').forEach(el => el.remove());
+                logRing.length = 0;
                 recentLogs.clear();
                 const nr = document.getElementById('logNoResults');
                 if (nr) nr.classList.remove('visible');
@@ -5038,7 +5054,8 @@
                     // Hard cap: if queue is already very large the network is effectively stalled.
                     // Reject low-priority jobs immediately rather than letting the queue grow
                     // unboundedly and eventually OOM on a low-RAM Chromebook.
-                    if (fetchQueue.length > 150 && priority >= PRIORITY.image) {
+                    // L5: only the optional image pre-warm is refused; requests the page itself makes wait their turn.
+                    if (fetchQueue.length > 150 && priority >= PRIORITY.image && opts.__prewarm) {
                         rej(new DOMException('Queue full', 'AbortError'));
                         pendingRequests = Math.max(0, pendingRequests - 1);
                         updateStats();
@@ -5096,15 +5113,36 @@
                     const job = fetchQueue.splice(jobIdx, 1)[0];
                     fetching++;
 
+                    // L4 (features.deadlines): this request gets its own AbortController and two deadlines, started when it is
+                    // dispatched (not queued): first byte (LB_deadlines.connect) and the body (LB_deadlines.body, none for media or
+                    // Range requests). A stage that stops waiting aborts the request, so the slot and the in-flight entry are freed.
+                    const jc = new AbortController();
+                    let timedOut = null, dlTimer = null;
+                    const dlOn = window.LB_features.deadlines !== false;
+                    const up = job.opts.signal;
+                    if (up) { if (up.aborted) jc.abort(); else up.addEventListener('abort', () => jc.abort(), { once: true }); }
+                    const arm = (ms, what) => { clearTimeout(dlTimer); if (dlOn) dlTimer = setTimeout(() => { timedOut = what; jc.abort(); }, ms); };
+                    const hh = job.opts.headers || {};
+                    const noBodyCap = !!(hh.Range || hh.range) || /\.(mp4|webm|m4s|m4v|mp3|m4a|ogg|ogv|ts|mov|mkv)(\?|$)/i.test(job.url);
+                    const jopts = { ...job.opts, signal: jc.signal, __lbStage: (st) => { if (st === 'connect') arm(window.LB_deadlines.connect, 'waiting for the first byte'); else if (noBodyCap) clearTimeout(dlTimer); else arm(window.LB_deadlines.body, 'receiving the body'); } };
+
                     try {
-                        let r = await doFetchWithPoolRetry(job.url, job.opts);
+                        let r = await doFetchWithPoolRetry(job.url, jopts);
                         if (job.opts.__revalidate && r.status === 304) r = lbMergeRevalidated(job.opts.__revalidate, r, job.url);
                         if (job.opts.__lbCache) lbCacheStore(job.url, r);
 
                         job.res(r);
                     } catch (e) {
-                        job.rej(e);
+                        if (timedOut) {
+                            const te = new Error('Request timed out ' + timedOut + ' (' + job.url.replace(/^https?:\/\//, '').slice(0, 50) + ')');
+                            te.name = 'TimeoutError'; te.lbCat = 'timeout'; te.lbSite = true;
+                            job.rej(te);
+                        } else {
+                            if (lbErrClassOn() && e && !e.lbCat && e.name !== 'AbortError') { const c = lbClassify(e); e.lbCode = c.code; e.lbCat = c.cat; }
+                            job.rej(e);
+                        }
                     } finally {
+                        clearTimeout(dlTimer);
                         fetching--;
                         pendingRequests--;
                         updateStats();
@@ -5113,6 +5151,37 @@
                 }
             }
 
+            // ── L2 error classes (features.errClass) ─────────────────────────────
+            // libcurl.js messages look like "Request failed with error code 35: ...". The code says what failed: these describe the
+            // site (or the name), not the relay, so they fail that one request and never touch the session. The relay reports an
+            // unknown name as 35, so 35 alone is not a relay sign either. A relay drop is read from the transport instead:
+            // LB_router.epoch moves when a relay socket is closed by the network.
+            const LB_CURL_CATS = { 6: 'dns', 7: 'connect', 28: 'timeout', 35: 'tls', 51: 'cert', 58: 'cert', 60: 'cert', 52: 'reset', 56: 'reset' };
+            function lbClassify(err) {
+                const m = /error code (\d+)/i.exec((err && err.message) || '');
+                const code = m ? parseInt(m[1], 10) : 0;
+                return { code, cat: LB_CURL_CATS[code] || '' };
+            }
+            const lbErrClassOn = () => window.LB_features.errClass !== false;
+            // One shared reconnect for every request that saw the same drop. `lbSessionGen` moves when it completes, so a request
+            // that failed before the new session existed only retries and does not start another swap.
+            let lbSessionGen = 0, _lbReconnect = null;
+            function lbReconnect(signal) {
+                if (!_lbReconnect) {
+                    _lbReconnect = (async () => {
+                        let last;
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            await new Promise(r => setTimeout(r, attempt === 0 ? 300 : attempt === 1 ? 800 : 2000));
+                            try { await window.LB_swapSession(WISP); lbSessionGen++; log('Reconnected to WISP (attempt ' + (attempt + 1) + ')', 'ok'); return; }
+                            catch (e) { last = e; log('WISP reconnect attempt ' + (attempt + 1) + ' failed', 'warn'); }
+                        }
+                        throw last;
+                    })().finally(() => { _lbReconnect = null; });
+                }
+                return _lbReconnect;
+            }
+            window.LB_deadlines = { connect: 10000, body: 30000 };   // L4 (ms); a test hook too
+            window.LB_queueState = () => ({ fetching, queued: fetchQueue.length });
             async function doFetch(url, opts = {}) {
                 if (_netStall) return Promise.reject(new TypeError('Failed to fetch'));
                 const method = opts.method || "GET";
@@ -5229,7 +5298,10 @@
                 // ─────────────────────────────────────────────────────────────
 
                 let resp;
+                const _epoch0 = LB_router.epoch, _gen0 = lbSessionGen;
+                const _stage = opts.__lbStage || (() => {});
                 try {
+                    _stage('connect');
                     const fetchPromise = curl.fetch(url, {
                         method,
                         headers,
@@ -5245,9 +5317,28 @@
                         opts.signal?.addEventListener("abort", () => rj(new DOMException("Aborted", "AbortError")));
                     });
                     resp = await Promise.race([fetchPromise, abortPromise]);
+                    _stage('headers');
                 } catch (curlErr) {
                     const msg = (curlErr.message || '').toLowerCase();
                     const isAborted = curlErr.name === 'AbortError' || (opts.signal?.aborted);
+                    if (lbErrClassOn()) {
+                        if (isAborted) throw curlErr;
+                        const cls = lbClassify(curlErr);
+                        curlErr.lbCode = cls.code; curlErr.lbCat = cls.cat;
+                        // Not a drop of our relay socket: a site problem (or an unknown error). Fail this request only.
+                        if (LB_router.epoch === _epoch0 && lbSessionGen === _gen0) throw curlErr;
+                        curlErr.lbDrop = true;
+                        const idem = !method || /^(GET|HEAD|OPTIONS)$/i.test(method);
+                        if (!idem) throw curlErr;   // the request may have reached the site: never replay a POST
+                        log('WISP connection lost, reconnecting...', 'warn');
+                        if (lbSessionGen === _gen0) await lbReconnect(opts.signal);
+                        if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+                        _stage('connect');
+                        const again = curl.fetch(url, { method, headers, body, redirect: 'manual', signal: opts.signal });
+                        const againAbort = new Promise((_, rj) => { if (opts.signal?.aborted) rj(new DOMException('Aborted', 'AbortError')); opts.signal?.addEventListener('abort', () => rj(new DOMException('Aborted', 'AbortError'))); });
+                        try { resp = await Promise.race([again, againAbort]); } catch (e2) { const c2 = lbClassify(e2); e2.lbCode = c2.code; e2.lbCat = c2.cat; e2.lbDrop = true; throw e2; }
+                        _stage('headers');
+                    } else {
                     // Expanded kill-pattern list — catches Lightspeed mid-stream resets,
                     // RST packets, TLS termination, and generic WebSocket drops
                     const isWispDrop = !isAborted && (
@@ -5270,7 +5361,7 @@
                                 const _delay = _attempt === 0 ? 300 : _attempt === 1 ? 800 : 2000;
                                 await new Promise(r => setTimeout(r, _delay));
                                 if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-                                await LB_swapSession(WISP);
+                                await window.LB_swapSession(WISP);
                                 reconnected = true;
                                 log('Reconnected to WISP (attempt ' + (_attempt + 1) + ')', 'ok');
                                 break;
@@ -5293,6 +5384,7 @@
                     } else {
                         throw curlErr;
                     }
+                    }
                 }
                 let redirectCount = 0;
                 while (resp.status >= 300 && resp.status < 400 && resp.headers?.get?.("location") && redirectCount < 12) {
@@ -5312,6 +5404,7 @@
                         headers.Cookie = nextCookie;
                         usedJarCookie = true;
                     }
+                    _stage('connect');
                     const rdFetch = curl.fetch(url, {
                         method: _preserve ? method : (method === "POST" ? "GET" : method),
                         headers,
@@ -5321,6 +5414,7 @@
                     });
                     const rdAbort = new Promise((_, rj) => opts.signal?.addEventListener("abort", () => rj(new DOMException("Aborted", "AbortError"))));
                     resp = await Promise.race([rdFetch, rdAbort]);
+                    _stage('headers');
                     redirectCount++;
                 }
 
@@ -5451,6 +5545,7 @@
             }
 
             function toB64(buf) {
+                window.LB_stats.b64++;
                 const bytes = new Uint8Array(buf);
                 return Base64.encode(bytes);
             }
@@ -5672,7 +5767,7 @@ addEventListener('unhandledrejection', e => { try { window.__perr.push('REJECT: 
 // them. Limitless replies to ev.source, so each frame gets its own responses.
 const parent = window.top;
 
-const Base64=(()=>{const C='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';const E=new Uint8Array(256);for(let i=0;i<C.length;i++)E[C.charCodeAt(i)]=i;E['='.charCodeAt(0)]=0;function encode(input){let bytes=typeof input==='string'?(()=>{const b=new Uint8Array(input.length);for(let i=0;i<input.length;i++)b[i]=input.charCodeAt(i)&0xff;return b;})():input instanceof ArrayBuffer?new Uint8Array(input):input;const len=bytes.length,rem=len%3,end=len-rem,out=new Array((Math.floor(len/3)*4)+(rem?4:0));let o=0;for(let i=0;i<end;i+=3){const b0=bytes[i],b1=bytes[i+1],b2=bytes[i+2];out[o++]=C[b0>>2];out[o++]=C[(b0&3)<<4|b1>>4];out[o++]=C[(b1&15)<<2|b2>>6];out[o++]=C[b2&63];}if(rem===1){const b0=bytes[end];out[o++]=C[b0>>2];out[o++]=C[(b0&3)<<4];out[o++]='=';out[o++]='=';}else if(rem===2){const b0=bytes[end],b1=bytes[end+1];out[o++]=C[b0>>2];out[o++]=C[(b0&3)<<4|b1>>4];out[o++]=C[(b1&15)<<2];out[o++]='=';}return out.join('');}function decode(b64){if(!b64)return new Uint8Array(0);b64=b64.replace(/\\s/g,'');const r=b64.length%4;if(r===2)b64+='==';else if(r===3)b64+='=';const len=b64.length;let bl=(len/4)*3;if(b64[len-1]==='=')bl--;if(b64[len-2]==='=')bl--;const out=new Uint8Array(bl);let o=0;for(let i=0;i<len;i+=4){const e0=E[b64.charCodeAt(i)],e1=E[b64.charCodeAt(i+1)],e2=E[b64.charCodeAt(i+2)],e3=E[b64.charCodeAt(i+3)];out[o++]=(e0<<2)|(e1>>4);if(o<bl)out[o++]=((e1&15)<<4)|(e2>>2);if(o<bl)out[o++]=((e2&3)<<6)|e3;}return out;}function decodeToString(b64){const bytes=decode(b64);let s='';const CH=32768;for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));return s;}return{encode,decode,decodeToString};})();
+const Base64=(()=>{const C='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';const E=new Uint8Array(256);for(let i=0;i<C.length;i++)E[C.charCodeAt(i)]=i;E['='.charCodeAt(0)]=0;function encode(input){let bytes=typeof input==='string'?(()=>{const b=new Uint8Array(input.length);for(let i=0;i<input.length;i++)b[i]=input.charCodeAt(i)&0xff;return b;})():input instanceof ArrayBuffer?new Uint8Array(input):input;const len=bytes.length,rem=len%3,end=len-rem,out=new Array((Math.floor(len/3)*4)+(rem?4:0));let o=0;for(let i=0;i<end;i+=3){const b0=bytes[i],b1=bytes[i+1],b2=bytes[i+2];out[o++]=C[b0>>2];out[o++]=C[(b0&3)<<4|b1>>4];out[o++]=C[(b1&15)<<2|b2>>6];out[o++]=C[b2&63];}if(rem===1){const b0=bytes[end];out[o++]=C[b0>>2];out[o++]=C[(b0&3)<<4];out[o++]='=';out[o++]='=';}else if(rem===2){const b0=bytes[end],b1=bytes[end+1];out[o++]=C[b0>>2];out[o++]=C[(b0&3)<<4|b1>>4];out[o++]=C[(b1&15)<<2];out[o++]='=';}return out.join('');}function decode(b64){if(b64 instanceof ArrayBuffer)return new Uint8Array(b64);if(!b64)return new Uint8Array(0);b64=b64.replace(/\\s/g,'');const r=b64.length%4;if(r===2)b64+='==';else if(r===3)b64+='=';const len=b64.length;let bl=(len/4)*3;if(b64[len-1]==='=')bl--;if(b64[len-2]==='=')bl--;const out=new Uint8Array(bl);let o=0;for(let i=0;i<len;i+=4){const e0=E[b64.charCodeAt(i)],e1=E[b64.charCodeAt(i+1)],e2=E[b64.charCodeAt(i+2)],e3=E[b64.charCodeAt(i+3)];out[o++]=(e0<<2)|(e1>>4);if(o<bl)out[o++]=((e1&15)<<4)|(e2>>2);if(o<bl)out[o++]=((e2&3)<<6)|e3;}return out;}function decodeToString(b64){const bytes=decode(b64);let s='';const CH=32768;for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));return s;}return{encode,decode,decodeToString};})();
 
 const BASE = ${JSON.stringify(baseUrl)};
 const ORIGIN = new URL(BASE).origin;
@@ -5962,7 +6057,7 @@ window.addEventListener('message', e => {
       else if (g.err) { try { g.err({ code: d.code || 2, message: d.message || '', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }); } catch(err) {} }
     }
   }
-  if (d.t === 'r') { console.log('[REQDIAG-IN]', d.i, d.e || ('ok s='+d.s)); const p = pending.get(d.i); if (p) { pending.delete(d.i); clearTimeout(p.tm); d.e ? p.rj(new Error(d.e)) : p.rs(d); } }
+  if (d.t === 'r') { const p = pending.get(d.i); if (p) { pending.delete(d.i); clearTimeout(p.tm); d.e ? p.rj(new Error(d.e)) : p.rs(d); } }
   if (d.t === 'ext:bridgeResp') { const rr = __extPending.get(d.i); if (rr) { __extPending.delete(d.i); rr(d.result); } }
   if (d.t === 'ext:tabMsg') { const arr = __extMsgListeners[d.extId] || []; arr.slice().forEach(fn => { try { fn(d.msg, { id: d.extId }, function(){}); } catch(e){} }); }
   if (d.t === 'sse') { const h = sseHandlers.get(d.i); if (h) { if (d.error) { h.onerror?.(new Event('error')); sseHandlers.delete(d.i); } else if (d.done) { sseHandlers.delete(d.i); } else if (d.chunk) { h.onchunk?.(d.chunk); } } }
@@ -6118,7 +6213,6 @@ function req(url, opts = {}) {
     // the pending map to accumulate zombie entries that never resolve or reject.
     const tm = setTimeout(() => { pending.delete(i); rj(new Error('Timeout')); }, 45000);
     pending.set(i, { rs, rj, tm });
-    console.log('[REQDIAG-OUT]', i, (opts&&opts.method)||'GET', url);
     parent.postMessage({ t: 'q', i, url, opts }, '*');
   });
 }
@@ -6199,7 +6293,7 @@ async function fetchBlob(url, type) {
     // (notably Next.js's /_next/image optimizer) return real bytes instead of an
     // empty/error body. The */* fallback keeps it valid for video/audio/other too.
     const r = await req(url, { headers: { 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' } });
-    if (!r.d) return '';
+    if (!r.d || r.d.byteLength === 0) return '';
     const arr_rd = Base64.decode(r.d);
     const blob = new Blob([arr_rd], { type: r.m || type || 'application/octet-stream' });
     const burl = URL.createObjectURL(blob);
@@ -6215,7 +6309,6 @@ async function fetchBlob(url, type) {
 const _fetch = window.fetch;
 window.fetch = async function(input, init = {}) {
   let url = typeof input === 'string' ? input : (input instanceof URL ? input.href : (input?.url || String(input)));
-  console.log('[REQDIAG-FETCH-ENTRY]', (init&&init.method)||'GET', url);
   if (/^blob:/i.test(url)) return _fetch.call(window, input, init);
   url = resolve(url);
   if (shouldSkip(url)) return new Response('', { status: 200 });
@@ -6689,7 +6782,7 @@ async function rewriteCss(css, base, _depth) {
         const r = await req(absUrl);
         if (r.d) {
           const fontMime = ext === 'woff2' ? 'font/woff2' : ext === 'woff' ? 'font/woff' : ext === 'ttf' ? 'font/ttf' : ext === 'otf' ? 'font/otf' : 'font/woff2';
-          result = result.split(m[0]).join('url("data:' + fontMime + ';base64,' + r.d + '")');
+          result = result.split(m[0]).join('url("data:' + fontMime + ';base64,' + (typeof r.d === 'string' ? r.d : Base64.encode(new Uint8Array(r.d))) + '")');
         } else {
           result = result.split(m[0]).join('url("' + absUrl + '")');
         }
@@ -8041,12 +8134,16 @@ parent.postMessage({ t: 'ready' }, '*');
                             }, '*');
                             return;
                         }
-                        const b64 = toB64(r.buf);
+                        // L10 (features.transfer): the bytes cross as an ArrayBuffer in the transfer list (a copy: the cache or another
+                        // watcher of the same in-flight request may still hold the original). The base64 string is the fallback.
+                        const _xfer = window.LB_features.transfer !== false;
+                        const b64 = _xfer ? null : toB64(r.buf);
                         if (r.fromCache) log(`<i class="fas fa-bolt" style="color: #22d3ee;"></i> ${url.slice(0, 45)} (${(r.buf.byteLength / 1024).toFixed(0)}K cache)`, "cache");
                         else log(`<i class="fas fa-check" style="color:var(--ok)"></i>${url.slice(0, 45)} (${(r.buf.byteLength / 1024).toFixed(0)}K)`, "ok");
-                        // Clone buf for transfer — buf may be referenced by cache so we send a copy
-                        const transferBuf = r.buf.slice(0);
-                        lbPostTo(_replyTo, {
+                        if (_xfer) {
+                            const transferBuf = r.buf.slice(0);
+                            lbPostTo(_replyTo, { t: 'r', i, s: r.status, h: r.headers, m: r.mime, d: transferBuf }, '*', [transferBuf]);
+                        } else lbPostTo(_replyTo, {
                             t: 'r',
                             i,
                             s: r.status,
@@ -9928,12 +10025,12 @@ _VIEWER_DL_JS +
                     lbPrewarm.clear();
                     const qf = (u, o, p) => _pf.get(u) || queueFetch(u, o, p);
                     if (_pipe) {
-                        const kick = (raw, prio) => {
+                        const kick = (raw, prio, prewarm) => {
                             try {
                                 if (!raw || /^(data:|blob:|javascript:|about:|#)/i.test(raw) || shouldSkip(raw)) return;
                                 const u = new URL(raw, url).href;
                                 if (_pf.has(u) || shouldSkip(u)) return;
-                                const pr = lbProg.track(queueFetch(u, { signal: tabCtrl.signal }, prio), _progTok);
+                                const pr = lbProg.track(queueFetch(u, prewarm ? { signal: tabCtrl.signal, __prewarm: true } : { signal: tabCtrl.signal }, prio), _progTok);
                                 pr.catch(() => {});
                                 _pf.set(u, pr);
                                 if (prio === PRIORITY.image) {
@@ -9949,7 +10046,7 @@ _VIEWER_DL_JS +
                         doc.querySelectorAll('iframe[src]').forEach(f => kick(f.getAttribute('src'), PRIORITY.html));
                         const _il = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch (e) { return null; } })() || (_saver ? '100' : '300'), 10));
                         const _pre = _saver ? 0 : (window.LB_features.lazyImg === false ? _il : Math.min(_il, 24));
-                        if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || '')).slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image));
+                        if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || '')).slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image, true));
                     }
 
                     // url() in CSS: fonts and images become data: URIs, everything else an absolute URL. S3 4.5: the base64 step is
@@ -10598,10 +10695,14 @@ _VIEWER_DL_JS +
                     const _isTimeout = _eMsg.includes('timeout') || _eMsg.includes('timed out');
                     const _is5xx     = _eMsg.includes('500') || _eMsg.includes('502') || _eMsg.includes('503') || _eMsg.includes('504') || _eMsg.includes('internal server');
 
-                    const _triggerMatches = (_isDns && _fbDns) || (_isTimeout && _fbTimeout) || (_is5xx && _fb5xx)
-                        || (!_isDns && !_isTimeout && !_is5xx); // generic errors always eligible
+                    // L3 (features.errClass): only a dropped relay socket is worth another try, once, and never for a request that may
+                    // have reached the site (POST, PUT, PATCH, DELETE). Site errors go straight to the error card with their category.
+                    const _ec = lbErrClassOn();
+                    const _idemNav = !method || /^(GET|HEAD|OPTIONS)$/i.test(method);
+                    const _triggerMatches = _ec ? (!!e.lbDrop && _idemNav) : ((_isDns && _fbDns) || (_isTimeout && _fbTimeout) || (_is5xx && _fb5xx)
+                        || (!_isDns && !_isTimeout && !_is5xx)); // generic errors always eligible
 
-                    const _mainRetries = (() => { try { return parseInt(ls.getItem('limitless:main:retries'), 10) || 3; } catch { return 3; } })();
+                    const _mainRetries = _ec ? 1 : (() => { try { return parseInt(ls.getItem('limitless:main:retries'), 10) || 3; } catch { return 3; } })();
                     const _primaryHost = WISP.replace(/^wss?:\/\//, '').split('/')[0];
 
                     if (!_isRetry && _triggerMatches && !tabAbortControllers.get(initiatorTabId)?.signal?.aborted) {
@@ -10699,7 +10800,7 @@ _VIEWER_DL_JS +
                     let errorDescription = "";
                     let errorSuggestions = [];
 
-                    const errorMsg = e.message.toLowerCase();
+                    const errorMsg = (e.message + (e.lbCat === 'dns' ? ' dns' : e.lbCat === 'timeout' ? ' timeout' : e.lbCat === 'connect' ? ' refused' : '')).toLowerCase();
 
                     if (errorMsg.includes("dns") || errorMsg.includes("getaddrinfo") || errorMsg.includes("name resolution")) {
                         errorType = "DNS Resolution Failed";

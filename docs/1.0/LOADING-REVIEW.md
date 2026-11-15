@@ -13,6 +13,22 @@ built yet**: fixing is a separate session. This file is the work list.
   stamped by `scripts/build-static.sh` like the existing ones; docs in the same commit; no em dashes; commit only when Boss
   asks; at most 2 feature slices in flight for this project; never ship an ungated deploy; no evasion features.
 
+## Status (slice/1.0-fetchcore, 2026-11-12)
+Built on `slice/1.0-fetchcore` (not merged, not deployed). Tests: `tests/e2e/fetchcore.spec.js` (T6, in `npm test`) and `tests/stack/failures.spec.js` (T5, rehearsal).
+| Item | State | Notes |
+|---|---|---|
+| T6 fetch core unit tests | done | stub curl; 14 tests; each was run against the old code first and failed |
+| T5 fault fixtures, gzip/br, `/echo-headers`, `failures.spec.js` | done | run with `LB_FAULTS=1`; the fixture server now compresses, so re-baseline 0.2.3 before comparing transfer sizes |
+| L2 error classes | done except step 4 | codes 6/7/28/35/51/52/56/58/60 fail one request; "relay dropped" comes from `LB_router.epoch` (a relay socket the network closed); one shared reconnect (`lbReconnect`); WISP CLOSE reasons are not read yet (open) |
+| L3 retry ladder | done | only a relay drop is retried, once, and never POST/PUT/PATCH/DELETE; site errors go to the error card with their category (`features.errClass`) |
+| L4 deadlines | done | first byte 10 s, then a 30 s cap on the body (libcurl.js shows no progress, so no idle timer); media and Range requests have no body cap; abort frees the slot and the in-flight entry (`features.deadlines`) |
+| L5 queue cap | done except per-priority arrays | the 150 cap now refuses only the optional image pre-warm (`__prewarm`); page requests wait |
+| L10 base64 to the frame | done | reply bytes are an `ArrayBuffer` in the transfer list (always a copy: the cache and other watchers of the same in-flight request may hold the original); base64 stays for `qjs`/L6 and `features.transfer=false` (`features.transfer`) |
+| L11 logging | done | `log()` fills a 500 entry ring; DOM is built only while the log panel is open; the REQDIAG lines are gone |
+| L1, L6, L12, L7, L8, T1-T4, T7-T9 | not in this slice | |
+
+Resume here (wrap-up 2026-11-12): (1) `npm test` gave 149 passed, 2 failed (`s3-back.spec.js:16` instant Back, `router.spec.js:91` Connection setting, 1.0 min timeout) while other agents loaded the VM: re-run both alone first; if they still fail they are regressions from this slice (suspect the `log()` ring change or `ws.close` wrapping in the router). (2) `tests/stack/failures.spec.js` has NOT been run on the rehearsal stack yet: `flock /tmp/limitless-rehearsal.lock env LB_FAULTS=1 deploy/rehearsal/run.sh tests/stack/failures.spec.js`; its 300-image test assumes frame images render (they did not in the stubbed e2e frame, so check it on the real stack). (3) Open: L2 step 4 (WISP CLOSE reasons), L5 per-priority arrays. Merge note: compat slice edits the same `LB_features` and `build-static.sh` feature lines.
+
 ## 1. The problem in one table
 From `BASELINE.md` "Real-site suite" (on `slice/1.0-s3`): 42 popular sites, Chromebook profile, 3 reps each.
 

@@ -159,4 +159,8 @@ refused with a clear message (memory). Test: e2e with a routed range-capable fix
 - Moving all app code to `src/` + esbuild (step 3 of the original plan): not needed for these gains, and it makes manual
   upstream cherry-picks harder. Revisit only if editing pain grows.
 
+
+## Fetch core slice (2026-11-12, `slice/1.0-fetchcore`)
+The fetch core and the frame message path changed for pages that fail or cost CPU: ordinary site errors no longer reset the relay session (L2) or replay a navigation (L3), a request that never answers is cut at its deadline and frees its slot (L4), page images are never refused for queue length (L5), response bytes cross into the frame as transferred buffers instead of base64 (L10), and logging no longer builds DOM per request (L11). Details and status: `LOADING-REVIEW.md` "Status". Re-run the quick speed run against the 0.2.3 fixture baseline after merging; the fixture server now compresses, so the transfer-size baseline must be re-taken.
+
 Last verified: 2026-11-14
