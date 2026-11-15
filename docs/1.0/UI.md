@@ -40,12 +40,12 @@ relay" when relevant), "Technical details" folded (code, relay, stream, port). R
 for timeouts, DNS failures, blocked ports, relay down, TLS errors.
 
 ## 4. Start page and splash
-- **Member card** on the start page (picked): name and number ("Alex Morgan · No. 047"), tier, "since November 2026";
+- **Member card** on the start page (picked): name and number ("Alex Morgan · No. 0047"), tier, "since November 2026";
   opens Settings > Membership.
 - **Broadcast notice** (picked "engraved bulletin"): small-caps NOTICE label, one or two serif lines, date, dismiss;
   under the clock; from `/_lb/me` `notices[]`; dismissed ids remembered per device.
 - **Splash** (picked, with Boss's note): Orbit mark draws in, then the member's **name** as the main line, with the
-  number as small footer text ("No. 047"), hairline progress. Hides as soon as the start page is interactive. Before the
+  number as small footer text ("No. 0047"), hairline progress. Hides as soon as the start page is interactive. Before the
   first `/_lb/me` answer (or on a cold start), the name is taken from a per-device cache (`limitless:me:v1`, name and number
   only); if none, the splash shows the mark and wordmark only.
 
@@ -69,14 +69,19 @@ signature (picked), engraved serif reveal (picked; the seal version is the alter
 signature "James Thiessen" with "Director of Gamble Limited Ltd." under it, step wording, how to appeal (email, 14 days),
 and a link to a read-only view of the membership page (Boss: suspended members may see it).
 6.4 **Membership page** (Settings > Membership): see section 5; name before number (Boss's note).
-6.5 **Verify page** (`/verify/<code>`): genuine / superseded / void, number, tier, admitted date.
-6.6 **Invitation email** (optional send): plain, dark, one Orbit mark, inviter number, expiry, one button "Accept
+6.5 **Verify page:** public, on HALL (`~/gll-launcher`), one look per tier (Cardinal card, Prime framed record, Executive
+ceremonial page): genuine / lapsed / superseded / void, number, tier, admitted date, never a name (`MEMBERSHIP.md` 7).
+6.6 **Invitation email** (optional send): plain, dark, one Orbit mark, Boss's own text, signed by the Director, expiry, one button "Accept
 invitation"; plain-text part included; no tracking pixels.
 
 ## 7. Visual system additions
 7.1 **Custom icon set:** about 30 thin-line SVG icons (1.6 px stroke at 24 px, round caps) matching the Orbit mark, as one
 SVG sprite in `theme/icons.svg`; used in the toolbar, menu, settings and error cards. Font Awesome 6.7.2 stays for upstream
 and rare spots (and for skins).
+> **Round three wins (2026-11-14, `design/picks-round3.md`):** paid themes are Ink blue and Silver (Cardinal), Garnet (Prime),
+> Gilt and Onyx (Executive); Vault is locked to paid plans; tier marks add an Executive gold-rings mark. 7.2 to 7.4 below are the
+> round-one notes; build from round three and use the token and contrast method below for every paid theme.
+
 7.2 **Prime theme:** Crimson and obsidian (favourite) with Obsidian and platinum as the alternative to show again in round 2.
 Draft tokens from the artifact: bg `#050506`, surf `#0e0e11`, fg `#e4e6ea`, mut `#8b8e96`, line `#24252b`, acc `#e0304b`,
 acc2 `#f0f1f4`, on `#050506`. Text on the crimson accent with `#050506` is about 4.55:1 (computed), so it passes narrowly;
@@ -97,7 +102,12 @@ the ceremony, certificate, notices and member card numerals. Fetched by `scripts
 - Every icon-only button gets an `aria-label` (today 18 of 334 buttons have one); visible `:focus-visible` ring in every
   theme; Esc closes the menu, panels and dialogs; the menu is keyboard navigable (arrow keys).
 
-## 9. Design round 2 (artifact, before S6 code)
+## 9. Design round 2 (artifact, before S6 code): HELD 2026-11-13
+> Done: picks in `design/picks-round2.md` (they win over this list and over round one). Key changes: Cardinal theme
+> `theme-c-ink`, Prime `prime-crimson` (may be modified), top tier "Limitless Executive" (gold, pure black theme, only with
+> `PLAN.md` D2b, answered: in 1.0), member cards `cards-foil` / `cards-strip`, QR in the corner but never over the border. Opus polishes
+> designs during S6 and may propose new looks beyond the favourites.
+
 A second picker page (same artifact or a new one) with:
 - Prime theme: Crimson and obsidian refined, full start page, settings, ceremony and certificate in it; Obsidian and
   platinum alongside; contrast pairs listed.
@@ -111,4 +121,8 @@ A second picker page (same artifact or a new one) with:
 - Icon set sheet.
 Run Hallmark audit and Impeccable critique on the round 2 page before showing it.
 
-Last verified: 2026-11-10
+## Bot check card (2026-11-14)
+When a site shows a human check, the app shows a plain card: "This site asked for a human check. It may not work through a shared relay." No evasion
+(repo rule); the card links Report a problem (category "bot check").
+
+Last verified: 2026-11-14

@@ -78,10 +78,12 @@ path, e.g. `app/<sha>/inspector.js`, served `immutable`). This is the "staged hy
 3.5 **Service worker app shell** (feature `sw`, file `/sw.js`, scope `/`).
 - Caches `index.html`, `app/<sha>/*`, `vendor/*`, `fonts/*`, `theme/*` on install. Serves `index.html`
   stale-while-revalidate; versioned files cache-first.
-- Never touches `/wisp/`, `/auth/`, `/_lb/`, `/legal/`, `/verify/`, `version.json` or `CHANGELOG.md` (network only).
-- **Access stays server-side:** a cached shell can open for a revoked member, but `/wisp/` and all APIs still go through
-  `auth_request`. On boot the app already fetches `version.json` (gated); a 401/403 there now sends the page to
-  `/auth/signin` or the invite page instead of showing a broken shell.
+- Never touches `/wisp/`, `/auth/`, `/_lb/`, `/legal/`, `version.json` or `CHANGELOG.md` (network only).
+- **Access check at boot (changed by the review, 2026-11-14):** in 0.3.0 browsing runs on public relays that never see our
+  gate, so `/wisp/` no longer protects anything. The boot `version.json` fetch (gated) is the only check: 401/403 sends the
+  page to `/auth/signin` or the invite page, and **the libcurl session is not started until that fetch answered 200**.
+  Offline or a network error: show the shell with "Cannot reach Limitless", no browsing. Client side, so devtools can bypass
+  it; that is the known 0.3.0 limit (`PLAN.md` 0.2b), closed in 1.0 by relay tokens.
 - The existing update banner keeps working: a new sha in `version.json` shows the banner; Reload activates the waiting
   worker (`skipWaiting` only on Reload, never by itself, matching "never reloads by itself").
 - `features.sw = false` makes the next load unregister the worker and clear its caches.
@@ -113,7 +115,9 @@ never kept.
 database `LimitlessRewrite` (not a `ProxyCache` version bump), key = SHA-256 of the source + rewriter version, 50 MB LRU.
 A rewriter change bumps the version string, which invalidates everything at once.
 
-4.4 **Cached rewritten pages** (feature `pageCache`). For documents that `lbCacheEvaluate` already allows to be cached
+> **2026-11-13:** 4.4 and 4.6 move to 1.1 (`PLAN.md` 0.3 item 4). S3 builds 4.1, 4.2, 4.3, 4.5, 4.7.
+
+4.4 **Cached rewritten pages** (feature `pageCache`, **1.1**). For documents that `lbCacheEvaluate` already allows to be cached
 (explicit freshness, no cookie, no `no-store`), store the final rewritten HTML keyed by URL + rewriter version. A repeat
 visit shows it at once, revalidates in the background, and if the new version differs: swap silently when the member has
 not interacted yet within 2 s, otherwise show a small "Updated, reload" chip. Respects the Resource Cache switch.
@@ -144,7 +148,7 @@ Covered by: lazy images (2.3), off-thread CSS work (4.5), tab sleeping (4.1). Pl
   with a promise queue (no polling).
 - Long tasks: the harness records `longtask` entries during scroll on fixture pages; anything over 50 ms gets a ticket.
 
-## 6. S8: downloads panel (wave 5)
+## 6. S8: downloads panel (wave 5; IN 1.0: Boss reversed the 2026-11-10 "no downloads feature" call on 2026-11-13, `PLAN.md` 0.2 D4; per-tier limits in `PAID-TIERS-PLAN.md` tier table)
 Panel in the menu: queue, progress (bytes, rate), pause and resume with HTTP Range when the server sends
 `Accept-Ranges`, retry with backoff, cancel. Downloads count against the member's caps (the gate already counts bytes).
 Files are saved through the browser's own download (blob + `<a download>`) when complete. Large files over 2 GB are
@@ -155,4 +159,4 @@ refused with a clear message (memory). Test: e2e with a routed range-capable fix
 - Moving all app code to `src/` + esbuild (step 3 of the original plan): not needed for these gains, and it makes manual
   upstream cherry-picks harder. Revisit only if editing pain grows.
 
-Last verified: 2026-11-10
+Last verified: 2026-11-14

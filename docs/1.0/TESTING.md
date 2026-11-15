@@ -35,8 +35,10 @@ Not offloaded to buildpc (no `.nvmrc` in this repo; the gate has one and can use
 ## 3. Visual and layout checks
 - `toHaveScreenshot` for: toolbar + menu open, vertical tabs, start page with member card and notice, splash, settings
   (each of the six groups), membership page, error card, ceremony steps 1 to 6, certificate on screen, removal and
-  suspension notices, admin (members, profile, queue, usage, health), in every theme (8 shipped + Prime) and both modes
-  where the theme has them, at 1366x768 and 2560x1440. Animations disabled for snapshots (`reducedMotion: 'reduce'`).
+  suspension notices, admin (members, profile, queue, usage, health). Themes: 8 shipped + 5 paid (Ink blue, Silver, Garnet,
+  Gilt, Onyx) = 13. Full matrix (every theme, both modes, 1366x768 and 2560x1440) only for the start page, menu and settings;
+  every other screen in 3 themes (Luxury dark, one light theme, the screen's own tier theme) to keep the suite small and fast.
+  Animations disabled for snapshots (`reducedMotion: 'reduce'`).
 - An automatic layout check on the same pages: no element with text has `scrollWidth > clientWidth` unless it is meant
   to ellipsis (`text-overflow: ellipsis` set), no two visible text boxes overlap (bounding-box test over text nodes),
   no horizontal page scroll. Fails with the element path.
@@ -49,12 +51,13 @@ On the rehearsal with the mock GATE:
 2. Invite page shows; expired, used and revoked tokens show the right page.
 3. Accept -> owner API approve -> sign-in -> ceremony: number typed (taken, reserved, invalid, free), charter signed
    with a legal name, reveal, certificate downloaded (screen and print), PDF parsed (3 pages, name, number, code present),
-   QR decodes to the verify URL, verify page says genuine for a member and redirects to sign-in for no session.
+   QR decodes to the public HALL verify URL; `/_lb/verify/<code>` answers genuine without a session and never returns a name.
+   Ordinal gets no PDF (member card only).
 4. A different account signing in after accept gets the invite-only page.
 5. Existing member path after migration: welcome card, sign, certificate, no number step.
 6. Suspend with an open socket: socket closed within 2 s, sign-in shows the suspension notice and the read-only
    membership page, WISP still refused, lifts at the end date (test clock). Remove: notice naming the Article,
-   certificate void, number retired and refused at the number step. Reserved numbers 007, 100, 777 refused for members.
+   certificate void, number retired and refused at the number step. Reserved numbers (0000 to 0009, 0100, 0777, 1000, 6969, 7777, 9999) and the Executive block 0010 to 0099 answer "unavailable"; a prime for Ordinal or Cardinal answers "not for your plan"; Prime may take only primes; a Prime upgrade retires the old number.
 7. `MEMBERSHIP=off`: no ceremony, members browse, membership routes 404.
 
 ## 5. Load and abuse (stack)
@@ -80,8 +83,8 @@ Public speed sites are measured and reported in the release record but do not ga
 
 ## 7. Migration rehearsal
 Seeded gate SQLite with the 0.2.3 schema and mock approvals (owner + 6 users with varied `approvedAt`), run
-`scripts/membership-migrate.ts` dry run and apply, check numbers (000 owner, 001 upward by date), tiers, `welcome`
-state, idempotency on a second run, and rollback: redeploying 0.2.3 against the migrated database still starts
+`scripts/membership-migrate.ts` dry run and apply, check numbers (0000 owner, 0100 upward by date, no primes, no reserved), tiers, `welcome`
+state, idempotency on a second run, and rollback: redeploying 0.3.0 against the migrated database still starts
 (new tables are ignored by the old code). Never with real data.
 
 ## 8. Boss's Chromebook checklist (advisory, never a blocker)
@@ -90,13 +93,25 @@ Written into the vault before the release, about 15 minutes on a real school Chr
 2. Open a news site and a video site: page appears before all images; progress bar moves; scrolling is smooth.
 3. Back and Forward feel instant. Leave a tab 10+ minutes, return: it wakes without a reload from the network.
 4. Menu, settings (six groups), vertical tabs, a few themes including Prime.
-5. Membership page, download the certificate, scan the QR with a phone (it should ask you to sign in).
+5. Membership page, download the certificate, scan the QR with a phone (it opens the public HALL verify page, no name shown).
 6. Report a problem with and without the address ticked; see it in admin.
 7. Anything that looks off: note it with a screenshot.
 
 ## 9. Release gate summary
 All of sections 1 to 7 green, zero open P0/P1, privacy text approved and live, release record with pinned sha and
-rollback `./deploy.sh c88ce5e`, host changes applied with Boss's go, then deploy by Boss, smoke check,
+rollback `./deploy.sh <0.3.0 sha>` (0.3.0 ships first; `c88ce5e` is the rollback for 0.3.0 only), host changes applied with Boss's go, then deploy by Boss, smoke check,
 `~/gll-planning/rotation/rotate.sh check` = `preflight OK`, 24 h hold.
 
-Last verified: 2026-11-10
+## 9b. 0.3.0 gate (Minor lane, review 2026-11-14)
+`npm test` and `test:stack` green (the rehearsal starts the relay with its compose profile); harness vs the 0.2.3 baseline on fixtures;
+new e2e: `/wisp/` answers 410 (`test:legal`-style throwaway nginx), a saved `limitless:relay-fallback:v1` = `0` still browses on public relays,
+all-relays-down card and backoff, boot refuses to start browsing when `version.json` answers 401/403; `boot.spec.js` stub case; rollback rehearsal:
+install the 0.3.0 worker, redeploy `c88ce5e` on the throwaway stack, the next load serves 0.2.3 with no worker left. Advisory: public sites through
+the public pool vs 0.2.3 through the home relay (Boss sees both numbers before the deploy).
+
+## 10. Bot checks (decided 2026-11-14)
+The harness compares home relay, public relays and the VPS on a fixed list of challenge-prone sites (how often a "are you human" page appears),
+numbers advisory only, no evasion work. The app shows a plain notice card when a site shows such a check (UI.md error cards). Report a problem has a
+"bot check" category.
+
+Last verified: 2026-11-14

@@ -5,7 +5,11 @@ placeholders until the relay VM exists and the automated tests have measured rea
 as possible before release, so published numbers will be measured ones.
 
 ## 1. Server
-- Relay host for paid tiers: RackNerd 2 GB special ($35.99 per year, 2 vCPU, 5 TB per month, 1 Gbps shared, Chicago). Boss orders and pays.
+- Relay host for paid tiers: RackNerd 2 GB special ($35.99 per year, 2 vCPU, 5 TB per month, 1 Gbps shared). **Bought 2026-11-14:
+  Buffalo NY (not Chicago), 107.173.50.59, ssh alias `limitless-relay`, hardened, nothing deployed** (vault Service Inventory).
+  RackNerd API credentials are also stored on the VM (`~/.config/gll-cloud/racknerd.env`); never print them.
+- **Check before trusting the 5 TB (review 2026-11-14):** a relay moves every byte twice (site to VPS, VPS to member). Ask RackNerd
+  whether the 5 TB counts outbound only or both ways; if both, members get about 2.5 TB a month and every cap below halves.
 - Oracle Always Free is NOT used for paid access (its terms allow internal use only). The Oracle A1 retry loop still runs; if it succeeds it can serve testing.
 - Planning speed (estimate): about 150 Mbit/s total (range 100 to 400). Replace with measured numbers.
 - Transfer cap: 5 TB per month is about 15 Mbit/s averaged over the month.
@@ -14,7 +18,7 @@ as possible before release, so published numbers will be measured ones.
 | | Ordinal (free) | Cardinal | Prime | Limitless Access |
 |---|---|---|---|---|
 | Relay | public relays only | our relay | our relay | our relay |
-| Price | free | about $15 per year (placeholder) | TBD, "a decent bit more" than Cardinal | invite-only, Boss grants the ability to see and buy |
+| Price | free | about $15 per year (placeholder) | about $35 per year (placeholder) | invite-only, Boss grants the ability to see and buy |
 | Open tabs | 4 (5th tab hard-redirects to buy page) | 15 | 25 (no buy nag, only "out of tabs") | 50 |
 | Daily time | about 4 h per day (was 2 h) | none | none | none |
 | Data | none of ours (public relays) | about 20 GB per week, resets Monday | about 250 GB per month | about 500 GB per month fast stage, then slow stage (speed TBD) |
@@ -28,15 +32,18 @@ as possible before release, so published numbers will be measured ones.
 - Seat counts: Prime seats capped, number decided after measuring. Limitless Access: Boss plus about 3 others.
 - Limitless Access gate: hidden GATE flag. Invisible to everyone without it. Boss (TheStrongest) has it as owner.
 - Load Now: that page load gets first claim on relay bandwidth until it finishes. Others slow briefly, nobody is cut off. Not for big downloads.
+- **Worst case with the placeholder knobs (review 2026-11-14):** 4 Executive x 500 GB + 10 Prime x 250 GB = 4.5 TB before any
+  Cardinal, so the 70 % brake would fire with zero Cardinal members if all of them used their caps. Real use will be far lower, but
+  set Prime seats and caps so worst case stays under 70 % of the real (metered) allowance, or accept that the brake is the plan.
 - Capacity check: Access 4 x 500 GB = 2 TB of the 5 TB. Remaining 3 TB covers about 34 Cardinal members at the full weekly cap (about 87 GB per month each). Real use will be lower. Measure before promising seat numbers.
 
 ## 2b. Certificates, member cards and the QR (Boss, 2026-11-13)
 - Ordinal: no certificate. The member card (name first, number as a small footer) is the keepsake; Membership shows one line that certificates begin at Cardinal.
 - Cardinal: a nice certificate, silver foil, no QR (code printed as text).
 - Prime: a really nice certificate, crimson and obsidian, bigger seal, QR small in a corner.
-- Limitless Access: the best, aurora foil, issue line, same corner QR.
+- Limitless Access: the best, aurora foil, issue line, same corner QR. (Round three, 2026-11-14: Executive is **Gold classic**.)
 - The QR only proves a paper copy is genuine: it opens the verify page for the code (genuine, superseded or void, number, tier, date, never a name). It appears only on Prime and Access certificates, small, clear of text and seal.
-- Open: should the QR point at the members-only page on the browser address (current `MEMBERSHIP.md` plan, which prints the browser address on a certificate Prime members may show) or at a public verify page on HALL that never shows the name or the browser address. Design room options `qr-target-members` and `qr-target-hall`.
+- Decided (D3, 2026-11-13): the QR points at a public HALL verify page that never shows the name or the browser address.
 - `MEMBERSHIP.md` sections 7 and the "may show their certificate" table still say every member gets a certificate: update them when this plan is approved.
 - Design room round two (artifact "Limitless 1.0 Design Room", copy in `docs/1.0/design/design-room.html`) holds the options for marks, cards, plans page, comparison, buying flow, free-limit screens, account panel, certificates, themes, admin and wording.
 
@@ -77,7 +84,7 @@ Per member: paid-until, tier, amount, receipt note (date and how paid); top-up e
 Member account panel: tier, paid-until, GB used (weekly or monthly), notes such as "fell back to public relays".
 
 ## 8. Emergencies
-- VPS down: paid members fall back to public relays automatically and Boss is alerted. No account ever uses the home relay by default; ONLY Limitless Access falls back to home when the VPS is down (home upload is about 18 Mbit/s, so keep Access from saturating it).
+- VPS down: paid members fall back to public relays automatically and Boss is alerted. No account uses the home relay, Executive included (D5, 2026-11-13, replaces the old Executive home fallback).
 - 5 TB brake (staged): warn about 70%, auto-lower speeds about 85%, fall back to public relays about 95%. Limitless Access may keep using the relay longer, scaled by days left in the month. Download limiting is the main lever.
 - Relay abuse: see section 6.
 - Alerts: Status page, Kuma, and a line in the admin panel.
@@ -92,11 +99,44 @@ Member account panel: tier, paid-until, GB used (weekly or monthly), notes such 
 1. GATE: paid-until, tier, amount, receipt note, top-up balance, trial lock, Limitless Access flag, void reason and refund amount.
 2. Gate (Node): per-plan limits from the admin panel (speed, caps, tabs, daily time, downloads), weekly and monthly counters, fair-share weights, fallback to public relays, VPS-down fallback, Load Now.
 3. Browser: tab cap with redirect, plans link, new-tab line, 15 minute notice, account panel.
-4. HALL: pricing page and request form.
+4. HALL: pricing page (no form: plan requests are an in-app form, `PLAN.md` 0.2b) and the public verify pages.
 5. Docs: terms, privacy notice, RULES-DRAFT.md section 4, Service Inventory.
 6. After the VPS exists: relay setup, iperf and load tests, replace estimates, set slow stage, reserve, Prime seats, caps, Load Now uses, final prices.
 
-## 11. Open items
-Prime price; Cardinal final price; slow-stage speed; reserve size; Prime seat count; top-up sizes and prices; tax and local rules for taking money and minors; privacy notice for public relays.
+## 10b. How this fits the 1.0 plan (refinement, 2026-11-13)
+- Decisions D1 to D6 (answered 2026-11-13, `PLAN.md` 0.2): VPS relay, the limits engine AND selling all land in 1.0 (slice S9); the speed work ships first as 0.3.0. Boss buys the VPS before release and gives SSH only; prices are final only after measuring.
+- "GATE" in this file means the Limitless gate and its admin panel (`~/limitless-gate`, `limitless://admin`), not GLL ID:
+  no GLL ID change (keeps the 2026-11-10 rule). Everything in build list item 1 is columns on the gate's `members` table.
+- Ordinal's tab cap and daily time are enforced in the app only: public-relay traffic never reaches our gate.
+- The VPS is the RELAY-OFF-CLOUDFLARE plan's Option B: it also fixes the Cloudflare SSA issue for `/wisp/`.
+- Older text here says "Limitless Access": read it as **Limitless Executive**.
 
-Last verified: 2026-11-13
+## 10c. Promises, rights and terms (Boss, 2026-11-14, five question series)
+- **Entry:** any GLL ID may REQUEST Ordinal access with a reason of one or two sentences; Boss approves (keeps the 2026-10-17 "only users Boss approves get in" rule and the gate unchanged). Decline: polite no, no reason given, may reapply after about 48 h; the reason text is deleted after the decision.
+- **Who may buy:** any approved member may request a paid plan. Boss alone invites to Executive, with a fully custom invitation (members never can).
+- **Charter first:** every member signs the Membership Charter before any money moves.
+- **Minors:** members are 13+; a plain tick box "I am allowed to do this" is the only consent record, no parent name or check (Boss's call; wording in the Rules must not claim parental verification).
+- **Seller and receipt:** Gamble Limited Ltd. is the provider. Each payment is a receipt line in the account panel (date, amount, tier, paid-until, how paid) plus a SNAPSHOT of the tier, price and limits at purchase (the snapshot is the promise).
+- **Service promise (paid):** best effort, no speed or uptime guarantee. Outage credit: more than 24 h down in a row (Status page and Kuma), each full day down adds a day to paid-until.
+- **Changes mid-term:** limits change with 14 days' notice; if a change makes a plan clearly worse, the member may ask for a prorated refund of unused months.
+- **Refunds:** paid out the same way as paid (cash by hand, logged). 3-day rule stays; leaving or deleting a GLL ID after day 3 gets no refund. Plans are not transferable; a gift is the friend buying, or Boss granting a named member, logged as a normal grant.
+- **Void appeal:** one appeal in 14 days; if won, plan restored and paid-until extended by the days lost; void and reversal both in the receipt log.
+- **Upgrades and renewal:** upgrade (Cardinal to Prime) pays the prorated difference; early renewal stacks 12 months on the end date, capped 2 years ahead; both logged as normal purchases.
+- **Records:** payment records 7 years; request reasons deleted after the decision.
+- **Numbers:** four digits, Boss is 0000; the full rules (reserved set, Executive block 0010 to 0099, Prime primes only, migration from 0100) are in `MEMBERSHIP.md` section 4.
+- **Plans page:** shows only measured numbers, worded as "typical limits", with "may change with notice". Footnote: "Further plans are granted by invitation." Terms say a Director-granted invitation plan exists.
+- **After expiry:** certificate stays a keepsake; the HALL verify page says "genuine, lapsed", back to "active" on renewal.
+- **Fallback to public relays** (cap hit, VPS down): clear notice the first time each fallback starts, plus a line in the account panel; the privacy notice covers other operators seeing connection metadata.
+- **Support:** paid questions first, wording "we aim to reply within 3 days", never "guarantee".
+- **Where it lives:** a "Plans and payments" section of the Membership Rules (`RULES-DRAFT.md`), linked from HALL legal. HALL Terms stays generic.
+- **Polish bar (release gate):** every screen has loading, empty, error and offline states; animations (ceremony, upgrade, splash) stop under "reduce motion"; contrast 4.5:1 in every theme; full keyboard use; works at 360 px and on a Chromebook; tested before release. The design room needs no more work.
+- **Legal check:** no outside professional. Boss self-reviews against a stricter checklist before the first sale: refund wording, minors, tax, receipts, no card data, a line that nothing limits rights the law gives, outage credit, snapshot. Tax and local rules remain Boss's risk.
+- Design Room III picks (58): `docs/1.0/design/picks-round3.md`.
+
+## 11. Open items
+Closed 2026-11-14 (`PLAN.md` 0.2b): placeholder prices (Cardinal $15/yr, Prime $35/yr, Executive per person), number rules, certificate rule (Cardinal and up).
+**Placeholder knobs for the build** (all admin settings, replaced by measured numbers before release): slow stage 2 Mbit/s, Prime seats 10, Executive
+reserve 20 % of relay bandwidth, top-ups Cardinal 25 GB and Prime 100 GB (prices set by Boss from measurements, none public). Still Boss's alone:
+tax and local rules for taking money and minors (self-review checklist, 10c) before "Plans open for sale" is switched on.
+
+Last verified: 2026-11-14

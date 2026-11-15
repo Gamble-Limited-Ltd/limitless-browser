@@ -5,8 +5,17 @@ Slice S7 (wave 4). Extends `limitless://admin` (0.2.0, `ACCESS-CONTROL.md` 11). 
 `textContent`, `ADMIN_PANEL=off` kills every route. **Totals only: the panel never shows which sites anyone visits.**
 All picks in the artifact were favourites: members and profile, invites, live and 30 days, health hops.
 
+> **2026-11-13 (with `PLAN.md` D2b):** add a **Plans** section (round two `admin-limits`): per plan, live within a minute,
+> max speed, weekly / monthly data caps, tab cap, daily time (Ordinal), stored in a gate `plans` table; and per member
+> paid-until, amount (0 allowed after a confirm), receipt note. Trials, top-ups, voids with refunds, Executive flag and the
+> transfer brake (`admin-transfer`) are in 1.0 (D2b answered, slice S9).
+
 ## 1. Layout
-Sections become: Members, Queue, Usage, Health, Notices, Reports, Audit, Switches. Desktop: list on the left, detail on
+Sections become: Members, Queue (access requests, plan requests, invites, Executive number requests), Plans, Usage,
+Health, Notices, Reports, Audit, Switches (adds "Plans open for sale", default OFF). Filter chips in Members add Executive.
+"Invited by" and "people they invited" (section 3) are dropped: only Boss invites (nominations removed 2026-11-14).
+**0.3.0 note:** our relay is off, so Usage and Health relay rows read "Public relays (our relay returns with 1.0)" instead of
+"down"; done in the admin script from a `features.ownRelay=false` flag in `version.json`, no gate change. Desktop: list on the left, detail on
 the right (as in the artifact). Below 1100 px the detail opens over the list. Fits 1366x768.
 
 ## 2. Members
@@ -46,9 +55,9 @@ the right (as in the artifact). Below 1100 px the detail opens over the list. Fi
 - Charts drawn as inline SVG from the existing `usage` table and `perf_daily`; no chart library.
 
 ## 6. Health
-- Relay (home, and any second relay), GLL ID, gate, DNS cache container, version and sha (existing).
-- **Where the time goes:** median page shown split by hop (tunnel and edge, gate, relay and DNS, website, rewrite and
-  render) for the last 24 h and 30 days, from `RELAY.md` 2.2. Home upload/download from the last speed measurement.
+- Relay (the VPS, from its relay-mode gate), GLL ID, gate, DNS cache on the VPS, version and sha (existing), month transfer vs 5 TB and the brake stage.
+- **Where the time goes:** median page shown split by hop (VPS relay and DNS, website, rewrite and render; app files: tunnel
+  and edge, gate) for the last 24 h and 30 days, from `RELAY.md` 2.2. VPS throughput from the last measurement.
 
 ## 7. Notices
 Create, schedule (start, end), edit and delete broadcast notices (engraved bulletin on members' start pages). Plain text,
@@ -63,10 +72,16 @@ up to 200 characters.
 `GET members?filter=&q=`, `GET members/:sub`, `POST members/:sub/{tier,warn,suspend,lift,remove,number,reissue,signout}`,
 `GET invites`, `POST invites`, `POST invites/:id/{revoke,email}`,
 `GET usage/live`, `GET usage/30d`, `GET perf`, `GET hops`, `GET/POST/DELETE notices`, `GET reports`, `POST reports/:id/done`,
-`GET audit` (exists; the 1.0 panel adds the viewer with filters by action and date), `GET/POST reserved`.
+`GET audit` (exists; the 1.0 panel adds the viewer with filters by action and date), `GET/POST reserved`,
+S9: `GET/POST plans`, `GET/POST settings` (`plans_open`, Executive block), `GET requests`, `POST requests/:id/{approve,decline}`,
+`POST members/:sub/{grant,purchase,topup,void,trial,executive}`, `GET transfer`.
 
 ## 10. Tests
 `tests/e2e/admin.spec.js` extended (mocked routes, all themes, 1366x768 and 2560x1440 screenshots);
 `tests/stack/admin.spec.js` extended (warn, suspend with an open socket, remove, invite create and revoke, sign out everywhere, step-up required on each write, non-owner gets 404 on every new route).
 
-Last verified: 2026-11-10
+## Numbers and knobs (2026-11-14)
+Admin edits: the reserved set, the Executive block (default 0010 to 0099), and requests from Executives for reserved numbers (queue). Placeholder
+plan knobs are listed in `PAID-TIERS-PLAN.md` section 11. Report a problem has a "bot check" category.
+
+Last verified: 2026-11-14

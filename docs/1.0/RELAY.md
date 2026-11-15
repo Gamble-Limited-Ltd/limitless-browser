@@ -1,5 +1,19 @@
 # Limitless 1.0: server path, relay and bandwidth
 
+> **2026-11-13:** the paid-tiers draft moves the relay to a VPS (`PLAN.md` 0.2 D1). Under D1a: section 3.0 is settled
+> (no `/wisp/` on Cloudflare), the home-upload numbers below stop being the ceiling, `TOTAL_UPLINK_MBPS` (3.5) comes from
+> the VPS measurement, fair share and weights run in the gate instance on the VPS, and section 5 (exit IP) is moot.
+> Sections 2.2, 3.1 to 3.4 and 8 apply either way (BBR and relay resources then apply on the VPS, not the home host).
+>
+> **2026-11-14 (newest, wins over everything below; `PLAN.md` 0.2b, `REVIEW-2026-11-14.md` 3):** the home relay is off from 0.3.0
+> (public relays only) and never comes back. In 1.0 `/wisp/` goes straight to the VPS on its own DNS-only hostname, so it no longer
+> passes nginx or the tunnel: **3.0 is closed** (no study needed), **3.1 nginx auth cache is dropped** (app files only would gain, and
+> the 0.3.0 service worker already serves them), 3.2 and 3.3 run on the VPS, **3.4 is capped by the VPS (2 vCPU, 2 GB)**: give the
+> relay about 1.5 CPU and 768 MB, never `cpus: 4`. 3.5 fair share runs in the VPS relay-mode gate with `TOTAL_UPLINK_MBPS` from the VPS
+> measurement; weights Cardinal 1.5, Prime 2, Executive a reserved share, Ordinal not on our relay. Section 4 becomes "VPS, then
+> public relays". Section 5 is moot (sites see the VPS IP). Section 6's 20 GiB daily cap is replaced by the per-plan caps
+> (`PAID-TIERS-PLAN.md` 2); keep a high per-day abuse ceiling as an admin knob only.
+
 Boss (2026-11-10): keep the enforcement in the gate; everything must stay free of new paid services (Boss pays for Proton
 VPN for about 1.5 more years, which may be used); measure first; all recommended server tuning is in, each applied only
 with Boss's go because it is a host or container config change.
@@ -141,4 +155,4 @@ Goal: decide whether a free off-home relay is reasonable. Nothing here touches p
 | Rotation | none: Limitless is not rotated; `rotate.sh check` still runs after deploy | |
 Update `HOSTING-AND-PERFORMANCE.md` and the vault Service Inventory (new DNS container, monitors) in the same commit.
 
-Last verified: 2026-11-10
+Last verified: 2026-11-14
