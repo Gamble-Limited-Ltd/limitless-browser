@@ -19,7 +19,7 @@ module.exports = defineConfig({
     // Chromebook profile (tests/lib/profile.js): only the speed harness runs under it.
     {
       name: 'chromebook',
-      testMatch: /speed\.spec\.js/,
+      testMatch: /(speed|boot-size|sites)\.spec\.js/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' },
     },
   ],

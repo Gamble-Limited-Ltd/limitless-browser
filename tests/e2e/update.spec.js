@@ -67,9 +67,10 @@ test.describe('update notice', () => {
     await page.locator('#lbUpdateDismiss').click();
 
     // Never reloads by itself, including across the 3 s startup check and a visibility change.
-    await page.waitForTimeout(4500);
+    await page.clock.install();
+    await page.clock.fastForward(5000);
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-    await page.waitForTimeout(500);
+    await page.clock.fastForward(500);
     expect(await page.evaluate(() => window.__noReload)).toBe('still here');
     expect(errors, errors.join('\n')).toEqual([]);
   });
@@ -88,7 +89,7 @@ test.describe('update notice', () => {
     const wn = page.locator('#lbWhatsNew');
     await expect(wn).toBeVisible();
     await expect(wn.locator('h1')).toHaveText('Changelog');
-    await expect(wn.locator('h2').first()).toContainText(/^\d+\.\d+\.\d+/);
+    await expect(wn.locator('h2').first()).toContainText(/^(Unreleased )?\d+\.\d+\.\d+/);
     await expect(wn.locator('li').first()).toBeVisible();
     expect(errors, errors.join('\n')).toEqual([]);
   });

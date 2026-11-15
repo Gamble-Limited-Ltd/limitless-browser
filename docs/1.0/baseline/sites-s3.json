@@ -1,0 +1,1815 @@
+{
+  "summary": {
+    "sha": "s3final",
+    "sites": 41,
+    "reps": 123,
+    "loaded": 81,
+    "successRate": 0.659,
+    "allRepsLoaded": 26,
+    "shownMedianOfMedians": 9143,
+    "loadMedianOfMedians": 19457,
+    "failures": {
+      "hang": [
+        "amazon x1",
+        "github x3",
+        "w3schools x1"
+      ],
+      "connect": [
+        "amazon x1"
+      ],
+      "render": [
+        "amazon x1",
+        "google-docs x3",
+        "google-signin x3",
+        "imdb x3",
+        "pinterest x3",
+        "stackoverflow x3",
+        "tumblr x3"
+      ],
+      "timeout": [
+        "discord x3",
+        "kahoot x3",
+        "spotify x1",
+        "w3schools x1",
+        "youtube x3"
+      ],
+      "csp": [
+        "etsy x3"
+      ],
+      "script": [
+        "khanacademy x3"
+      ]
+    }
+  },
+  "sites": {
+    "amazon": {
+      "url": "https://www.amazon.com/",
+      "cat": "shopping",
+      "sel": "#twotabsearchtextbox, input[name='field-keywords']",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "hang": 1,
+        "connect": 1,
+        "render": 1
+      },
+      "detail": "no result in 150 s",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "hang",
+          "detail": "no result in 150 s",
+          "diag": {
+            "frame": "",
+            "status": "Ready"
+          },
+          "retried": true
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "connect",
+          "detail": " Error - Limitless Browser Limitless Browser Error Loading Page Request failed with error code 7: Could not connect to server An error occurred while trying to "
+        },
+        {
+          "loaded": false,
+          "shown": 1867,
+          "load": 2381,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": " | ",
+          "retried": true
+        }
+      ]
+    },
+    "apnews": {
+      "url": "https://apnews.com/",
+      "cat": "news",
+      "sel": "h1, h2, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 21084,
+      "loadMedian": 62315,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 17537,
+          "load": 56760,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 19182,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 21084,
+          "load": 62315,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 19244,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 28858,
+          "load": 68607,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 19245,
+          "pageErrors": 6
+        }
+      ]
+    },
+    "bbc": {
+      "url": "https://www.bbc.com/news",
+      "cat": "news",
+      "sel": "main h2, main h1, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 12190,
+      "loadMedian": 20225,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 12170,
+          "load": 20225,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8540
+        },
+        {
+          "loaded": true,
+          "shown": 12190,
+          "load": 19859,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8559
+        },
+        {
+          "loaded": true,
+          "shown": 13000,
+          "load": 20288,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8560
+        }
+      ]
+    },
+    "bing": {
+      "url": "https://www.bing.com/",
+      "cat": "search",
+      "sel": "#sb_form_q, textarea[name=q]",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 3213,
+      "loadMedian": 4315,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 3220,
+          "load": 4315,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 28
+        },
+        {
+          "loaded": true,
+          "shown": 3132,
+          "load": 4284,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 28
+        },
+        {
+          "loaded": true,
+          "shown": 3213,
+          "load": 4329,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 28
+        }
+      ]
+    },
+    "britannica": {
+      "url": "https://www.britannica.com/",
+      "cat": "reference",
+      "sel": "h1, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 6716,
+      "loadMedian": 11716,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 6180,
+          "load": 10842,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 4827,
+          "pageErrors": 2
+        },
+        {
+          "loaded": true,
+          "shown": 6885,
+          "load": 12571,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 4827,
+          "pageErrors": 2
+        },
+        {
+          "loaded": true,
+          "shown": 6716,
+          "load": 11716,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 5046,
+          "pageErrors": 2
+        }
+      ]
+    },
+    "canvas-login": {
+      "url": "https://canvas.instructure.com/login",
+      "cat": "school",
+      "sel": "form, input[type=text], h1",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 1612,
+      "loadMedian": 2153,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 1690,
+          "load": 2328,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 186
+        },
+        {
+          "loaded": true,
+          "shown": 1612,
+          "load": 2153,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 186
+        },
+        {
+          "loaded": true,
+          "shown": 1441,
+          "load": 2001,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 186
+        }
+      ]
+    },
+    "cnn": {
+      "url": "https://lite.cnn.com/",
+      "cat": "news",
+      "sel": "header, a[href]",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 1708,
+      "loadMedian": 2544,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 1708,
+          "load": 2434,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8457,
+          "pageErrors": 4
+        },
+        {
+          "loaded": true,
+          "shown": 1797,
+          "load": 2704,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8457,
+          "pageErrors": 4
+        },
+        {
+          "loaded": true,
+          "shown": 1627,
+          "load": 2544,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8457,
+          "pageErrors": 4
+        }
+      ]
+    },
+    "desmos": {
+      "url": "https://www.desmos.com/calculator",
+      "cat": "school",
+      "sel": ".dcg-container, #graph-container, canvas",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 28643,
+      "loadMedian": 44402,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 27229,
+          "load": 43141,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 416
+        },
+        {
+          "loaded": true,
+          "shown": 34750,
+          "load": 50207,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 416
+        },
+        {
+          "loaded": true,
+          "shown": 28643,
+          "load": 44402,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 416
+        }
+      ]
+    },
+    "discord": {
+      "url": "https://discord.com/",
+      "cat": "social",
+      "sel": "h1, nav",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "timeout": 3
+      },
+      "detail": "not shown in 45 s",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        }
+      ]
+    },
+    "duckduckgo": {
+      "url": "https://duckduckgo.com/",
+      "cat": "search",
+      "sel": "input[name=q]",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 12743,
+      "loadMedian": 18993,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 12743,
+          "load": 18993,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 631,
+          "pageErrors": 4
+        },
+        {
+          "loaded": true,
+          "shown": 22522,
+          "load": 28795,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 631,
+          "pageErrors": 4
+        },
+        {
+          "loaded": true,
+          "shown": 12678,
+          "load": 18161,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 631,
+          "pageErrors": 4
+        }
+      ]
+    },
+    "duolingo": {
+      "url": "https://www.duolingo.com/",
+      "cat": "school",
+      "sel": "h1, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 9234,
+      "loadMedian": 21915,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 10552,
+          "load": 23126,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 2313,
+          "pageErrors": 3
+        },
+        {
+          "loaded": true,
+          "shown": 8750,
+          "load": 20793,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 2313,
+          "pageErrors": 3
+        },
+        {
+          "loaded": true,
+          "shown": 9234,
+          "load": 21915,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 2313,
+          "pageErrors": 3
+        }
+      ]
+    },
+    "etsy": {
+      "url": "https://www.etsy.com/",
+      "cat": "shopping",
+      "sel": "input[name=search_query], header",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "csp": 3
+      },
+      "detail": "Framing 'https://geo.captcha-delivery.com/' violates the following Content Security Policy directive: \"frame-src blob: data: about:\". The request has been block",
+      "snippet": "etsy.com | ",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 2544,
+          "load": 3134,
+          "category": "csp",
+          "detail": "Framing 'https://geo.captcha-delivery.com/' violates the following Content Security Policy directive: \"frame-src blob: data: about:\". The request has been block",
+          "via": null,
+          "textLen": 0,
+          "snippet": "etsy.com | "
+        },
+        {
+          "loaded": false,
+          "shown": 2247,
+          "load": 2740,
+          "category": "csp",
+          "detail": "Framing 'https://geo.captcha-delivery.com/' violates the following Content Security Policy directive: \"frame-src blob: data: about:\". The request has been block",
+          "via": null,
+          "textLen": 0,
+          "snippet": "etsy.com | "
+        },
+        {
+          "loaded": false,
+          "shown": 8054,
+          "load": 10160,
+          "category": "csp",
+          "detail": "Framing 'https://geo.captcha-delivery.com/' violates the following Content Security Policy directive: \"frame-src blob: data: about:\". The request has been block",
+          "via": null,
+          "textLen": 0,
+          "snippet": "etsy.com | "
+        }
+      ]
+    },
+    "github": {
+      "url": "https://github.com/",
+      "cat": "docs",
+      "sel": "header, h1",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "hang": 3
+      },
+      "detail": "no result in 150 s",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "hang",
+          "detail": "no result in 150 s",
+          "diag": "page did not answer in 5 s",
+          "retried": true
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "hang",
+          "detail": "no result in 150 s",
+          "diag": {
+            "frame": "",
+            "status": "Ready"
+          },
+          "retried": true
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "hang",
+          "detail": "no result in 150 s",
+          "diag": "page did not answer in 5 s",
+          "retried": true
+        }
+      ]
+    },
+    "google-classroom": {
+      "url": "https://classroom.google.com/",
+      "cat": "school",
+      "sel": "input[type=email], a[href*='accounts.google.com']",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 12827,
+      "loadMedian": 23673,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 12827,
+          "load": 23123,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 13583,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 15506,
+          "load": 26102,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 13583,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 12675,
+          "load": 23673,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 13583,
+          "pageErrors": 6
+        }
+      ]
+    },
+    "google-docs": {
+      "url": "https://docs.google.com/document/u/0/",
+      "cat": "school",
+      "sel": "input[type=email]",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "render": 3
+      },
+      "detail": "selector not found",
+      "snippet": "Google Docs: Sign-in | Loading Sign in to continue to Google Docs Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create acc",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 10044,
+          "load": 18196,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 224,
+          "snippet": "Google Docs: Sign-in | Loading Sign in to continue to Google Docs Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create acc"
+        },
+        {
+          "loaded": false,
+          "shown": 9241,
+          "load": 16511,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 224,
+          "snippet": "Google Docs: Sign-in | Loading Sign in to continue to Google Docs Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create acc"
+        },
+        {
+          "loaded": false,
+          "shown": 9741,
+          "load": 16847,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 224,
+          "snippet": "Google Docs: Sign-in | Loading Sign in to continue to Google Docs Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create acc"
+        }
+      ]
+    },
+    "google-drive": {
+      "url": "https://drive.google.com/",
+      "cat": "school",
+      "sel": "input[type=email], h1, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 15172,
+      "loadMedian": 43593,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 15150,
+          "load": 64926,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 6172,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 15238,
+          "load": 40277,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 6172,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 15172,
+          "load": 43593,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 6172,
+          "pageErrors": 6
+        }
+      ]
+    },
+    "google-signin": {
+      "url": "https://accounts.google.com/signin",
+      "cat": "school",
+      "sel": "input[type=email]",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "render": 3
+      },
+      "detail": "selector not found",
+      "snippet": "Sign in - Google Accounts | Loading Sign in Use your Google Account Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create a",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 9147,
+          "load": 16830,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 221,
+          "snippet": "Sign in - Google Accounts | Loading Sign in Use your Google Account Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create a"
+        },
+        {
+          "loaded": false,
+          "shown": 8585,
+          "load": 15900,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 221,
+          "snippet": "Sign in - Google Accounts | Loading Sign in Use your Google Account Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create a"
+        },
+        {
+          "loaded": false,
+          "shown": 9290,
+          "load": 16687,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 221,
+          "snippet": "Sign in - Google Accounts | Loading Sign in Use your Google Account Email or phone Forgot email? Not your computer? Use Guest mode to sign in privately. Learn more about using Guest mode Next Create a"
+        }
+      ]
+    },
+    "google": {
+      "url": "https://www.google.com/",
+      "cat": "search",
+      "sel": "textarea[name=q], input[name=q]",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 5766,
+      "loadMedian": 11965,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 5766,
+          "load": 11965,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 155,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 7323,
+          "load": 13327,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 155,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 5684,
+          "load": 11802,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 155,
+          "pageErrors": 1
+        }
+      ]
+    },
+    "guardian": {
+      "url": "https://www.theguardian.com/international",
+      "cat": "news",
+      "sel": "h1, h2, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 8285,
+      "loadMedian": 17163,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 8230,
+          "load": 16516,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 16758,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 8285,
+          "load": 17476,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 16763,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 8565,
+          "load": 17163,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 16754,
+          "pageErrors": 1
+        }
+      ]
+    },
+    "imdb": {
+      "url": "https://www.imdb.com/",
+      "cat": "other",
+      "sel": "input[name=q], #suggestion-search",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "render": 3
+      },
+      "detail": "selector not found",
+      "snippet": " | ",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 3874,
+          "load": 5211,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": " | "
+        },
+        {
+          "loaded": false,
+          "shown": 4096,
+          "load": 5660,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": " | "
+        },
+        {
+          "loaded": false,
+          "shown": 4074,
+          "load": 5307,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": " | "
+        }
+      ]
+    },
+    "kahoot": {
+      "url": "https://kahoot.it/",
+      "cat": "school",
+      "sel": "input, h1",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "timeout": 3
+      },
+      "detail": "not shown in 45 s",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        }
+      ]
+    },
+    "khanacademy": {
+      "url": "https://www.khanacademy.org/",
+      "cat": "school",
+      "sel": "h1, header",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "script": 3
+      },
+      "detail": "RESLOAD-FAIL: demy.org/_fs-ch-1T1wmsGaOgGaSxcX/assets/inter-var.woff2",
+      "snippet": "Client Challenge | ",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 2011,
+          "load": 2570,
+          "category": "script",
+          "detail": "RESLOAD-FAIL: demy.org/_fs-ch-1T1wmsGaOgGaSxcX/assets/inter-var.woff2",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Client Challenge | ",
+          "pageErrors": 1
+        },
+        {
+          "loaded": false,
+          "shown": 1954,
+          "load": 2520,
+          "category": "script",
+          "detail": "RESLOAD-FAIL: demy.org/_fs-ch-1T1wmsGaOgGaSxcX/assets/inter-var.woff2",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Client Challenge | ",
+          "pageErrors": 1
+        },
+        {
+          "loaded": false,
+          "shown": 1983,
+          "load": 2562,
+          "category": "script",
+          "detail": "RESLOAD-FAIL: demy.org/_fs-ch-1T1wmsGaOgGaSxcX/assets/inter-var.woff2",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Client Challenge | ",
+          "pageErrors": 1
+        }
+      ]
+    },
+    "mdn": {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview",
+      "cat": "docs",
+      "sel": "h1",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 6296,
+      "loadMedian": 10580,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 6550,
+          "load": 10632,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 15568,
+          "pageErrors": 2
+        },
+        {
+          "loaded": true,
+          "shown": 6274,
+          "load": 10580,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 15568,
+          "pageErrors": 2
+        },
+        {
+          "loaded": true,
+          "shown": 6296,
+          "load": 10545,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 15568,
+          "pageErrors": 2
+        }
+      ]
+    },
+    "merriam-webster": {
+      "url": "https://www.merriam-webster.com/",
+      "cat": "reference",
+      "sel": "input[name=search], #search",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 12615,
+      "loadMedian": 25302,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 12519,
+          "load": 24923,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 3276,
+          "pageErrors": 2
+        },
+        {
+          "loaded": true,
+          "shown": 12615,
+          "load": 25302,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 3276,
+          "pageErrors": 2
+        },
+        {
+          "loaded": true,
+          "shown": 14668,
+          "load": 27006,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 3276,
+          "pageErrors": 2
+        }
+      ]
+    },
+    "microsoft-signin": {
+      "url": "https://login.microsoftonline.com/",
+      "cat": "school",
+      "sel": "input[type=email]",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 2742,
+      "loadMedian": 6748,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 2531,
+          "load": 4914,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 176046
+        },
+        {
+          "loaded": true,
+          "shown": 2742,
+          "load": 6748,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 176056
+        },
+        {
+          "loaded": true,
+          "shown": 5537,
+          "load": 10324,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 176090
+        }
+      ]
+    },
+    "npr": {
+      "url": "https://www.npr.org/",
+      "cat": "news",
+      "sel": "h1, h2, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 11482,
+      "loadMedian": 24432,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 10402,
+          "load": 21962,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 12226,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 11482,
+          "load": 24432,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 12226,
+          "pageErrors": 6
+        },
+        {
+          "loaded": true,
+          "shown": 20070,
+          "load": 32058,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 12226,
+          "pageErrors": 6
+        }
+      ]
+    },
+    "pinterest": {
+      "url": "https://www.pinterest.com/",
+      "cat": "social",
+      "sel": "h1, [data-test-id=header]",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "render": 3
+      },
+      "detail": "selector not found",
+      "snippet": "Pinterest | Something went wrong Pinterest could not finish loading this page. Reload",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 22501,
+          "load": 35286,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 73,
+          "snippet": "Pinterest | Something went wrong Pinterest could not finish loading this page. Reload"
+        },
+        {
+          "loaded": false,
+          "shown": 11998,
+          "load": 27029,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Pinterest | "
+        },
+        {
+          "loaded": false,
+          "shown": 15289,
+          "load": 30246,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Pinterest | "
+        }
+      ]
+    },
+    "python-docs": {
+      "url": "https://docs.python.org/3/tutorial/introduction.html",
+      "cat": "docs",
+      "sel": "h1",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 2939,
+      "loadMedian": 4251,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 2939,
+          "load": 4251,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 18979,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 3202,
+          "load": 4560,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 18979,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 2689,
+          "load": 4098,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 18979,
+          "pageErrors": 1
+        }
+      ]
+    },
+    "quizlet": {
+      "url": "https://quizlet.com/",
+      "cat": "school",
+      "sel": "h1, header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 12383,
+      "loadMedian": 21235,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 13194,
+          "load": 21884,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 2159
+        },
+        {
+          "loaded": true,
+          "shown": 12152,
+          "load": 20881,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 2159
+        },
+        {
+          "loaded": true,
+          "shown": 12383,
+          "load": 21235,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 2159
+        }
+      ]
+    },
+    "reddit": {
+      "url": "https://www.reddit.com/",
+      "cat": "social",
+      "sel": "shreddit-app, header, a[href^='/r/']",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 3418,
+      "loadMedian": 13128,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 3418,
+          "load": 13128,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1936
+        },
+        {
+          "loaded": true,
+          "shown": 7870,
+          "load": 33426,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 1789
+        },
+        {
+          "loaded": true,
+          "shown": 3365,
+          "load": 12599,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1386
+        }
+      ]
+    },
+    "spotify": {
+      "url": "https://open.spotify.com/",
+      "cat": "other",
+      "sel": "body, #main",
+      "reps": 3,
+      "loadedCount": 2,
+      "shownMedian": 38626,
+      "loadMedian": 54559,
+      "failures": {
+        "timeout": 1
+      },
+      "detail": "not shown in 45 s",
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 36643,
+          "load": 56587,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 58
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": true,
+          "shown": 40608,
+          "load": 52530,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 58
+        }
+      ]
+    },
+    "stackoverflow": {
+      "url": "https://stackoverflow.com/questions",
+      "cat": "docs",
+      "sel": "#questions, h1",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "render": 3
+      },
+      "detail": "selector not found",
+      "snippet": "Just a moment... | ",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 1680,
+          "load": 2209,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Just a moment... | "
+        },
+        {
+          "loaded": false,
+          "shown": 1724,
+          "load": 2453,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Just a moment... | "
+        },
+        {
+          "loaded": false,
+          "shown": 2084,
+          "load": 2671,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 0,
+          "snippet": "Just a moment... | "
+        }
+      ]
+    },
+    "tumblr": {
+      "url": "https://www.tumblr.com/",
+      "cat": "social",
+      "sel": "h1, header",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "render": 3
+      },
+      "detail": "selector not found",
+      "snippet": "Tumblr | Explore Communities Change palette Sign up Log in Trending Staff Picks Videos More About Apps Legal Privacy Help ",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": 10362,
+          "load": 17826,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 112,
+          "snippet": "Tumblr | Explore Communities Change palette Sign up Log in Trending Staff Picks Videos More About Apps Legal Privacy Help "
+        },
+        {
+          "loaded": false,
+          "shown": 10670,
+          "load": 18648,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 112,
+          "snippet": "Tumblr | Explore Communities Change palette Sign up Log in Trending Staff Picks Videos More About Apps Legal Privacy Help "
+        },
+        {
+          "loaded": false,
+          "shown": 11271,
+          "load": 18462,
+          "category": "render",
+          "detail": "selector not found",
+          "via": null,
+          "textLen": 112,
+          "snippet": "Tumblr | Explore Communities Change palette Sign up Log in Trending Staff Picks Videos More About Apps Legal Privacy Help "
+        }
+      ]
+    },
+    "twitch": {
+      "url": "https://www.twitch.tv/",
+      "cat": "video",
+      "sel": "nav, [data-a-target=top-nav-container]",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 19664,
+      "loadMedian": 34045,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 19568,
+          "load": 34261,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 40
+        },
+        {
+          "loaded": true,
+          "shown": 19762,
+          "load": 33482,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 40
+        },
+        {
+          "loaded": true,
+          "shown": 19664,
+          "load": 34045,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 40
+        }
+      ]
+    },
+    "vimeo": {
+      "url": "https://vimeo.com/",
+      "cat": "video",
+      "sel": "header, nav",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 20387,
+      "loadMedian": 42800,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 20387,
+          "load": 42800,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 7978,
+          "pageErrors": 5
+        },
+        {
+          "loaded": true,
+          "shown": 20157,
+          "load": 43290,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 7978,
+          "pageErrors": 5
+        },
+        {
+          "loaded": true,
+          "shown": 20433,
+          "load": 41898,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 7978,
+          "pageErrors": 5
+        }
+      ]
+    },
+    "w3schools": {
+      "url": "https://www.w3schools.com/html/",
+      "cat": "docs",
+      "sel": "h1",
+      "reps": 3,
+      "loadedCount": 1,
+      "shownMedian": 9051,
+      "loadMedian": 19920,
+      "failures": {
+        "timeout": 1,
+        "hang": 1
+      },
+      "detail": "not shown in 45 s",
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 9051,
+          "load": 19920,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 5910,
+          "pageErrors": 6
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "hang",
+          "detail": "no result in 150 s",
+          "diag": {
+            "frame": "",
+            "status": "Ready"
+          },
+          "retried": true
+        }
+      ]
+    },
+    "walmart": {
+      "url": "https://www.walmart.com/",
+      "cat": "shopping",
+      "sel": "input[type=search], header",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 31180,
+      "loadMedian": 54571,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 38864,
+          "load": 54571,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1929,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 27170,
+          "load": 57982,
+          "category": null,
+          "detail": null,
+          "via": "text",
+          "textLen": 1929,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 31180,
+          "load": 47583,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1929
+        }
+      ]
+    },
+    "weather": {
+      "url": "https://weather.gov/",
+      "cat": "news",
+      "sel": "#cityfield, input[type=text], h1",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 7181,
+      "loadMedian": 10818,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 6784,
+          "load": 10466,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1714,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 9021,
+          "load": 12716,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1714,
+          "pageErrors": 1
+        },
+        {
+          "loaded": true,
+          "shown": 7181,
+          "load": 10818,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 1714,
+          "pageErrors": 1
+        }
+      ]
+    },
+    "wikihow": {
+      "url": "https://www.wikihow.com/",
+      "cat": "reference",
+      "sel": "input[name=search], #hp_search",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 8588,
+      "loadMedian": 16314,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 8934,
+          "load": 16314,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8175
+        },
+        {
+          "loaded": true,
+          "shown": 8588,
+          "load": 15934,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8175
+        },
+        {
+          "loaded": true,
+          "shown": 8555,
+          "load": 16350,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 8175
+        }
+      ]
+    },
+    "wikipedia": {
+      "url": "https://en.wikipedia.org/wiki/Photosynthesis",
+      "cat": "reference",
+      "sel": "#firstHeading",
+      "reps": 3,
+      "loadedCount": 3,
+      "shownMedian": 7375,
+      "loadMedian": 11270,
+      "failures": {},
+      "detail": null,
+      "snippet": null,
+      "runs": [
+        {
+          "loaded": true,
+          "shown": 7431,
+          "load": 11409,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 88692
+        },
+        {
+          "loaded": true,
+          "shown": 7273,
+          "load": 10954,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 88692
+        },
+        {
+          "loaded": true,
+          "shown": 7375,
+          "load": 11270,
+          "category": null,
+          "detail": null,
+          "via": "selector",
+          "textLen": 88692
+        }
+      ]
+    },
+    "youtube": {
+      "url": "https://www.youtube.com/",
+      "cat": "video",
+      "sel": "ytd-app, input[name=search_query]",
+      "reps": 3,
+      "loadedCount": 0,
+      "shownMedian": null,
+      "loadMedian": null,
+      "failures": {
+        "timeout": 3
+      },
+      "detail": "not shown in 45 s",
+      "runs": [
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        },
+        {
+          "loaded": false,
+          "shown": null,
+          "load": null,
+          "category": "timeout",
+          "detail": "not shown in 45 s"
+        }
+      ]
+    }
+  }
+}

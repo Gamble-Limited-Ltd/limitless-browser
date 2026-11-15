@@ -1051,11 +1051,22 @@ async function fetchWithTimeout(url, ms, opts={}) {
   try { const r = await fetch(url, {cache:'no-store', signal:c.signal, ...opts}); clearTimeout(id); return r; }
   catch(e) { clearTimeout(id); throw e; }
 }
+// Since 1.0 the application script is a separate file (<script src="app/<sha>/main.js">). The patch definitions below match
+// its text, so it is put back inline here: the patched download is one self-contained Limitless.html, as before.
+async function inlineAppScript(html, base) {
+  const m = html.match(/<script src="(app\/[^"]+\.js)"><\/script>/);
+  if (!m) return html;
+  const r = await fetchWithTimeout(new URL(m[1], base).href, 30000);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + m[1]);
+  const js = await r.text();
+  return html.replace(m[0], () => '<script>\n' + js + '\n<' + '/script>');
+}
 async function attemptFetch(url, label, opts={}) {
   document.getElementById('loadingSub').textContent = label;
   const res = await fetchWithTimeout(url, 15000, opts);
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  const text = await res.text();
+  let text = await res.text();
+  text = await inlineAppScript(text, res.url || new URL(url, location.href).href);
   if (!looksLikeLimitless(text)) throw new Error('Response (' + text.length + 'B) not valid Limitless source');
   return text;
 }

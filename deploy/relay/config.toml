@@ -27,8 +27,9 @@ extensions = []
 # No UDP: libcurl.js does not need it, and it removes a large abuse surface (DNS amplification and so on).
 allow_udp = false
 allow_wsproxy_udp = false
-# Public resolvers, so the Docker embedded resolver (container names) is never consulted.
-dns_servers = ["1.1.1.1", "9.9.9.9"]
+# Our caching resolver (deploy/dns, fixed address on lb_relay), never the Docker embedded resolver. It forwards to
+# 1.1.1.1 and 9.9.9.9 over DNS-over-TLS. Kill switch: put "1.1.1.1", "9.9.9.9" back here (the image bakes this file in).
+dns_servers = ["10.88.81.53"]
 
 # Destination checks run on the RESOLVED address, so DNS rebinding to an internal address is caught.
 allow_direct_ip = true

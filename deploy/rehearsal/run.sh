@@ -19,7 +19,7 @@ PROJECT=limitless-browser-rehearsal
 # compose call so `down` also removes the fixtures container.
 if [ "${LB_SPEED:-0}" = 1 ]; then
   export COMPOSE_PROFILES=fixtures
-  export REHEARSAL_RELAY_CONFIG="$HERE/relay-fixtures.toml"
+  RELAY_SRC="$HERE/relay-fixtures.toml"
 fi
 START=$(date +%s)
 
@@ -31,6 +31,12 @@ done
 RUN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/lb-rehearsal.XXXXXX")"
 chmod 700 "$RUN_DIR"
 rand() { head -c 36 /dev/urandom | base64 | tr -d '/+=\n' | head -c "$1"; }
+# The relay's resolver is the dns container at a fixed address; the rehearsal networks are 10.89.x, so the prod
+# address is rewritten in a per-run copy of the config (the prod file is untouched).
+RELAY_SRC="${RELAY_SRC:-$REPO/deploy/relay/config.toml}"
+sed 's/10\.88\.81\.53/10.89.81.53/' "$RELAY_SRC" > "$RUN_DIR/relay.toml"
+chmod 644 "$RUN_DIR/relay.toml"
+export REHEARSAL_RELAY_CONFIG="$RUN_DIR/relay.toml"
 export REHEARSAL_CLIENT_SECRET="$(rand 32)"
 export REHEARSAL_GATE_ENV="$RUN_DIR/gate.env"
 (umask 077; cat > "$REHEARSAL_GATE_ENV" <<ENV
@@ -49,7 +55,7 @@ cleanup() {
   rc=$?
   if [ "${KEEP:-0}" = 1 ] && [ $rc -eq 0 ]; then
     echo "rehearsal: stack left up on 127.0.0.1:$REHEARSAL_WEB_PORT (mock on :$REHEARSAL_MOCK_PORT). Tear down:"
-    echo "  REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV ${DC[*]} down -v"
+    echo "  REHEARSAL_OWNER_SUB=x REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV ${DC[*]} down -v"
   else
     "${DC[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
     rm -rf "$RUN_DIR"

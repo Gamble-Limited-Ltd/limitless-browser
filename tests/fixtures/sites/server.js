@@ -1,6 +1,7 @@
 // Fixture sites for the speed harness (docs/1.0/TESTING.md section 2). Plain Node, no dependencies, deterministic
 // content generated at request time (nothing large is committed). Run by the rehearsal compose service `fixtures`
 // (profile "fixtures") on 10.89.85.10:8080; locally: `node tests/fixtures/sites/server.js` (PORT, default 8080).
+//   /news-fresh  the same page with Cache-Control max-age=300 (page cache candidate)
 //   /news      heavy news-style page: 60 images, 12 scripts, 4 CSS files chained with @import
 //   /app       module-graph app page: 24 ES modules, depth 4
 //   /slow      one image that takes 5 s and one script that takes 2 s (body end, plain script)
@@ -39,6 +40,8 @@ const routes = {
     for (let i = 1; i <= 12; i++) body += `<script src="/news/js/${i}.js"></script>`;
     return h('text/html', page('Fixture news', heads, body));
   },
+  // the same heavy page, but with explicit freshness like most real news sites: the S3 page cache can keep it
+  '/news-fresh': () => ({ ...routes['/news'](), fresh: true }),
   '/app': () => h('text/html', page('Fixture app', '', '<div id="out">loading</div><script type="module" src="/app/m/0.js"></script>')),
   '/slow': () => h('text/html', page('Fixture slow', '', '<h1>Slow</h1><p>Text that is ready at once.</p><img src="/slow/img.svg?d=5000" width="400" height="300" alt=""><p>More text.</p><script src="/slow/s.js?d=2000"></script>')),
   '/article': () => { const r = rng(7); let b = '<h1>Fixture article</h1>'; for (let i = 0; i < 220; i++) b += `<p>${para(r, 70)}</p>`; return h('text/html', page('Fixture article', '', b)); },
@@ -66,6 +69,6 @@ http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'); const hit = (routes[u.pathname] && routes[u.pathname]()) || dynamic(u.pathname, u.searchParams);
   if (u.pathname === '/healthz') { res.end('ok'); return; }
   if (!hit) { res.writeHead(404); res.end('not found'); return; }
-  const headers = { 'Content-Type': hit.type + '; charset=utf-8', ...(hit.type === 'text/html' ? { 'Cache-Control': 'no-cache' } : ASSET) };
+  const headers = { 'Content-Type': hit.type + '; charset=utf-8', ...(hit.type === 'text/html' ? { 'Cache-Control': hit.fresh ? 'public, max-age=300' : 'no-cache' } : ASSET) };
   setTimeout(() => { res.writeHead(200, headers); res.end(hit.body); }, hit.delay || 0);
 }).listen(PORT, '0.0.0.0', () => console.log(`fixtures on :${PORT}`));

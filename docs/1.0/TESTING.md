@@ -11,7 +11,7 @@ Not offloaded to buildpc (no `.nvmrc` in this repo; the gate has one and can use
 | e2e (static, mocked routes) | `npm test` | local, every commit | pipeline, boot/service worker, sleep/back, rewrite and page cache, blocklist, menu, settings groups, tab layout, membership UI with mocked `/_lb/me`, admin views |
 | Visual snapshots | `npm run test:visual` (new) | local | every new screen x every theme x 1366x768 and 2560x1440 |
 | Stack rehearsal | `npm run test:stack` | local Docker, throwaway stack | ceremony, invites, standing, verify, migration, per-hop timing, auth cache, DNS cache |
-| Speed | `npm run test:speed` | local Docker + internet | Chromebook profile, fixture pages, 7 reps, boot timings |
+| Speed | `npm run test:speed` (release gate); `npm run test:speed:quick` (slices) | local Docker + internet | Chromebook profile, fixture pages, 7 reps, boot timings; quick = chromebook only, fixtures only, 3 reps |
 | Load | `npm run test:load` (new) | local Docker | 20 simulated members |
 | Gate unit | `cd ~/limitless-gate && npm run check` | local or `buildpc-run` | membership, invites, numbers, fair share, encryption, retention sweep |
 
@@ -80,6 +80,16 @@ small `tests/load/package.json`):
 | Back to previous page | under 150 ms (from memory) |
 | No regression | no fixture page more than 10 % and 100 ms slower on any metric (`scripts/speed-compare.mjs`) |
 Public speed sites are measured and reported in the release record but do not gate (internet noise).
+
+**Tiers (T1-T4, T7, 2026-11-12).** Slice work: `npm test` (e2e, fullyParallel), `npm run test:speed:quick`, `npm run test:sites:smoke` (12 sites flagged `smoke: true`). Release gate: `npm run test:speed` (both projects, 7 reps, public sites 3 reps) and `npm run test:sites` (all sites, 1 worker, rep 3 skipped when reps 1 and 2 fail with the same category). The speed harness signs in once per run and reuses the cookies (caches stay empty) and an error card ends a rep at once. `scripts/speed-nightly.sh` runs the whole gate set unattended under the rehearsal lock and writes `~/gll-planning/reports/limitless-speed/<date>/`. Always wrap anything that starts the stack in `flock /tmp/limitless-rehearsal.lock`.
+
+## 6a. Real-site suite (Boss's priority, added 2026-11-10)
+`tests/stack/sites.spec.js` (built in S3, `LB_SITES=1`): a fixed list of about 40 popular public sites in `tests/stack/real-sites.json`
+(search, video, reference, news, social, school tools, docs, shopping). Per site, chromebook profile, 3 reps through the rehearsal
+relay: loaded (page shown, no fatal page error, a site-specific selector present), time to shown, time to load, and a failure
+category (DNS, relay connect, TLS, HTTP status, rewrite or script error, CSP or frame block, timeout). Output
+`test-results/sites-<sha>.json`; the release record lists success rate vs the 0.2.3 run. Gate: success rate not lower than 0.2.3,
+and every failure on the list has a category and an issue or a note.
 
 ## 7. Migration rehearsal
 Seeded gate SQLite with the 0.2.3 schema and mock approvals (owner + 6 users with varied `approvedAt`), run

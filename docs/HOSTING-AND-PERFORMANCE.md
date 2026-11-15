@@ -109,6 +109,9 @@ Files: `deploy/docker-compose.yml` (+ `docker-compose.dev.yml`, `dev-up.sh`, `de
   `dist-br/` (same names, brotli q11, from the `brotli` CLI or Node's zlib). nginx chooses the root from `Accept-Encoding` and adds
   `Content-Encoding: br` by extension (html, js, mjs, css, wasm, svg, json). Measured index.html (3,634,079 B): gzip 1,196,734 B (33%), br 978,191 B (27%).
 - **Caching:** index.html, patcher.html, version.json, themes.css: `no-cache` + ETag. `vendor/`: 1 year immutable (versioned paths).
+  1.0 S2 additions (all behind `auth_request`, none public): `/sw.js` `no-cache` (+ `Service-Worker-Allowed: /`), `/app/<sha>/*` 1 year immutable, and an exact `= /theme/skins.css` location (`no-cache`) that keeps the gate while
+  the rest of `/theme/` stays public. The libcurl WASM and acorn live under `vendor/` so they are immutable, gated and precompressed (the build compresses html, js, mjs, css, wasm, svg, json in both trees; the WASM is 1.4 MB raw,
+  about 0.5 MB brotli). The service worker never caches or serves anything on a gate 401/403/5xx (see CLAUDE.md "Startup").
   `fonts/`, `theme/fonts/`: 1 year (names not versioned, so not immutable).
 - **Relay:** epoxy-server 2.0.0, MercuryWorkshop/epoxy-tls commit `0c11678d72a636c3a4bc723db87e03e7b888eaf9` (2026-03-21), built unmodified
   with a dated nightly (`nightly-2026-03-20`), `speed-limit` feature, distroless `cc-debian12:nonroot`, read-only rootfs, cap_drop ALL, image 47 MB.
@@ -168,6 +171,14 @@ Built on branch `slice/browsing`; details for the code are in `CLAUDE.md` ("Fast
   and DOMParser/rewrite time. Output `test-results/speed-<sha>-<project>.json`; `node scripts/speed-compare.mjs base.json new.json` compares medians and fails only
   for fixture pages and boot (more than 10 % and 100 ms slower). Public sites are reported, not gated. Run base and candidate on the same machine, same hour.
   The 0.2.3 baseline is in `docs/1.0/BASELINE.md`.
+
+### Server path, S4 (1.0, `docs/1.0/RELAY.md` 2.2 and 3)
+- **nginx auth cache:** `/_gate/check` is cached in `proxy_cache lbauth` (tmpfs, 10 MB), key `host|session cookie` (no session cookie: never cached), `proxy_cache_valid 200 5s`: 401 and 403 are never stored. The gate answers `Cache-Control: no-store`, which nginx would honour, so it is ignored in that location only. A revoked user is refused within 5 s (app files); a new WISP socket is refused at once because the gate checks the session itself. Tests: `tests/stack/authcache.spec.js` (signed-out, forged cookie, unapproved, revoked; hit and miss), and `admin.spec.js` now allows the 5 s window. Kill switch: remove the `proxy_cache lbauth;` lines in `deploy/web/nginx.conf`.
+- **Per-hop timing:** every gated response carries `Server-Timing: gate;dur=<ms>, authcache;desc=HIT|MISS, edge;desc="<cf-ray>"` (the same value for the browser's own `performance` entries) and the WISP upgrade carries `X-LB-T: gate=<ms>;cache=<HIT|MISS>`. No hostnames, no per-user data. The gate side (CONNECT to first DATA histograms) and the daily anonymous medians from the app are not built yet (see `docs/1.0/RELAY.md` 2.2 status).
+- **Relay DNS cache:** service `dns` (`deploy/dns/`, unbound, 10.88.81.53 on `lb_relay`, DNS-over-TLS to 1.1.1.1 and 9.9.9.9, TTLs followed up to 1 h, negative answers 60 s, prefetch). `deploy/relay/config.toml` `dns_servers = ["10.88.81.53"]`; epoxy's destination checks still run on the resolved address. The rehearsal rewrites the address to its own subnet (`run.sh`).
+- **Relay resources:** 4 CPUs, 1 GiB (was 2 and 512 MB). No socket-buffer sysctls: the host already allows 6 MiB receive and 4 MiB send.
+- **BBR:** host step, `docs/1.0/S4-HOST-COMMANDS.md`.
+- **Tunnel terms:** `docs/1.0/TUNNEL-OPTIONS.md`.
 
 ### Home link (measured 2026-11-10)
 The home upload rate is the ceiling for all members together (`docs/1.0/RELAY.md` 2.1). Measured from the VM with curl against speed.cloudflare.com at 15:07 to 15:42 Chicago (not a quiet hour), 3 runs each, no personal data:

@@ -2,6 +2,29 @@
 
 What changed, in plain language. Newest first.
 
+## Unreleased 1.0.0
+
+- A slow or failing script on a page is no longer loaded straight from the site, outside the relay, which could expose your own connection. The page now shows without it and the script is added through Limitless when it arrives.
+- Pages that look for their own script (cookie banners on several news and learning sites) now find it, so those banners no longer break. Pictures that a site forbids us to keep are no longer downloaded twice, and big pages hand out their picture slots faster.
+- Fixed answers from the page's helper code being ignored in the new page runtime (replies to page requests, streams and cookies could be lost).
+- Admin panel: confirming the owner password now works when the Terms of Service need accepting again (a tick box appears), and when something goes wrong the dialog says why (wrong password, too many tries, GLL ID not reachable).
+- Limitless now opens much faster, especially the second time: the big parts of the app are separate files that your browser keeps, so a repeat visit has a lot less to download and read.
+- Pages now appear as soon as their text, styles and scripts are ready. Images keep loading after the page is shown, so one slow picture no longer holds the whole page back.
+- The page you were on stays visible and usable while the next one loads. A thin progress bar under the address bar shows how far the load has come, instead of covering the page.
+- Pictures far down a page now load only when you scroll close to them, which saves time and data.
+- When many people are online at once, Limitless now tells you once per visit that "The line is busy, Data saver helps". It never turns Data saver on for you.
+- New Data saver setting (Settings, Connection): asks sites for lighter pages, loads pictures only near the screen, and stops videos from starting by themselves. It is off by default.
+- Sites you visit again open faster: Limitless now remembers the prepared scripts of a site between visits (only when the Resource Cache setting is on).
+- Back and Forward are now instant for the last few pages in each tab: they come straight from memory, with the scroll position where you left it.
+- Pages you opened recently show up at once on the next visit, then quietly check for a newer version. If you have already started reading, a small "Updated, reload" button offers the new version instead of changing the page under you.
+- Tabs you have not used for a while now go to sleep to save memory (Settings, Tab Caching: choose Never, 10, 30 or 60 minutes). They wake in a moment, at the same spot. Tabs playing sound or video, or holding text you typed, never sleep.
+- The main app code is now its own file that your browser keeps between visits, so Limitless starts faster on a repeat open and each update only has to fetch what changed.
+- Pages with many fonts and images in their styles are prepared faster, without stalling the page.
+
+- Opening the app and new connections is a little quicker: the server remembers a successful sign-in check for a few seconds instead of asking again for every file.
+- Site addresses are looked up through a small cache on our side, so the second visit to a site starts sooner.
+- The relay has more memory and processor time, which helps when several people browse at once.
+
 ## 0.2.3
 
 - The legal page now points to the full Gamble Limited legal documents on HALL.

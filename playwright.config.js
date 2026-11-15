@@ -7,6 +7,8 @@ const PORT = process.env.LB_E2E_PORT || '8599';
 module.exports = defineConfig({
   testDir: 'tests/e2e',
   timeout: 60000,
+  // Every test uses its own context (no shared state; checked admin and cache specs), so files can share workers.
+  fullyParallel: true,
   reporter: 'list',
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
