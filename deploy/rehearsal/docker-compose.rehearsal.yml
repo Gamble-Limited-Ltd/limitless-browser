@@ -11,6 +11,8 @@ services:
       context: ../web
     ports:
       - "127.0.0.1:${REHEARSAL_WEB_PORT:-8590}:80"
+    environment:
+      WISP_RELAY: "1"   # prod answers 410 on /wisp/ since 0.3.0; the rehearsal keeps a working relay for the stack tests
     networks: [lb_edge, lb_internal]
     read_only: true
     tmpfs: [/var/cache/nginx, /var/run, /tmp]

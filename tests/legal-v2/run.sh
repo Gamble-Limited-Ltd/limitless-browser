@@ -12,6 +12,7 @@ run() { # $1 = LEGAL_VERSION value
     -v "$PWD/deploy/web/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
     -v "$PWD/deploy/web/snippets:/etc/nginx/snippets:ro" \
     -v "$PWD/deploy/web/legal-v2.sh:/docker-entrypoint.d/40-legal-v2.sh:ro" \
+    -v "$PWD/deploy/web/wisp.sh:/docker-entrypoint.d/41-wisp.sh:ro" \
     -v "$T/html:/usr/share/nginx/html:ro" -v "$T/html:/usr/share/nginx/br:ro" \
     nginx:1.29-alpine >/dev/null || exit 2
   i=0; while ! curl -s -o /dev/null http://127.0.0.1:18599/legal/ && [ $i -lt 30 ]; do sleep 0.3; i=$((i+1)); done
