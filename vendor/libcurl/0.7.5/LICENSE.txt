@@ -1,4 +1,4 @@
-libcurl.js 0.7.4 (ading2210/libcurl.js), WebAssembly build libcurl.wasm.
+libcurl.js 0.7.5 (ading2210/libcurl.js), WebAssembly build libcurl.wasm.
 Licensed under the GNU LGPL v3. License text and source: https://github.com/ading2210/libcurl.js
 The JavaScript glue of this build stays inline in index.html (with its license header); only the WASM binary moved here.
 

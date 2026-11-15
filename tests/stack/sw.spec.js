@@ -32,7 +32,7 @@ async function warmWorker(page) {
     for (const n of await caches.keys()) for (const r of await (await caches.open(n)).keys()) out.push(new URL(r.url).pathname);
     return out;
   });
-  expect(cached).toContain('/vendor/libcurl/0.7.4/libcurl.wasm');
+  expect(cached).toContain('/vendor/libcurl/0.7.5/libcurl.wasm');
   expect(cached).toContain('/index.html');
   return cached;
 }
@@ -46,7 +46,7 @@ test.describe('service worker with a warm cache', () => {
     await ctx.addInitScript(() => { window.LB_SW_DELAY = 0; });
     const anon = await ctx.request.get('/sw.js');
     expect(anon.status()).toBe(401);
-    for (const p of ['/vendor/libcurl/0.7.4/libcurl.wasm', '/vendor/acorn/8.14.0/acorn.min.js', '/theme/skins.css']) {
+    for (const p of ['/vendor/libcurl/0.7.5/libcurl.wasm', '/vendor/acorn/8.14.0/acorn.min.js', '/theme/skins.css']) {
       expect((await ctx.request.get(p)).status(), p + ' must be gated').toBe(401);
     }
     await ctx.close();

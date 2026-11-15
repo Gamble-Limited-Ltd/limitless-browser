@@ -137,6 +137,15 @@ Goal: decide whether a free off-home relay is reasonable. Nothing here touches p
 - **libcurl.js 0.7.4 -> 0.7.5** (npm, published 2026-10-21). Read the changelog and diff of the JS glue; check for HTTP/2
   support (F-j in `SPEED.md`), WISP changes and anything that touches evasion. Take it in S2 (the WASM split) if clean;
   full e2e + rehearsal + speed harness before and after.
+  **Decision 2026-11-14: taken for 0.3.0** (`slice/0.3-libcurl`). Checks: the vendored 0.7.4 WASM is byte-identical to the
+  npm 0.7.4 build (sha256 `fe42bbcb...`); the inline glue equals npm 0.7.4 `libcurl.js` plus only our known edits (vendored
+  `wasmBinaryFile` URL, streaming instantiate, data-URI helpers, `_libcurlReady`), all re-applied to 0.7.5. The 0.7.5 glue
+  diff is only new Emscripten syscall stubs (`chmod`, `fchmod`, `fd_fdstat_get`), export wrappers and the version string;
+  no change to the WISP client, `set_connections`, `HTTPSession`, `transport` or `load_wasm`; the URL list and the
+  `fetch`/`XMLHttpRequest`/`WebSocket`/`navigator` use are identical (no new endpoint, no telemetry). Licence unchanged
+  (LGPL v3, same text). HTTP/2: nghttp2 and ALPN `h2` were already in the 0.7.4 WASM; 0.7.5 only updates it, and the JS API
+  still exposes no HTTP-version option, so nothing changes for our code. Reason: newer curl, nghttp2 and CA bundle, with
+  the fix for compromised CA certificates. Full e2e, stack and `test:speed:quick` before and after (see the release record).
 - **epoxy-tls**: pinned commit `0c11678` (epoxy-server 2.0.0); the `latest` tag now points at a newer commit
   (`9cde724`). Diff `server/` between them; take it if it is fixes or performance only; rebuild the relay image with a
   dated nightly as today; keep the config keys valid (`deny_unknown_fields`).

@@ -13,6 +13,7 @@ What changed, in plain language. Newest first.
 ## Unreleased 1.0.0
 
 - Ad and tracker blocking now uses a maintained list of about 90,000 domains and checks them much faster. A site is blocked when its address, or the main domain above it, is on the list. Similar-looking names and links that only mention a blocked name are not blocked. Your own filters and the per-site exceptions work as before.
+- Updated the built-in network library (libcurl.js 0.7.5): newer curl and HTTP/2 code and a refreshed certificate list, including the fix for compromised certificate authorities.
 - A slow or failing script on a page is no longer loaded straight from the site, outside the relay, which could expose your own connection. The page now shows without it and the script is added through Limitless when it arrives.
 - Pages that look for their own script (cookie banners on several news and learning sites) now find it, so those banners no longer break. Pictures that a site forbids us to keep are no longer downloaded twice, and big pages hand out their picture slots faster.
 - Fixed answers from the page's helper code being ignored in the new page runtime (replies to page requests, streams and cookies could be lost).
