@@ -98,3 +98,39 @@ html[data-lb-tabs="side"][data-lb-rail-min][data-lb-theme]:not([data-skin]) {
 .lb-pl { font-size: 12.5px; color: var(--tx2); margin-top: 6px; }
 .lb-pl a, .lb-note a { color: var(--ac); }
 a.lb-btn { text-decoration: none; display: inline-block; }
+
+/* ---------- Splash: name first, number small beneath ---------- */
+.lb-sp-name { text-transform: none; letter-spacing: .02em; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-sp-num { font: 500 12px var(--lb-fm); letter-spacing: .2em; color: var(--tx3); margin-top: 6px; }
+
+/* ---------- Start page: bulletin, expiry line, member card ---------- */
+.lb-startm { display: grid; gap: 12px; justify-items: center; margin: 18px auto 0; width: min(440px, 92%); }
+.lb-bulletin { width: 100%; box-sizing: border-box; padding: 14px 18px; background: var(--bg1); border: 1px solid var(--bd); border-top: 2px solid var(--ac); border-radius: var(--radius-sm); text-align: left; }
+.lb-bul-l { font: 500 10px var(--lb-fm); letter-spacing: .24em; text-transform: uppercase; color: var(--tx3); }
+.lb-bul-t { font: 500 17px/1.4 'Cormorant Garamond', Georgia, serif; color: var(--tx); margin: 6px 0 8px; }
+.lb-bul-f { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; color: var(--tx3); }
+.lb-bul-x, .lb-link { background: none; border: 0; padding: 0; color: var(--ac); font: inherit; font-size: 11.5px; cursor: pointer; text-decoration: underline; }
+.lb-bul-x:focus-visible, .lb-link:focus-visible, .lb-card:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.lb-expiry { width: 100%; box-sizing: border-box; font-size: 12.5px; color: var(--tx); padding: 8px 12px; border-left: 2px solid var(--ac); background: var(--bg1); }
+.lb-expiry[data-level="soon"] { border-left-width: 4px; }
+.lb-card { display: flex; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; padding: 12px 16px; background: var(--bg1); border: 1px solid var(--bd); border-radius: var(--radius-md); color: var(--tx); font: inherit; text-align: left; cursor: pointer; transition: border-color .2s; }
+.lb-card:hover { border-color: var(--ac); }
+.lb-card .lb-tier-mark { width: 36px; height: 36px; flex: none; }
+.lb-card-t { display: grid; gap: 2px; min-width: 0; }
+.lb-card-n { font: 600 15px var(--lb-fd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-card-s { font-size: 11.5px; color: var(--tx3); letter-spacing: .04em; }
+.lb-card-cardinal { border-image: linear-gradient(120deg, #c9d0da, transparent 40%, #c9d0da) 1; }
+.lb-card-prime { border-color: #e5506a; }
+.lb-card-executive { border-color: #e6c15a; }
+.lb-planline { font-size: 12px; color: var(--tx3); text-align: center; }
+.lb-planline .lb-pl { display: inline; font-size: inherit; margin: 0; color: var(--tx3); }
+.lb-dayDone { position: absolute; inset: 0; z-index: 50; display: grid; place-content: center; justify-items: center; gap: 10px; background: var(--bg0); color: var(--tx); text-align: center; padding: 24px; }
+.lb-dayDone h2 { font: 600 26px var(--lb-fd); }
+.lb-dayDone p { color: var(--tx2); }
+main { position: relative; }
+
+/* ---------- Tour (not modal) ---------- */
+.lb-tour { position: fixed; right: 18px; bottom: 18px; z-index: 100001; width: min(320px, 90vw); display: grid; gap: 10px; padding: 16px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-md); box-shadow: 0 18px 50px -18px rgba(0, 0, 0, .6); animation: lbMenuIn .2s cubic-bezier(.2, .7, .2, 1); }
+.lb-tour-h { display: flex; align-items: center; gap: 8px; }
+.lb-tour-c { margin-left: auto; font-size: 11.5px; color: var(--tx3); }
+@media (prefers-reduced-motion: reduce) { .lb-tour { animation: none; } }

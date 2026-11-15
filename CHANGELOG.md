@@ -12,6 +12,10 @@ What changed, in plain language. Newest first.
 - The address bar shows the whole address with the site's main domain in strong type and the rest quieter. Click it to see and edit the plain address.
 - Settings now has six groups: General, Appearance, Privacy and data, Connection, Membership and About. Settings opens on General. Nothing was removed, controls only moved.
 - The Membership page shows your name first, then your number, your plan, its limits and your certificate. When your plan is about to end, a note appears 14 days and 3 days before.
+- The splash greets you by name, with your number small beneath it. The start page has a member card, and notices from the Director appear as a small engraved bulletin that you can dismiss.
+- When a page cannot load, you now get a calm card with one plain sentence, Try again, Report a problem and the technical details folded away. When a site asks for a human check, a plain card says so.
+- Free plans show their limits: Ordinal members have 4 open tabs and about 4 hours a day. A note appears when about 15 minutes are left.
+- The welcome ceremony has a new look: number, Charter, a reveal of your number, your certificate or member card, and a short tour.
 - The old interactive tour is gone. A short tour after the welcome replaces it.
 - Tabs can sit on the left (Settings, Appearance, Tab layout). The rail folds to icons on a narrow window or with the button at its top.
 

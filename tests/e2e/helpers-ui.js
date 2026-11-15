@@ -13,6 +13,7 @@ const me = (over = {}, plan = {}) => ({ ...ME, ...over, plan: { ...ME.plan, ...p
 async function bootMember(page, answer, opts = {}) {
   const get = typeof answer === 'function' ? answer : () => answer;
   await page.route('**/_lb/me', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(get()) }));
+  if (!opts.tour) await page.addInitScript(() => { try { localStorage.setItem('limitless:tour:v1', 'done'); } catch (_) {} });
   const errors = await boot(page, opts);
   await page.waitForFunction(() => window.LB_member && window.LB_member.number, null, { timeout: 15000 });
   return errors;

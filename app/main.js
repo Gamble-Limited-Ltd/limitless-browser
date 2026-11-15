@@ -1544,309 +1544,62 @@
                 updateFindControlState();
             });
 
+            // Calm error card (S6, UI.md 3.4): themed from the parent's tokens, one plain title, one cause, Try again, Report a problem,
+            // technical details folded. Wording is keyed on the class (errorType, from lbCat) and never invents a cause.
+            const LB_CALM = {
+                'DNS Resolution Failed': ['We could not find this site', 'The address may have a typo, or the site may no longer exist.', 'Broken site'],
+                'Connection Timeout': ['This site is not answering', 'It took too long to respond. The site or the connection to it may be slow.', 'Slow'],
+                'Connection Refused': ['This site refused the connection', 'It may be down, or it may not accept connections like this one.', 'Broken site'],
+                'SSL/TLS Error': ['This site could not prove who it is', 'Its security certificate or secure connection did not check out, so Limitless stopped.', 'Broken site'],
+                'Network Error': ['The connection was interrupted', 'You may be offline, or the relay lost its link for a moment.', 'Slow'],
+                'Connection Interrupted': ['The connection was interrupted', 'The link to the relay dropped. Trying again usually fixes it.', 'Slow'],
+                'Request Blocked': ['This request was blocked', 'The site or a security setting refused it.', 'Looks wrong'],
+                'Page Not Found': ['This page was not found', 'The site answered, but it has nothing at this address.', 'Broken site'],
+                'Access Forbidden': ['This page is not open to you', 'The site said you do not have permission to see it.', 'Broken site'],
+                'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
+                'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check']
+            };
             function renderErrorPage(url, errorType, errorCode, errorDescription, errorSuggestions) {
-                // Escape anything that could contain URL-sourced or page-sourced content
                 const _esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-                const suggestionsHTML = (errorSuggestions || []).map(s => `<li>${_esc(s)}</li>`).join("");
+                const calm = LB_CALM[errorType] || ['This page could not be loaded', 'Something went wrong while loading it.', 'Broken site'];
+                const cs = getComputedStyle(document.documentElement), tok = k => (cs.getPropertyValue('--lb-' + k).trim() || '').replace(/[;{}<]/g, '');
+                const root = `--bg:${tok('bg') || '#070a10'};--surf:${tok('surf') || '#0e131c'};--fg:${tok('fg') || '#eae6dc'};--mut:${tok('mut') || '#8d93a0'};--line:${tok('line') || '#232a38'};--acc:${tok('acc') || '#BDFFFF'};--on:${tok('on') || '#07101a'};--fd:${(tok('fd') || 'Georgia, serif').replace(/"/g, "'")};--fb:${(tok('fb') || 'system-ui, sans-serif').replace(/"/g, "'")}`;
+                const rest = (errorSuggestions || []).slice(0, 4).map(x => `<li>${_esc(x)}</li>`).join('');
+                const tech = [['Type', errorType], ['Code', errorCode], ['Address', url], ['Detail', errorDescription]].filter(r => r[1]).map(r => `<dt>${_esc(r[0])}</dt><dd>${_esc(r[1])}</dd>`).join('');
+                const bot = errorType === 'Human Check';
                 frame.srcdoc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Error - Limitless Browser</title>
-    <link rel="stylesheet" href="${LB_FA}" />
-    <style>
-        @import url('${LB_FONTS_CSS}');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-            background: #181c21;
-            color: #f0f4f8;
-            min-height: 100vh;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .error-content {
-            background: #1c2026;
-            padding: 48px;
-            width: 100%;
-            height: 100vh;
-            margin: 0;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .error-brand {
-            position: absolute;
-            top: 32px;
-            left: 32px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            opacity: 0.9;
-        }
-        
-        .error-brand i {
-            font-size: 24px;
-            color: #9de5ff;
-        }
-        
-        .error-brand span {
-            font-size: 20px;
-            font-weight: 700;
-            color: #9de5ff;
-            letter-spacing: 0.02em;
-        }
-        
-        .error-header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 24px;
-            margin-bottom: 32px;
-            text-align: center;
-            max-width: 700px;
-        }
-        
-        @keyframes error-alarm-ring {
-            0%   { box-shadow: 0 0 0 0px rgba(255,149,149,0.5); }
-            40%  { box-shadow: 0 0 0 22px rgba(255,149,149,0); }
-            100% { box-shadow: 0 0 0 0px rgba(255,149,149,0); }
-        }
-        @keyframes error-alarm-shake {
-            0%,100% { transform: rotate(0deg)   scale(1); }
-            8%       { transform: rotate(-18deg) scale(1.15); }
-            16%      { transform: rotate(16deg)  scale(1.1); }
-            24%      { transform: rotate(-12deg) scale(1.05); }
-            32%      { transform: rotate(10deg)  scale(1.05); }
-            40%      { transform: rotate(-6deg)  scale(1); }
-            48%      { transform: rotate(4deg)   scale(1); }
-            56%      { transform: rotate(-2deg)  scale(1); }
-            62%,100% { transform: rotate(0deg)   scale(1); }
-        }
-        .error-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 149, 149, 0.15);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            animation: error-alarm-ring 1.8s ease-out 0.4s infinite;
-        }
-        
-        .error-icon i {
-            font-size: 36px;
-            color: #ff9595;
-            animation: error-alarm-shake 1.8s cubic-bezier(0.36,0.07,0.19,0.97) 0.4s infinite;
-            transform-origin: center bottom;
-        }
-        
-        .error-title-group {
-            flex: 1;
-            width: 100%;
-        }
-        
-        .error-type {
-            font-size: 32px;
-            font-weight: 700;
-            color: #f0f4f8;
-            margin-bottom: 8px;
-            line-height: 1.2;
-        }
-        
-        .error-code {
-            font-size: 14px;
-            color: #7d8a98;
-            font-weight: 500;
-            font-family: 'JetBrains Mono', monospace;
-            letter-spacing: 0.3px;
-        }
-        
-        .error-description {
-            max-width: 500px;
-            color: #b8c4d0;
-            line-height: 1.6;
-            margin-bottom: 24px;
-            font-size: 15px;
-        }
-        
-        .error-suggestions {
-            text-align: left;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 24px 32px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            width: 100%;
-            max-width: 500px;
-        }
-        
-        .error-suggestions h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #9de5ff;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .error-suggestions ul {
-            list-style: none;
-        }
-        
-        .error-suggestions li {
-            position: relative;
-            padding-left: 20px;
-            margin-bottom: 8px;
-            color: #b8c4d0;
-            font-size: 14px;
-        }
-        
-        .error-suggestions li::before {
-            content: '•';
-            position: absolute;
-            left: 0;
-            color: #70d4ff;
-        }
-        
-        .error-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 32px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .error-btn {
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            font-family: 'Space Grotesk', sans-serif;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .error-btn-primary {
-            background: #9de5ff;
-            color: #0d0f12;
-        }
-        
-        .error-btn-primary:hover {
-            background: #70d4ff;
-            transform: translateY(-2px);
-        }
-        
-        .error-btn-secondary {
-            background: transparent;
-            color: #b8c4d0;
-            border: 1px solid #4f5963;
-        }
-        
-        .error-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: #5a6370;
-            color: #f0f4f8;
-            transform: translateY(-1px);
-        }
-        
-        @media (max-width: 600px) {
-            body {
-                padding: 12px;
-            }
-            
-            .error-content {
-                padding: 32px 24px;
-            }
-            
-            .error-brand {
-                position: static;
-                margin-bottom: 24px;
-            }
-            
-            .error-header {
-                margin-top: 0;
-            }
-            
-            .error-type {
-                font-size: 24px;
-            }
-
-            .error-icon {
-                width: 64px;
-                height: 64px;
-            }
-
-            .error-icon i {
-                font-size: 28px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="error-content">
-        <div class="error-brand" onclick="window.parent.postMessage({t:'n', u:'limitless://newtab'}, '*')">
-            <svg viewBox="0 0 64 64" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="#4DA6FF" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" fill="#BDFFFF" stroke="none"/></svg>
-            <span>Limitless Browser</span>
-        </div>
-        
-        <div class="error-header">
-            <div class="error-icon">
-                <i class="fas fa-triangle-exclamation"></i>
-            </div>
-            <div class="error-title-group">
-                <h1 class="error-type">${errorType}</h1>
-                <div class="error-code">${errorCode}</div>
-            </div>
-        </div>
-        
-        <div class="error-description">
-            ${errorDescription}
-        </div>
-
-        ${suggestionsHTML ? `
-        <div class="error-suggestions">
-            <h3>Try these steps</h3>
-            <ul>
-                ${suggestionsHTML}
-            </ul>
-        </div>` : ''}
-        
-        <div class="error-actions">
-            <button class="error-btn error-btn-primary" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">
-                <i class="fas fa-rotate-right"></i>
-                Reload Page
-            </button>
-            <button class="error-btn error-btn-secondary" onclick="window.parent.postMessage({type:'goBack'}, '*')">
-                <i class="fas fa-arrow-left"></i>
-                Go Back
-            </button>
-            <button class="error-btn error-btn-secondary" onclick="window.parent.postMessage({type:'openDevTools'}, '*')">
-                <i class="fas fa-server"></i>
-                Open Logs
-            </button>
-        </div>
-    </div>
-</body>
-</html>`;
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Error - Limitless Browser</title>
+<style>
+@import url('${LB_FONTS_CSS}');
+:root{${root}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--fb);min-height:100vh;display:grid;place-items:center;padding:24px}
+.card{width:min(520px,100%);padding:40px 36px;background:var(--surf);border:1px solid var(--line);border-radius:6px;display:grid;gap:14px;justify-items:start}
+.mk{width:34px;height:34px;opacity:.7}
+h1{font-family:var(--fd);font-weight:500;font-size:26px;line-height:1.25}
+.cause{color:var(--mut);font-size:15px;line-height:1.55}
+ul{color:var(--mut);font-size:13.5px;line-height:1.6;padding-left:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+button{font:inherit;font-size:14px;padding:10px 20px;border-radius:4px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--fg)}
+button.p{background:var(--acc);border-color:var(--acc);color:var(--on)}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+details{width:100%;margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;color:var(--mut);font-size:13px}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin-top:10px;font-size:12.5px}
+dt{color:var(--mut)}dd{word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace}
+</style></head><body>
+<main class="card" role="alert">
+<svg class="mk" viewBox="0 0 64 64" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="currentColor" stroke-width="6" style="color:var(--mut)"/><circle cx="50.02" cy="19.38" r="5.5" fill="currentColor" style="color:var(--mut)"/></svg>
+<h1>${_esc(calm[0])}</h1>
+<p class="cause">${_esc(calm[1])}</p>
+${bot ? '' : (rest ? '<ul>' + rest + '</ul>' : '')}
+<div class="row">
+${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
+<button class="${bot ? 'p' : ''}" id="report" onclick="window.parent.postMessage({type:'lbReport', cat:'${_esc(calm[2])}'}, '*')">Report a problem</button>
+<button onclick="window.parent.postMessage({type:'goBack'}, '*')">Go back</button>
+</div>
+<details><summary>Technical details</summary><dl>${tech}</dl></details>
+</main></body></html>`;
             }
 
             const SEARCH_ENGINES = {
@@ -2108,6 +1861,7 @@
             const pendingNewTabIds = new Set();
 
             function createTab(url = HOME_INTERNAL) {
+                if (window.LB_tabGate && !window.LB_tabGate(tabs.length)) return;   // S6: plan tab cap (app/ui.js)
                 const tab = {
                     id: nextTabId++,
                     title: "New Tab",
@@ -9999,6 +9753,10 @@ _VIEWER_DL_JS +
                     // ────────────────────────────────────────────────────────
 
                     const html = new TextDecoder().decode(r.buf);
+                    if (window.LB_botCheck && window.LB_botCheck(r.status, html)) {   // S6: plain card, no evasion (UI.md, TESTING 10)
+                        hideOverlay(); setStatus("error", "Error"); setTabTitle("Human check"); currentDoc = null;
+                        renderErrorPage(url, 'Human Check', 'bot-check', '', []); tabAbortControllers.delete(initiatorTabId); return;
+                    }
                     if (_pcShown && lbRwHash(html) === _pcShown.docSig && activeTabId === initiatorTabId) {
                         // the page on screen is already built from exactly this document
                         setStatus("idle", "Ready");
@@ -11372,6 +11130,7 @@ _VIEWER_DL_JS +
                 if (e.data && e.data.type === 'openDevTools') {
                     toggleLogs();
                 }
+                if (e.data && e.data.type === 'lbReport' && window.LBReport) window.LBReport.open(String(e.data.cat || ''), pageUrl && /^https?:/.test(pageUrl) ? new URL(pageUrl).hostname : '');
             });
 
             $("back").onclick = () => {

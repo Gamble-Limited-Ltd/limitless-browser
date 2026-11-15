@@ -310,9 +310,136 @@
     }
     document.addEventListener('lb-member', function () { var g = document.querySelector('.settings-section[data-section="membership"]'); if (g && g.style.display === 'flex') paintMembership(); });
 
+    /* ---------- Bot check (a plain card, never a way around it): TESTING 10 ---------- */
+    window.LB_botCheck = function (status, html) {
+        if (status !== 403 && status !== 429 && status !== 503) return false;
+        return /cf-chl|cdn-cgi\/challenge-platform|Just a moment\.\.\.|g-recaptcha|h-captcha|hcaptcha\.com\/1\/api|Attention Required! \| Cloudflare/i.test(String(html).slice(0, 60000));
+    };
+
+    /* ---------- Splash: the member's name, the number small beneath (UI.md 4). Cached per device (limitless:me:v1: name and number only) ---------- */
+    var ME_KEY = 'limitless:me:v1';
+    function paintSplash(name, number) {
+        var w = document.querySelector('.lb-sp-word'); if (!w) return;
+        if (!name) return;
+        w.textContent = name; w.classList.add('lb-sp-name');
+        var n = document.querySelector('.lb-sp-num');
+        if (!n) { n = el('div', 'lb-sp-num'); w.parentNode.insertBefore(n, w.nextSibling); }
+        n.textContent = number != null && number !== '' ? 'No. ' + pad(number) : '';
+    }
+    function splashFromCache() { try { var c = JSON.parse(store(ME_KEY) || 'null'); if (c && c.name) paintSplash(String(c.name).slice(0, 80), c.number); } catch (_) {} }
+
+    /* ---------- Start page: member card, bulletin, expiry line, plans line (UI.md 4) ---------- */
+    var DISMISSED = 'limitless:notices-dismissed:v1';
+    function dismissed() { try { return JSON.parse(store(DISMISSED) || '[]'); } catch (_) { return []; } }
+    function normNotices(list) {
+        return (Array.isArray(list) ? list : []).map(function (n, i) {
+            if (typeof n === 'string') return { id: 's' + i + ':' + n.slice(0, 20), text: n, date: null };
+            return n && n.text ? { id: String(n.id != null ? n.id : n.text.slice(0, 20)), text: String(n.text), date: n.date || null } : null;
+        }).filter(Boolean);
+    }
+    function paintStart() {
+        var host = document.querySelector('.nt-content'), time = $('ntTime'); if (!host || !time) return;
+        var box = $('lbStartMember');
+        if (!box) { box = el('div', 'lb-startm'); box.id = 'lbStartMember'; time.parentNode.insertBefore(box, time.nextSibling); }
+        box.textContent = '';
+        var m = member(); if (!m) return;
+        // bulletin(s)
+        var gone = dismissed();
+        normNotices(m.notices).filter(function (n) { return gone.indexOf(n.id) < 0; }).slice(0, 2).forEach(function (n) {
+            var b = el('aside', 'lb-bulletin'); b.setAttribute('aria-label', 'Notice'); b.dataset.id = n.id;
+            b.appendChild(el('div', 'lb-bul-l', 'Notice'));
+            b.appendChild(el('p', 'lb-bul-t', n.text));
+            var f = el('div', 'lb-bul-f'); if (n.date) f.appendChild(el('span', null, typeof n.date === 'number' ? fmtDate(n.date) : String(n.date)));
+            var x = el('button', 'lb-bul-x', 'Dismiss'); x.type = 'button'; x.addEventListener('click', function () { var g = dismissed(); g.push(n.id); store(DISMISSED, JSON.stringify(g.slice(-50))); paintStart(); });
+            f.appendChild(x); b.appendChild(f); box.appendChild(b);
+        });
+        var ex = expiry(m);
+        if (ex) { var e = el('div', 'lb-expiry'); e.dataset.level = ex.level; e.setAttribute('role', 'status'); e.appendChild(document.createTextNode(ex.text + ' ')); var a = el('button', 'lb-link', 'Membership'); a.type = 'button'; a.addEventListener('click', function () { openSettings('membership'); }); e.appendChild(a); box.appendChild(e); }
+        // member card
+        var tier = tierOf(m), c = el('button', 'lb-card lb-card-' + tier); c.type = 'button'; c.id = 'lbMemberCard'; c.setAttribute('aria-label', 'Membership: ' + (m.name || '') + ', number ' + pad(m.number));
+        c.appendChild(markSvg(tier));
+        var t = el('span', 'lb-card-t'); t.appendChild(el('span', 'lb-card-n', (m.name || 'Member') + ' · No. ' + pad(m.number)));
+        t.appendChild(el('span', 'lb-card-s', TIER_NAME[tier] + (m.admittedAt ? ' · since ' + fmtMonth(m.admittedAt) : '')));
+        c.appendChild(t); c.addEventListener('click', function () { openSettings('membership'); }); box.appendChild(c);
+        if (tier === 'ordinal' || tier === 'cardinal' || tier === 'prime') {
+            var l = (m.plan && m.plan.limits) || {}, pl = plansLine(m), ln = [];
+            if (l.tabs) ln.push(l.tabs + ' tabs'); if (l.dailyMinutes) ln.push(l.dailyMinutes / 60 + ' hours a day');
+            var line = el('div', 'lb-planline'); line.appendChild(document.createTextNode((TIER_NAME[tier] + (ln.length ? ': ' + ln.join(', ') : '')) + '. ')); line.appendChild(pl.firstChild ? pl : document.createTextNode('')); box.appendChild(line);
+        }
+        var d = dayState(); if (d && d.left <= 0) { var f2 = el('div', 'lb-planline', 'Your time for today is finished.'); box.appendChild(f2); }
+    }
+    document.addEventListener('lb-member', function () {
+        var m = member(); if (m) { store(ME_KEY, JSON.stringify({ name: m.name || '', number: m.number })); paintSplash(m.name, m.number); }
+        paintStart(); dayCheck(); maybeTour();
+    });
+
+    /* ---------- Plan limits shown in the app: tab cap and the daily time (Ordinal, client side only: public relays never reach our gate, PLAN 0.3) ---------- */
+    function limits() { var m = member(); return m && m.plan && m.plan.limits || null; }
+    window.LB_tabGate = function (count) {
+        var l = limits(), cap = l && l.tabs; var m = member();
+        if (!cap || count < cap) return true;
+        var tier = tierOf(m), old = $('lbCapDlg'); if (old) old.remove();
+        var d = el('div', 'lb-dlg'); d.id = 'lbCapDlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'lbCapT');
+        var card = el('div', 'lb-dlg-card'); var h = el('h2', 'lb-dlg-t', tier === 'prime' ? 'Why are you using so many tabs!?' : 'That is all your tabs'); h.id = 'lbCapT';
+        card.appendChild(h);
+        card.appendChild(el('p', 'lb-note', 'Your ' + TIER_NAME[tier] + ' plan allows ' + cap + ' open tabs. Close one to open another.'));
+        if (tier !== 'prime' && tier !== 'executive') card.appendChild(plansLine(m));
+        var row = el('div', 'lb-dlg-row'); var ok = el('button', 'lb-btn lb-btn-p', 'Got it'); ok.type = 'button'; ok.addEventListener('click', function () { d.remove(); }); row.appendChild(ok); card.appendChild(row); d.appendChild(card); document.body.appendChild(d); ok.focus();
+        d.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.remove(); });
+        return false;
+    };
+    var DT = 'limitless:daytime:v1';
+    function today() { var n = new Date(); return n.getFullYear() + '-' + (n.getMonth() + 1) + '-' + n.getDate(); }
+    function dayRead() { try { var j = JSON.parse(store(DT) || 'null'); if (j && j.day === today()) return j; } catch (_) {} return { day: today(), ms: 0 }; }
+    function dayState() {
+        var l = limits(), m = member(); if (!m || tierOf(m) !== 'ordinal' || !l || !l.dailyMinutes) return null;
+        var left = l.dailyMinutes * 60000 - dayRead().ms; return { left: left, limit: l.dailyMinutes * 60000 };
+    }
+    function dayAdd(ms) { var d = dayRead(); d.ms += ms; store(DT, JSON.stringify(d)); dayCheck(); }
+    function dayCheck() {
+        var st = dayState(), done = $('lbDayDone'), note = $('lbDayNote');
+        if (!st) { if (done) done.remove(); if (note) note.remove(); return; }
+        if (st.left <= 0) {
+            if (note) note.remove();
+            if (!done) {
+                done = el('div', 'lb-dayDone'); done.id = 'lbDayDone'; done.setAttribute('role', 'alert');
+                done.appendChild(el('h2', null, 'Your time for today is finished')); done.appendChild(el('p', null, 'It starts again tomorrow. Settings and your membership page stay open.'));
+                done.appendChild(plansLine(member())); document.querySelector('main').appendChild(done);
+            }
+            return;
+        }
+        if (done) done.remove();
+        if (st.left <= 15 * 60000 && !note && store('limitless:daynote:v1') !== today()) {
+            note = el('div', 'lb-ub show'); note.id = 'lbDayNote'; note.setAttribute('role', 'status');
+            note.appendChild(el('i', 'lb-ub-dot')); note.appendChild(el('span', 'lb-ub-msg', 'About 15 minutes left today on your plan')); note.appendChild(el('span', 'lb-ub-gap'));
+            var x = el('button', 'lb-ub-x'); x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.appendChild(icon('close')); x.addEventListener('click', function () { store('limitless:daynote:v1', today()); note.remove(); }); note.appendChild(x);
+            var mn = document.querySelector('main'); mn.parentNode.insertBefore(note, mn);
+        }
+    }
+    window.LBUI.dayTime = { add: dayAdd, state: dayState, check: dayCheck };
+    setInterval(function () { if (dayState() && document.visibilityState === 'visible' && document.hasFocus()) dayAdd(15000); }, 15000);
+
+    /* ---------- Tour (UI.md 6.1 step 6): three steps, skippable, once. Replaces the old 18-step tutorial. Not modal: it never blocks the page. ---------- */
+    var TOUR = 'limitless:tour:v1';
+    var STEPS = [['Themes', 'Open the menu and choose Theme to change how Limitless looks. Your plan decides which ones are open.', 'palette'], ['Start page shortcuts', 'Add the sites you use most on the start page. They stay on this device.', 'star'], ['Your membership', 'Your name, number and plan are in Settings, under Membership.', 'card']];
+    function maybeTour() {
+        if (!member() || store(TOUR) === 'done' || $('lbTour')) return;
+        var i = 0, box = el('div', 'lb-tour'); box.id = 'lbTour'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Quick tour');
+        function paint() {
+            box.textContent = ''; var st = STEPS[i];
+            var h = el('div', 'lb-tour-h'); h.appendChild(icon(st[2])); h.appendChild(el('strong', null, st[0])); h.appendChild(el('span', 'lb-tour-c', (i + 1) + ' of 3'));
+            var r = el('div', 'lb-dlg-row');
+            var skip = el('button', 'lb-btn', 'Skip tour'); skip.type = 'button'; skip.addEventListener('click', finish);
+            var nx = el('button', 'lb-btn lb-btn-p', i === 2 ? 'Done' : 'Next'); nx.type = 'button'; nx.id = 'lbTourNext'; nx.addEventListener('click', function () { if (i === 2) finish(); else { i++; paint(); } });
+            r.append(skip, nx); box.append(h, el('p', 'lb-note', st[1]), r);
+        }
+        function finish() { store(TOUR, 'done'); box.remove(); }
+        paint(); document.body.appendChild(box);
+    }
+
     function ready(fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
     ready(function () {
-        buildMenu(); placeShield(); applyDev(); buildUrlView(); buildTabs(); buildSettings();
+        buildMenu(); placeShield(); applyDev(); buildUrlView(); buildTabs(); buildSettings(); splashFromCache(); paintStart();
         new MutationObserver(placeShield).observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin'] });
     });
 })();
