@@ -451,3 +451,38 @@ html[data-lb-theme="vault"]:not([data-skin]) {
 .lb-adm-err { color: var(--err); font-size: 13px; min-height: 18px; }
 @media (max-width: 640px) { .lb-adm-in { padding: 20px 14px 56px; } .lb-adm h1 { font-size: 24px; } }
 @media (prefers-reduced-motion: reduce) { .lb-adm * { transition: none !important; animation: none !important; } }
+
+/* ---- Admin panel S7 (1.0): members, profile, invites, charts, plans, notices, reports, audit. Tokens only. ---- */
+.lb-adm h3 { font: 600 13px var(--lb-fm, var(--ui)); letter-spacing: .08em; text-transform: uppercase; color: var(--tx3); margin: 16px 0 6px; }
+.lb-adm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.lb-adm-link { background: none; border: 0; padding: 0; color: var(--ac); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.lb-adm-link:hover { text-decoration: underline; }
+.lb-adm-link:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.lb-adm-num { font-family: var(--lb-fd, var(--ui)); font-variant-numeric: lining-nums tabular-nums; color: var(--tx); font-size: 15px; letter-spacing: .04em; }
+.lb-adm-sel td { background: var(--bg2); }
+.lb-adm-profile { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--bd); border-radius: var(--radius-md); background: var(--bg0); }
+.lb-adm-phead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.lb-adm-phead .lb-adm-btn { margin-left: auto; }
+.lb-adm-bignum { font: 600 26px/1 var(--lb-fd, var(--ui)); font-variant-numeric: lining-nums; color: var(--ac); }
+.lb-adm-list { margin: 0; padding-left: 18px; color: var(--tx2); font-size: 13px; }
+.lb-adm-left { justify-content: flex-start; margin: 4px 0 12px; }
+.lb-adm-form label { font-size: 12px; color: var(--tx3); display: flex; flex-direction: column; gap: 3px; }
+.lb-adm-form label.lb-adm-wide { flex: 1 1 100%; }
+.lb-adm textarea { width: 100%; max-width: 560px; padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid var(--bd); background: var(--bg0); color: var(--tx); font: 13px var(--ui); }
+.lb-adm textarea:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.lb-adm-newinv { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+.lb-adm-newinv input { flex: 1 1 280px; max-width: 520px; }
+.lb-adm-tiles { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; }
+.lb-adm-tile { min-width: 120px; padding: 10px 14px; border: 1px solid var(--bd); border-radius: var(--radius-md); background: var(--bg0); }
+.lb-adm-tile b { display: block; font: 600 20px/1.2 var(--lb-fd, var(--ui)); color: var(--tx); }
+.lb-adm-tile span { font-size: 12px; color: var(--tx3); }
+.lb-adm-chart { margin: 0 0 14px; }
+.lb-adm-chart figcaption { font-size: 12.5px; color: var(--tx3); margin: 0 0 4px; }
+.lb-adm-svg { width: 100%; height: auto; max-height: 190px; display: block; }
+.lb-adm-bar { fill: var(--ac); }
+.lb-adm-bar:hover { fill: var(--ac2, var(--ac)); }
+.lb-adm-axis { stroke: var(--bd); stroke-width: 1; }
+.lb-adm-axt { fill: var(--tx3); font: 11px var(--ui); }
+.lb-adm-done td { opacity: .6; }
+.lb-adm td input[type="number"] { height: 26px; }
+@media (min-width: 1100px) { .lb-adm-in { max-width: 1060px; } }

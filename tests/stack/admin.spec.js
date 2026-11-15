@@ -139,3 +139,45 @@ test.describe('maintenance', () => {
     await owner.context.close();
   });
 });
+
+// 1.0 S7: the new routes through the real nginx and gate (membership routes are covered by the gate's own tests and
+// tests/stack/membership.spec.js: with MEMBERSHIP=on a fresh account stops at the ceremony, which this spec cannot pass).
+const del = (req, path) => req.delete(`${API}${path}`, { headers: { origin: BASE, 'content-type': 'application/json' }, data: {} });
+const S7_GET = ['/usage/live', '/usage/30d', '/notices', '/reports', '/audit', '/membership/members'];
+
+test.describe('admin S7 routes', () => {
+  test('a normal user gets 404 on every new route, with and without the write guards', async ({ browser }) => {
+    const alice = await user(browser, 'alice');
+    for (const p of S7_GET) expect((await alice.req.get(`${API}${p}`)).status(), p).toBe(404);
+    for (const p of ['/notices', '/notices/update', '/reports/done', '/membership/signout']) expect((await post(alice.req, p, {})).status(), p).toBe(404);
+    expect((await del(alice.req, '/notices/1')).status()).toBe(404);
+    await alice.context.close();
+  });
+
+  test('owner: live and 30-day totals, notices need step-up, a member report reaches the owner, audit filters', async ({ browser }) => {
+    const owner = await user(browser, 'owner');
+    expect((await (await owner.req.get(`${API}/usage/live`)).json())).toMatchObject({ sockets: expect.any(Number), uplinkMbps: expect.any(Number) });
+    expect((await owner.req.get(`${API}/usage/30d`)).status()).toBe(200);
+    expect((await post(owner.req, '/notices', { text: 'Rehearsal notice' })).status()).toBe(403);
+    await stepUp(owner.req);
+    const made = await post(owner.req, '/notices', { text: 'Rehearsal notice' });
+    expect(made.status()).toBe(200);
+    const id = (await made.json()).id;
+    expect(JSON.stringify(await (await owner.req.get(`${API}/notices`)).json())).toContain('Rehearsal notice');
+
+    const alice = await user(browser, 'alice');
+    const rep = await alice.req.post('/_lb/report', { data: { category: 'slow', note: 'stack report', site: 'https://secret.example/x' }, headers: { origin: BASE, 'content-type': 'application/json' } });
+    expect(rep.status()).toBe(200);
+    const list = await (await owner.req.get(`${API}/reports`)).json();
+    const mine = list.reports.find((r) => r.note === 'stack report');
+    expect(mine.host).toBeNull();
+    expect(JSON.stringify(list)).not.toContain('secret.example');
+    expect((await post(owner.req, '/reports/done', { id: mine.id })).status()).toBe(200);
+    await alice.context.close();
+
+    const audit = await (await owner.req.get(`${API}/audit?action=notice-create`)).json();
+    expect(audit.entries.length).toBeGreaterThan(0);
+    expect((await del(owner.req, `/notices/${id}`)).status()).toBe(200);
+    await owner.context.close();
+  });
+});
