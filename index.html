@@ -8702,9 +8702,11 @@ window._libcurlReady = true;
         // Totals only: nothing here shows which sites anyone visits (a report shows a domain only when the member chose to send it).
         var secMembers = el('section', 'lb-adm-card'), secInvites = el('section', 'lb-adm-card'), secCharts = el('section', 'lb-adm-card'),
             secHops = el('section', 'lb-adm-card'), secPlans = el('section', 'lb-adm-card'), secNotices = el('section', 'lb-adm-card'),
-            secReports = el('section', 'lb-adm-card'), secAudit = el('section', 'lb-adm-card');
+            secReports = el('section', 'lb-adm-card'), secAudit = el('section', 'lb-adm-card'), secQueue = el('section', 'lb-adm-card');
+        secQueue.id = 'lbAdmQueue';
         [secMembers, secInvites, secCharts, secHops, secPlans, secNotices, secReports, secAudit].forEach(function (c, i) { c.id = 'lbAdm' + ['Members', 'Invites', 'Charts', 'Hops', 'Plans', 'Notices', 'Reports', 'Audit'][i]; });
         var X = { members: null, filter: 'all', q: '', sel: null, profile: null, invites: null, newInvite: null, plans: null, live: null, d30: null, hops: null, notices: null, noticeEdit: null, reports: null, repCat: '', audit: null, auditAction: '', auditFrom: '', auditTo: '', off: false };
+        var Q = { requests: null, outbox: null, perf: null };
         var TIER_NAMES = { ordinal: 'Ordinal', cardinal: 'Cardinal', prime: 'Prime', executive: 'Executive' };
         var X_ERR = { number_required: 'That plan needs a member number first.', kmlhs_only: 'Invites are for kmlhs.org accounts.', owner: 'That is not allowed for the owner account.' };
         function xerr(r) { return (r && r.json && X_ERR[r.json.error]) || (r && r.json && typeof r.json.error === 'string' && /^[a-z_]{3,40}$/.test(r.json.error) && !ERR[r.json.error] ? r.json.error.replace(/_/g, ' ') + '.' : errText(r)); }
@@ -8911,7 +8913,17 @@ window._libcurlReady = true;
             var d = X.d30; if (!d) { secCharts.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
             secCharts.appendChild(barChart('Active members per day (30 days)', d.days.map(function (x) { return { k: x.day, v: x.members }; }), function (v) { return String(v); }));
             secCharts.appendChild(barChart('Data per day (30 days)', d.days.map(function (x) { return { k: x.day, v: x.bytes }; }), fmtBytes));
-            secCharts.appendChild(el('p', 'lb-adm-note', 'Page timing and cap hits per day are not collected yet.'));
+            if (Q.perf) {
+                var days = {};
+                Q.perf.forEach(function (x) { if (x.metric === 'page_shown' && (!days[x.day] || x.p90 > days[x.day])) days[x.day] = x.p90; });
+                secCharts.appendChild(barChart('Page load time, slowest device p90 per day', Object.keys(days).sort().map(function (k) { return { k: k, v: days[k] }; }), msText));
+                var pt = table(['Day', 'Device', 'Samples', 'p50', 'p90']);
+                Q.perf.slice().sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; }).forEach(function (x) {
+                    var tr = el('tr'); tr.append(el('td', '', x.day), el('td', '', x.device), el('td', '', String(x.n)), el('td', '', msText(x.p50)), el('td', '', msText(x.p90))); pt.body.appendChild(tr);
+                });
+                secCharts.appendChild(pt.wrap);
+            }
+            secCharts.appendChild(el('p', 'lb-adm-note', 'Page load time comes from a small sample of signed-in page loads. Cap hits per day are not collected yet.'));
             if (d.top.length) {
                 var t = table(['Member', 'Data, 30 days']);
                 d.top.forEach(function (x) { var tr = el('tr'); tr.append(el('td', 'lb-adm-num', x.number || 'No number'), el('td', '', fmtBytes(x.bytes))); t.body.appendChild(tr); });
@@ -9056,6 +9068,48 @@ window._libcurlReady = true;
         }
 
         // In-place two-click confirm: unlike twoClick it does not re-render, so typed notes stay.
+
+        // ---- Queue: plan requests and the mail outbox (member text goes in with textContent only) ----
+        async function loadQueue() {
+            var a = await xload('membership/requests'), b = await xload('membership/outbox');
+            Q.requests = a.status === 200 ? a.json.requests : null; Q.seats = a.status === 200 ? a.json.primeSeatsLeft : null; Q.outbox = b.status === 200 ? b.json.mail : null;
+            renderQueue();
+        }
+        function msText(ms) { return ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms'; }
+        async function loadPerf() { var r = await api('GET', 'perf'); Q.perf = r.status === 200 ? r.json.daily : null; renderCharts(); }
+        function renderQueue() {
+            head(secQueue, 'Queue', 'Plan requests and the emails waiting for you to send. Nothing is sent from here.');
+            if (X.off) { secQueue.appendChild(el('p', 'lb-adm-note', 'Membership is off on this server.')); return; }
+            if (!Q.requests) { secQueue.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            secQueue.appendChild(el('h3', '', 'Plan requests' + (Q.seats != null ? ' (Prime seats left: ' + Q.seats + ')' : '')));
+            if (!Q.requests.length) secQueue.appendChild(el('p', 'lb-adm-note', 'No open requests.'));
+            Q.requests.forEach(function (r) {
+                var f = el('form', 'lb-adm-form');
+                f.appendChild(el('p', 'lb-adm-wide', (TIER_NAMES[r.tier] || r.tier) + ' for ' + (r.number || 'no number') + ', ' + when(r.createdAt) + (r.note ? ': ' + r.note : '')));
+                var am = mkField('Amount paid (USD)', 'amount', 'number', '', '', '110px'), hp = mkField('How paid', 'howPaid', 'text', '', '', '140px'), rn = mkField('Receipt note', 'receiptNote', 'text', '', '', '200px');
+                hp.querySelector('input').maxLength = 80; rn.querySelector('input').maxLength = 500;
+                var ok = btn('Approve', 'pri'); ok.type = 'submit';
+                f.append(am, hp, rn, ok, arm2('Decline', 'Confirm decline', 'danger', function () { xdo('membership/requests/decline', { id: r.id }, 'Request declined.', loadQueue); }));
+                f.addEventListener('submit', function (e) {
+                    e.preventDefault(); var b = { id: r.id }, a = am.querySelector('input').value.trim(), h = hp.querySelector('input').value.trim(), n = rn.querySelector('input').value.trim();
+                    if (a !== '') b.amount = Number(a); if (h) b.howPaid = h; if (n) b.receiptNote = n;
+                    xdo('membership/requests/approve', b, 'Request approved.', loadQueue);
+                });
+                secQueue.appendChild(f);
+            });
+            secQueue.appendChild(el('h3', '', 'Mail outbox'));
+            if (!Q.outbox || !Q.outbox.length) { secQueue.appendChild(el('p', 'lb-adm-note', 'No mail.')); return; }
+            Q.outbox.forEach(function (m) {
+                var box = el('div', 'lb-adm-newinv'), pre = el('pre');
+                pre.style.whiteSpace = 'pre-wrap'; pre.style.width = '100%'; pre.textContent = m.body;
+                var h = el('p', 'lb-adm-wide'); h.textContent = 'To ' + m.to + ': ' + m.subject + (m.sentAt ? ' (sent ' + when(m.sentAt) + ')' : '');
+                var act = el('div', 'lb-adm-act');
+                act.appendChild(btn('Copy', '', function () { var t = m.subject + '\n\n' + m.body; try { navigator.clipboard.writeText(t); say('Mail copied.'); } catch (_) { say('Select the text and press Ctrl+C.', true); } }));
+                if (!m.sentAt) act.appendChild(btn('Mark sent', 'pri', function () { xdo('membership/outbox/sent', { id: m.id }, 'Marked sent.', loadQueue); }));
+                box.append(h, pre, act); secQueue.appendChild(box);
+            });
+        }
+
         function arm2(label, confirmLabel, cls, run) {
             var b = btn(label, cls), armed = false, t = null;
             b.addEventListener('click', function () {
@@ -9065,18 +9119,19 @@ window._libcurlReady = true;
             return b;
         }
         var CARDS = [top, toast, secMembers, secInvites, secUsers, secUsage, secCharts, secHops, secPlans, secSw, secHealth, secNotices, secReports, secAudit];
+        CARDS.splice(CARDS.indexOf(secInvites) + 1, 0, secQueue);
         inner.replaceChildren.apply(inner, CARDS);
         var liveTimer = null;
         function loadExtra() {
             // Not part of the "could not be loaded" toast: sections report for themselves.
-            return Promise.all([loadMembers(), loadInvites(), loadCharts(), loadHops(), loadPlans(), loadNotices(), loadReports(), loadAudit()]);
+            return Promise.all([loadMembers(), loadInvites(), loadQueue(), loadPerf(), loadCharts(), loadHops(), loadPlans(), loadNotices(), loadReports(), loadAudit()]);
         }
 
         function renderAll() {
             if (!S.who) return;
             sub.textContent = 'Version ' + S.who.version + (S.who.stepup ? '. Changes are unlocked.' : '. You will be asked for your password before the first change.');
             renderUsers(); renderUsage(); renderSwitches(); renderHealth();
-            renderMembers(); renderInvites(); renderCharts(); renderHops(); renderPlans(); renderNotices(); renderReports(); renderAudit();
+            renderMembers(); renderInvites(); renderQueue(); renderCharts(); renderHops(); renderPlans(); renderNotices(); renderReports(); renderAudit();
         }
 
         function unavailable() {

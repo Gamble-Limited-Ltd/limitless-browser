@@ -101,7 +101,10 @@ function s7(path, method, req, st, over) {
   if (path === 'membership/invites') return json({ id: 3, link: 'https://limitless.test/auth/invite/tok', expiresAt: Date.now() + 86400000 });
   if (path === 'membership/plans' && method === 'GET') return json({ plans: { ordinal: PLAN({ relay: false, tabs: 4, priceUsdYear: 0, weight: 0 }), cardinal: PLAN({}), prime: PLAN({ tabs: 25, priceUsdYear: 35 }), executive: PLAN({ priceUsdYear: null }) }, limitsVersion: 3, plansOpen: !!st.plansOpen, execBlock: '0010-0099', knobs: { slowStageMbps: 2, primeSeats: 10, execReservePct: 20 }, reserved: [] });
   if (path === 'membership/settings') { if (body.plansOpen !== undefined) st.plansOpen = body.plansOpen; return json({ ok: true }); }
+  if (path === 'membership/requests' && method === 'GET') return json({ primeSeatsLeft: 3, requests: [{ id: 7, tier: 'prime', number: '0102', note: 'Paid <b>cash</b>', createdAt: Date.now() - 3600000 }] });
+  if (path === 'membership/outbox' && method === 'GET') return json({ mail: [{ id: 4, to: 'a@kmlhs.org', subject: 'Welcome <i>Prime</i>', body: 'Line one\nLine two', createdAt: Date.now() - 60000, sentAt: null }, { id: 3, to: 'old@kmlhs.org', subject: 'Old', body: 'x', createdAt: Date.now() - 9e6, sentAt: Date.now() - 8e6 }] });
   if (path.startsWith('membership/')) return json({ ok: true, signedOut: 1 });
+  if (path === 'perf') return json({ daily: [{ day: '2026-10-20', device: 'desktop', metric: 'page_shown', n: 12, p50: 800, p90: 2100 }, { day: '2026-10-21', device: 'phone', metric: 'page_shown', n: 9, p50: 1500, p90: 4000 }] });
   if (path === 'usage/live') return json({ online: 2, sockets: 3, streams: 8, uplinkMbps: 18, fairShare: true, fairShareActive: false });
   if (path === 'usage/30d') return json({ days: Array.from({ length: 30 }, (_, i) => ({ day: '2026-10-' + String(i + 1).padStart(2, '0'), members: 2 + (i % 5), bytes: (1 + (i % 7)) * GB })), top: [{ number: '0102', bytes: 40 * GB }, { number: null, bytes: GB }] });
   if (path === 'hops') return json({ binsMs: [25, 50], last5m: { count: 12, p50: 100, p90: 400 }, last1h: { count: 300, p50: 100, p90: 800 }, last24h: { count: 0, p50: null, p90: null }, perMinute: [{ minute: 1_800_000_000, count: 3, p50: 100, p90: 200 }, { minute: 1_800_000_060, count: 3, p50: 200, p90: 400 }] });
@@ -417,7 +420,7 @@ test.describe('admin panel S7', () => {
     await openAdmin(page);
     const c = sec(page, 'Charts');
     await expect(c.locator('#lbAdmLive')).toContainText('18 Mbit/s');
-    await expect(c.locator('svg.lb-adm-svg')).toHaveCount(2);
+    await expect(c.locator('svg.lb-adm-svg')).toHaveCount(3);
     await expect(c.locator('svg.lb-adm-svg').first().locator('rect.lb-adm-bar')).toHaveCount(30);
     await expect(c.locator('svg').first()).toHaveAttribute('role', 'img');
     await expect(c).toContainText('0102');
@@ -497,6 +500,60 @@ test.describe('admin panel S7', () => {
     await expect.poll(() => st.auditUrl).toContain('action=standing-warn');
   });
 
+  test('queue: plan requests approve with details and decline; text is never HTML', async ({ page }) => {
+    const st = mockApi(page);
+    const errors = await boot(page);
+    await openAdmin(page);
+    const q = sec(page, 'Queue');
+    await expect(q).toContainText('Paid <b>cash</b>');
+    await expect(q.locator('b')).toHaveCount(0);
+    await q.locator('input[name=amount]').fill('35');
+    await q.locator('input[name=howPaid]').fill('cash');
+    await q.locator('input[name=receiptNote]').fill('in person');
+    await q.getByRole('button', { name: 'Approve' }).click();
+    await page.locator('#lbAdmStepup input[name=login]').fill('boss');
+    await page.locator('#lbAdmStepup input[name=password]').fill('right');
+    await page.locator('#lbAdmStepup button[type=submit]').click();
+    await expect.poll(() => st.calls).toContain('POST membership/requests/approve');
+    expect(st.bodies.find((b) => b.id === 7)).toEqual({ id: 7, amount: 35, howPaid: 'cash', receiptNote: 'in person' });
+    await q.getByRole('button', { name: 'Decline' }).click();
+    await q.getByRole('button', { name: 'Confirm decline' }).click();
+    await expect.poll(() => st.calls).toContain('POST membership/requests/decline');
+    expect(st.bodies.at(-1)).toEqual({ id: 7 });
+    expect(errors).toEqual([]);
+  });
+
+  test('queue: outbox shows to, subject and body as text, copies, marks sent', async ({ page, context }) => {
+    const st = mockApi(page);
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await boot(page);
+    await openAdmin(page);
+    const q = sec(page, 'Queue');
+    await expect(q).toContainText('a@kmlhs.org');
+    await expect(q).toContainText('Welcome <i>Prime</i>');
+    await expect(q.locator('i')).toHaveCount(0);
+    await expect(q.getByRole('button', { name: 'Mark sent' })).toHaveCount(1);
+    await q.getByRole('button', { name: 'Copy' }).first().click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Welcome <i>Prime</i>\n\nLine one\nLine two');
+    await q.getByRole('button', { name: 'Mark sent' }).click();
+    await page.locator('#lbAdmStepup input[name=login]').fill('boss');
+    await page.locator('#lbAdmStepup input[name=password]').fill('right');
+    await page.locator('#lbAdmStepup button[type=submit]').click();
+    await expect.poll(() => st.calls).toContain('POST membership/outbox/sent');
+    expect(st.bodies).toContainEqual({ id: 4 });
+  });
+
+  test('charts: load-time p50 and p90 by day', async ({ page }) => {
+    mockApi(page);
+    await boot(page);
+    await openAdmin(page);
+    const c = sec(page, 'Charts');
+    await expect(c).toContainText('Page load time');
+    const pt = c.locator('table', { hasText: 'p90' });
+    await expect(pt).toContainText('2026-10-21');
+    await expect(pt).toContainText('4.0 s');
+  });
+
   for (const theme of THEMES) {
     test(`new sections readable in ${theme}, no sideways scroll at 1366x768 and 2560x1440`, async ({ page }) => {
       mockApi(page);
@@ -504,7 +561,8 @@ test.describe('admin panel S7', () => {
       await page.evaluate((t) => window.LBTheme.set({ theme: t }), theme);
       await openAdmin(page);
       await sec(page, 'Members').getByRole('button', { name: 'Alice <b>A</b>' }).click();
-      await expect(sec(page, 'Charts').locator('svg.lb-adm-svg')).toHaveCount(2);
+      await expect(sec(page, 'Charts').locator('svg.lb-adm-svg')).toHaveCount(3);
+      await expect(sec(page, 'Queue')).toContainText('Prime');
       for (const vp of [{ width: 1366, height: 768 }, { width: 2560, height: 1440 }, { width: 390, height: 800 }]) {
         await page.setViewportSize(vp);
         const r = await page.evaluate(() => {
