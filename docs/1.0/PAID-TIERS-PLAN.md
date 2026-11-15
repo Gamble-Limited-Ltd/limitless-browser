@@ -8,8 +8,12 @@ as possible before release, so published numbers will be measured ones.
 - Relay host for paid tiers: RackNerd 2 GB special ($35.99 per year, 2 vCPU, 5 TB per month, 1 Gbps shared). **Bought 2026-11-14:
   Buffalo NY (not Chicago), 107.173.50.59, ssh alias `limitless-relay`, hardened, nothing deployed** (vault Service Inventory).
   RackNerd API credentials are also stored on the VM (`~/.config/gll-cloud/racknerd.env`); never print them.
-- **Check before trusting the 5 TB (review 2026-11-14):** a relay moves every byte twice (site to VPS, VPS to member). Ask RackNerd
-  whether the 5 TB counts outbound only or both ways; if both, members get about 2.5 TB a month and every cap below halves.
+- **The 5 TB counts both ways (checked 2026-11-14, RackNerd staff on LowEndTalk and LowEndBox, 2021 to 2024; not in an official
+  KB):** inbound and outbound are added together, the meter resets on the 1st at midnight California time, and at 100 % the
+  VPS is **switched off until the reset**. A relay moves every byte twice (site to VPS, VPS to member), so members get at most
+  about **2.5 TB a month** (less with TLS and WISP overhead). Every capacity number below is halved, the brake counts against
+  the RackNerd meter month (Pacific), and the 95 % stage must fully stop relay traffic so the VPS never hits 100 %. Confirm with
+  RackNerd support once before prices are set.
 - Oracle Always Free is NOT used for paid access (its terms allow internal use only). The Oracle A1 retry loop still runs; if it succeeds it can serve testing.
 - Planning speed (estimate): about 150 Mbit/s total (range 100 to 400). Replace with measured numbers.
 - Transfer cap: 5 TB per month is about 15 Mbit/s averaged over the month.
@@ -32,8 +36,9 @@ as possible before release, so published numbers will be measured ones.
 - Seat counts: Prime seats capped, number decided after measuring. Limitless Access: Boss plus about 3 others.
 - Limitless Access gate: hidden GATE flag. Invisible to everyone without it. Boss (TheStrongest) has it as owner.
 - Load Now: that page load gets first claim on relay bandwidth until it finishes. Others slow briefly, nobody is cut off. Not for big downloads.
-- **Worst case with the placeholder knobs (review 2026-11-14):** 4 Executive x 500 GB + 10 Prime x 250 GB = 4.5 TB before any
-  Cardinal, so the 70 % brake would fire with zero Cardinal members if all of them used their caps. Real use will be far lower, but
+- **Worst case with the placeholder knobs (review 2026-11-14):** 4 Executive x 500 GB + 10 Prime x 250 GB = 4.5 TB delivered, which
+  is 9 TB on the two-way meter: nearly double the whole allowance before any Cardinal. Placeholders must shrink (for example
+  Executive 250 GB, Prime 100 GB, or fewer seats). Real use will be far lower, but
   set Prime seats and caps so worst case stays under 70 % of the real (metered) allowance, or accept that the brake is the plan.
 - Capacity check: Access 4 x 500 GB = 2 TB of the 5 TB. Remaining 3 TB covers about 34 Cardinal members at the full weekly cap (about 87 GB per month each). Real use will be lower. Measure before promising seat numbers.
 
