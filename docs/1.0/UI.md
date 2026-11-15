@@ -130,6 +130,8 @@ Gate fields the UI reads from `/_lb/me` (all exist in S5 except where marked moc
 `standingUntil`, `name`, `admittedAt`, `certificateCode`, `plan.tier` (effective plan), `plan.paidUntil`, `plan.limits` (`tabs`,
 `dailyMinutes`), `plan.lastFreeTheme` (read; the gate has no route that writes it, so the app keeps `limitless:lastfree:v1` itself),
 `plan.plansOpen`, `notices[]` (S5 sends `[]`; the UI expects `{id, text, date}` objects, mocked in tests).
-- Done: section 1 (paid themes, Vault lock, lapse fallback, tier marks, icon sprite `theme/icons.svg`). Newer sections are listed below as they land.
+- Done: section 1 (paid themes, Vault lock, lapse fallback, tier marks, icon sprite `theme/icons.svg`). 
+- Done: section 2 (toolbar, Limitless menu in `app/ui.js`, developer mode, Report a problem dialog; `POST /_lb/reports` does not exist in the gate yet, the dialog says so). Kept `+` on the tab strip. Downloads item waits for S8. Under a skin the old toolbar returns.
+- Newer sections are listed below as they land.
 
 Last verified: 2026-11-15

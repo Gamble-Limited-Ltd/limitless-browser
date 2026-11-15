@@ -10,3 +10,42 @@
 .lb-tcard[data-locked] .lb-seal { display: block; }
 .lb-tcard[data-locked] .lb-tprev { opacity: .55; }
 .lb-drow[data-locked] { color: var(--tx3); }
+
+/* ---------- Toolbar and the Limitless menu (UI.md 2). Under an upstream skin the old toolbar stays and the menu button is hidden. ---------- */
+#lbMenuBtn { display: none; }
+html[data-lb-theme]:not([data-skin]) #lbMenuBtn { display: inline-grid; }
+html[data-lb-theme]:not([data-skin]) :is(#fullscreenBtn, #historyBtn, #home, #findOmniBtn, #go, #lbThemeBtn, #settingsBtn, #showBookmarksBtn, .lb-tb-sep) { display: none !important; }
+html:not([data-lb-dev])[data-lb-theme]:not([data-skin]) :is(#devToggle, #codeBtn, #metricsBtn) { display: none !important; }
+.omnibox-actions #blockToggle { width: 28px; height: 28px; min-width: 0; padding: 0; border: 0; background: transparent; display: inline-grid; place-items: center; }
+.omnibox-actions #blockToggle span { display: none; }
+.lb-menu { position: fixed; top: 92px; right: 14px; z-index: 100001; width: 284px; padding: 6px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: calc(var(--lb-r, 0px) * 1.2); box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .6); animation: lbMenuIn .2s cubic-bezier(.2, .7, .2, 1); }
+.lb-menu[hidden] { display: none; }
+@keyframes lbMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.lb-mh { display: flex; align-items: center; gap: 12px; padding: 10px 10px 12px; border-bottom: 1px solid var(--bd); margin-bottom: 4px; }
+.lb-mh .lb-tier-mark { width: 34px; height: 34px; }
+.lb-mh-t { min-width: 0; }
+.lb-mh-name { font: 600 15px var(--lb-fd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-mh-sub { font-size: 11.5px; color: var(--tx3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-msep { height: 1px; background: var(--bd); margin: 4px 6px; }
+.lb-mi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--tx2); font: inherit; font-size: 13px; text-align: left; cursor: pointer; border-radius: var(--radius-sm); }
+.lb-mi:hover, .lb-mi:focus-visible { background: var(--surface); color: var(--tx); outline: none; }
+.lb-mi:focus-visible { box-shadow: inset 0 0 0 2px var(--ac); }
+.lb-mi-l { flex: 1; }
+.lb-mi-k { font: 500 11px var(--lb-fm); color: var(--tx3); }
+.lb-mi-tick { display: none; color: var(--ac); }
+.lb-mi[aria-checked="true"] .lb-mi-tick { display: block; }
+.lb-mi[aria-checked="true"] .lb-mi-k { display: none; }
+#lbMenuBtn:focus-visible, .tool-btn:focus-visible, .nav-btn:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .lb-menu { animation: none; } }
+
+/* ---------- Dialog (report a problem, tab cap) ---------- */
+.lb-dlg { position: fixed; inset: 0; z-index: 100002; display: grid; place-items: center; background: rgba(0, 0, 0, .5); }
+.lb-dlg-card { width: min(440px, 92vw); display: grid; gap: 12px; padding: 22px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: calc(var(--lb-r, 0px) * 1.2); }
+.lb-dlg-t { font: 600 18px var(--lb-fd); margin: 0; }
+.lb-dlg-in { width: 100%; box-sizing: border-box; padding: 9px 10px; background: var(--bg0); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-sm); font: inherit; font-size: 13px; }
+.lb-dlg-in:focus-visible { outline: 2px solid var(--ac); outline-offset: 1px; }
+.lb-dlg-tick { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--tx2); }
+.lb-dlg-row { display: flex; gap: 10px; justify-content: flex-end; }
+.lb-btn { padding: 8px 16px; background: var(--bg2); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-sm); font: inherit; font-size: 13px; cursor: pointer; }
+.lb-btn-p { background: var(--ac); color: var(--lb-on, #000); border-color: var(--ac); }
+.lb-btn:disabled { opacity: .5; cursor: default; }

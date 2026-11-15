@@ -6,6 +6,9 @@ What changed, in plain language. Newest first.
 
 - Five new themes for paid plans: Ink blue and Silver (Cardinal), Garnet (Prime), Gilt and Onyx (Executive). Vault now belongs to the paid plans too.
 - A theme your plan does not include shows a small seal and a short note. If a plan ends, Limitless moves you back to the last free theme you used.
+- The toolbar is quieter: Back, Forward, Reload, the address bar (with the bookmark star and the ad blocker shield inside it), Extensions and one Limitless menu. New tab, History, Theme, Fullscreen, Membership, Report a problem, Settings and Developer mode are in the menu.
+- Developer mode (in the menu) shows the logs, inspector and metrics buttons. It is off by default.
+- Report a problem is now in the menu.
 
 ## 0.3.0
 
