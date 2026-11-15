@@ -14,6 +14,9 @@ export GATE_CONTEXT="${GATE_CONTEXT:-$HOME/limitless-gate}"
 # The mock GATE seeds an owner user with this id; the gate treats it as OWNER_SUB (admin panel tests).
 export REHEARSAL_OWNER_SUB="00000000-0000-4000-8000-0000000000a1"
 PROJECT=limitless-browser-rehearsal
+# 0.3.0 builds ship with our relay off; the rehearsal keeps a working relay (WISP_RELAY=1 on web) and tests the 1.0 path.
+# LB_REHEARSAL_RELAYOFF=1 builds the real 0.3.0 defaults instead (tests/stack/relayoff.spec.js).
+if [ "${LB_REHEARSAL_RELAYOFF:-0}" != 1 ]; then export LB_FEATURE_OWNRELAY=true LB_FEATURE_OWNSOCKETS=4 LB_FEATURE_PAGECACHE=true LB_FEATURE_WARM=true; fi
 # Speed run (LB_SPEED=1) or fault run (LB_FAULTS=1, tests/stack/failures.spec.js): start the fixture sites container and give the relay the TEST-ONLY config that allows the fixture subnet
 # (prod config.toml keeps allow_non_global = false; tests/e2e/relay-config.spec.js asserts it). Exported before every
 # compose call so `down` also removes the fixtures container.
