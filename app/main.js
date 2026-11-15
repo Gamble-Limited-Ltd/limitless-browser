@@ -294,17 +294,130 @@
             // Multi-WISP round-robin. Default ON (unset → enabled): '0' is the only
             // off value, so a fresh install gets pool resilience without opting in.
             function poolModeOn() { try { return ls.getItem('limitless:wisp:poolmode:v1') !== '0'; } catch { return true; } }
-            function probeWispLatency(url, ms = 6000) {
+            function probeWispLatency(url, ms = 6000, protos) {
                 return new Promise(resolve => {
                     const t0 = performance.now();
                     let done = false, ws;
-                    try { ws = new WebSocket(url); } catch { resolve(null); return; }
+                    try { ws = protos ? new WebSocket(url, protos) : new WebSocket(url); } catch { resolve(null); return; }
                     const timer = setTimeout(() => finish(null), ms);
                     function finish(v) { if (done) return; done = true; clearTimeout(timer); try { ws.close(); } catch {} resolve(v); }
                     ws.onopen = () => finish(performance.now() - t0);
                     ws.onerror = () => finish(null);
                 });
             }
+
+            // ── VPS relay token (1.0 S4, docs/1.0/RELAY.md 3.7, MEMBERSHIP.md 11) ──────────────────────────
+            // With features.ownRelay on, our relay is the VPS. The app asks POST /_lb/relay-token for a 5 minute signed token and opens
+            // WISP sockets on the url in the answer with the token in the WebSocket subprotocol (never in the URL). The token is
+            // refreshed before it ends (a timer every 20 s renews when under 100 s are left); sockets already open are not touched.
+            // No token (home says no, VPS not polling, offline) = the VPS is down: the socket falls back to the same-origin /wisp/
+            // (410 in production, so the normal failure path runs: the relay notice, then public relays when allowed).
+            const LB_relayTok = {
+                cur: null, pending: null,
+                left() { return this.cur ? this.cur.at + this.cur.ttl * 1000 - Date.now() : -1; },
+                async get(force) {
+                    if (!force && this.left() > 60000) return this.cur;
+                    if (this.pending) return this.pending;
+                    this.pending = (async () => {
+                        const ctl = new AbortController();
+                        const timer = setTimeout(() => ctl.abort(), 4000);
+                        try {
+                            const r = await fetch('/_lb/relay-token', { method: 'POST', credentials: 'same-origin', cache: 'no-store', signal: ctl.signal });
+                            if (!r.ok) { this.cur = null; return null; }
+                            const j = await r.json();
+                            if (!j || typeof j.url !== 'string' || !/^wss?:\/\//.test(j.url) || typeof j.token !== 'string') { this.cur = null; return null; }
+                            this.cur = { url: j.url, token: j.token, ttl: Number(j.ttl) > 0 ? Number(j.ttl) : 300, at: Date.now() };
+                            return this.cur;
+                        } catch (_) { this.cur = null; return null; }
+                        finally { clearTimeout(timer); this.pending = null; }
+                    })();
+                    return this.pending;
+                },
+                keepFresh() { if (this.cur && this.left() < 100000) this.get(true); },
+            };
+            window.LB_relayTok = LB_relayTok;
+            class LBRelaySocket extends EventTarget {
+                constructor(url, d, markDown) {
+                    super();
+                    this.CONNECTING = 0; this.OPEN = 1; this.CLOSING = 2; this.CLOSED = 3;
+                    this.readyState = 0; this.url = url;
+                    this._bt = 'blob'; this._d = d; this._markDown = markDown; this._inner = null; this._closed = false; this._opened = false; this._queue = [];
+                    this.onopen = () => {}; this.onerror = () => {}; this.onmessage = () => {}; this.onclose = () => {};
+                    this._start();
+                }
+                get binaryType() { return this._bt; }
+                set binaryType(v) { this._bt = v; if (this._inner) { try { this._inner.binaryType = v; } catch (_) {} } }
+                get protocol() { return ''; }
+                get extensions() { return ''; }
+                get bufferedAmount() { try { return this._inner ? this._inner.bufferedAmount || 0 : 0; } catch (_) { return 0; } }
+                _fire(type, ev) { const h = this['on' + type]; try { h && h.call(this, ev); } catch (e) { console.error(e); } this.dispatchEvent(ev); }
+                async _start() {
+                    let t = null;
+                    try { t = await this._d.token(); } catch (_) { t = null; }
+                    if (this._closed) return;
+                    if (t) {
+                        try { return this._attach(new this._d.WebSocket(t.url, ['lb.v1', 'lbt.' + t.token]), true); } catch (_) {}
+                    }
+                    this._markDown();
+                    this._attach(new this._d.WebSocket(this.url), false);
+                }
+                _attach(ws, vps) {
+                    this._inner = ws;
+                    try { ws.binaryType = this._bt; } catch (_) {}
+                    ws.addEventListener('open', () => {
+                        if (this._inner !== ws || this._closed) return;
+                        this._opened = true; this.readyState = 1;
+                        if (vps && this._d.markUp) this._d.markUp();
+                        for (const q of this._queue.splice(0)) { try { ws.send(q); } catch (_) {} }
+                        this._fire('open', new Event('open'));
+                    });
+                    ws.addEventListener('message', (e) => { if (this._inner === ws && !this._closed) this._fire('message', new MessageEvent('message', { data: e.data })); });
+                    const gone = (e) => {
+                        if (this._inner !== ws || this._closed) return;
+                        if (vps && !this._opened) { this._markDown(); try { ws.close(); } catch (_) {} this._attach(new this._d.WebSocket(this.url), false); return; }
+                        if (e.type === 'error') { this._fire('error', new Event('error')); return; }
+                        this._closed = true; this.readyState = 3;
+                        this._fire('close', new CloseEvent('close', { code: e.code, reason: e.reason }));
+                    };
+                    ws.addEventListener('error', gone);
+                    ws.addEventListener('close', gone);
+                }
+                send(data) {
+                    if (this._closed) throw 'websocket is not ready';
+                    if (this._inner && this._opened) this._inner.send(data); else this._queue.push(data);
+                }
+                close(code, reason) {
+                    if (this._closed) return;
+                    this._closed = true; this.readyState = 3;
+                    if (this._inner) { try { this._inner.close(code, reason); } catch (_) {} }
+                    this._fire('close', new CloseEvent('close', { code: code || 1000 }));
+                }
+            }
+            function LB_makeRelayOpener(d) {
+                let downUntil = 0;
+                return function open(url) {
+                    if (!d.on() || !d.isOwn(url) || d.now() < downUntil) return new d.WebSocket(url);
+                    return new LBRelaySocket(url, d, () => { downUntil = d.now() + d.cooldownMs; if (d.onDown) d.onDown(); });
+                };
+            }
+            window.LB_makeRelayOpener = LB_makeRelayOpener;
+            // libcurl's WispConnection calls this for every WISP socket (one line in the libcurl glue in index.html).
+            window.LB_openRelaySocket = LB_makeRelayOpener({
+                on: () => LB_ownRelay,
+                isOwn: (url) => !!LB_OUR_WISP && url.startsWith(LB_OUR_WISP),
+                now: () => Date.now(),
+                cooldownMs: 20 * 1000,
+                WebSocket: window.WebSocket,
+                token: () => LB_relayTok.get(),
+                markUp() { _lbRelayOurs = 'ok'; },
+                onDown() { _lbRelayOurs = 'down'; if (!LB_fallbackAllowed) LB_showRelayNotice(); },
+            });
+            // Startup probe of the VPS (replaces the probe of the tunnel /wisp/): token, then one WebSocket handshake with it.
+            async function LB_probeOur() {
+                const t = await LB_relayTok.get(true);
+                return t ? probeWispLatency(t.url, 5000, ['lb.v1', 'lbt.' + t.token]) : null;
+            }
+            window.LB_probeOur = LB_probeOur;
 
             // ── Limitless relay status ─────────────────────────────────────
             // LB_relayStatus(): { ours: 'ok' | 'down' | 'unknown', fallbackAllowed }.
@@ -391,10 +504,11 @@
                 DEFAULT_FALLBACK_WISP = LB_fallbackAllowed ? "wss://mages.io/wisp/" : "";
                 WISP = LB_initialWisp();
                 if (LB_OUR_WISP) {
-                    probeWispLatency(LB_OUR_WISP, 5000).then(ms => {
+                    LB_probeOur().then(ms => {
                         _lbRelayOurs = ms == null ? 'down' : 'ok';
                         if (ms == null && !LB_fallbackAllowed) LB_showRelayNotice();
                     }, () => {});
+                    if (!window.__lbTokTimer) window.__lbTokTimer = setInterval(() => LB_relayTok.keepFresh(), 20000);
                 }
                 if (!LB_ownRelay && window.LB_access === 'ok') LB_showPublicRelaysNotice();
                 LB_paintRelaySwitch();

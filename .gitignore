@@ -7,6 +7,10 @@ deploy/gate.env
 .last-deploy-hash
 test-results-stack/
 deploy/.env
+deploy/relay-vps/.env
+deploy/relay-vps/relay.env
+deploy/relay-vps/loadtest.env
+deploy/relay-vps/lt/
 
 # Claude Code worktree folders (deploy.sh needs a clean tree)
 .claude/

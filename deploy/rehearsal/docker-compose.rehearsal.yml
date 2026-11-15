@@ -39,7 +39,7 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     pids_limit: 512
-    depends_on: [relay, mock-gate]
+    depends_on: [relay, mock-gate, vps]
 
   relay:
     image: limitless-relay:rehearsal
@@ -74,6 +74,29 @@ services:
     security_opt: ["no-new-privileges:true"]
     pids_limit: 64
     mem_limit: 128m
+
+  # VPS relay stand-in (1.0 S4): the same gate image in GATE_MODE=relay, published on 127.0.0.1 over plain ws (the TLS front
+  # is a separate nginx, see deploy/relay-vps). It polls home through `web` (the public host stand-in) on lb_edge.
+  vps:
+    image: limitless-gate:rehearsal
+    pull_policy: never
+    env_file:
+      - ${REHEARSAL_VPS_ENV:?set by run.sh}
+    environment:
+      GATE_MODE: relay
+      PORT: "8080"
+      RELAY_URL: ws://relay:4000/
+      RELAY_HOME_URL: http://web
+      BUILD_SHA: rehearsal
+    ports:
+      - "127.0.0.1:${REHEARSAL_VPS_PORT:-8592}:8080"
+    networks: [lb_relay, lb_edge]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    depends_on: [relay]
 
   # Stand-in for GATE. Published on the host at the SAME URL the gate uses as its issuer, so the browser and
   # the id token agree; the gate itself reaches it through GATE_BACKCHANNEL_URL (http://mock-gate:PORT).

@@ -6898,7 +6898,8 @@ class WispConnection extends EventTarget {
   }
 
   connect_ws() {
-    this.ws = new WebSocket(this.wisp_url);
+    // Limitless: on our own relay (features.ownRelay) the app opens this socket on the VPS with a token; otherwise a plain WebSocket.
+    this.ws = (typeof window.LB_openRelaySocket === "function") ? window.LB_openRelaySocket(this.wisp_url) : new WebSocket(this.wisp_url);
     this.ws.binaryType = "arraybuffer";
     this.connecting = true;
 
@@ -8741,7 +8742,7 @@ window._libcurlReady = true;
             var dl = el('dl');
             function kv(k, v, cls) { var dd = el('dd'); dd.appendChild(el('span', cls ? 'lb-adm-chip ' + cls : '', v)); dl.append(el('dt', '', k), dd); }
             var ownRelay = !(window.LB_features && window.LB_features.ownRelay === false);   // 0.3.0: no relay of our own, nothing to be "down"
-            if (ownRelay) kv('Relay', h.relay.ok ? 'Up' : 'Down', h.relay.ok ? 'ok' : 'err'); else kv('Relay', 'Public relays', '');
+            if (ownRelay) kv(h.relay.vps ? 'Relay (VPS)' : 'Relay', h.relay.ok ? (h.relay.busy ? 'Up, busy' : 'Up') : 'Down', h.relay.ok ? 'ok' : 'err'); else kv('Relay', 'Public relays', '');
             kv('GLL ID', h.gateId.ok ? 'Reachable' : 'Not reachable', h.gateId.ok ? 'ok' : 'err');
             dl.append(el('dt', '', 'Live now'), el('dd', '', h.live.users + (h.live.users === 1 ? ' user' : ' users') + (ownRelay ? ', ' + h.live.sockets + ' connections, ' + h.live.streams + ' streams' : '')));
             dl.append(el('dt', '', 'Version'), el('dd', '', h.version));
