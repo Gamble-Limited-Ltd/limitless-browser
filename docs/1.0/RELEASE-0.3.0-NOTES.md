@@ -43,5 +43,5 @@ cd ~/Browser && ./deploy.sh c88ce5e
 To start the home relay again without a rollback (for example to test): `docker compose -p limitless-browser -f deploy/docker-compose.yml --profile relay up -d relay dns`; nginx still answers 410 on `/wisp/`, so the web container needs a build with `WISP_RELAY=1` (rehearsal only).
 
 ## 5. Open points for the release record
-- Both public relay tests (`pageCache`, `warm`) stay in code, off. Measure with the speed harness before the gate: `LB_FEATURE_*` flips need no code change.
+- Both features (`pageCache`, `warm`) stay in code, off. Measure with the speed harness before the gate: `LB_FEATURE_*` flips need no code change.
 - The rehearsal stack builds with `ownRelay` true (1.0 path); `LB_REHEARSAL_RELAYOFF=1 deploy/rehearsal/run.sh` builds the real 0.3.0 defaults.
