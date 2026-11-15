@@ -13,8 +13,18 @@ module.exports.checkLayout = (scope) => scope.evaluate(() => {
     const r = document.createRange(); r.selectNodeContents(t); const b = r.getBoundingClientRect();
     if (b.width < 2 || b.height < 2 || b.bottom < 0 || b.top > innerHeight || b.right < 0 || b.left > innerWidth) continue;
     const cs = getComputedStyle(e);
+    let bb = { left: b.left, right: b.right, top: b.top, bottom: b.bottom };
+    const lh = parseFloat(cs.lineHeight);   // the glyph box of a tight line-height is taller than the line: compare line boxes
+    if (lh > 0 && lh < b.height) { const c = (b.top + b.bottom) / 2; bb.top = c - lh / 2; bb.bottom = c + lh / 2; }
+    for (let a = e; a && a !== document.body; a = a.parentElement) {   // text is clipped by any scrolling or hidden-overflow ancestor (ellipsis, scrolled charter)
+      const ac = getComputedStyle(a); if (ac.overflowX === 'visible' && ac.overflowY === 'visible') continue;
+      const ab = a.getBoundingClientRect(); bb.left = Math.max(bb.left, ab.left); bb.right = Math.min(bb.right, ab.right); bb.top = Math.max(bb.top, ab.top); bb.bottom = Math.min(bb.bottom, ab.bottom);
+    }
+    if (bb.right - bb.left < 2 || bb.bottom - bb.top < 2) continue;
+    const hit = document.elementFromPoint(Math.min(innerWidth - 1, Math.max(0, (bb.left + bb.right) / 2)), Math.min(innerHeight - 1, Math.max(0, (bb.top + bb.bottom) / 2)));
+    if (hit && !e.contains(hit) && !hit.contains(e)) continue;   // covered by an overlay (dialog, menu): not visible, so not an overlap
     if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth > 0 && cs.textOverflow !== 'ellipsis' && cs.overflowX !== 'auto' && cs.overflowX !== 'scroll' && cs.display !== 'inline' && cs.overflowX === 'hidden') out.push('clipped text ' + path(e));
-    boxes.push({ e, b });
+    boxes.push({ e, b: bb });
   }
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
     const a = boxes[i], c = boxes[j];
@@ -26,7 +36,7 @@ module.exports.checkLayout = (scope) => scope.evaluate(() => {
 });
 module.exports.checkContrast = (scope, sel) => scope.evaluate((sel) => {
   const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
-  const parse = (s) => { const m = s.match(/[\d.]+/g); return m ? m.map(Number) : [0, 0, 0, 0]; };
+  const parse = (s) => { const m = s.match(/[\d.]+/g); const n = m ? m.map(Number) : [0, 0, 0, 0]; return s.startsWith('color(srgb') ? n.map((x, i) => i < 3 ? x * 255 : x) : n; };   // color(srgb r g b / a) is 0..1
   const bgOf = (e) => { for (let n = e; n; n = n.parentElement) { const c = parse(getComputedStyle(n).backgroundColor); if (c[3] === undefined || c[3] > 0.5) return c.slice(0, 3); } return [255, 255, 255]; };
   const out = [];
   document.querySelectorAll(sel).forEach((root) => {

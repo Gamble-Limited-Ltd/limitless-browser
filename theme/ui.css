@@ -96,7 +96,10 @@ html[data-lb-tabs="side"][data-lb-rail-min][data-lb-theme]:not([data-skin]) {
 .lb-dl dd { margin: 0; color: var(--tx); }
 .lb-warn { color: var(--tx); border-left: 2px solid var(--ac); padding-left: 8px; }
 .lb-pl { font-size: 12.5px; color: var(--tx2); margin-top: 6px; }
-.lb-pl a, .lb-note a { color: var(--ac); }
+.lb-pl a, .lb-note a { color: var(--lb-link); }
+/* Contrast (visual suite, 4.5:1 in every theme): quiet text on S6 surfaces uses the second text tone, accent links are pulled toward the text tone. */
+#lbMemberPage, .lb-bul { --tx3: var(--tx2); --lb-link: color-mix(in srgb, var(--ac) 30%, var(--tx)); }
+:root { --lb-link: color-mix(in srgb, var(--ac) 30%, var(--tx)); }
 a.lb-btn { text-decoration: none; display: inline-block; }
 
 /* ---------- Splash: name first, number small beneath ---------- */
@@ -109,7 +112,7 @@ a.lb-btn { text-decoration: none; display: inline-block; }
 .lb-bul-l { font: 500 10px var(--lb-fm); letter-spacing: .24em; text-transform: uppercase; color: var(--tx3); }
 .lb-bul-t { font: 500 17px/1.4 'Cormorant Garamond', Georgia, serif; color: var(--tx); margin: 6px 0 8px; }
 .lb-bul-f { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; color: var(--tx3); }
-.lb-bul-x, .lb-link { background: none; border: 0; padding: 0; color: var(--ac); font: inherit; font-size: 11.5px; cursor: pointer; text-decoration: underline; }
+.lb-bul-x, .lb-link { background: none; border: 0; padding: 0; color: var(--lb-link); font: inherit; font-size: 11.5px; cursor: pointer; text-decoration: underline; }
 .lb-bul-x:focus-visible, .lb-link:focus-visible, .lb-card:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 .lb-expiry { width: 100%; box-sizing: border-box; font-size: 12.5px; color: var(--tx); padding: 8px 12px; border-left: 2px solid var(--ac); background: var(--bg1); }
 .lb-expiry[data-level="soon"] { border-left-width: 4px; }

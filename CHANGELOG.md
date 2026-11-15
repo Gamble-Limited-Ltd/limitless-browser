@@ -4,6 +4,7 @@ What changed, in plain language. Newest first.
 
 ## 1.0.0 (in progress, not released)
 
+- The welcome ceremony is the designed one: invitation, choosing your number, signing the Charter, the number reveal, your member card or certificate, and a short tour.
 - Five new themes for paid plans: Ink blue and Silver (Cardinal), Garnet (Prime), Gilt and Onyx (Executive). Vault now belongs to the paid plans too.
 - A theme your plan does not include shows a small seal and a short note. If a plan ends, Limitless moves you back to the last free theme you used.
 - The toolbar is quieter: Back, Forward, Reload, the address bar (with the bookmark star and the ad blocker shield inside it), Extensions and one Limitless menu. New tab, History, Theme, Fullscreen, Membership, Report a problem, Settings and Developer mode are in the menu.

@@ -55,3 +55,28 @@ for (const [theme, mode] of [['luxury', 'dark'], ['soft', 'light'], ['ink', 'dar
     await expect(page).toHaveScreenshot(`side-cap-${theme}-${mode}-${w}.png`, { mask: [page.locator('#ntDate'), page.locator('#ntFavorites')] });
   });
 }
+
+// Welcome ceremony (served by nginx at /auth/welcome, here from its static path) with a mocked gate: every resume point in three themes.
+const ART = Array.from({ length: 12 }, (_, i) => ({ title: `Article ${i + 1}. Membership.`, body: 'Membership of Limitless Browser is personal and by invitation. The Member shall hold one membership only and shall not share the sign-in or session with anyone.' }));
+const CER = [
+  ['welcome', { kind: 'invited', step: 0, number: null }],
+  ['number', { kind: 'approved', step: 1, number: null }],
+  ['charter', { kind: 'approved', step: 2, number: '0047' }],
+  ['reveal', { kind: 'approved', step: 4, number: '0047', signed: true, name: 'Alex Morgan' }],
+  ['certificate', { kind: 'approved', step: 5, number: '0101', signed: true, name: 'Alex Morgan', tier: 'prime', certificateCode: 'ABCD-1234' }],
+  ['tour', { kind: 'approved', step: 6, number: '0047', signed: true, name: 'Alex Morgan' }],
+];
+for (const [theme, mode] of [['luxury', 'dark'], ['soft', 'light'], ['ink', 'dark']]) for (const [w, h] of SIZES) for (const [step, st] of CER) {
+  test(`${theme}/${mode} ${w}x${h}: ceremony ${step}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await page.addInitScript(([t, m]) => localStorage.setItem('limitless:theme:v1', JSON.stringify({ theme: t, mode: m, mark: 'orbit' })), [theme, mode]);
+    const state = { kind: 'approved', step: 0, number: null, suggested: '0047', signed: false, tier: 'ordinal', name: null, charter: ART, charterVersion: 'draft-2026-11-15', certificateCode: null, ...st };
+    await page.route('**/auth/welcome/state', (r) => r.fulfill({ json: state }));
+    await page.goto('/theme/ceremony/');
+    await expect(page.locator('#cwStep h1, #cwStep .reveal')).toBeVisible();
+    await page.waitForTimeout(400);
+    expect(await checkLayout(page), 'ceremony layout').toEqual([]);
+    expect(await checkContrast(page, '#cw'), 'ceremony contrast').toEqual([]);
+    if (theme === 'luxury') await expect(page).toHaveScreenshot(`ceremony-${step}-${w}.png`);
+  });
+}
