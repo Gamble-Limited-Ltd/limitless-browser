@@ -19,5 +19,29 @@ Dropped as dead or refusing our origin: area.forwardersoft.com, truf.the-nest.at
 
 Only the handshake is probed, not a fetch through the relay. Re-run before the speed gate and update this list if the picture changed.
 
-## 3. Host steps Boss runs (not run by Claude)
-Section filled in with the exact commands at the end of the slice; see below.
+## 3. Rollback stub (REVIEW 2 item 7)
+- `c88ce5e` (0.2.3) has no `sw.js`. Its nginx (`git show c88ce5e:deploy/web/nginx.conf`) has no `/sw.js` location, so the catch-all `location /` serves it: gated, `Cache-Control: no-cache`, `Content-Type: application/javascript`, brotli through the br tree. Checked 2026-11-15 with that nginx.conf and a build of `c88ce5e` in a throwaway nginx container (stub gate, no compose project touched): plain and `Accept-Encoding: br` both answered 200 with the stub bytes. A signed-out browser gets the sign-in answer instead of the stub, so a member's worker is replaced the next time they open Limitless signed in (the update check sends the session cookie).
+- `deploy.sh` (working tree) runs `scripts/inject-sw-stub.sh` after the archived build when `dist/sw.js` is missing. The archived `build-static.sh` of the old commit does the build; the stub is added to `dist/` (raw and gzip) and `dist-br/` (brotli bytes). Test: `tests/e2e/boot.spec.js` "rollback stub" installs the real worker, swaps `/sw.js` for the stub on a small test server, and the registration and `lb-shell-*` caches are gone after `update()`.
+- Not rehearsed on the full compose stack: the rehearsal stack cannot be built from `c88ce5e` (its gate and relay differ), so the nginx half was rehearsed in isolation and the worker half in the browser test above.
+
+## 4. Host steps Boss runs (not run by Claude)
+Deploy (from the main checkout after the release branch is merged; follow the release record):
+```
+cd ~/Browser && ./deploy.sh <sha>
+```
+The compose file now keeps `relay` and `dns` out of `up`. The old containers keep running after the deploy until stopped once:
+```
+cd ~/Browser && docker compose -p limitless-browser -f deploy/docker-compose.yml --profile relay stop relay dns
+~/gll-planning/rotation/rotate.sh check
+```
+Expect `preflight OK`. Then by hand: pause the Kuma relay monitor, update the vault Service Inventory (relay stopped), and check that a signed-in browser reaches a site through a public relay.
+
+Rollback (0.2.3, brings the home relay back because the archived compose has no profile; the stub removes installed workers):
+```
+cd ~/Browser && ./deploy.sh c88ce5e
+```
+To start the home relay again without a rollback (for example to test): `docker compose -p limitless-browser -f deploy/docker-compose.yml --profile relay up -d relay dns`; nginx still answers 410 on `/wisp/`, so the web container needs a build with `WISP_RELAY=1` (rehearsal only).
+
+## 5. Open points for the release record
+- Both public relay tests (`pageCache`, `warm`) stay in code, off. Measure with the speed harness before the gate: `LB_FEATURE_*` flips need no code change.
+- The rehearsal stack builds with `ownRelay` true (1.0 path); `LB_REHEARSAL_RELAYOFF=1 deploy/rehearsal/run.sh` builds the real 0.3.0 defaults.

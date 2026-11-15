@@ -2,6 +2,14 @@
 
 What changed, in plain language. Newest first.
 
+## Unreleased 0.3.0
+
+- Limitless now browses through public relays, run by other operators, until Limitless 1.0 brings its own relay. They can see connection metadata, such as which sites you connect to, but not what is inside secure (https) connections. You see a short note about this the first time you open Limitless, and Settings, Connection shows "Public relays (until 1.0)".
+- If every public relay stops answering, a small note says so, links to the status page and keeps trying by itself.
+- Limitless now checks your access before it connects to anything. If you are signed out you go to the sign-in page, and if you are offline you see "Cannot reach Limitless" instead of a half working page.
+- The list of public relays was cleaned up: six that no longer answer were removed.
+- Remembering pages for the next visit and warming up favourite sites are switched off for now. They come back in a later release.
+
 ## Unreleased 1.0.0
 
 - A slow or failing script on a page is no longer loaded straight from the site, outside the relay, which could expose your own connection. The page now shows without it and the script is added through Limitless when it arrives.
