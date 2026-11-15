@@ -666,7 +666,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -697,7 +697,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -3706,8 +3706,28 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             window.__lbPerf = {
                 runs: [], cur: null,
                 start(url) { const c = { url, t0: performance.now(), marks: {} }; this.cur = c; this.runs.push(c); if (this.runs.length > 60) this.runs.shift(); return c; },
-                mark(name) { const c = this.cur; if (c && c.marks[name] == null) c.marks[name] = Math.round(performance.now() - c.t0); }
+                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') lbPerfSample(c.marks.shown); } }
             };
+            // S9b: anonymous load-time sample (docs/1.0/PAID-TIERS-PLAN.md): signed-in members on a membership server only, 1 in 5 page
+            // loads, at most one per 10 s, never with Data saver, never the URL or host. features.perf = false is the kill switch.
+            let lbPerfLast = 0;
+            function lbPerfDevice() {
+                const ua = navigator.userAgent || '';
+                if (/CrOS/.test(ua)) return 'chromebook';
+                if (/iPad|Tablet/.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua))) return 'tablet';
+                if (/Mobi|iPhone|Android/.test(ua)) return 'phone';
+                return /Windows|Macintosh|Linux/.test(ua) ? 'desktop' : 'other';
+            }
+            function lbPerfSample(ms) {
+                try {
+                    if (!window.LB_member || window.LB_member.membership !== 'on' || window.LB_features.perf === false) return;
+                    if (ls.getItem('limitless:datasaver:v1') === '1') return;
+                    const t = Date.now();
+                    if (t - lbPerfLast < 10000 || Math.random() >= 0.2) return;
+                    lbPerfLast = t;
+                    fetch('/_lb/perf', { method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ metric: 'page_shown', ms: Math.min(120000, Math.max(0, Math.round(ms))), device: lbPerfDevice() }) }).catch(() => {});
+                } catch (_) {}
+            }
             const LB_WHATS_NEW = 'limitless://whats-new';
             const lbUpd = { info: null, dismissed: false, last: 0, banner: null, pill: null };
             function lbUpdateEls() {
@@ -3893,7 +3913,21 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     if (p.cap && p.cap.period) box.appendChild(el('p', '', 'Used ' + p.cap.usedGb + ' of ' + p.cap.capGb + ' GB this ' + p.cap.period + (p.topupGbLeft ? ', plus ' + p.topupGbLeft + ' GB of top-up left' : '') + '.'));
                     if (p.fallback === 'cap') box.appendChild(el('p', 'lb-pl-msg', 'Your allowance is used up, so pages load through public relays until it resets.'));
                     if (p.fallback === 'brake') box.appendChild(el('p', 'lb-pl-msg', 'Our relay is resting for now, so pages load through public relays.'));
-                    if (p.tier === 'executive') box.appendChild(el('p', '', 'Load Now uses left today: ' + p.loadNowLeft));
+                    if (p.tier === 'executive') {
+                        const row = el('p', ''), left = el('span', '', 'Load Now uses left today: ' + p.loadNowLeft); left.id = 'lbPlansLoadLeft';
+                        const ln = el('button', 'lb-pl-btn', 'Load Now'); ln.type = 'button'; ln.id = 'lbPlansLoadNow'; ln.disabled = !(p.loadNowLeft > 0);
+                        ln.title = 'Gives your next page loads first claim on our relay for one minute. For pages, not big downloads.';
+                        const lm = el('span', 'lb-pl-msg'); lm.setAttribute('role', 'status');
+                        ln.onclick = async () => {
+                            ln.disabled = true; lm.className = 'lb-pl-msg'; lm.textContent = '';
+                            const r = await planPost('/_lb/load-now');
+                            if (r.status === 200) {
+                                left.textContent = 'Load Now uses left today: ' + r.json.left; lm.textContent = 'Boosted for one minute.'; ln.disabled = !(r.json.left > 0);
+                                if (window.LB_relayTok) window.LB_relayTok.get(true);
+                            } else { lm.className = 'lb-pl-msg err'; lm.textContent = r.status === 429 ? 'No Load Now uses left today.' : 'Load Now is not available right now.'; ln.disabled = r.status !== 429 && r.status !== 403 ? false : true; }
+                        };
+                        row.append(left, ' ', ln, ' ', lm); box.appendChild(row);
+                    }
                     const r = p.request;
                     if (r && r.status === 'open') box.appendChild(el('p', '', 'Your request for ' + TIER_NAME[r.tier] + ' is waiting for an answer.'));
                     if (r && r.status === 'declined' && r.retryAfter && r.retryAfter > Date.now()) box.appendChild(el('p', '', 'Your last request was not accepted. You can ask again after ' + new Date(r.retryAfter).toLocaleString() + '.'));

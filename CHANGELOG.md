@@ -4,6 +4,7 @@ What changed, in plain language. Newest first.
 
 ## Unreleased 1.0.0
 
+- Executive members get a Load Now button on the Plans page: for a minute your page loads go first on our relay. Signed-in members also send a small, anonymous page load time sample (about 1 in 5 loads, never the site, never with Data saver) so we can see how fast pages are
 - New Plans page (About, Plans): the three plans with typical limits, your own plan and usage, your receipts, a 24 hour trial button and a short form to ask for a plan. Nothing is charged in the app and no card details are ever asked for. A note appears 14 and 3 days before a plan ends, and the first time your allowance sends you to public relays. Plans are not open for requests until the switch is turned on.
 - New Downloads panel in the menu: a queue with progress, pause and resume, retry and cancel. Files over your plan's size limit, or over 2 GB, are refused before they start.
 - The welcome ceremony is the designed one: invitation, choosing your number, signing the Charter, the number reveal, your member card or certificate, and a short tour.
