@@ -10,7 +10,7 @@ All picks in the artifact were favourites: members and profile, invites, live an
 > paid-until, amount (0 allowed after a confirm), receipt note. Trials, top-ups, voids with refunds, Executive flag and the
 > transfer brake (`admin-transfer`) are in 1.0 (D2b answered, slice S9).
 
-> **S9 (2026-11-15):** the gate now has the Queue routes (`membership/requests`, `requests/approve|decline`), `topup`, `trial`, `void`, `credit`, `transfer`, `outbox`, `invites/email` and `GET perf` (anonymous load-time medians); the admin screens for them are not built yet.
+> **S9 (2026-11-15):** the gate now has the Queue routes (`membership/requests`, `requests/approve|decline`), `topup`, `trial`, `void`, `credit`, `transfer`, `outbox`, `invites/email` and `GET perf` (anonymous load-time medians); **S9b (2026-11-15):** the Queue card (`#lbAdmQueue`: open plan requests with Approve, amount, how paid, receipt note, Decline; the mail outbox with Copy and Mark sent) and the page load time chart and table (`GET perf`, p50 and p90 by day and device) in the Charts card are built. Not built yet: topup, trial, void, credit and transfer screens, and Executive number requests.
 
 > **Status 2026-11-15: built on `slice/1.0-admin` (both repos), not merged, not deployed.** Built: Members (search, filter chips, profile with
 > standing history, sessions, 30-day usage, plan and purchases, re-issue certificate, assign number, warn, suspend, lift, remove, sign out everywhere,

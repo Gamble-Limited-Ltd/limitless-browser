@@ -154,3 +154,71 @@ test('every new gate route is gated in nginx (never ungated) and POST only', () 
     expect(m ? m[1] : '').toContain('limit_except POST');
   }
 });
+
+// ---- S9b: Load Now button and load-time samples ----
+test('Load Now: Executive only, posts, shows uses left, then asks for a fresh relay token', async ({ page }) => {
+  let n = 0, tokens = 0;
+  await mock(page, () => baseMe({ tier: 'executive', loadNowLeft: 10 }));
+  await page.route('**/_lb/load-now', (route) => { n++; route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, left: 9 }) }); });
+  await page.route('**/_lb/relay-token', (route) => { tokens++; route.fulfill({ status: 503, body: '' }); });
+  await boot(page);
+  await openPlans(page);
+  await expect(page.locator('#lbPlansLoadLeft')).toContainText('10');
+  const before = tokens;
+  await page.locator('#lbPlansLoadNow').click();
+  await expect(page.locator('#lbPlansLoadLeft')).toContainText('9');
+  expect(n).toBe(1);
+  await expect.poll(() => tokens).toBeGreaterThan(before);
+});
+
+test('Load Now: no button for other plans; disabled with no uses left; 429 says so', async ({ page }) => {
+  let me = baseMe({ tier: 'cardinal' });
+  await mock(page, () => me);
+  await page.route('**/_lb/load-now', (route) => route.fulfill({ status: 429, contentType: 'application/json', body: '{"error":"limit"}' }));
+  await boot(page);
+  await openPlans(page);
+  await expect(page.locator('#lbPlansLoadNow')).toHaveCount(0);
+  me = baseMe({ tier: 'executive', loadNowLeft: 1 });
+  await openPlans(page);
+  await page.evaluate(() => window.LB_go('limitless://plans'));
+  await page.locator('#lbPlansLoadNow').click();
+  await expect(page.locator('#lbPlans')).toContainText('No Load Now uses left today');
+  await expect(page.locator('#lbPlansLoadNow')).toBeDisabled();
+});
+
+async function perfRun(page, { rand = 0.1, member = true, features, datasaver = false, marks = 1 } = {}) {
+  const posts = [];
+  await page.route('**/_lb/perf', (route) => { posts.push(route.request().postDataJSON()); route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+  await mock(page, () => (member ? baseMe() : { membership: 'off' }));
+  await boot(page, {
+    init: ([r]) => { Math.random = () => r; },
+    arg: [rand],
+    ...(features ? { features } : {}),
+  });
+  if (datasaver) await page.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.includes('limitless:')); localStorage.setItem(k.slice(0, k.indexOf('limitless:')) + 'limitless:datasaver:v1', '1'); });
+  await page.evaluate(() => window.LB_meRefresh());
+  await page.evaluate((k) => { for (let i = 0; i < k; i++) { window.__lbPerf.start('https://secret.example/path'); window.__lbPerf.mark('shown'); } }, marks);
+  await page.waitForTimeout(400);
+  return posts;
+}
+
+test('perf sample: signed-in member, sampled, sends only metric, ms and device; at most one per 10 s', async ({ page }) => {
+  const posts = await perfRun(page, { marks: 3 });
+  expect(posts).toHaveLength(1);
+  expect(Object.keys(posts[0]).sort()).toEqual(['device', 'metric', 'ms']);
+  expect(posts[0].metric).toBe('page_shown');
+  expect(['desktop', 'chromebook', 'tablet', 'phone', 'other']).toContain(posts[0].device);
+  expect(JSON.stringify(posts)).not.toContain('secret');
+});
+
+test('perf sample: not sampled at 1 in 5 odds, nothing sent', async ({ page }) => {
+  expect(await perfRun(page, { rand: 0.5 })).toHaveLength(0);
+});
+
+test('perf sample: membership off, Data saver on, or features.perf false: nothing sent', async ({ page, browser }) => {
+  expect(await perfRun(page, { member: false })).toHaveLength(0);
+  const p2 = await (await browser.newContext()).newPage();
+  expect(await perfRun(p2, { datasaver: true })).toHaveLength(0);
+  const p3 = await (await browser.newContext()).newPage();
+  expect(await perfRun(p3, { features: { ...require('./helpers').LEGACY_FEATURES, perf: false } })).toHaveLength(0);
+});
