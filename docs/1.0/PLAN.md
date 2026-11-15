@@ -8,7 +8,7 @@ This file is the index, the order of work and the ship gates. Detail lives in th
 |---|---|
 | `SPEED.md` | Page loading, startup, client-side speed (the priority) |
 | `RELAY.md` | Server path: tunnel, nginx, gate, relay, DNS, fair share, off-site relay research |
-| `MEMBERSHIP.md` | Invites, numbers, tiers, standing, ceremony, certificate PDF, nominations, data model |
+| `MEMBERSHIP.md` | Invites, numbers, tiers, standing, ceremony, certificate PDF, data model |
 | `RULES-DRAFT.md` | Charter and full Rules: what is decided, draft text, questions still open |
 | `UI.md` | Chrome, tabs, settings, splash, notices, errors, icons, Prime theme, tier marks |
 | `ADMIN.md` | Admin panel additions and the gate API behind them |
@@ -20,11 +20,11 @@ One release, version **1.0.0**, **Major lane** (Boss, 2026-11-10: speed and memb
 1. **Speed** (priority): pages appear sooner (parallel loading, no wait on images), faster startup (WASM and libraries out of
    `index.html`, service worker app shell), and a set of client and server speed-ups. Proven with a Chromebook-profile harness.
 2. **Membership**: single-use invite links, permanent member numbers (Boss is No. 000), tiers Ordinal / Cardinal / Prime,
-   a signed Membership Charter, a six-step welcome ceremony, a certificate PDF signed by Boss as Director, nominations,
+   a signed Membership Charter, a six-step welcome ceremony, a certificate PDF signed by Boss as Director,
    and a warning / suspension / removal process.
 3. **UI**: restrained toolbar with one Limitless menu, classic or vertical tabs, settings in six groups, new splash, notices,
    error cards, custom icon set, a Prime-only theme, tier marks.
-4. **Admin**: member list with filters, profiles, invite and nomination queue, live and 30-day charts, per-hop timing,
+4. **Admin**: member list with filters, profiles, invite queue, live and 30-day charts, per-hop timing,
    audit log viewer, problem reports.
 5. **Upstream and dependencies**: GUST upstream has no new commits since `08515a7` (checked 2026-11-10). libcurl.js 0.7.5
    (published 2026-10-21) and a newer epoxy-tls commit exist: reviewed and taken only if clean (`RELAY.md` section 8).
@@ -79,7 +79,7 @@ design approval before UI work. Admin depends on the membership data model.
   unregisters its service worker on next load), `tabSleep`, `rewriteCache`, `pageCache`, `warm`, `instantBack`.
   Each gets an `LB_FEATURE_*` build variable like the existing three.
 - `deploy/gate.env`: `MEMBERSHIP=off` (no ceremony gating; members browse as plain approved users, admin membership
-  routes 404), `FAIR_SHARE=off`, `NOMINATIONS=off`, `REPORTS=off`, existing `ADMIN_PANEL=off`.
+  routes 404), `FAIR_SHARE=off`, `REPORTS=off`, existing `ADMIN_PANEL=off`.
 - The WASM split and the removed tutorial have no switch: rollback is redeploying 0.2.3 (`./deploy.sh c88ce5e`).
 
 ## 5. Ship gates for 1.0.0 (Major lane)
@@ -119,9 +119,9 @@ Membership
   earlier "invite adds the GATE email exception" choice, so no GATE change).
 - Numbers: Boss 000, existing members by join order, new members type a free 3-digit number at invite time
   (design note: typed, not a grid). Reserved set for Boss. Removed numbers retired forever.
-- Nominations: 1 per month (tier-scaled), Boss approves. Delivery: copy link and optional email
+- Invites: Boss only (member nominations removed 2026-11-14). Delivery: copy link and optional email
   (click "Send email" = Boss's approval for that one email).
-- Tiers: **Ordinal / Cardinal / Prime**, promotion only by Boss. Perks: bandwidth and priority, more nominations,
+- Tiers: **Ordinal / Cardinal / Prime**, promotion only by Boss. Perks: bandwidth and priority,
   Vault theme for Cardinal and Prime (locked now, may be redesigned), tier marks (rings), seal on certificate and card.
   Prime gets its own theme (Crimson and obsidian favourite, Obsidian and platinum maybe) and partial immunity by severity.
 - Certificate: one PDF, page 1 certificate (layout A, centred; QR small in a corner), page 2 personal letter signed by Boss
@@ -137,7 +137,7 @@ UI and admin
   Luxury dark default; restrained toolbar + one menu; settings in six groups; ceremony replaces the tutorial;
   custom thin-line icons; splash shows the member's name with the number small beneath; ceremony-only sounds;
   calm error cards; engraved notice bulletin; member card on the start page; skins kept as they are.
-- Admin: invites + nominations queue, live + 30 days charts, member profiles (lineage, standing, sessions,
+- Admin: invites queue, live + 30 days charts, member profiles (lineage, standing, sessions,
   re-issue certificate), audit log viewer, search and filters. Totals only, never sites.
 - Report a problem: hostname only when ticked, timings, device class, category. Extensions: curated list + lazy load.
   Downloads panel in 1.0. HALL: discreet "by invitation" listing.
@@ -148,7 +148,7 @@ Answered by Boss on 2026-11-10 (second question round):
 2. Exit IP: **decide after measuring** (home upload test and the Workers prototype). Home IP until then.
 3. Numbers: existing members take **001 upward** by join order; reserved list **007, 100, 777** (only numbers still
    free; if join order lands an existing member on 007 they keep it).
-4. Tier perks: **1 / 2 / 3 nominations a month**, fair-share weights 1 / 1.5 / 2. The 50 / 75 / 100 Mbit/s caps were dropped after T0
+4. Tier perks (nominations removed 2026-11-14): fair-share weights 1 / 1.5 / 2. The 50 / 75 / 100 Mbit/s caps were dropped after T0
    measured about 21 Mbit/s home upload (Boss, 2026-11-10): tiers are shares of the total. A brainstorm on making the
    whole link faster comes later (with the S4 tunnel study).
 5. Rules round: done the same day; decisions in `RULES-DRAFT.md`.

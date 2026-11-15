@@ -42,11 +42,9 @@ an exception Boss added by hand in GLL ID still works, because approval goes by 
 
 3.2 **Creating an invite** (admin panel, step-up required):
 - Fields: GLL ID login name (required: the owner API approves by login name), email (optional, for sending; must end in
-  `@kmlhs.org`, other domains are refused with "Invites are for kmlhs.org accounts"), note (private), source (Boss
-  directly, or a nomination).
+  `@kmlhs.org`, other domains are refused with "Invites are for kmlhs.org accounts"), note (private). Invites are made by Boss only.
 - The gate makes a 32-byte random token, stores only its SHA-256, expiry now + 7 days, single use.
-- Output: the link `https://limitless.taps-holdings.org/auth/invite/<token>` with a Copy button, and a ready
-  formal invitation text to paste. Optional **Send email** from **gamblelimitedsupport@taps-holdings.org** (Resend;
+- Output: the link `https://limitless.taps-holdings.org/auth/invite/<token>` with a Copy button, and a free-text message box: Boss types the invitation text per person (no template). Optional **Send email** from **gamblelimitedsupport@taps-holdings.org** (Resend;
   check the domain set-up at S5): the click is Boss's approval for that one email (standing approval, invites only,
   Boss 2026-11-10). Email template in `UI.md` 6.6. No other automatic emails.
 
@@ -119,8 +117,7 @@ pages. Fixes from Boss's notes are included.
   is the rule, but QR encoding is not a few lines).
 - **US Letter**, portrait (Boss is in Chicago; A4 can be added later). Three pages:
   1. Certificate, layout A (centred classic): Orbit mark, "Limitless Browser · Gamble Limited Ltd.", "Certificate of
-     Membership", "This is to certify that", the name in script, admission text with the nominating member's number and
-     the date in words, `Nº 047 · ORDINAL`, Director signature line (left), tier seal (centre), **QR small in the bottom
+     Membership", "This is to certify that", the name in script, admission text with the date in words (no nominator line), `Nº 047 · ORDINAL`, Director signature line (left), tier seal (centre), **QR small in the bottom
      right corner** with the verification code under it (Boss's note: "make it small in the corner"). Guilloche border.
   2. Personal letter from the Director, dated, "Dear <first name>", signed "James Thiessen", with "Director of Gamble
      Limited Ltd." under the signature. The same signature block is used on page 1 and on the notices.
@@ -134,22 +131,17 @@ pages. Fixes from Boss's notes are included.
 - Re-issue (admin) voids the old code and issues a new one; removal voids it.
 - Stored: the certificate row (code, version, issued, voided). The PDF is generated on request and not stored.
 
-## 8. Nominations
-- Members nominate from Settings > Membership: GLL ID login name (and email if they know it) plus a short note
-  (up to 280 characters). Allowance per tier per calendar month (section 5); warned and suspended members cannot nominate.
-- The nomination goes to Boss's queue (admin). Approve = create an invite from it (section 3.2) with the nominator's
-  number as "invited by". Decline = closed quietly; the nominator sees "Not taken forward" with no reason.
-- The nominator sees the status of their nominations (waiting, invited, joined, not taken forward).
-- `NOMINATIONS=off` hides the feature.
+## 8. Nominations (REMOVED 2026-11-14)
+Members no longer nominate: any GLL ID can ask for Ordinal access (3.5) and then ask to buy a plan. Only Boss invites, and an
+Executive invitation is written fully custom per person. No `nominations` table, no `NOMINATIONS` flag, no allowance, no member API.
 
 ## 9. Data model (gate SQLite, `node:sqlite`, new migration)
 New tables (all timestamps ms since epoch, all with indexes on the lookup columns):
 - `members(sub PK, number UNIQUE, tier, standing, standing_until, admitted_at, invited_by_number, welcome_step,
   name_ct, name_iv, signed_at, charter_version, removed_at, purge_after)`
 - `numbers_reserved(number PK)`, `numbers_retired(number PK, retired_at)`
-- `invites(id PK, token_hash UNIQUE, login_name, email, note, nomination_id, invited_by_number, created_at, expires_at,
+- `invites(id PK, token_hash UNIQUE, login_name, email, note, invited_by_number, created_at, expires_at,
   redeemed_at, redeemed_sub, revoked_at)`
-- `nominations(id PK, nominator_sub, login_name, email, note, created_at, decided_at, decision, invite_id)`
 - `standing_events(id PK, sub, kind, article, note, until, created_at)`: kinds `warn`, `suspend`, `lift`, `remove`,
   `promote`, `demote`, `immunity_used`
 - `certificates(code PK, sub, number, tier, issued_at, superseded_at, voided_at)`
@@ -162,8 +154,7 @@ only. **The key must be backed up separately by Boss** (password manager); losin
 would re-sign). Decrypted only to render the certificate, to show the member their own name (`/_lb/me`), and to show Boss
 in admin. Never logged.
 **Retention:** name and signature kept while a member, and for 1 year after removal (`purge_after`), then deleted by the
-gate's hourly sweep; the certificate then reads VOID with no name. Standing events: membership + 1 year. Invites and
-nominations (contain a third person's email): deleted 30 days after redeemed, expired, declined or revoked. Reports:
+gate's hourly sweep; the certificate then reads VOID with no name. Standing events: membership + 1 year. Invites (contain a third person's email): deleted 30 days after redeemed, expired, declined or revoked. Reports:
 90 days. `perf_daily`: 30 days. Audit: 90 days (unchanged).
 **Privacy policy:** every row above needs a line in the Limitless privacy text (HALL legal v2, source in the vault
 `Projects/Gamble Limited/Legal Drafts/addenda/limitless-browser.md`), including that the legal name of members aged 13 to
@@ -181,10 +172,9 @@ Rehearsed on the throwaway stack with seeded mock users (never real data). The r
 
 ## 11. API (gate)
 Member-facing (session required, under `/_lb/`, gated by nginx):
-- `GET /_lb/me` -> `{number, tier, standing, standingUntil, name, admittedAt, charterVersion, nominationsLeft,
+- `GET /_lb/me` -> `{number, tier, standing, standingUntil, name, admittedAt, charterVersion,
   lineBusy, notices[]}` (name only for the member themself)
 - `GET /_lb/me/certificate.pdf?variant=screen|print`
-- `POST /_lb/nominations` `{loginName, email?, note}`; `GET /_lb/nominations` (own)
 - `POST /_lb/reports` (`ADMIN.md` 8); `POST /_lb/perf` (daily medians, opt-out honoured)
 Ceremony (`/auth/welcome*`): `GET` page, `GET number?n=`, `POST number`, `POST sign`, `POST step`.
 Admin routes: `ADMIN.md` 9.
@@ -193,7 +183,7 @@ All writes: same-origin check, JSON body, rate limited; admin writes need step-u
 ## 12. Tests (in addition to `TESTING.md`)
 Gate (vitest): number claim race (two transactions), reserved and retired refusal, invite token single use and expiry,
 wrong account after redeem, removal voids certificate and retires number, suspension lifts at end date, encryption
-round trip and wrong-key failure, purge sweep, nomination allowance per tier and month, `MEMBERSHIP=off` behaviour.
+round trip and wrong-key failure, purge sweep, `MEMBERSHIP=off` behaviour.
 Stack (rehearsal): full invite -> redeem -> sign-in -> ceremony -> certificate -> verify; existing member ceremony;
 suspend and remove while a socket is open (closed within 2 s); invite refused for a non-kmlhs.org email.
 

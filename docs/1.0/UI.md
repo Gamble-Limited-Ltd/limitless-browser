@@ -56,7 +56,7 @@ for timeouts, DNS failures, blocked ports, relay down, TLS errors.
 | Appearance | themes grid, Light/Dark/Auto, marks, tab layout, skins, wallpaper (skins only) |
 | Privacy and data | privacy toggles, ad and tracker blocking with allowlist, cache (`cache`), files and media, clear data |
 | Connection | relay status and choice, third-party relays (`fallback`), parallel requests, sockets, multi-relay, data saver |
-| Membership | name then number, tier, standing, certificate (download, code), nominations, charter version and link to the Rules |
+| Membership | name then number, tier, standing, certificate (download, code), charter version and link to the Rules |
 | About | version, What's new, source and licences (AGPL source link stays), legal links, Admin panel link (owner only) |
 - Opens on General (today it opens on Skins). The tutorial section is removed (ceremony tour replaces it).
 - Each moved control keeps its storage key; only the markup moves.

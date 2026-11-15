@@ -3,7 +3,7 @@
 Slice S7 (wave 4). Extends `limitless://admin` (0.2.0, `ACCESS-CONTROL.md` 11). Unchanged rules: owner only
 (`OWNER_SUB`), every write needs step-up (login name + password, 10 minutes), same-origin JSON, all data rendered with
 `textContent`, `ADMIN_PANEL=off` kills every route. **Totals only: the panel never shows which sites anyone visits.**
-All picks in the artifact were favourites: members and profile, invites and nominations, live and 30 days, health hops.
+All picks in the artifact were favourites: members and profile, invites, live and 30 days, health hops.
 
 ## 1. Layout
 Sections become: Members, Queue, Usage, Health, Notices, Reports, Audit, Switches. Desktop: list on the left, detail on
@@ -30,12 +30,11 @@ the right (as in the artifact). Below 1100 px the detail opens over the list. Fi
 - Every action writes `admin_audit` (time, action, account id; never names or destinations) and a `standing_events` row
   where it applies.
 
-## 4. Queue (invites and nominations)
-- "Create invite": login name, email (optional, kmlhs.org only), note. Shows the link, Copy, the formal text to paste,
+## 4. Queue (invites)
+- "Create invite": login name, email (optional, kmlhs.org only), note. Shows the link, Copy, a free-text message box (Boss types the text per invite, no template),
   and Send email from gamblelimitedsupport@taps-holdings.org (optional, the click is Boss's approval for that email).
   Non-kmlhs.org emails are refused (`MEMBERSHIP.md` 3.1).
 - Open invites: created, expires, opened or not, Copy link, Revoke.
-- Nominations: from (number), for (login name / email), note, Approve (creates the invite) or Decline (quiet).
 - History: redeemed invites with the resulting number.
 
 ## 5. Usage (live and 30 days)
@@ -62,13 +61,12 @@ up to 200 characters.
 
 ## 9. API additions (gate, under `/_lb/admin/api/`, owner only)
 `GET members?filter=&q=`, `GET members/:sub`, `POST members/:sub/{tier,warn,suspend,lift,remove,number,reissue,signout}`,
-`GET invites`, `POST invites`, `POST invites/:id/{revoke,email}`, `GET nominations`, `POST nominations/:id/{approve,decline}`,
+`GET invites`, `POST invites`, `POST invites/:id/{revoke,email}`,
 `GET usage/live`, `GET usage/30d`, `GET perf`, `GET hops`, `GET/POST/DELETE notices`, `GET reports`, `POST reports/:id/done`,
 `GET audit` (exists; the 1.0 panel adds the viewer with filters by action and date), `GET/POST reserved`.
 
 ## 10. Tests
 `tests/e2e/admin.spec.js` extended (mocked routes, all themes, 1366x768 and 2560x1440 screenshots);
-`tests/stack/admin.spec.js` extended (warn, suspend with an open socket, remove, invite create and revoke, nomination
-approve, sign out everywhere, step-up required on each write, non-owner gets 404 on every new route).
+`tests/stack/admin.spec.js` extended (warn, suspend with an open socket, remove, invite create and revoke, sign out everywhere, step-up required on each write, non-owner gets 404 on every new route).
 
 Last verified: 2026-11-10

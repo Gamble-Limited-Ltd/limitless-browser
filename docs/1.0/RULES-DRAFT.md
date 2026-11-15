@@ -25,7 +25,6 @@ step 3 only).
 - **Removal notice names the Article** that was broken. Certificate void, number retired.
 - **Appeals:** one written appeal per decision, by email to gamblelimitedsupport@taps-holdings.org with "APPEAL" at the
   start of the subject, within 14 days. The Director's decision on the appeal is final.
-- **Nominators** do not answer for their invitees (no consequence).
 - **Prime immunity** as proposed (section 4).
 - **Under 18:** no extra wording (members are 13 or older, the GLL ID rule).
 - **Governing law and venue:** the same clause as the HALL legal v2 Terms, referenced, so the documents never disagree.
@@ -49,7 +48,7 @@ Member shall not attack, scan or overload the relay, and shall not attempt to by
 
 **Article V. Security.** The Member shall report any security problem privately to the Director and shall not exploit it.
 
-**Article VI. Nominations.** The Member shall nominate only people they know personally.
+**Article VI. Reserved.** (Nominations were removed on 2026-11-14. The number is kept so later Articles do not move.)
 
 **Article VII. Certificates.** The certificate is personal. Only Prime Members and the Director may show a certificate.
 
@@ -77,7 +76,7 @@ Article applied.
 3. Confidentiality (scope, what is allowed, AGPL carve-out).
 4. Accounts.
 5. Acceptable use (with the examples from section 3).
-6. Nominations (allowance by tier: 1 / 2 / 3 a month; the Director's discretion; no reasons for declines).
+6. Access and invitations (any GLL ID may ask for access; the Director may decline without a reason; only the Director invites).
 7. Tiers (Ordinal, Cardinal, Prime; perks; promotion only by the Director).
 8. Enforcement (severity table, steps, suspension lengths, what a suspended member sees, removal effects, number
    retirement, Prime immunity).
