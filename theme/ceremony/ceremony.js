@@ -1,5 +1,5 @@
 /* Welcome ceremony (docs/1.0/UI.md 6.1, MEMBERSHIP.md 6). Display only: the gate decides every state. All dynamic text uses textContent.
- * Gate contract used here: GET /auth/welcome/state (JSON, NOT built in the gate yet: see UI.md 10), GET /auth/welcome/number?n=,
+ * Gate contract used here: GET /auth/welcome/state (JSON, built in the gate for S6; 401 {to} when signed out), GET /auth/welcome/number?n=,
  * POST /auth/welcome/number (form n), POST /auth/welcome/sign (form name, agree), POST /auth/welcome/step (form step). */
 (function () {
     'use strict';
@@ -19,7 +19,7 @@
     function show(n) { step = n; paintDots(); root.textContent = ''; root.style.animation = 'none'; void root.offsetWidth; root.style.animation = ''; STEPFN[n](); root.focus(); }
     function btn(label, fn, cls) { var b = el('button', cls || '', label); b.type = 'button'; b.addEventListener('click', fn); return b; }
     function pad(n) { return String(n).padStart(4, '0'); }
-    function load() { return fetch('/auth/welcome/state', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('state'); return r.json(); }).then(function (j) { S = j; return j; }); }
+    function load() { return fetch('/auth/welcome/state', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { if (r.status === 401) return r.json().then(function (j) { if (j.to) location.href = j.to; throw new Error('signin'); }); if (!r.ok) throw new Error('state'); return r.json(); }).then(function (j) { S = j; return j; }); }
 
     var STEPFN = {
         1: function () {
@@ -111,7 +111,7 @@
     }
     load().then(function () {
         // Resume where the gate says we are: no number -> step 1 or 2, unsigned -> 3, signed -> 4 (the reveal) unless the gate has recorded a later step.
-        var start = !S.number ? (S.step >= 1 ? 2 : 1) : !S.signed ? (S.step >= 1 ? 3 : 1) : Math.max(4, Math.min(6, S.step + 1 || 4));
+        var start = !S.number ? (S.step >= 1 ? 2 : 1) : !S.signed ? (S.step >= 1 ? 3 : 1) : Math.max(4, Math.min(6, S.step || 4));
         show(start);
     }).catch(function () { root.append(el('h1', null, 'We could not load this page'), el('p', null, 'Reload the page to try again.')); });
 })();

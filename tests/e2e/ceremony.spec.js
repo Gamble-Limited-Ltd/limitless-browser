@@ -53,7 +53,7 @@ test('six steps for a new Ordinal member: welcome, number, charter and name, rev
 });
 
 test('Cardinal and above see the certificate with the Director and the PDF links', async ({ page }) => {
-  await gate(page, { ...NEW, kind: 'invited', number: '0101', signed: true, step: 3, tier: 'prime', name: 'Alex Morgan', certificateCode: 'ABCD-1234' });
+  await gate(page, { ...NEW, kind: 'invited', number: '0101', signed: true, step: 4, tier: 'prime', name: 'Alex Morgan', certificateCode: 'ABCD-1234' });
   await go(page);
   await expect(page.locator('.reveal svg text')).toHaveText('Nº 0101');
   await page.getByRole('button', { name: 'Continue' }).click();
@@ -79,7 +79,7 @@ test('progress resumes: a reload returns to the step the gate has recorded', asy
 });
 
 test('the name is shown with textContent (no markup injection) and the end opens the app', async ({ page }) => {
-  const calls = await gate(page, { ...NEW, number: '0047', signed: true, step: 5, tier: 'ordinal', name: '<img src=x onerror=alert(1)>' });
+  const calls = await gate(page, { ...NEW, number: '0047', signed: true, step: 6, tier: 'ordinal', name: '<img src=x onerror=alert(1)>' });
   await go(page);
   await expect(page.locator('h1')).toHaveText('Three things to know');
   expect(await page.locator('img').count()).toBe(0);
@@ -92,7 +92,14 @@ test('the name is shown with textContent (no markup injection) and the end opens
 
 test('reduced motion: the reveal shows at once', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await gate(page, { ...NEW, number: '0047', signed: true, step: 3 });
+  await gate(page, { ...NEW, number: '0047', signed: true, step: 4 });
   await go(page);
   expect(await page.locator('.reveal svg text').evaluate((t) => getComputedStyle(t).fillOpacity)).toBe('1');
+});
+
+test('signed out: the state route answers 401 with the sign-in target and the page goes there', async ({ page }) => {
+  await page.route('**/auth/signin', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>signin</title>' }));
+  await page.route('**/auth/welcome/state', (r) => r.fulfill({ status: 401, json: { error: 'redirect', to: '/auth/signin' } }));
+  await go(page);
+  await expect(page).toHaveTitle('signin');
 });

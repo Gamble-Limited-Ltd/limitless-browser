@@ -83,16 +83,19 @@ test('Executive invite, redeem, sign-in, ceremony, certificate, public verify, s
   const bob = await signIn(browser, 'bob');
   expect((await bob.req.get('/_lb/me', { maxRedirects: 0 })).status()).not.toBe(200); // held by nginx at the ceremony
   await bob.page.goto('/auth/welcome');
-  await expect(bob.page.getByRole('heading', { name: 'Choose your number.' })).toBeVisible();
+  await expect(bob.page.getByRole('heading', { name: 'Welcome', exact: true })).toBeVisible(); // the designed page (S6), invited kind
+  expect(await (await bob.req.get('/auth/welcome/state')).json()).toMatchObject({ kind: 'invited', tier: 'executive', number: null, signed: false });
+  await bob.page.getByRole('button', { name: 'Begin' }).click();
+  await expect(bob.page.getByRole('heading', { name: 'Choose your number' })).toBeVisible();
   expect((await bob.req.post('/_lb/relay-token', { headers: { origin: BASE } })).status()).toBe(403);
 
   // Ceremony: number (Executive block 0010-0099), then sign the Charter.
   expect((await form(bob.req, '/auth/welcome/number', { n: '0042' })).status()).toBe(303);
   await bob.page.goto('/auth/welcome');
-  await expect(bob.page.getByRole('heading', { name: 'Sign the Charter.' })).toBeVisible();
+  await expect(bob.page.getByRole('heading', { name: 'Sign the Charter' })).toBeVisible();
   expect((await form(bob.req, '/auth/welcome/sign', { name: 'Robert Example', agree: 'on' })).status()).toBe(303);
   await bob.page.goto('/auth/welcome');
-  await expect(bob.page.getByRole('heading', { name: 'Welcome to Limitless.' })).toBeVisible();
+  await expect(bob.page.locator('.reveal svg text')).toHaveText('Nº 0042');
   expect((await bob.req.get('/_lb/me')).status()).toBe(200);
 
   // Certificate PDF for the member; /_lb/me names the code.
