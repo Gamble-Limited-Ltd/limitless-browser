@@ -330,6 +330,59 @@
                 m.querySelector('#lbRelayYes').onclick = () => { try { ls.setItem(LB_RELAY_FALLBACK_KEY, '1'); } catch (_) {} location.reload(); };
                 m.querySelector('#lbRelayYes').focus();
             }
+            // First-load notice (0.3.0, once per device): plain words about public relays. Reuses the relay notice look and the
+            // #lbRelayNo id, so every existing "dismiss the relay notice" step also dismisses this one.
+            const LB_PUBLIC_NOTICE_KEY = 'limitless:notice-publicrelays:v1';
+            function LB_showPublicRelaysNotice() {
+                try { if (ls.getItem(LB_PUBLIC_NOTICE_KEY) === '1') return; } catch (_) {}
+                if (document.getElementById('lbRelayNotice') || !document.body) return;
+                const m = document.createElement('div');
+                m.className = 'lb-notice-wrap'; m.id = 'lbRelayNotice';
+                m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lbRelayHead');
+                m.innerHTML = '<div class="lb-notice"><span class="lb-tag">Public relays</span>' +
+                    '<h3 id="lbRelayHead">Browsing now goes through public relays.</h3>' +
+                    '<p>They are run by other operators, who can see connection metadata such as which sites you connect to. This stays until Limitless 1.0 brings its own relay.</p>' +
+                    '<div class="lb-notice-btns"><button type="button" class="lb-btn p" id="lbRelayNo">Got it</button></div></div>';
+                document.body.appendChild(m);
+                const close = () => { try { ls.setItem(LB_PUBLIC_NOTICE_KEY, '1'); } catch (_) {} m.remove(); document.removeEventListener('keydown', onKey, true); };
+                const onKey = (e) => { if (e.key === 'Escape') close(); };
+                document.addEventListener('keydown', onKey, true);
+                m.querySelector('#lbRelayNo').onclick = close;
+                m.querySelector('#lbRelayNo').focus();
+            }
+            // All public relays down: a small calm card, retried by itself with a growing wait (10 s, doubling, at most 5 min).
+            // Reads the health the pool benchmark leaves in wispHealth; starts only after the boot access check passed.
+            function LB_watchRelays() {
+                let delay = window.LB_RELAY_RETRY_MS || 10000;
+                const allDown = () => { const p = getWispPool(); return p.length > 0 && p.every((u) => wispHealth[u] && wispHealth[u].healthy === false); };
+                const paint = (down) => {
+                    let el = document.getElementById('lbRelaysDown');
+                    if (!down) { if (el) el.remove(); return; }
+                    if (el) return;
+                    const mainEl = document.querySelector('main');
+                    if (!mainEl || !mainEl.parentNode) return;
+                    el = document.createElement('div');
+                    el.className = 'lb-ub show'; el.id = 'lbRelaysDown'; el.setAttribute('role', 'status');
+                    const dot = document.createElement('i'); dot.className = 'lb-ub-dot';
+                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg';
+                    msg.append('The public relays are not answering right now. Limitless keeps trying. ');
+                    const a = document.createElement('a'); a.href = 'https://status.taps-holdings.org'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Status page';
+                    msg.append(a);
+                    el.append(dot, msg);
+                    mainEl.parentNode.insertBefore(el, mainEl);
+                };
+                const tick = async () => {
+                    const down = allDown();
+                    paint(down);
+                    if (!down) return;
+                    await new Promise((r) => setTimeout(r, delay));
+                    delay = Math.min(delay * 2, 300000);
+                    try { await benchmarkWispPool(); rememberFastestRelay(); } catch (_) {}
+                    tick();
+                };
+                tick();
+            }
+            window.LB_watchRelays = LB_watchRelays;
             // Called once, after version.json answered and before the libcurl session starts (init). Idempotent.
             function LB_applyRelayMode(f) {
                 LB_ownRelay = !!(f && f.ownRelay === true);
@@ -343,6 +396,7 @@
                         if (ms == null && !LB_fallbackAllowed) LB_showRelayNotice();
                     }, () => {});
                 }
+                if (!LB_ownRelay && window.LB_access === 'ok') LB_showPublicRelaysNotice();
                 LB_paintRelaySwitch();
                 if (typeof LB_paintMultiRelay === 'function') LB_paintMultiRelay();
             }
@@ -12183,7 +12237,7 @@ _VIEWER_DL_JS +
                     // 0.3.0 (our relay off): public relays are the only path, so a 25 s hold would delay every start. The benchmark runs
                     // behind the first page instead; pickPoolWisp ranks on whatever health data exists by then.
                     if (!LB_ownRelay && poolModeOn() && typeof curl !== 'undefined' && curl) {
-                        benchmarkWispPool().then(() => { try { rememberFastestRelay(); } catch (e) {} }, () => {});
+                        benchmarkWispPool().then(() => { try { rememberFastestRelay(); } catch (e) {} LB_watchRelays(); }, () => {});
                     } else if (poolModeOn() && LB_fallbackAllowed && typeof curl !== 'undefined' && curl) {
                         try {
                             showBootBenchmark();

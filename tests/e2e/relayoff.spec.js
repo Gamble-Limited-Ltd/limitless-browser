@@ -46,3 +46,55 @@ test('ownRelay true restores our relay: probe, candidate, the fallback key count
   expect(r.ws.some((u) => u.includes('127.0.0.1') && u.includes('/wisp/'))).toBe(true);
   expect(r.label).toBe('Allow third-party relays');
 });
+
+test.describe('public relay copy', () => {
+  test('first load: the public relays notice shows once, plain words, then never again on this device', async ({ page }) => {
+    await noVersion(page);
+    await page.addInitScript(() => { try { localStorage.setItem('limitless:inst:v1', 'gi_n'); } catch (_) {} });
+    await page.goto('/index.html');
+    const notice = page.locator('#lbRelayNotice');
+    await expect(notice).toBeVisible({ timeout: 30000 });
+    await expect(notice).toContainText('run by other operators');
+    await expect(notice).toContainText('connection metadata');
+    await expect(notice).toContainText('until Limitless 1.0 brings its own relay');
+    await page.locator('#lbRelayNo').click();
+    await expect(notice).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('gi_n:limitless:notice-publicrelays:v1'))).toBe('1');
+    await page.reload();
+    await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(1500);
+    await expect(notice).toHaveCount(0);
+  });
+
+  test('with our relay on there is no public relays notice', async ({ page }) => {
+    await own(page, true);
+    await boot(page, { features: null });
+    await page.waitForTimeout(1000);
+    expect(await page.evaluate(() => /Public relays/.test((document.getElementById('lbRelayNotice') || {}).textContent || ''))).toBe(false);
+  });
+});
+
+test('all public relays down: a small card with the status link, retried by itself, gone when a relay answers', async ({ page }) => {
+  await noVersion(page);
+  const init = () => {
+    window.LB_RELAY_RETRY_MS = 300;
+    window.__relaysUp = false;
+    const W = window.WebSocket;
+    window.WebSocket = class extends EventTarget {
+      constructor(u, p) {
+        if (!String(u).startsWith('wss://')) return new W(u, p);
+        super(); this.url = u; this.readyState = 0;
+        setTimeout(() => { if (window.__relaysUp) { this.readyState = 1; this.onopen && this.onopen({}); } else { this.onerror && this.onerror({}); } }, 20);
+      }
+      close() { this.readyState = 3; }
+      send() {}
+    };
+  };
+  await boot(page, { features: null, init });
+  const card = page.locator('#lbRelaysDown');
+  await expect(card).toBeVisible({ timeout: 40000 });
+  await expect(card).toContainText('not answering');
+  await expect(card.locator('a')).toHaveAttribute('href', 'https://status.taps-holdings.org');
+  await page.evaluate(() => { window.__relaysUp = true; });
+  await expect(card).toHaveCount(0, { timeout: 40000 });
+});
