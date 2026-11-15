@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { menuItem } = require('./helpers');
 
 const KEY = 'limitless:theme:v1';
 const THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'];
@@ -123,13 +124,13 @@ test.describe('light system', () => {
 test('theme drawer opens from the toolbar, switches theme, closes on Escape and outside click', async ({ page }) => {
   const errors = await boot(page);
   const drawer = page.locator('#lbThemeDrawer');
-  await page.locator('#lbThemeBtn').click({ force: true });
+  await menuItem(page, 'theme');
   await expect(drawer).toBeVisible();
   await drawer.locator('.lb-drow[data-theme="soft"]').click();
   expect((await attrs(page)).theme).toBe('soft');
   await page.keyboard.press('Escape');
   await expect(drawer).toBeHidden();
-  await page.locator('#lbThemeBtn').click({ force: true });
+  await menuItem(page, 'theme');
   await expect(drawer).toBeVisible();
   await page.mouse.click(300, 400);
   await expect(drawer).toBeHidden();
