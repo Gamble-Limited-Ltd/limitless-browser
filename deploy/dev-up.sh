@@ -9,11 +9,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 case "${DEV_ALLOW:-0}" in unavailable) export LB_STUB_CHECK=401 LB_STUB_REASON=unavailable;; 1) export LB_STUB_CHECK=200;; 403) export LB_STUB_CHECK=403;; *) export LB_STUB_CHECK=401;; esac
 ../scripts/build-static.sh "dev-$(git -C .. rev-parse --short HEAD 2>/dev/null || echo local)"
-docker compose -p limitless-browser -f docker-compose.yml -f docker-compose.dev.yml build web
+docker compose -p limitless-browser --profile relay -f docker-compose.yml -f docker-compose.dev.yml build web
 if [ "${DEV_WITH_RELAY:-0}" = 1 ]; then
-  docker compose -p limitless-browser -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate web lbgate relay
+  docker compose -p limitless-browser --profile relay -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate web lbgate relay
 else
   # Relay is skipped by default (slow first build); the stub gate has no /wisp/.
-  docker compose -p limitless-browser -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate --no-deps web lbgate
+  docker compose -p limitless-browser --profile relay -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate --no-deps web lbgate
 fi
 echo "dev stack up on http://127.0.0.1:8580 (stub gate check = $LB_STUB_CHECK)"
