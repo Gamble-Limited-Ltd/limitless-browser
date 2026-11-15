@@ -8458,6 +8458,7 @@ window._libcurlReady = true;
         var toast = el('div', 'lb-adm-toast'); toast.setAttribute('role', 'status'); toast.setAttribute('aria-live', 'polite');
         var secUsers = el('section', 'lb-adm-card'), secUsage = el('section', 'lb-adm-card'),
             secSw = el('section', 'lb-adm-card'), secHealth = el('section', 'lb-adm-card');
+        secUsers.id = 'lbAdmUsers'; secUsage.id = 'lbAdmUsage'; secSw.id = 'lbAdmSwitches'; secHealth.id = 'lbAdmHealth';
         var top = el('div', 'lb-adm-top');
         var heading = el('div'); heading.appendChild(el('h1', '', 'Admin'));
         var sub = el('p', 'lb-adm-sub', ''); heading.appendChild(sub);
@@ -8493,11 +8494,11 @@ window._libcurlReady = true;
             return { status: r.status, json: j || {} };
         }
         // A write that answers 403 stepup opens the password dialog once, then retries.
-        async function write(path, body) {
-            var r = await api('POST', path, body);
+        async function write(path, body, method) {
+            var r = await api(method || 'POST', path, body);
             if (r.status === 403 && r.json.error === 'stepup') {
                 if (!(await askStepUp())) return r;
-                r = await api('POST', path, body);
+                r = await api(method || 'POST', path, body);
             }
             return r;
         }
@@ -8743,6 +8744,7 @@ window._libcurlReady = true;
             function kv(k, v, cls) { var dd = el('dd'); dd.appendChild(el('span', cls ? 'lb-adm-chip ' + cls : '', v)); dl.append(el('dt', '', k), dd); }
             var ownRelay = !(window.LB_features && window.LB_features.ownRelay === false);   // 0.3.0: no relay of our own, nothing to be "down"
             if (ownRelay) kv(h.relay.vps ? 'Relay (VPS)' : 'Relay', h.relay.ok ? (h.relay.busy ? 'Up, busy' : 'Up') : 'Down', h.relay.ok ? 'ok' : 'err'); else kv('Relay', 'Public relays', '');
+            if (ownRelay && h.relay.vps && h.relay.linkAgeSec !== null && h.relay.linkAgeSec !== undefined) kv('VPS link', h.relay.linkAgeSec + ' s since the last poll', h.relay.linkAgeSec < 10 ? 'ok' : 'err');
             kv('GLL ID', h.gateId.ok ? 'Reachable' : 'Not reachable', h.gateId.ok ? 'ok' : 'err');
             dl.append(el('dt', '', 'Live now'), el('dd', '', h.live.users + (h.live.users === 1 ? ' user' : ' users') + (ownRelay ? ', ' + h.live.sockets + ' connections, ' + h.live.streams + ' streams' : '')));
             dl.append(el('dt', '', 'Version'), el('dd', '', h.version));
@@ -8758,10 +8760,385 @@ window._libcurlReady = true;
             }
         }
 
+        // ================= S7 sections (ADMIN.md): members, invites, charts, hops, plans, notices, reports, audit =================
+        // Totals only: nothing here shows which sites anyone visits (a report shows a domain only when the member chose to send it).
+        var secMembers = el('section', 'lb-adm-card'), secInvites = el('section', 'lb-adm-card'), secCharts = el('section', 'lb-adm-card'),
+            secHops = el('section', 'lb-adm-card'), secPlans = el('section', 'lb-adm-card'), secNotices = el('section', 'lb-adm-card'),
+            secReports = el('section', 'lb-adm-card'), secAudit = el('section', 'lb-adm-card');
+        [secMembers, secInvites, secCharts, secHops, secPlans, secNotices, secReports, secAudit].forEach(function (c, i) { c.id = 'lbAdm' + ['Members', 'Invites', 'Charts', 'Hops', 'Plans', 'Notices', 'Reports', 'Audit'][i]; });
+        var X = { members: null, filter: 'all', q: '', sel: null, profile: null, invites: null, newInvite: null, plans: null, live: null, d30: null, hops: null, notices: null, noticeEdit: null, reports: null, repCat: '', audit: null, auditAction: '', auditFrom: '', auditTo: '', off: false };
+        var TIER_NAMES = { ordinal: 'Ordinal', cardinal: 'Cardinal', prime: 'Prime', executive: 'Executive' };
+        var X_ERR = { number_required: 'That plan needs a member number first.', kmlhs_only: 'Invites are for kmlhs.org accounts.', owner: 'That is not allowed for the owner account.' };
+        function xerr(r) { return (r && r.json && X_ERR[r.json.error]) || (r && r.json && typeof r.json.error === 'string' && /^[a-z_]{3,40}$/.test(r.json.error) && !ERR[r.json.error] ? r.json.error.replace(/_/g, ' ') + '.' : errText(r)); }
+        function when(ms) { return ms ? new Date(ms).toISOString().slice(0, 16).replace('T', ' ') : ''; }
+        function num(v) { return v === null || v === undefined ? '' : String(v); }
+        function mkField(label, name, type, val, ph, w) { var l = el('label', '', label), i = el('input'); i.name = name; i.type = type; if (type === 'number') { i.min = '0'; i.step = 'any'; } if (val !== null && val !== undefined && val !== '') i.value = val; if (ph) i.placeholder = ph; if (w) i.style.width = w; l.appendChild(i); return l; }
+        function selField(label, name, opts, val) { var l = el('label', '', label), s = el('select'); s.name = name; opts.forEach(function (o) { var op = el('option', '', o[1]); op.value = o[0]; if (o[0] === val) op.selected = true; s.appendChild(op); }); l.appendChild(s); return l; }
+        async function xload(path) { var r = await api('GET', path); if (r.status === 404 && /^membership\//.test(path)) X.off = true; return r; }
+        async function xdo(path, body, okMsg, reload) {
+            var r = await write(path, body);
+            if (r.status === 200) { if (okMsg) say(okMsg); if (reload) await reload(); return r; }
+            say(xerr(r), true); return r;
+        }
+
+        // ---- inline SVG charts, no library; colours come from theme tokens through CSS classes ----
+        var NS = 'http://www.w3.org/2000/svg';
+        function svg(tag, attrs) { var e = document.createElementNS(NS, tag); Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); }); return e; }
+        function barChart(label, items, fmt) {
+            // items: [{k: x label, v: number}]
+            var W = 640, H = 150, P = 6, max = 0, wrap = el('figure', 'lb-adm-chart');
+            items.forEach(function (it) { if (it.v > max) max = it.v; });
+            var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + (H + 18), role: 'img', 'aria-label': label + (items.length ? '' : ': no data') });
+            s.setAttribute('class', 'lb-adm-svg');
+            var bw = items.length ? (W - P * 2) / items.length : 0;
+            items.forEach(function (it, i) {
+                var h = max > 0 ? Math.max(it.v > 0 ? 2 : 0, Math.round(it.v / max * (H - 10))) : 0;
+                var r = svg('rect', { x: String(P + i * bw + 1), y: String(H - h), width: String(Math.max(1, bw - 2)), height: String(h), 'class': 'lb-adm-bar' });
+                var t = svg('title'); t.textContent = it.k + ': ' + fmt(it.v); r.appendChild(t);
+                s.appendChild(r);
+            });
+            s.appendChild(svg('line', { x1: '0', x2: String(W), y1: String(H), y2: String(H), 'class': 'lb-adm-axis' }));
+            if (items.length) {
+                var a = svg('text', { x: '2', y: String(H + 14), 'class': 'lb-adm-axt' }); a.textContent = items[0].k; s.appendChild(a);
+                var b = svg('text', { x: String(W - 2), y: String(H + 14), 'text-anchor': 'end', 'class': 'lb-adm-axt' }); b.textContent = items[items.length - 1].k + '  (max ' + fmt(max) + ')'; s.appendChild(b);
+            }
+            var cap = el('figcaption', '', label);
+            wrap.append(cap, s);
+            return wrap;
+        }
+
+        // ---- members ----
+        var FILTERS = [['all', 'All'], ['prime', 'Prime'], ['cardinal', 'Cardinal'], ['ordinal', 'Ordinal'], ['executive', 'Executive'], ['warned', 'Warned or suspended'], ['removed', 'Removed'], ['ceremony', 'Ceremony not done']];
+        async function loadMembers() {
+            var r = await xload('membership/members?filter=' + encodeURIComponent(X.filter) + '&q=' + encodeURIComponent(X.q));
+            if (r.status === 200) { X.members = r.json.members; X.off = false; }
+            renderMembers();
+        }
+        async function loadProfile(sub) {
+            X.sel = sub; X.profile = null; renderMembers();
+            var r = await xload('membership/members/' + encodeURIComponent(sub));
+            if (r.status === 200 && X.sel === sub) { X.profile = r.json; }
+            renderMembers();
+        }
+        function renderMembers() {
+            head(secMembers, 'Members', 'Search by number, name or login name. Names are shown to you only.');
+            if (X.off) { secMembers.appendChild(el('p', 'lb-adm-note', 'Membership is off on this server, so there is no member list.')); return; }
+            var f = el('form', 'lb-adm-form'); f.id = 'lbAdmMemberSearch';
+            var qi = el('input'); qi.type = 'search'; qi.placeholder = 'Search'; qi.value = X.q; qi.id = 'lbAdmMemberQ'; qi.setAttribute('aria-label', 'Search members'); qi.maxLength = 80;
+            f.appendChild(qi);
+            f.addEventListener('submit', function (e) { e.preventDefault(); X.q = qi.value.trim(); loadMembers(); });
+            secMembers.appendChild(f);
+            var chips = el('div', 'lb-adm-chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Filter members');
+            FILTERS.forEach(function (c) {
+                var b = btn(c[1], X.filter === c[0] ? 'pri' : '', function () { X.filter = c[0]; loadMembers(); });
+                b.setAttribute('aria-pressed', X.filter === c[0] ? 'true' : 'false'); b.dataset.filter = c[0]; chips.appendChild(b);
+            });
+            secMembers.appendChild(chips);
+            if (!X.members) { secMembers.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var t = table(['Number', 'Name', 'Plan', 'Standing', 'Last seen']);
+            X.members.forEach(function (m) {
+                var tr = el('tr', X.sel === m.sub ? 'lb-adm-sel' : ''), nm = el('td', 'lb-adm-num', m.number || 'None');
+                var link = el('td', 'lb-adm-name');
+                var who = m.name || m.loginName || ('Account ' + String(m.sub).slice(0, 8));
+                var b = el('button', 'lb-adm-link', who); b.type = 'button'; b.addEventListener('click', function () { loadProfile(m.sub); }); link.appendChild(b);
+                if (!m.signed && m.standing !== 'removed') link.appendChild(el('span', 'lb-adm-chip', 'Ceremony not done'));
+                var st = el('td'); st.appendChild(el('span', 'lb-adm-chip' + (m.standing === 'good' ? ' ok' : m.standing === 'warned' ? '' : ' err'), m.standing));
+                tr.append(nm, link, el('td', '', TIER_NAMES[m.plan] || m.plan), st, el('td', '', ago(m.lastSeen)));
+                t.body.appendChild(tr);
+            });
+            if (!X.members.length) secMembers.appendChild(el('p', 'lb-adm-note', 'No members match.')); else secMembers.appendChild(t.wrap);
+            if (X.sel) renderProfile();
+        }
+        function renderProfile() {
+            var p = X.profile, box = el('div', 'lb-adm-profile'); box.id = 'lbAdmProfile';
+            secMembers.appendChild(box);
+            if (!p) { box.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var m = p.member, sub = m.sub;
+            var h = el('div', 'lb-adm-phead'); h.append(el('span', 'lb-adm-bignum', m.number || 'No number'), el('b', '', p.name || p.loginName || 'Account ' + sub.slice(0, 8)), el('span', 'lb-adm-chip', (TIER_NAMES[m.plan] || m.plan) + (m.tier !== m.plan ? ' (was ' + (TIER_NAMES[m.tier] || m.tier) + ')' : '')), el('span', 'lb-adm-chip' + (m.standing === 'good' ? ' ok' : ' err'), m.standing));
+            var cl = btn('Close', '', function () { X.sel = null; X.profile = null; renderMembers(); }); h.appendChild(cl);
+            box.appendChild(h);
+            var dl = el('dl');
+            dl.append(el('dt', '', 'Login name'), el('dd', '', p.loginName || 'Not known'));
+            dl.append(el('dt', '', 'Admitted'), el('dd', '', when(m.admittedAt)));
+            dl.append(el('dt', '', 'Charter'), el('dd', '', m.charterVersion ? m.charterVersion + (m.signedAt ? ', signed ' + when(m.signedAt) : '') : 'Not signed'));
+            dl.append(el('dt', '', 'Paid until'), el('dd', '', m.paidUntil ? when(m.paidUntil).slice(0, 10) : 'None'));
+            dl.append(el('dt', '', 'Certificate'), el('dd', '', p.certificateCode || 'None'));
+            dl.append(el('dt', '', 'Now'), el('dd', '', p.usage.sockets + ' connections, ' + p.usage.streams + ' streams'));
+            var tot = (p.usage.days || []).reduce(function (a, d) { return a + d.bytes; }, 0);
+            dl.append(el('dt', '', 'Last 30 days'), el('dd', '', fmtBytes(tot) + ' over ' + (p.usage.days || []).length + ' days'));
+            box.appendChild(dl);
+            box.appendChild(el('h3', '', 'Standing history'));
+            if (!p.events.length) box.appendChild(el('p', 'lb-adm-note', 'Nothing yet.'));
+            else { var ul = el('ul', 'lb-adm-list'); p.events.forEach(function (e) { ul.appendChild(el('li', '', when(e.created_at) + ' ' + e.kind + (e.article ? ' (' + e.article + ')' : '') + (e.note ? ': ' + e.note : ''))); }); box.appendChild(ul); }
+            box.appendChild(el('h3', '', 'Sessions'));
+            box.appendChild(el('p', 'lb-adm-note', p.sessions.length ? p.sessions.map(function (s) { return 'Started ' + when(s.createdAt) + ', last active ' + ago(s.lastActive); }).join('; ') : 'No active sessions.'));
+            box.appendChild(el('h3', '', 'Plan and purchases'));
+            box.appendChild(el('p', 'lb-adm-note', p.receipts.length ? p.receipts.length + ' on record: ' + p.receipts.map(function (r) { return (r.kind || '') + ' ' + (r.tier || '') + (r.amount !== null && r.amount !== undefined ? ' $' + r.amount : '') + (r.voided_at ? ' (void)' : ''); }).join('; ') : 'No purchases.'));
+            // actions (every write goes through write(), which keeps the step-up flow)
+            async function await0() { await loadMembers(); if (X.sel === sub) await loadProfile(sub); }
+            var af = el('form', 'lb-adm-form'); af.id = 'lbAdmActions';
+            var art = mkField('Article', 'article', 'text', '', 'e.g. 4.2', '90px'), note = mkField('Note', 'note', 'text', '', 'Reason', '220px');
+            af.append(art, note);
+            function sb() { return { sub: sub, article: art.querySelector('input').value.trim() || null, note: note.querySelector('input').value.trim() || null }; }
+            var days = selField('Suspend for', 'days', [['7', '7 days'], ['14', '14 days'], ['30', '30 days'], ['0', 'Indefinitely']], '7');
+            af.appendChild(days);
+            var acts = el('div', 'lb-adm-act lb-adm-left');
+            acts.append(
+                btn('Warn', '', function () { var b = sb(); b.action = 'warn'; xdo('membership/standing', b, 'Warned.', await0); }),
+                btn('Suspend', 'danger', function () { var b = sb(), d = Number(days.querySelector('select').value); b.action = 'suspend'; b.until = d ? Date.now() + d * 86400000 : null; xdo('membership/standing', b, 'Suspended. Their connections are closed.', await0); }),
+                btn('Lift suspension', '', function () { var b = sb(); b.action = 'lift'; xdo('membership/standing', b, 'Standing restored.', await0); }),
+                arm2('Remove', 'Confirm remove', 'danger', function () { var b = sb(); b.action = 'remove'; xdo('membership/standing', b, 'Removed. The number is retired.', await0); }),
+                btn('Sign out everywhere', '', function () { xdo('membership/signout', { sub: sub }, 'Signed out everywhere. Access is unchanged.', await0); }),
+                btn('Re-issue certificate', '', function () { xdo('membership/certificate/reissue', { sub: sub }, 'Certificate re-issued.', await0); })
+            );
+            af.addEventListener('submit', function (e) { e.preventDefault(); });
+            box.append(af, acts);
+            var nf = el('form', 'lb-adm-form'); nf.id = 'lbAdmNumber';
+            var ni = mkField('Assign a reserved number', 'number', 'text', '', '0042', '90px'); ni.querySelector('input').maxLength = 4; ni.querySelector('input').pattern = '\\d{4}';
+            var nb = btn('Assign', '', null); nb.type = 'submit'; nf.append(ni, nb);
+            nf.addEventListener('submit', function (e) { e.preventDefault(); var v = ni.querySelector('input').value.trim(); if (/^\d{4}$/.test(v)) xdo('membership/assign-number', { sub: sub, number: v }, 'Number assigned.', await0); else say('A number has four digits.', true); });
+            box.appendChild(nf);
+            var gf = el('form', 'lb-adm-form'); gf.id = 'lbAdmGrant';
+            var gt = selField('Plan', 'tier', [['ordinal', 'Ordinal'], ['cardinal', 'Cardinal'], ['prime', 'Prime'], ['executive', 'Executive']], m.tier);
+            var gu = mkField('Paid until', 'until', 'date', m.paidUntil ? when(m.paidUntil).slice(0, 10) : ''), ga = mkField('Amount (USD, 0 allowed)', 'amount', 'number', '', '0', '90px'), gn = mkField('Receipt note', 'receipt', 'text', '', '', '200px');
+            var gb = btn('Set plan', '', null); gb.type = 'submit'; gf.append(gt, gu, ga, gn, gb);
+            gf.addEventListener('submit', function (e) {
+                e.preventDefault(); var b = { sub: sub, tier: gt.querySelector('select').value };
+                var u = gu.querySelector('input').value, a = ga.querySelector('input').value, rn = gn.querySelector('input').value.trim();
+                if (u) b.paidUntil = Date.parse(u + 'T23:59:59Z'); if (a !== '') b.amount = Number(a); if (rn) b.receiptNote = rn;
+                xdo('membership/grant', b, 'Plan set.', await0);
+            });
+            box.appendChild(gf);
+            var lf = el('form', 'lb-adm-form'); lf.id = 'lbAdmLimits';
+            lf.append(mkField('Speed (Mbit/s)', 'bw', 'number', '', 'Default', '100px'), mkField('Per day (GB)', 'gb', 'number', '', 'Default', '100px'), mkField('Connections', 'ms', 'number', '', 'Default', '100px'));
+            var lb = btn('Save limits', '', null); lb.type = 'submit'; lf.appendChild(lb);
+            lf.addEventListener('submit', function (e) {
+                e.preventDefault(); function v(n, mult) { var s = lf.elements[n].value.trim(); return s === '' ? null : Math.round(Number(s) * mult); }
+                xdo('overrides', { sub: sub, bandwidthMbps: v('bw', 1), dailyByteCap: v('gb', GB), maxSockets: v('ms', 1) }, 'Limits saved.', null);
+            });
+            box.appendChild(lf);
+        }
+
+        // ---- invites (Executive, Boss only) ----
+        async function loadInvites() { var r = await xload('membership/invites'); if (r.status === 200) X.invites = r.json.invites; renderInvites(); }
+        function renderInvites() {
+            head(secInvites, 'Invites', 'Executive invites. Only you invite. The message is your own text for each invite.');
+            if (X.off) { secInvites.appendChild(el('p', 'lb-adm-note', 'Membership is off on this server.')); return; }
+            var f = el('form', 'lb-adm-form'); f.id = 'lbAdmInvite';
+            var ln = mkField('Login name', 'loginName', 'text', '', '', '160px'), em = mkField('Email (kmlhs.org, optional)', 'email', 'email', '', '', '200px'), nt = mkField('Note', 'note', 'text', '', '', '160px');
+            var msg = el('label', '', 'Message to include'), ta = el('textarea'); ta.name = 'message'; ta.rows = 3; ta.maxLength = 4000; ta.required = true; msg.appendChild(ta); msg.className = 'lb-adm-wide';
+            var cb = btn('Create invite', 'pri'); cb.type = 'submit';
+            f.append(ln, em, nt, msg, cb);
+            f.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                var b = { loginName: ln.querySelector('input').value.trim(), message: ta.value.trim() }, ev = em.querySelector('input').value.trim(), nv = nt.querySelector('input').value.trim();
+                if (ev) b.email = ev; if (nv) b.note = nv;
+                var r = await xdo('membership/invites', b, 'Invite created.', null);
+                if (r.status === 200) { X.newInvite = r.json; await loadInvites(); }
+            });
+            secInvites.appendChild(f);
+            if (X.newInvite) {
+                var box = el('div', 'lb-adm-newinv'), inp = el('input'); inp.readOnly = true; inp.value = X.newInvite.link; inp.id = 'lbAdmInviteLink'; inp.setAttribute('aria-label', 'Invite link');
+                box.append(inp, btn('Copy link', '', function () { try { navigator.clipboard.writeText(X.newInvite.link); say('Link copied.'); } catch (_) { inp.select(); say('Press Ctrl+C to copy.'); } }));
+                secInvites.appendChild(box);
+            }
+            if (!X.invites) { secInvites.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var t = table(['Login name', 'Created', 'Status', '']);
+            X.invites.forEach(function (i) {
+                var tr = el('tr'), st = i.redeemedAt ? 'Redeemed' + (i.number ? ' as ' + i.number : '') : i.revokedAt ? 'Revoked' : i.expiresAt < Date.now() ? 'Expired' : 'Open';
+                tr.append(el('td', 'lb-adm-name', i.loginName), el('td', '', when(i.createdAt)), el('td', '', st));
+                var td = el('td'), act = el('div', 'lb-adm-act');
+                if (st === 'Open') act.appendChild(arm2('Revoke', 'Confirm revoke', 'danger', function () { xdo('membership/invites/revoke', { id: i.id }, 'Invite revoked.', loadInvites); }));
+                td.appendChild(act); tr.appendChild(td); t.body.appendChild(tr);
+            });
+            if (X.invites.length) secInvites.appendChild(t.wrap); else secInvites.appendChild(el('p', 'lb-adm-note', 'No invites yet.'));
+        }
+
+        // ---- live and 30-day charts ----
+        async function loadLive() {
+            var r = await api('GET', 'usage/live'); if (r.status === 200) { X.live = r.json; renderLive(); }
+        }
+        var liveBox = el('div', 'lb-adm-tiles'); liveBox.id = 'lbAdmLive';
+        function renderLive() {
+            var l = X.live; liveBox.replaceChildren();
+            if (!l) return;
+            [['Online now', String(l.online)], ['Connections', String(l.sockets)], ['Streams', String(l.streams)], ['Uplink', l.uplinkMbps + ' Mbit/s'], ['Fair share', l.fairShare ? (l.fairShareActive ? 'Limiting now' : 'On, not needed') : 'Off']].forEach(function (k) {
+                var t = el('div', 'lb-adm-tile'); t.append(el('b', '', k[1]), el('span', '', k[0])); liveBox.appendChild(t);
+            });
+        }
+        async function loadCharts() { var r = await api('GET', 'usage/30d'); if (r.status === 200) X.d30 = r.json; await loadLive(); renderCharts(); }
+        function renderCharts() {
+            head(secCharts, 'Live and 30 days', 'Totals only. Refreshed every 10 seconds while this page is open.');
+            secCharts.appendChild(liveBox); renderLive();
+            var d = X.d30; if (!d) { secCharts.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            secCharts.appendChild(barChart('Active members per day (30 days)', d.days.map(function (x) { return { k: x.day, v: x.members }; }), function (v) { return String(v); }));
+            secCharts.appendChild(barChart('Data per day (30 days)', d.days.map(function (x) { return { k: x.day, v: x.bytes }; }), fmtBytes));
+            secCharts.appendChild(el('p', 'lb-adm-note', 'Page timing and cap hits per day are not collected yet.'));
+            if (d.top.length) {
+                var t = table(['Member', 'Data, 30 days']);
+                d.top.forEach(function (x) { var tr = el('tr'); tr.append(el('td', 'lb-adm-num', x.number || 'No number'), el('td', '', fmtBytes(x.bytes))); t.body.appendChild(tr); });
+                secCharts.append(el('h3', '', 'Top by data'), t.wrap);
+            }
+        }
+
+        // ---- per-hop timing ----
+        async function loadHops() { var r = await api('GET', 'hops'); if (r.status === 200) X.hops = r.json; renderHops(); }
+        function renderHops() {
+            head(secHops, 'Where the time goes', 'Time from a connection request to the first data back (relay, DNS, connect). Aggregates only.');
+            var h = X.hops; if (!h) { secHops.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var t = table(['Window', 'Streams', 'Median', '90th percentile']);
+            [['Last 5 minutes', h.last5m], ['Last hour', h.last1h], ['Last 24 hours', h.last24h]].forEach(function (w) {
+                var tr = el('tr'); tr.append(el('td', '', w[0]), el('td', '', String(w[1].count)), el('td', '', w[1].p50 === null ? 'None' : w[1].p50 + ' ms'), el('td', '', w[1].p90 === null ? 'None' : w[1].p90 + ' ms')); t.body.appendChild(tr);
+            });
+            secHops.appendChild(t.wrap);
+            secHops.appendChild(barChart('Median per minute, last hour (ms)', (h.perMinute || []).map(function (m) { return { k: new Date(m.minute * 1000).toISOString().slice(11, 16), v: m.p50 || 0 }; }), function (v) { return v + ' ms'; }));
+        }
+
+        // ---- plans and knobs ----
+        var PLAN_LABELS = { relay: 'Our relay', tabs: 'Open tabs', dailyMinutes: 'Minutes a day', weeklyGb: 'GB a week', monthlyGb: 'GB a month', speedMbps: 'Speed (Mbit/s)', downloadMbPerFile: 'Download MB per file', downloadsPerDay: 'Downloads a day', weight: 'Fair-share weight', priceUsdYear: 'Price USD a year', topupGb: 'Top-up GB' };
+        async function loadPlans() { var r = await xload('membership/plans'); if (r.status === 200) X.plans = r.json; renderPlans(); }
+        function renderPlans() {
+            head(secPlans, 'Plans and knobs', 'All numbers are placeholders until measured. 0 means no cap. Changes apply within a minute.');
+            if (X.off) { secPlans.appendChild(el('p', 'lb-adm-note', 'Membership is off on this server.')); return; }
+            var p = X.plans; if (!p) { secPlans.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            var sw = el('div', 'lb-adm-switch'), st = el('div'); st.append(el('b', '', 'Plans open for sale'), el('span', '', p.plansOpen ? 'On. Members can see and request plans.' : 'Off. Nobody can buy yet.'));
+            var pb = p.plansOpen ? btn('Turn off', 'pri', function () { xdo('membership/settings', { plansOpen: false }, 'Plans are closed.', loadPlans); })
+                : arm2('Turn on', 'Confirm turn on', 'danger', function () { xdo('membership/settings', { plansOpen: true }, 'Plans are open for sale.', loadPlans); });
+            pb.id = 'lbAdmPlansOpen'; sw.append(st, pb); secPlans.appendChild(sw);
+            var kf = el('form', 'lb-adm-form'); kf.id = 'lbAdmKnobs';
+            kf.append(mkField('Slow stage (Mbit/s)', 'slowStageMbps', 'number', p.knobs.slowStageMbps, '', '100px'), mkField('Prime seats', 'primeSeats', 'number', p.knobs.primeSeats, '', '100px'), mkField('Executive reserve (%)', 'execReservePct', 'number', p.knobs.execReservePct, '', '100px'), mkField('Executive block', 'execBlock', 'text', p.execBlock, '0010-0099', '110px'));
+            var kb = btn('Save knobs', 'pri'); kb.type = 'submit'; kf.appendChild(kb);
+            kf.addEventListener('submit', function (e) {
+                e.preventDefault(); var b = { slowStageMbps: Number(kf.elements.slowStageMbps.value), primeSeats: Number(kf.elements.primeSeats.value), execReservePct: Number(kf.elements.execReservePct.value) };
+                var eb = kf.elements.execBlock.value.trim(); if (eb) b.execBlock = eb;
+                xdo('membership/settings', b, 'Knobs saved.', loadPlans);
+            });
+            secPlans.appendChild(kf);
+            var keys = Object.keys(PLAN_LABELS), t = table(['Setting'].concat(['ordinal', 'cardinal', 'prime', 'executive'].map(function (x) { return TIER_NAMES[x]; })));
+            var tf = el('form'); tf.id = 'lbAdmPlanForm';
+            keys.forEach(function (k) {
+                var tr = el('tr'); tr.appendChild(el('td', '', PLAN_LABELS[k]));
+                ['ordinal', 'cardinal', 'prime', 'executive'].forEach(function (tier) {
+                    var v = p.plans[tier][k], td = el('td'), i = el('input'); i.name = tier + '.' + k; i.setAttribute('aria-label', PLAN_LABELS[k] + ', ' + TIER_NAMES[tier]);
+                    if (typeof v === 'boolean') { i.type = 'checkbox'; i.checked = v; } else { i.type = 'number'; i.min = '0'; i.step = 'any'; i.value = num(v); i.style.width = '84px'; if (k === 'priceUsdYear') i.placeholder = 'Per person'; }
+                    td.appendChild(i); tr.appendChild(td);
+                });
+                t.body.appendChild(tr);
+            });
+            tf.appendChild(t.wrap);
+            var sv = btn('Save plans', 'pri'); sv.type = 'submit'; tf.appendChild(sv);
+            tf.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                for (var ti = 0; ti < 4; ti++) {
+                    var tier = ['ordinal', 'cardinal', 'prime', 'executive'][ti], lim = {};
+                    keys.forEach(function (k) { var i = tf.elements[tier + '.' + k]; lim[k] = i.type === 'checkbox' ? i.checked : (i.value.trim() === '' ? (k === 'priceUsdYear' ? null : 0) : Number(i.value)); });
+                    var r = await write('membership/plans', { tier: tier, limits: lim });
+                    if (r.status !== 200) { say(xerr(r), true); return; }
+                }
+                say('Plans saved.'); await loadPlans();
+            });
+            secPlans.appendChild(tf);
+        }
+
+        // ---- notices ----
+        async function loadNotices() { var r = await api('GET', 'notices'); if (r.status === 200) X.notices = r.json.notices; renderNotices(); }
+        function localInput(ms) { return ms ? new Date(ms - new Date(ms).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''; }
+        function parseLocal(v) { return v ? new Date(v).getTime() : null; }
+        function renderNotices() {
+            head(secNotices, 'Notices', 'A short note on members\' start pages. Plain text, up to 200 characters.');
+            var f = el('form', 'lb-adm-form'); f.id = 'lbAdmNoticeForm';
+            var tx = mkField('Text', 'text', 'text', '', '', '320px'); tx.querySelector('input').maxLength = 200; tx.querySelector('input').required = true;
+            var s0 = mkField('Starts (optional)', 'startsAt', 'datetime-local', ''), s1 = mkField('Ends (optional)', 'endsAt', 'datetime-local', '');
+            var b = btn('Publish', 'pri'); b.type = 'submit'; f.append(tx, s0, s1, b);
+            f.addEventListener('submit', function (e) {
+                e.preventDefault(); var body = { text: tx.querySelector('input').value.trim() }, a = parseLocal(s0.querySelector('input').value), z = parseLocal(s1.querySelector('input').value);
+                if (a) body.startsAt = a; if (z) body.endsAt = z;
+                xdo('notices', body, 'Notice published.', loadNotices);
+            });
+            secNotices.appendChild(f);
+            if (!X.notices) { secNotices.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            if (!X.notices.length) { secNotices.appendChild(el('p', 'lb-adm-note', 'No notices.')); return; }
+            var t = table(['Text', 'Shown', '']);
+            X.notices.forEach(function (n) {
+                var tr = el('tr'), tdt = el('td', 'lb-adm-name');
+                if (X.noticeEdit === n.id) { var i = el('input'); i.value = n.text; i.maxLength = 200; i.style.width = '100%'; i.setAttribute('aria-label', 'Notice text'); tdt.appendChild(i); tdt.dataset.edit = '1'; tr._inp = i; } else tdt.textContent = n.text;
+                tr.append(tdt, el('td', '', when(n.startsAt) + (n.endsAt ? ' to ' + when(n.endsAt) : ' on')));
+                var td = el('td'), act = el('div', 'lb-adm-act');
+                if (X.noticeEdit === n.id) {
+                    act.append(btn('Save', 'pri', function () { xdo('notices/update', { id: n.id, text: tr._inp.value.trim(), startsAt: n.startsAt, endsAt: n.endsAt }, 'Notice saved.', function () { X.noticeEdit = null; return loadNotices(); }); }), btn('Cancel', '', function () { X.noticeEdit = null; renderNotices(); }));
+                } else {
+                    act.append(btn('Edit', '', function () { X.noticeEdit = n.id; renderNotices(); }), arm2('Delete', 'Confirm delete', 'danger', function () { (async function () { var r = await write('notices/' + n.id, null, 'DELETE'); if (r.status === 200) { say('Notice deleted.'); await loadNotices(); } else say(xerr(r), true); })(); }));
+                }
+                td.appendChild(act); tr.appendChild(td); t.body.appendChild(tr);
+            });
+            secNotices.appendChild(t.wrap);
+        }
+
+        // ---- reports ----
+        async function loadReports() { var r = await api('GET', 'reports' + (X.repCat ? '?category=' + encodeURIComponent(X.repCat) : '')); if (r.status === 200) X.reports = r.json; renderReports(); }
+        var CAT_NAMES = { slow: 'Slow', broken: 'Broken site', looks: 'Looks wrong', account: 'Account', bot: 'Bot check', other: 'Other' };
+        function renderReports() {
+            head(secReports, 'Problem reports', 'Sent by members from the menu. Kept 90 days. A site shows only if the member chose to include it.');
+            var cats = [['', 'All']].concat(Object.keys(CAT_NAMES).map(function (k) { return [k, CAT_NAMES[k]]; }));
+            var chips = el('div', 'lb-adm-chips'); cats.forEach(function (c) { var b = btn(c[1], X.repCat === c[0] ? 'pri' : '', function () { X.repCat = c[0]; loadReports(); }); b.setAttribute('aria-pressed', X.repCat === c[0] ? 'true' : 'false'); chips.appendChild(b); });
+            secReports.appendChild(chips);
+            if (!X.reports) { secReports.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            if (!X.reports.reports.length) { secReports.appendChild(el('p', 'lb-adm-note', 'No reports.')); return; }
+            var t = table(['When', 'Member', 'Type', 'Note', '']);
+            X.reports.reports.forEach(function (r) {
+                var tr = el('tr', r.doneAt ? 'lb-adm-done' : ''), note = el('td'); note.appendChild(el('div', '', r.note));
+                var meta = [r.device, r.host, r.timings ? Object.keys(r.timings).map(function (k) { return k + ' ' + r.timings[k] + ' ms'; }).join(', ') : ''].filter(Boolean).join(' | ');
+                if (meta) note.appendChild(el('div', 'lb-adm-hint', meta));
+                tr.append(el('td', '', when(r.createdAt)), el('td', 'lb-adm-num', r.number || 'None'), el('td', '', CAT_NAMES[r.category] || r.category), note);
+                var td = el('td'); if (!r.doneAt) td.appendChild(btn('Mark done', '', function () { xdo('reports/done', { id: r.id }, 'Marked done.', loadReports); })); else td.textContent = 'Done';
+                tr.appendChild(td); t.body.appendChild(tr);
+            });
+            secReports.appendChild(t.wrap);
+        }
+
+        // ---- audit viewer ----
+        async function loadAudit() {
+            var q = []; if (X.auditAction) q.push('action=' + encodeURIComponent(X.auditAction));
+            if (X.auditFrom) q.push('from=' + Date.parse(X.auditFrom + 'T00:00:00')); if (X.auditTo) q.push('to=' + (Date.parse(X.auditTo + 'T00:00:00') + 86400000));
+            q.push('limit=100');
+            var r = await api('GET', 'audit?' + q.join('&')); if (r.status === 200) X.audit = r.json.entries; renderAudit();
+        }
+        function renderAudit() {
+            head(secAudit, 'Audit log', 'Every change, newest first. Ids only, never names or sites. Kept 90 days.');
+            var f = el('form', 'lb-adm-form'); f.id = 'lbAdmAuditForm';
+            var a = mkField('Action', 'action', 'text', X.auditAction, 'e.g. standing-warn', '170px'), d0 = mkField('From', 'from', 'date', X.auditFrom), d1 = mkField('To', 'to', 'date', X.auditTo), b = btn('Filter', '', null); b.type = 'submit';
+            f.append(a, d0, d1, b);
+            f.addEventListener('submit', function (e) { e.preventDefault(); X.auditAction = a.querySelector('input').value.trim().toLowerCase(); X.auditFrom = d0.querySelector('input').value; X.auditTo = d1.querySelector('input').value; loadAudit(); });
+            secAudit.appendChild(f);
+            if (!X.audit) { secAudit.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
+            if (!X.audit.length) { secAudit.appendChild(el('p', 'lb-adm-note', 'No entries.')); return; }
+            var t = table(['When', 'Action', 'Account']);
+            X.audit.forEach(function (e) { var tr = el('tr'); tr.append(el('td', '', when(e.at)), el('td', '', e.action), el('td', 'lb-adm-hint', e.targetSub ? String(e.targetSub).slice(0, 8) : '')); t.body.appendChild(tr); });
+            secAudit.appendChild(t.wrap);
+        }
+
+        // In-place two-click confirm: unlike twoClick it does not re-render, so typed notes stay.
+        function arm2(label, confirmLabel, cls, run) {
+            var b = btn(label, cls), armed = false, t = null;
+            b.addEventListener('click', function () {
+                if (!armed) { armed = true; b.textContent = confirmLabel; t = setTimeout(function () { armed = false; b.textContent = label; }, 5000); return; }
+                clearTimeout(t); armed = false; b.textContent = label; run();
+            });
+            return b;
+        }
+        var CARDS = [top, toast, secMembers, secInvites, secUsers, secUsage, secCharts, secHops, secPlans, secSw, secHealth, secNotices, secReports, secAudit];
+        inner.replaceChildren.apply(inner, CARDS);
+        var liveTimer = null;
+        function loadExtra() {
+            // Not part of the "could not be loaded" toast: sections report for themselves.
+            return Promise.all([loadMembers(), loadInvites(), loadCharts(), loadHops(), loadPlans(), loadNotices(), loadReports(), loadAudit()]);
+        }
+
         function renderAll() {
             if (!S.who) return;
             sub.textContent = 'Version ' + S.who.version + (S.who.stepup ? '. Changes are unlocked.' : '. You will be asked for your password before the first change.');
             renderUsers(); renderUsage(); renderSwitches(); renderHealth();
+            renderMembers(); renderInvites(); renderCharts(); renderHops(); renderPlans(); renderNotices(); renderReports(); renderAudit();
         }
 
         function unavailable() {
@@ -8772,7 +9149,7 @@ window._libcurlReady = true;
             var mine = ++loading;
             var w = await api('GET', 'whoami');
             if (w.status !== 200 || !w.json.owner) { S.who = null; unavailable(); return; }
-            if (!inner.contains(top)) inner.replaceChildren(top, toast, secUsers, secUsage, secSw, secHealth);
+            if (!inner.contains(top)) inner.replaceChildren.apply(inner, CARDS);
             S.who = w.json;
             var res = await Promise.all([api('GET', 'users'), api('GET', 'usage'), api('GET', 'flags'), api('GET', 'health')]);
             if (mine !== loading) return;
@@ -8782,10 +9159,11 @@ window._libcurlReady = true;
             if (res[3].status === 200) S.health = res[3].json;
             if (!quiet && res.some(function (r) { return r.status !== 200; })) say('Some of this page could not be loaded.', true);
             renderAll();
+            loadExtra();
         }
         function busy() {
             var a = document.activeElement;
-            return modal.classList.contains('show') || (a && root.contains(a) && /^(INPUT|SELECT)$/.test(a.tagName));
+            return modal.classList.contains('show') || (a && root.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName));
         }
 
         var page = {
@@ -8795,8 +9173,10 @@ window._libcurlReady = true;
                 load();
                 clearInterval(refreshTimer);
                 refreshTimer = setInterval(function () { if (!busy() && document.visibilityState === 'visible') load(true); }, 20000);
+                clearInterval(liveTimer);
+                liveTimer = setInterval(function () { if (document.visibilityState === 'visible') loadLive(); }, 10000);
             },
-            close: function () { root.classList.remove('show'); clearInterval(refreshTimer); refreshTimer = null; }
+            close: function () { root.classList.remove('show'); clearInterval(refreshTimer); refreshTimer = null; clearInterval(liveTimer); liveTimer = null; }
         };
 
         function register() {

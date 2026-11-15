@@ -10,6 +10,16 @@ All picks in the artifact were favourites: members and profile, invites, live an
 > paid-until, amount (0 allowed after a confirm), receipt note. Trials, top-ups, voids with refunds, Executive flag and the
 > transfer brake (`admin-transfer`) are in 1.0 (D2b answered, slice S9).
 
+> **Status 2026-11-15: built on `slice/1.0-admin` (both repos), not merged, not deployed.** Built: Members (search, filter chips, profile with
+> standing history, sessions, 30-day usage, plan and purchases, re-issue certificate, assign number, warn, suspend, lift, remove, sign out everywhere,
+> set plan, per-user limits), Invites (create with link, Copy, own message text, open and history with the resulting number, Revoke), live tiles and
+> 30-day SVG charts (active members, data per day, top ten by number), per-hop timing, plan knobs and the "Plans open for sale" switch (ships OFF,
+> needs a second click), Notices, Reports (intake `POST /_lb/report`, 90 days, `REPORTS=off`), Audit viewer (action and date filters), VPS link age
+> in Health. **Not built (decisions needed):** Send email from the panel (the invite link is copy only, per MEMBERSHIP.md 3.1), median page shown and
+> cap-hit charts (the client sends no timing totals yet), a current total Mbit/s tile, session device class (sessions store none), the Queue for plan and
+> Executive number requests and the S9 routes (S9), list-left and detail-right layout (the panel is one column of cards; the member detail opens
+> under the list). Route names follow the S5 API under `membership/` (`members/:sub`, `standing`, `signout`, `certificate/reissue`, `assign-number`).
+
 ## 1. Layout
 Sections become: Members, Queue (access requests, plan requests, invites, Executive number requests), Plans, Usage,
 Health, Notices, Reports, Audit, Switches (adds "Plans open for sale", default OFF). Filter chips in Members add Executive.
