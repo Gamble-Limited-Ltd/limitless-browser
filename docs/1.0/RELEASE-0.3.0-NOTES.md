@@ -45,3 +45,11 @@ To start the home relay again without a rollback (for example to test): `docker 
 ## 5. Open points for the release record
 - Both features (`pageCache`, `warm`) stay in code, off. Measure with the speed harness before the gate: `LB_FEATURE_*` flips need no code change.
 - The rehearsal stack builds with `ownRelay` true (1.0 path); `LB_REHEARSAL_RELAYOFF=1 deploy/rehearsal/run.sh` builds the real 0.3.0 defaults.
+
+## 6. HALL legal text (draft, needs Boss before the deploy)
+The Limitless Browser Addendum on HALL (`~/gll-launcher/apps/hall/content/legal/limitless-browser.md`) says third-party relays are "off by default, and you must turn them on yourself". In 0.3.0 they are the only relays, always on, so the published text would be wrong on deploy day. HALL's `CLAUDE.md` says its legal text is final and never reworded, while PLAN 0.2b (Boss, 2026-11-14) pre-approves Claude's privacy text for this release: that clash is Boss's call, so nothing in `~/gll-launcher` was edited. Draft replacements:
+- Summary, third bullet: "We do not keep routine logs of the sites you visit or what you send. Until Limitless 1.0, browsing goes through third-party relays that we do not run. A relay sees the host and port of each connection and can read anything that is not encrypted."
+- Summary, last bullet: "Until Limitless 1.0, Limitless connects only through third-party relays. Their operators are not us, and none of our rules cover them."
+- § 5, second sentence: "Any relay, ours or a third party's, can see the host and port of each connection."
+- § 6, whole paragraph: "Until our own relay returns with Limitless 1.0, the app connects only through third-party relays. We do not run them, and they cannot be turned off. Their operators can see what a relay sees: the host and port of each connection, and anything that is not encrypted. Our limits, logging rules, and the Legal Documents do not cover them. You use them at your own risk. If you do not accept this, do not use the Service until our own relay returns."
+- Also stale while the home relay is off (no change drafted, they come back true in 1.0): § 4 "The relay refuses connections to private and internal addresses and to some ports" and "Fair-use limits apply" describe our relay.
