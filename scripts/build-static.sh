@@ -76,7 +76,7 @@ printf '{"version":"%s","sha":"%s","date":"%s","security":false,"features":{"own
 
 # Mirror the tree into dist-br/, then compress compressible types.
 cp -a "$OUT/." "$OUTBR/"
-EXT='html|js|mjs|css|wasm|svg|json'
+EXT='html|js|mjs|css|wasm|svg|json|txt'
 brotli_file() { # $1 in, $2 out (brotli CLI if installed, else node's built-in zlib at quality 11)
   if command -v brotli >/dev/null 2>&1; then brotli -q 11 -f -c "$1" > "$2"
   else node -e 'const z=require("zlib"),fs=require("fs");fs.writeFileSync(process.argv[2],z.brotliCompressSync(fs.readFileSync(process.argv[1]),{params:{[z.constants.BROTLI_PARAM_QUALITY]:11}}))' "$1" "$2"
