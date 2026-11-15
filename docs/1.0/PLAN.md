@@ -1,6 +1,6 @@
 # Limitless Browser 1.0: master plan
 
-Status: **0.3.0 in progress (2026-11-14): S1, S2a, S2b, S3 and fetch core were built 2026-11-10 to 11-12 and are reused on `release/0.3.0` (Boss, 2026-11-14); relay off and blocklist being built. T0 done (2026-11-10). D1 to D6 answered 2026-11-13 (section 0.2).** Prod is 0.2.3 (`c88ce5e`). Refinement pass
+Status: **0.3.0 deployed 2026-11-15 (`072c108`). 1.0 build started 2026-11-15 (Sonnet builders, Opus reviews at Boss-set points).** Prod is 0.3.0 (`072c108`). Refinement pass
 2026-11-13 (section 0) reconciles this plan with the paid-tiers draft and adds build cards (section 8). Decisions come from
 Boss's question rounds on 2026-11-10 and 2026-11-13 and the design picker artifacts (round one:
 https://claude.ai/artifact/P1arJs1FYrMrCoBmR5VQ2h, 30 picks; round two: "Limitless 1.0 Design Room", 77 picks).

@@ -8,7 +8,7 @@ Stamp, not the full Gilded Ledger chrome. Copy neutral: "private browsing proxy"
 Read both before touching names, credits, license text or features.
 - **State (checked 2026-11-09):** launched 2026-10-19 (0.1.0, `7067718`, deployed by Boss); prod `.last-deploy-hash`
   `c88ce5e` (0.2.3, legal v2, `LEGAL_VERSION=2026-11-08`, deployed by Boss 2026-11-08; the hash was written by hand on 2026-11-09, see Deploy).
-- **0.3.0 built, not deployed (2026-11-15):** merged to `main`, release record `docs/releases/0.3.0.md` (Minor; speed gate fails on the fx-frames
+- **0.3.0 deployed by Boss 2026-11-15 09:43 (`072c108`, rotation preflight OK; 24 h hold until 2026-11-16 09:43).** 1.0 build started 2026-11-15. Release record `docs/releases/0.3.0.md` (Minor; speed gate fails on the fx-frames
   fixture only, rows that already failed before 0.3, so it ships only on Boss's override; HALL legal text must change first, notes section 6).
   S1, S2a, S2b, S3 and fetch core were built 2026-11-10 to 11-12 and reused (Boss, 2026-11-14); relay off, blocklist, fault fixes, libcurl 0.7.5
   and font preload were added 2026-11-14/15. `slice/1.0-edge` (relay box) is held for 1.0 S4. Then
