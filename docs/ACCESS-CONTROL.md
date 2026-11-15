@@ -85,7 +85,7 @@ built in parallel.
 - Public routes proxied to `gate` without the check: `/auth/login` (start OIDC), `/auth/callback`,
   `/auth/direct` (POST, direct sign-in), `/auth/logout` (POST), `/auth/signin` (sign-in page), `/auth/invite`,
   `/auth/ended`, `/auth/unavailable`. Pages are server-rendered HTML in the theme look and use `/theme/` assets.
-- Ungated static paths: `/legal/` (privacy, terms), `/theme/` (theme CSS, fonts, marks, stamp: no app code),
+- Ungated gate route (1.0 S5): `/_lb/verify/<code>` (JSON status, number, tier, date; never a name; rate limited by the gate). Ungated static paths: `/legal/` (privacy, terms), `/theme/` (theme CSS, fonts, marks, stamp: no app code),
   `/favicon.svg`.
 - `/wisp/` is proxied to `gate`, which checks the session, then pipes the WebSocket to `relay`. The gate counts
   open sockets and bytes per user, parses WISP CONNECT frames to cap streams (64) and refuse blocked ports, cuts
