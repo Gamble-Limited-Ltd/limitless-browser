@@ -175,7 +175,8 @@ test.describe('relay', () => {
     test.skip(!internet, 'VM has no outbound internet (https://example.com unreachable)');
     await signInAlice(page);
     const v = await (await page.request.get('/version.json')).json();
-    expect(v.features).toMatchObject({ ownRelay: true, ownSockets: 4, worker: true, respCache: true, sw: true });
+    // The rehearsal build (deploy/rehearsal/run.sh) turns on what 0.3.0 ships off: ownRelay, ownSockets 4, pageCache, warm.
+    expect(v.features).toMatchObject({ ownRelay: true, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: true, warm: true, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true });
     await page.locator('#url').focus();
     await page.locator('#url').fill('https://example.com');
     await page.keyboard.press('Enter');

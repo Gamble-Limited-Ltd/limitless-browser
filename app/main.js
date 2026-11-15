@@ -625,6 +625,7 @@
                     noteDrop(base) { R.epoch++; try { d.onDrop && d.onDrop(base); } catch (_) {} },
                     pinned: null,              // set by LB_swapSession(url, {pin:true}) while a retry is on a chosen relay
                     sticky,
+                    seen: new WeakSet(),       // relay connections already watched for a drop
                     parse(raw) {
                         const i = raw.lastIndexOf('/');
                         const hp = raw.slice(i + 1);
@@ -693,8 +694,16 @@
                         if (typeof origClose === 'function') ws.close = function () { ws.__lbQuiet = true; return origClose.apply(this, arguments); };
                         let noted = false;
                         const drop = () => { if (!noted && !ws.__lbQuiet) { noted = true; R.noteDrop(base); } };
-                        ws.addEventListener('error', drop);
-                        ws.addEventListener('close', drop);
+                        // libcurl's WispWebSocket is one stream, not the relay socket: its close event also fires for a refused
+                        // connection, a site reset or a finished keep-alive. The relay socket is `ws.connection` (shared by all
+                        // streams); its close or error is the drop. A plain socket (tests, other transports) is its own drop.
+                        const conn = ws.connection && typeof ws.connection.addEventListener === 'function' ? ws.connection : null;
+                        if (conn) {
+                            if (!R.seen.has(conn)) { R.seen.add(conn); const cd = () => R.noteDrop(base); conn.addEventListener('error', cd); conn.addEventListener('close', cd); }
+                        } else {
+                            ws.addEventListener('error', drop);
+                            ws.addEventListener('close', drop);
+                        }
                         return ws;
                     },
                     open(raw, p) {
@@ -5284,7 +5293,7 @@
             // site (or the name), not the relay, so they fail that one request and never touch the session. The relay reports an
             // unknown name as 35, so 35 alone is not a relay sign either. A relay drop is read from the transport instead:
             // LB_router.epoch moves when a relay socket is closed by the network.
-            const LB_CURL_CATS = { 6: 'dns', 7: 'connect', 28: 'timeout', 35: 'tls', 51: 'cert', 58: 'cert', 60: 'cert', 52: 'reset', 56: 'reset' };
+            const LB_CURL_CATS = { 6: 'dns', 7: 'connect', 28: 'timeout', 35: 'tls', 51: 'cert', 58: 'cert', 60: 'cert', 52: 'reset', 56: 'reset', 18: 'reset' };
             function lbClassify(err) {
                 const m = /error code (\d+)/i.exec((err && err.message) || '');
                 const code = m ? parseInt(m[1], 10) : 0;
@@ -5565,6 +5574,16 @@
                     }
                 } else {
                     buf = await resp.arrayBuffer();
+                    // libcurl.js ends the body stream quietly when the site resets mid-body (curl code 18), so the short body arrives
+                    // as a normal 200. Content-Length is the check; skipped when libcurl may have decoded the body (content-encoding).
+                    if (lbErrClassOn() && !/^HEAD$/i.test(method || '')) {
+                        const cl = parseInt(resp.headers?.get?.('content-length') || '', 10);
+                        if (cl > 0 && !resp.headers.get('content-encoding') && buf.byteLength < cl) {
+                            const te = new TypeError('Request failed with error code 18: Transferred a partial file (' + buf.byteLength + ' of ' + cl + ' bytes)');
+                            te.lbCode = 18; te.lbCat = 'reset';
+                            throw te;
+                        }
+                    }
                 }
                 const hdrs = {};
                 resp.headers?.forEach?.((v, k) => hdrs[k.toLowerCase()] = v);

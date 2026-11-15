@@ -86,6 +86,26 @@ test.describe('L2 error classes and reconnect', () => {
     expect(r).toEqual({ drops: 1, epoch: 1 });
   });
 
+  test('a stream close is not a relay drop; the shared relay connection closing is, once', async ({ page }) => {
+    await setup(page);
+    const r = await page.evaluate(() => {
+      const conn = new EventTarget();
+      class Sock extends EventTarget {
+        constructor() { super(); this.readyState = 0; this.connection = conn; }
+        close() { this.readyState = 3; }
+        fire(t) { if (t === 'open') this.readyState = 1; this.dispatchEvent(new Event(t)); }
+      }
+      const drops = [];
+      const r = LB_makeRouter({ ownBase: () => 'ws://h/wisp/', ownSockets: () => 1, multiOn: () => false, mode: () => 'site', candidates: () => [], markFailed() {}, onDrop: (b) => drops.push(b), Socket: Sock });
+      const a = r.open('ws://h/wisp/a.test:80'); const b = r.open('ws://h/wisp/b.test:80');
+      a.fire('open'); a.fire('close'); b.fire('error');   // streams the site or relay ended
+      const streams = r.epoch;
+      conn.dispatchEvent(new Event('close')); conn.dispatchEvent(new Event('error'));
+      return { streams, epoch: r.epoch };
+    });
+    expect(r).toEqual({ streams: 0, epoch: 2 });
+  });
+
   test('errClass=false keeps the old behaviour: code 35 swaps the session and retries', async ({ page }) => {
     await setup(page);
     const r = await page.evaluate(async (o) => {
