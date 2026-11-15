@@ -29,7 +29,7 @@ test('registers a worker, caches the shell, and never touches gated or dynamic p
   expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await expect.poll(async () => (await cacheKeys(page)).filter((k) => k.startsWith('lb-shell-')).length).toBeGreaterThan(0);
   const keys = (await cacheKeys(page)).join('\n');
-  expect(keys).toContain('/vendor/libcurl/0.7.4/libcurl.wasm');
+  expect(keys).toContain('/vendor/libcurl/0.7.5/libcurl.wasm');
   expect(keys).toContain('/vendor/acorn/8.14.0/acorn.min.js');
   for (const bad of ['/version.json', '/CHANGELOG.md', '/wisp/', '/auth/', '/_lb/', '/legal/', '/sw.js']) expect(keys).not.toContain(bad);
   expect(errors).toEqual([]);
