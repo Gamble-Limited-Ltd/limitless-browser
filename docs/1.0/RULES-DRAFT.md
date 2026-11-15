@@ -74,7 +74,7 @@ Deleted: no plan carries moderation immunity, `immunity_used` goes from `MEMBERS
 3. Confidentiality (scope, what is allowed, AGPL carve-out).
 4. Accounts.
 5. Acceptable use (with the examples from section 3).
-6. Access and invitations (any GLL ID may ask for access; the Director may decline without a reason; only the Director invites).
+6. Access and invitations (every GLL ID account may use the free plan; only the Director invites, to invitation-only plans).
 7. Tiers (Ordinal, Cardinal, Prime; invitation-only plans; perks; membership numbers; promotion only by the Director).
 8. Plans and payments (section 6 below).
 9. Enforcement (severity table, steps, suspension lengths, what a suspended member sees, removal effects, number

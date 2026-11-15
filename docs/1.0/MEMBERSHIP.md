@@ -73,13 +73,19 @@ address (to Boss only, `PLAN.md` 0.2b); nothing is ever emailed to members autom
 
 3.4 **No GATE change.** (An owner-API endpoint for email exceptions was considered; Boss chose kmlhs.org only.)
 
-3.5 **Access requests (decided 2026-11-14).** Any GLL ID may ask for Ordinal access. The "invite only" page gets a request
-form: a reason of one or two sentences (required). **Identity gap (review 2026-11-14):** GATE refuses sign-in to an
-unapproved account (3.1), so the requester cannot prove who they are; the form takes a typed GLL ID login name, is rate
-limited per IP, and approving it only ever opens the named account. Boss to confirm (`REVIEW-2026-11-14.md` Q1). Boss approves in the admin queue (approval = the same owner API `approve`);
-a decline shows a polite no with no reason, and the same account may ask again after about 48 hours. The reason text is
-deleted once the request is decided. Boss-made invitations (3.2) stay as a second route and the
-only route to an invitation-only plan (Executive), written fully custom per person. Member nominations were removed (2026-11-14). The charter is signed before any plan is bought.
+3.5 **Open free tier (Boss, 2026-11-14, replaces the access-request form and the 2026-10-17 invite-only rule from 1.0 on).**
+Every GLL ID account may use Limitless on the free Ordinal tier with no approval; members then ask to buy a plan.
+- **GLL ID side:** the `limitless-browser` client is switched from invite-only to open (`requiresApproval` = false, a field
+  GLL ID already has; per-app `AppAccess` rows are then not needed). Today `manage.sh clients` sets it only at create, so
+  GLL ID needs one small owner command to flip it (or Boss runs one SQL update). Boss's go, logged in the cross-repo changelog.
+- **lbgate side:** a GLL ID sign-in with no member row creates one (Ordinal, state `welcome`) and runs the ceremony. Removal and
+  suspension live only in lbgate (`members.standing`), so a removed member stays out even though GLL ID lets them sign in.
+- **Data moves to lbgate:** the members list, migration order and the trial "account 7 days old" check stop using owner API
+  `approve`/`list`; use lbgate's own `admitted_at` (and GLL ID `AppSignIn.firstAt` only for the migration of existing members).
+- **When:** with 1.0 (`MEMBERSHIP=on`), not in 0.3.0: until the charter, ceremony and removal state exist, opening the door
+  would let anyone in with no rules signed. 0.3.0 stays invite-only.
+- Boss-made invitations (3.2) remain only for Executive, written fully custom per person. Member nominations were removed.
+  The charter is signed before any plan is bought.
 
 ## 4. Numbers (rewritten 2026-11-14: four digits, Boss is 0000)
 - **Format:** `0000` to `9999`, always four digits everywhere (`No. 0047`, `Nº 0047` on the certificate and the reveal). Unique and permanent.

@@ -16,7 +16,8 @@ Read both before touching names, credits, license text or features.
   Everyone else sees an "invite only" page. Enforced server-side at nginx (`auth_request`, covering the app and
   `/wisp/`), not in client JS. Approvals live in GATE as per-app access (client `limitless-browser`). The check service
   is `~/limitless-gate` (own private repo): OIDC + direct sign-in and `/oidc/access-check`. Only `/legal/` is served
-  ungated. Full design: `docs/ACCESS-CONTROL.md`. **Never ship a public, ungated deploy.**
+  ungated. Full design: `docs/ACCESS-CONTROL.md`. **Never ship a public, ungated deploy.** From 1.0 (Boss, 2026-11-14) every GLL
+  ID gets the free tier without approval; sign-in stays required and removal is enforced by lbgate (`docs/1.0/MEMBERSHIP.md` 3.5).
 - Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser` 2026-10-18; GitHub redirects the old URL), `upstream` = nautilus-os/GUST.
 
 ## Run / dev
