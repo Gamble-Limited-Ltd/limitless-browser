@@ -6,6 +6,21 @@ What changed, in plain language. Newest first.
 
 - New Plans page (About, Plans): the three plans with typical limits, your own plan and usage, your receipts, a 24 hour trial button and a short form to ask for a plan. Nothing is charged in the app and no card details are ever asked for. A note appears 14 and 3 days before a plan ends, and the first time your allowance sends you to public relays. Plans are not open for requests until the switch is turned on.
 - New Downloads panel in the menu: a queue with progress, pause and resume, retry and cancel. Files over your plan's size limit, or over 2 GB, are refused before they start.
+- The welcome ceremony is the designed one: invitation, choosing your number, signing the Charter, the number reveal, your member card or certificate, and a short tour.
+- Five new themes for paid plans: Ink blue and Silver (Cardinal), Garnet (Prime), Gilt and Onyx (Executive). Vault now belongs to the paid plans too.
+- A theme your plan does not include shows a small seal and a short note. If a plan ends, Limitless moves you back to the last free theme you used.
+- The toolbar is quieter: Back, Forward, Reload, the address bar (with the bookmark star and the ad blocker shield inside it), Extensions and one Limitless menu. New tab, History, Theme, Fullscreen, Membership, Report a problem, Settings and Developer mode are in the menu.
+- Developer mode (in the menu) shows the logs, inspector and metrics buttons. It is off by default.
+- Report a problem is now in the menu.
+- The address bar shows the whole address with the site's main domain in strong type and the rest quieter. Click it to see and edit the plain address.
+- Settings now has six groups: General, Appearance, Privacy and data, Connection, Membership and About. Settings opens on General. Nothing was removed, controls only moved.
+- The Membership page shows your name first, then your number, your plan, its limits and your certificate. When your plan is about to end, a note appears 14 days and 3 days before.
+- The splash greets you by name, with your number small beneath it. The start page has a member card, and notices from the Director appear as a small engraved bulletin that you can dismiss.
+- When a page cannot load, you now get a calm card with one plain sentence, Try again, Report a problem and the technical details folded away. When a site asks for a human check, a plain card says so.
+- Free plans show their limits: Ordinal members have 4 open tabs and about 4 hours a day. A note appears when about 15 minutes are left.
+- The welcome ceremony has a new look: number, Charter, a reveal of your number, your certificate or member card, and a short tour.
+- The old interactive tour is gone. A short tour after the welcome replaces it.
+- Tabs can sit on the left (Settings, Appearance, Tab layout). The rail folds to icons on a narrow window or with the button at its top.
 
 ## 0.3.0
 

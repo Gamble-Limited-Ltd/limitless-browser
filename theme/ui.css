@@ -1,0 +1,139 @@
+/* Limitless Browser 1.0 UI (slice S6, docs/1.0/UI.md). Tokens only (--lb-*, mapped vars from chrome.css). Skins keep upstream
+   behaviour: new chrome is scoped to html[data-lb-theme]:not([data-skin]) where it would clash with a skin. */
+
+.lb-i { width: 18px; height: 18px; flex: none; display: inline-block; vertical-align: middle; }
+
+/* ---------- Paid theme tiles ---------- */
+.lb-tcard { position: relative; }
+.lb-tplan { font: 500 10px var(--lb-fm); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); }
+.lb-seal { display: none; position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; padding: 3px; border-radius: 50%; background: var(--lb-bg); color: var(--lb-fg); border: 1px solid var(--lb-line); }
+.lb-tcard[data-locked] .lb-seal { display: block; }
+.lb-tcard[data-locked] .lb-tprev { opacity: .55; }
+.lb-drow[data-locked] { color: var(--tx3); }
+
+/* ---------- Toolbar and the Limitless menu (UI.md 2). Under an upstream skin the old toolbar stays and the menu button is hidden. ---------- */
+#lbMenuBtn { display: none; }
+html[data-lb-theme]:not([data-skin]) #lbMenuBtn { display: inline-grid; }
+html[data-lb-theme]:not([data-skin]) :is(#fullscreenBtn, #historyBtn, #home, #findOmniBtn, #go, #lbThemeBtn, #settingsBtn, #showBookmarksBtn, .lb-tb-sep) { display: none !important; }
+html:not([data-lb-dev])[data-lb-theme]:not([data-skin]) :is(#devToggle, #codeBtn, #metricsBtn) { display: none !important; }
+.omnibox-actions #blockToggle { width: 28px; height: 28px; min-width: 0; padding: 0; border: 0; background: transparent; display: inline-grid; place-items: center; }
+.omnibox-actions #blockToggle span { display: none; }
+.lb-menu { position: fixed; top: 92px; right: 14px; z-index: 100001; width: 284px; padding: 6px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: calc(var(--lb-r, 0px) * 1.2); box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .6); animation: lbMenuIn .2s cubic-bezier(.2, .7, .2, 1); }
+.lb-menu[hidden] { display: none; }
+@keyframes lbMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.lb-mh { display: flex; align-items: center; gap: 12px; padding: 10px 10px 12px; border-bottom: 1px solid var(--bd); margin-bottom: 4px; }
+.lb-mh .lb-tier-mark { width: 34px; height: 34px; }
+.lb-mh-t { min-width: 0; }
+.lb-mh-name { font: 600 15px var(--lb-fd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-mh-sub { font-size: 11.5px; color: var(--tx3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-msep { height: 1px; background: var(--bd); margin: 4px 6px; }
+.lb-mi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--tx2); font: inherit; font-size: 13px; text-align: left; cursor: pointer; border-radius: var(--radius-sm); }
+.lb-mi:hover, .lb-mi:focus-visible { background: var(--surface); color: var(--tx); outline: none; }
+.lb-mi:focus-visible { box-shadow: inset 0 0 0 2px var(--ac); }
+.lb-mi-l { flex: 1; }
+.lb-mi-k { font: 500 11px var(--lb-fm); color: var(--tx3); }
+.lb-mi-tick { display: none; color: var(--ac); }
+.lb-mi[aria-checked="true"] .lb-mi-tick { display: block; }
+.lb-mi[aria-checked="true"] .lb-mi-k { display: none; }
+#lbMenuBtn:focus-visible, .tool-btn:focus-visible, .nav-btn:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .lb-menu { animation: none; } }
+
+/* ---------- Dialog (report a problem, tab cap) ---------- */
+.lb-dlg { position: fixed; inset: 0; z-index: 100002; display: grid; place-items: center; background: rgba(0, 0, 0, .5); }
+.lb-dlg-card { width: min(440px, 92vw); display: grid; gap: 12px; padding: 22px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: calc(var(--lb-r, 0px) * 1.2); }
+.lb-dlg-t { font: 600 18px var(--lb-fd); margin: 0; }
+.lb-dlg-in { width: 100%; box-sizing: border-box; padding: 9px 10px; background: var(--bg0); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-sm); font: inherit; font-size: 13px; }
+.lb-dlg-in:focus-visible { outline: 2px solid var(--ac); outline-offset: 1px; }
+.lb-dlg-tick { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--tx2); }
+.lb-dlg-row { display: flex; gap: 10px; justify-content: flex-end; }
+.lb-btn { padding: 8px 16px; background: var(--bg2); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-sm); font: inherit; font-size: 13px; cursor: pointer; }
+.lb-btn-p { background: var(--ac); color: var(--lb-on, #000); border-color: var(--ac); }
+.lb-btn:disabled { opacity: .5; cursor: default; }
+
+/* ---------- Address bar: domain picked out (UI.md 3.2) ---------- */
+.omnibox { position: relative; }
+.lb-urlview { display: none; position: absolute; top: 0; bottom: 0; align-items: center; pointer-events: none; font: 14px var(--lb-fm); white-space: nowrap; overflow: hidden; }
+.omnibox.lb-uv-on .lb-urlview { display: flex; }
+.omnibox.lb-uv-on .url-input { color: transparent; }
+.lb-uv-m { color: var(--tx3); flex: none; }
+.lb-uv-d { color: var(--tx); flex: none; font-weight: 500; }
+.lb-uv-p { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Side tabs (UI.md 3.1). Rail 220 px, 52 px collapsed. Skins keep their own strip. ---------- */
+#lbRailToggle { display: none; }
+html[data-lb-tabs="side"][data-lb-theme]:not([data-skin]) {
+  --lb-rail: 220px;
+  & #lbRailToggle:not([hidden]) { display: inline-grid; }
+  & .app { padding-left: var(--lb-rail); box-sizing: border-box; }
+  & .titlebar { position: absolute; left: 0; top: 0; bottom: 0; width: var(--lb-rail); flex-direction: column; align-items: stretch; padding: 10px 8px; gap: 8px; border-right: 1px solid var(--lb-line); background: var(--lb-strip); overflow: hidden; }
+  & .titlebar > .tool-btn, & .titlebar > .status-pill { align-self: flex-start; margin-bottom: 0; }
+  & .tab-strip-wrapper { flex: 1; flex-direction: column; align-items: stretch; min-height: 0; }
+  & .tab-strip { flex-direction: column; align-items: stretch; overflow-y: auto; overflow-x: hidden; gap: 2px; }
+  & .tab-strip::before { content: "Today"; font: 500 10.5px var(--lb-fm); letter-spacing: .14em; text-transform: uppercase; color: var(--tx3); padding: 4px 8px; }
+  & .tab { max-width: none; width: 100%; flex: none; border-radius: var(--radius-sm); height: 36px; }
+  & .tab-add { align-self: flex-start; }
+  & .tab-strip-scroll-btn { display: none; }
+}
+html[data-lb-tabs="side"][data-lb-rail-min][data-lb-theme]:not([data-skin]) {
+  --lb-rail: 52px;
+  & .tab-strip::before { content: ""; padding: 0; }
+  & .tab-title, & .tab-close, & .titlebar > .status-pill { display: none; }
+  & .tab { justify-content: center; padding: 0; }
+}
+
+/* ---------- Settings groups, membership page ---------- */
+.lb-switch { width: 38px; height: 22px; flex: none; border-radius: 11px; border: 1px solid var(--bd); background: var(--bg3); position: relative; cursor: pointer; padding: 0; transition: background .2s; }
+.lb-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--tx2); transition: transform .2s cubic-bezier(.2, .7, .2, 1); }
+.lb-switch.on { background: var(--ac); border-color: var(--ac); }
+.lb-switch.on::after { transform: translateX(16px); background: var(--lb-on, #000); }
+.lb-switch:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.lb-mp-top { display: flex; gap: 16px; align-items: center; }
+.lb-mp-top .lb-tier-mark { width: 56px; height: 56px; }
+.lb-mp-name { font: 600 24px var(--lb-fd); }
+.lb-mp-num { font: 500 13px var(--lb-fm); letter-spacing: .12em; color: var(--tx2); margin-top: 2px; }
+.lb-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 20px; margin: 12px 0; font-size: 13px; }
+.lb-dl dt { color: var(--tx3); }
+.lb-dl dd { margin: 0; color: var(--tx); }
+.lb-warn { color: var(--tx); border-left: 2px solid var(--ac); padding-left: 8px; }
+.lb-pl { font-size: 12.5px; color: var(--tx2); margin-top: 6px; }
+.lb-pl a, .lb-note a { color: var(--lb-link); }
+/* Contrast (visual suite, 4.5:1 in every theme): quiet text on S6 surfaces uses the second text tone, accent links are pulled toward the text tone. */
+#lbMemberPage, .lb-bul { --tx3: var(--tx2); --lb-link: color-mix(in srgb, var(--ac) 30%, var(--tx)); }
+:root { --lb-link: color-mix(in srgb, var(--ac) 30%, var(--tx)); }
+a.lb-btn { text-decoration: none; display: inline-block; }
+
+/* ---------- Splash: name first, number small beneath ---------- */
+.lb-sp-name { text-transform: none; letter-spacing: .02em; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-sp-num { font: 500 12px var(--lb-fm); letter-spacing: .2em; color: var(--tx3); margin-top: 6px; }
+
+/* ---------- Start page: bulletin, expiry line, member card ---------- */
+.lb-startm { display: grid; gap: 12px; justify-items: center; margin: 18px auto 0; width: min(440px, 92%); }
+.lb-bulletin { width: 100%; box-sizing: border-box; padding: 14px 18px; background: var(--bg1); border: 1px solid var(--bd); border-top: 2px solid var(--ac); border-radius: var(--radius-sm); text-align: left; }
+.lb-bul-l { font: 500 10px var(--lb-fm); letter-spacing: .24em; text-transform: uppercase; color: var(--tx3); }
+.lb-bul-t { font: 500 17px/1.4 'Cormorant Garamond', Georgia, serif; color: var(--tx); margin: 6px 0 8px; }
+.lb-bul-f { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; color: var(--tx3); }
+.lb-bul-x, .lb-link { background: none; border: 0; padding: 0; color: var(--lb-link); font: inherit; font-size: 11.5px; cursor: pointer; text-decoration: underline; }
+.lb-bul-x:focus-visible, .lb-link:focus-visible, .lb-card:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.lb-expiry { width: 100%; box-sizing: border-box; font-size: 12.5px; color: var(--tx); padding: 8px 12px; border-left: 2px solid var(--ac); background: var(--bg1); }
+.lb-expiry[data-level="soon"] { border-left-width: 4px; }
+.lb-card { display: flex; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; padding: 12px 16px; background: var(--bg1); border: 1px solid var(--bd); border-radius: var(--radius-md); color: var(--tx); font: inherit; text-align: left; cursor: pointer; transition: border-color .2s; }
+.lb-card:hover { border-color: var(--ac); }
+.lb-card .lb-tier-mark { width: 36px; height: 36px; flex: none; }
+.lb-card-t { display: grid; gap: 2px; min-width: 0; }
+.lb-card-n { font: 600 15px var(--lb-fd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-card-s { font-size: 11.5px; color: var(--tx3); letter-spacing: .04em; }
+.lb-card-cardinal { border-image: linear-gradient(120deg, #c9d0da, transparent 40%, #c9d0da) 1; }
+.lb-card-prime { border-color: #e5506a; }
+.lb-card-executive { border-color: #e6c15a; }
+.lb-planline { font-size: 12px; color: var(--tx3); text-align: center; }
+.lb-planline .lb-pl { display: inline; font-size: inherit; margin: 0; color: var(--tx3); }
+.lb-dayDone { position: absolute; inset: 0; z-index: 50; display: grid; place-content: center; justify-items: center; gap: 10px; background: var(--bg0); color: var(--tx); text-align: center; padding: 24px; }
+.lb-dayDone h2 { font: 600 26px var(--lb-fd); }
+.lb-dayDone p { color: var(--tx2); }
+main { position: relative; }
+
+/* ---------- Tour (not modal) ---------- */
+.lb-tour { position: fixed; right: 18px; bottom: 18px; z-index: 100001; width: min(320px, 90vw); display: grid; gap: 10px; padding: 16px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-md); box-shadow: 0 18px 50px -18px rgba(0, 0, 0, .6); animation: lbMenuIn .2s cubic-bezier(.2, .7, .2, 1); }
+.lb-tour-h { display: flex; align-items: center; gap: 8px; }
+.lb-tour-c { margin-left: auto; font-size: 11.5px; color: var(--tx3); }
+@media (prefers-reduced-motion: reduce) { .lb-tour { animation: none; } }

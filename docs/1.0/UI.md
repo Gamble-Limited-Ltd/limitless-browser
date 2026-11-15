@@ -125,4 +125,20 @@ Run Hallmark audit and Impeccable critique on the round 2 page before showing it
 When a site shows a human check, the app shows a plain card: "This site asked for a human check. It may not work through a shared relay." No evasion
 (repo rule); the card links Report a problem (category "bot check").
 
-Last verified: 2026-11-14
+## 10. S6 build status (branch `slice/1.0-ui`, 2026-11-15)
+Gate fields the UI reads from `/_lb/me` (all exist in S5 except where marked mocked): `membership`, `number`, `tier`, `standing`,
+`standingUntil`, `name`, `admittedAt`, `certificateCode`, `plan.tier` (effective plan), `plan.paidUntil`, `plan.limits` (`tabs`,
+`dailyMinutes`), `plan.lastFreeTheme` (read; the gate has no route that writes it, so the app keeps `limitless:lastfree:v1` itself),
+`plan.plansOpen`, `notices[]` (S5 sends `[]`; the UI expects `{id, text, date}` objects, mocked in tests), and `POST /_lb/reports` (`{category, note, host?}`; does not exist in the gate yet, mocked). The ceremony state route is listed below.
+- Done: section 1 (paid themes, Vault lock, lapse fallback, tier marks, icon sprite `theme/icons.svg`). 
+- Done: section 2 (toolbar, Limitless menu in `app/ui.js`, developer mode, Report a problem dialog; `POST /_lb/reports` does not exist in the gate yet, the dialog says so). Kept `+` on the tab strip. Downloads item waits for S8. Under a skin the old toolbar returns.
+- Done: section 3 (address bar domain emphasis through a value setter hook on `#url`, side tab rail 220/52 px, setting in Appearance). Not built: the "Pinned" tab group (there is no pinning in the app), the progress bar was already done in S1.
+- Done: section 5 (six groups with all old sections kept, opening on General; Membership page; developer mode card; plan limits and expiry notice helper; the old tutorial removed from `index.html` and `app/main.js`). `patcher.html` still has tutorial patch definitions that now match nothing: clean-up is open (see report). Tab sleeping stays inside the Privacy and data group (Resource Cache card).
+- Done: section 4 (splash name then number from `limitless:me:v1`; member card; engraved bulletin from `notices[]`; expiry line at 14 and 3 days on the start page and the Membership page; "Paid plans are coming soon." while `plansOpen` is off; calm error card keyed on the error class, themed from the parent's tokens, with Report a problem; bot check card; Ordinal tab cap and daily time limit (client side), Prime "Why are you using so many tabs!?"; in-app 3 step tour).
+- Ceremony (6.1): static page `theme/ceremony/` (`index.html`, `ceremony.css`, `ceremony.js`; Pinyon Script and Cormorant Garamond by `scripts/fetch-fonts.py`), six steps, resumable, Cardinal and above get the certificate on screen, Ordinal the member card. **Wired:** nginx serves it at `GET /auth/welcome` and its assets ungated; the gate answers `GET /auth/welcome/state` with JSON `{kind: invited|approved|existing, step, number, suggested, signed, tier, name (only once signed), certificateCode, charterVersion, charter: [{title, body}]}` (401 `{error:'redirect', to}` signed out). The POST routes are S5's. The gate's own minimal pages remain for POST errors and as fallback.
+- Suspended member (S5 open item 2): the simplest safe choice is no new route: nginx already sends a suspended member to the gate's `/auth/suspended` page, and `/_lb/me` stays behind the same gate, so there is no read-only membership page. The designed letter belongs to the gate pages.
+- Open (not built in S6): removal and suspension notice pages and the invitation email (gate-served), the verify page (HALL), downloads (S8), the "Pinned" tab group.
+- Tests: `npm test` (e2e), `npm run test:visual` (`playwright.visual.config.js`, `tests/visual/`: layout, overlap and contrast checks over the full theme matrix at 1366x768 and 2560x1440 for the start page, menu and the six settings groups; screenshots for Luxury dark, Soft light and Ink blue).
+- Newer sections are listed below as they land.
+
+Last verified: 2026-11-15

@@ -537,18 +537,23 @@
                     ub.append(dot, msg, gap, x);
                     mainEl.parentNode.insertBefore(ub, mainEl);
                 };
+                // S6: the poll never stops. It refreshes window.LB_member every two minutes (plan, standing, notices, expiry)
+                // and only the busy note is once per session. A suspended or removed member gets a 403 here and the page
+                // is replaced by the gate's notice on the next navigation, so nothing else to do.
+                let timer = 0;
                 const poll = async () => {
-                    if (seen()) return;
+                    clearTimeout(timer);
                     try {
                         const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin' });
                         const j = r.ok ? await r.json() : null;
-                        // Membership reader (S5): the gate's /_lb/me fields for the UI slice (S6); read-only, display only.
+                        // Membership reader (S5): the gate's /_lb/me fields for the UI (S6); read-only, display only.
                         if (j && j.membership === 'on') { window.LB_member = j; try { document.dispatchEvent(new CustomEvent('lb-member', { detail: j })); } catch (_) {} }
-                        if (j && j.busy === true) { show(); return; }
+                        if (j && j.busy === true && !seen()) show();
                     } catch (_) {}
-                    setTimeout(poll, 120000);
+                    timer = setTimeout(poll, 120000);
                 };
-                setTimeout(poll, 4000);
+                window.LB_meRefresh = poll;
+                timer = setTimeout(poll, 1500);
             })();
             // Settings > Connection switch. While our relay is off it reads "Public relays (until 1.0)", on and disabled; the saved key is untouched.
             function LB_paintRelaySwitch() {
@@ -1184,7 +1189,7 @@
 
             const VALID_SETTINGS_SECTIONS = new Set([
                 'connection','search','privacy','cache','filesandmedia',
-                'appearance','skins','homescreen','shortcuts','language','tutorial','about','fallback'
+                'appearance','skins','homescreen','shortcuts','language','about','fallback','membership'
             ]);
 
             function isSettingsPage(url) {
@@ -1539,309 +1544,62 @@
                 updateFindControlState();
             });
 
+            // Calm error card (S6, UI.md 3.4): themed from the parent's tokens, one plain title, one cause, Try again, Report a problem,
+            // technical details folded. Wording is keyed on the class (errorType, from lbCat) and never invents a cause.
+            const LB_CALM = {
+                'DNS Resolution Failed': ['We could not find this site', 'The address may have a typo, or the site may no longer exist.', 'Broken site'],
+                'Connection Timeout': ['This site is not answering', 'It took too long to respond. The site or the connection to it may be slow.', 'Slow'],
+                'Connection Refused': ['This site refused the connection', 'It may be down, or it may not accept connections like this one.', 'Broken site'],
+                'SSL/TLS Error': ['This site could not prove who it is', 'Its security certificate or secure connection did not check out, so Limitless stopped.', 'Broken site'],
+                'Network Error': ['The connection was interrupted', 'You may be offline, or the relay lost its link for a moment.', 'Slow'],
+                'Connection Interrupted': ['The connection was interrupted', 'The link to the relay dropped. Trying again usually fixes it.', 'Slow'],
+                'Request Blocked': ['This request was blocked', 'The site or a security setting refused it.', 'Looks wrong'],
+                'Page Not Found': ['This page was not found', 'The site answered, but it has nothing at this address.', 'Broken site'],
+                'Access Forbidden': ['This page is not open to you', 'The site said you do not have permission to see it.', 'Broken site'],
+                'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
+                'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check']
+            };
             function renderErrorPage(url, errorType, errorCode, errorDescription, errorSuggestions) {
-                // Escape anything that could contain URL-sourced or page-sourced content
                 const _esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-                const suggestionsHTML = (errorSuggestions || []).map(s => `<li>${_esc(s)}</li>`).join("");
+                const calm = LB_CALM[errorType] || ['This page could not be loaded', 'Something went wrong while loading it.', 'Broken site'];
+                const cs = getComputedStyle(document.documentElement), tok = k => (cs.getPropertyValue('--lb-' + k).trim() || '').replace(/[;{}<]/g, '');
+                const root = `--bg:${tok('bg') || '#070a10'};--surf:${tok('surf') || '#0e131c'};--fg:${tok('fg') || '#eae6dc'};--mut:${tok('mut') || '#8d93a0'};--line:${tok('line') || '#232a38'};--acc:${tok('acc') || '#BDFFFF'};--on:${tok('on') || '#07101a'};--fd:${(tok('fd') || 'Georgia, serif').replace(/"/g, "'")};--fb:${(tok('fb') || 'system-ui, sans-serif').replace(/"/g, "'")}`;
+                const rest = (errorSuggestions || []).slice(0, 4).map(x => `<li>${_esc(x)}</li>`).join('');
+                const tech = [['Type', errorType], ['Code', errorCode], ['Address', url], ['Detail', errorDescription]].filter(r => r[1]).map(r => `<dt>${_esc(r[0])}</dt><dd>${_esc(r[1])}</dd>`).join('');
+                const bot = errorType === 'Human Check';
                 frame.srcdoc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Error - Limitless Browser</title>
-    <link rel="stylesheet" href="${LB_FA}" />
-    <style>
-        @import url('${LB_FONTS_CSS}');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-            background: #181c21;
-            color: #f0f4f8;
-            min-height: 100vh;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .error-content {
-            background: #1c2026;
-            padding: 48px;
-            width: 100%;
-            height: 100vh;
-            margin: 0;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .error-brand {
-            position: absolute;
-            top: 32px;
-            left: 32px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            opacity: 0.9;
-        }
-        
-        .error-brand i {
-            font-size: 24px;
-            color: #9de5ff;
-        }
-        
-        .error-brand span {
-            font-size: 20px;
-            font-weight: 700;
-            color: #9de5ff;
-            letter-spacing: 0.02em;
-        }
-        
-        .error-header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 24px;
-            margin-bottom: 32px;
-            text-align: center;
-            max-width: 700px;
-        }
-        
-        @keyframes error-alarm-ring {
-            0%   { box-shadow: 0 0 0 0px rgba(255,149,149,0.5); }
-            40%  { box-shadow: 0 0 0 22px rgba(255,149,149,0); }
-            100% { box-shadow: 0 0 0 0px rgba(255,149,149,0); }
-        }
-        @keyframes error-alarm-shake {
-            0%,100% { transform: rotate(0deg)   scale(1); }
-            8%       { transform: rotate(-18deg) scale(1.15); }
-            16%      { transform: rotate(16deg)  scale(1.1); }
-            24%      { transform: rotate(-12deg) scale(1.05); }
-            32%      { transform: rotate(10deg)  scale(1.05); }
-            40%      { transform: rotate(-6deg)  scale(1); }
-            48%      { transform: rotate(4deg)   scale(1); }
-            56%      { transform: rotate(-2deg)  scale(1); }
-            62%,100% { transform: rotate(0deg)   scale(1); }
-        }
-        .error-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 149, 149, 0.15);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            animation: error-alarm-ring 1.8s ease-out 0.4s infinite;
-        }
-        
-        .error-icon i {
-            font-size: 36px;
-            color: #ff9595;
-            animation: error-alarm-shake 1.8s cubic-bezier(0.36,0.07,0.19,0.97) 0.4s infinite;
-            transform-origin: center bottom;
-        }
-        
-        .error-title-group {
-            flex: 1;
-            width: 100%;
-        }
-        
-        .error-type {
-            font-size: 32px;
-            font-weight: 700;
-            color: #f0f4f8;
-            margin-bottom: 8px;
-            line-height: 1.2;
-        }
-        
-        .error-code {
-            font-size: 14px;
-            color: #7d8a98;
-            font-weight: 500;
-            font-family: 'JetBrains Mono', monospace;
-            letter-spacing: 0.3px;
-        }
-        
-        .error-description {
-            max-width: 500px;
-            color: #b8c4d0;
-            line-height: 1.6;
-            margin-bottom: 24px;
-            font-size: 15px;
-        }
-        
-        .error-suggestions {
-            text-align: left;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 24px 32px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            width: 100%;
-            max-width: 500px;
-        }
-        
-        .error-suggestions h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #9de5ff;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .error-suggestions ul {
-            list-style: none;
-        }
-        
-        .error-suggestions li {
-            position: relative;
-            padding-left: 20px;
-            margin-bottom: 8px;
-            color: #b8c4d0;
-            font-size: 14px;
-        }
-        
-        .error-suggestions li::before {
-            content: '•';
-            position: absolute;
-            left: 0;
-            color: #70d4ff;
-        }
-        
-        .error-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 32px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .error-btn {
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            font-family: 'Space Grotesk', sans-serif;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .error-btn-primary {
-            background: #9de5ff;
-            color: #0d0f12;
-        }
-        
-        .error-btn-primary:hover {
-            background: #70d4ff;
-            transform: translateY(-2px);
-        }
-        
-        .error-btn-secondary {
-            background: transparent;
-            color: #b8c4d0;
-            border: 1px solid #4f5963;
-        }
-        
-        .error-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: #5a6370;
-            color: #f0f4f8;
-            transform: translateY(-1px);
-        }
-        
-        @media (max-width: 600px) {
-            body {
-                padding: 12px;
-            }
-            
-            .error-content {
-                padding: 32px 24px;
-            }
-            
-            .error-brand {
-                position: static;
-                margin-bottom: 24px;
-            }
-            
-            .error-header {
-                margin-top: 0;
-            }
-            
-            .error-type {
-                font-size: 24px;
-            }
-
-            .error-icon {
-                width: 64px;
-                height: 64px;
-            }
-
-            .error-icon i {
-                font-size: 28px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="error-content">
-        <div class="error-brand" onclick="window.parent.postMessage({t:'n', u:'limitless://newtab'}, '*')">
-            <svg viewBox="0 0 64 64" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="#4DA6FF" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" fill="#BDFFFF" stroke="none"/></svg>
-            <span>Limitless Browser</span>
-        </div>
-        
-        <div class="error-header">
-            <div class="error-icon">
-                <i class="fas fa-triangle-exclamation"></i>
-            </div>
-            <div class="error-title-group">
-                <h1 class="error-type">${errorType}</h1>
-                <div class="error-code">${errorCode}</div>
-            </div>
-        </div>
-        
-        <div class="error-description">
-            ${errorDescription}
-        </div>
-
-        ${suggestionsHTML ? `
-        <div class="error-suggestions">
-            <h3>Try these steps</h3>
-            <ul>
-                ${suggestionsHTML}
-            </ul>
-        </div>` : ''}
-        
-        <div class="error-actions">
-            <button class="error-btn error-btn-primary" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">
-                <i class="fas fa-rotate-right"></i>
-                Reload Page
-            </button>
-            <button class="error-btn error-btn-secondary" onclick="window.parent.postMessage({type:'goBack'}, '*')">
-                <i class="fas fa-arrow-left"></i>
-                Go Back
-            </button>
-            <button class="error-btn error-btn-secondary" onclick="window.parent.postMessage({type:'openDevTools'}, '*')">
-                <i class="fas fa-server"></i>
-                Open Logs
-            </button>
-        </div>
-    </div>
-</body>
-</html>`;
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Error - Limitless Browser</title>
+<style>
+@import url('${LB_FONTS_CSS}');
+:root{${root}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--fb);min-height:100vh;display:grid;place-items:center;padding:24px}
+.card{width:min(520px,100%);padding:40px 36px;background:var(--surf);border:1px solid var(--line);border-radius:6px;display:grid;gap:14px;justify-items:start}
+.mk{width:34px;height:34px;opacity:.7}
+h1{font-family:var(--fd);font-weight:500;font-size:26px;line-height:1.25}
+.cause{color:var(--mut);font-size:15px;line-height:1.55}
+ul{color:var(--mut);font-size:13.5px;line-height:1.6;padding-left:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+button{font:inherit;font-size:14px;padding:10px 20px;border-radius:4px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--fg)}
+button.p{background:var(--acc);border-color:var(--acc);color:var(--on)}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+details{width:100%;margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;color:var(--mut);font-size:13px}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin-top:10px;font-size:12.5px}
+dt{color:var(--mut)}dd{word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace}
+</style></head><body>
+<main class="card" role="alert">
+<svg class="mk" viewBox="0 0 64 64" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="currentColor" stroke-width="6" style="color:var(--mut)"/><circle cx="50.02" cy="19.38" r="5.5" fill="currentColor" style="color:var(--mut)"/></svg>
+<h1>${_esc(calm[0])}</h1>
+<p class="cause">${_esc(calm[1])}</p>
+${bot ? '' : (rest ? '<ul>' + rest + '</ul>' : '')}
+<div class="row">
+${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
+<button class="${bot ? 'p' : ''}" id="report" onclick="window.parent.postMessage({type:'lbReport', cat:'${_esc(calm[2])}'}, '*')">Report a problem</button>
+<button onclick="window.parent.postMessage({type:'goBack'}, '*')">Go back</button>
+</div>
+<details><summary>Technical details</summary><dl>${tech}</dl></details>
+</main></body></html>`;
             }
 
             const SEARCH_ENGINES = {
@@ -2103,6 +1861,7 @@
             const pendingNewTabIds = new Set();
 
             function createTab(url = HOME_INTERNAL) {
+                if (window.LB_tabGate && !window.LB_tabGate(tabs.length)) return;   // S6: plan tab cap (app/ui.js)
                 const tab = {
                     id: nextTabId++,
                     title: "New Tab",
@@ -2351,8 +2110,8 @@
                 if (tab.url === HOME_INTERNAL) {
                     showNewTab(false);
                 } else if (isSettingsPage(tab.url) && !tab.hasError) {
-                    const section = tab.url.replace("limitless://settings/", "") || "skins";
-                    showSettingsPage(false, section === "limitless://settings" ? "skins" : section);
+                    const section = tab.url.replace("limitless://settings/", "") || "search";
+                    showSettingsPage(false, section === "limitless://settings" ? "search" : section);
                 } else if ((tab.url === EXTSTORE_INTERNAL || tab.url.startsWith("limitless://extensions/")) && !tab.hasError) {
                     const sm = tab.url.match(/^limitless:\/\/extensions\/search\/(.+)$/);
                     showExtensionsStore(false, sm ? decodeURIComponent(sm[1]) : '');
@@ -9772,8 +9531,8 @@ _VIEWER_DL_JS +
                     return;
                 }
                 if (url === SETTINGS_INTERNAL || url.startsWith("limitless://settings/")) {
-                    const section = url.replace("limitless://settings/", "") || "skins";
-                    const cleanSection = section === "limitless://settings" ? "skins" : section.split("/")[0];
+                    const section = url.replace("limitless://settings/", "") || "search";
+                    const cleanSection = section === "limitless://settings" ? "search" : section.split("/")[0];
                     if (url !== SETTINGS_INTERNAL && !VALID_SETTINGS_SECTIONS.has(cleanSection)) {
                         // Unknown settings section — show error page
                         if (activeTabId === initiatorTabId) {
@@ -10148,6 +9907,10 @@ _VIEWER_DL_JS +
                     // ────────────────────────────────────────────────────────
 
                     const html = new TextDecoder().decode(r.buf);
+                    if (window.LB_botCheck && window.LB_botCheck(r.status, html)) {   // S6: plain card, no evasion (UI.md, TESTING 10)
+                        hideOverlay(); setStatus("error", "Error"); setTabTitle("Human check"); currentDoc = null;
+                        renderErrorPage(url, 'Human Check', 'bot-check', '', []); tabAbortControllers.delete(initiatorTabId); return;
+                    }
                     if (_pcShown && lbRwHash(html) === _pcShown.docSig && activeTabId === initiatorTabId) {
                         // the page on screen is already built from exactly this document
                         setStatus("idle", "Ready");
@@ -11521,6 +11284,7 @@ _VIEWER_DL_JS +
                 if (e.data && e.data.type === 'openDevTools') {
                     toggleLogs();
                 }
+                if (e.data && e.data.type === 'lbReport' && window.LBReport) window.LBReport.open(String(e.data.cat || ''), pageUrl && /^https?:/.test(pageUrl) ? new URL(pageUrl).hostname : '');
             });
 
             $("back").onclick = () => {
@@ -12208,7 +11972,7 @@ _VIEWER_DL_JS +
                     const settingsUrl = `limitless://settings/${section}`;
                     urlInput.value = settingsUrl;
                     pageUrl = settingsUrl;
-                    setTabTitle(`Settings - ${section.charAt(0).toUpperCase() + section.slice(1)}`);
+                    setTabTitle(`Settings - ${(window.LBUI && window.LBUI.groupTitle ? window.LBUI.groupTitle(section) : null) || section.charAt(0).toUpperCase() + section.slice(1)}`);
                     updateTabUrl(settingsUrl);
 
                     hist = hist.slice(0, histIdx + 1);
@@ -12220,14 +11984,6 @@ _VIEWER_DL_JS +
                     navBtn.classList.add('active');
                     document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
                     const target = document.querySelector('.settings-section[data-section="' + section + '"]');
-                    if (section === 'tutorial') {
-                        document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
-                        const tutSec = document.querySelector('.settings-section[data-section="tutorial-page"]');
-                        if (tutSec) tutSec.style.display = 'flex';
-                        document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
-                        document.querySelector('.settings-nav-item[data-section="tutorial"]')?.classList.add('active');
-                        return;
-                    }
                     if (target) {
                         target.style.display = 'flex';
                     }
@@ -12602,8 +12358,8 @@ _VIEWER_DL_JS +
                         } else if (activeTab && activeTab.url === HOME_INTERNAL) {
                             showNewTab(false);
                         } else if (activeTab && isSettingsPage(activeTab.url)) {
-                            const section = activeTab.url.replace("limitless://settings/", "") || "skins";
-                            showSettingsPage(false, section === "limitless://settings" ? "skins" : section);
+                            const section = activeTab.url.replace("limitless://settings/", "") || "search";
+                            showSettingsPage(false, section === "limitless://settings" ? "search" : section);
                         }
                     } else {
                         go(urlInput.value);
@@ -12634,7 +12390,7 @@ _VIEWER_DL_JS +
                 if (!section && pageUrl && pageUrl.startsWith("limitless://settings/")) {
                     section = pageUrl.replace("limitless://settings/", "");
                 }
-                if (!section) section = "skins";
+                if (!section) section = "search";
 
                 if (newtab) newtab.classList.remove("active");
                 settingsEl.style.display = "block";
@@ -12653,14 +12409,14 @@ _VIEWER_DL_JS +
                     updateNav();
                 }
                 updateTabUrl(settingsUrl);
-                setTabTitle(`Settings - ${section.charAt(0).toUpperCase() + section.slice(1)}`);
+                setTabTitle(`Settings - ${(window.LBUI && window.LBUI.groupTitle ? window.LBUI.groupTitle(section) : null) || section.charAt(0).toUpperCase() + section.slice(1)}`);
                 setStatus("idle", "Ready");
 
                 document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
                 const navBtn = document.querySelector(`.settings-nav-item[data-section="${section}"]`);
                 if (navBtn) navBtn.classList.add('active');
 
-                const sectionElKey = section === 'tutorial' ? 'tutorial-page' : section;
+                const sectionElKey = section;
 
                 document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
                 const targetSection = document.querySelector(`.settings-section[data-section="${sectionElKey}"]`);
@@ -14031,519 +13787,17 @@ _VIEWER_DL_JS +
             });
 
 
-            const TUTORIAL_KEY = 'limitless:tutorial:v1';
-
-            const tutSteps = [
-                {
-                    target: null,
-                    icon: '<svg class="lb-mk" viewBox="0 0 64 64" width="34" height="34" aria-hidden="true"><use class="u-orbit" href="#lb-mk-orbit"/><use class="u-lens" href="#lb-mk-lens"/><use class="u-wordmark" href="#lb-mk-wordmark"/></svg>',
-                    title: 'Welcome to Limitless Browser',
-                    body: 'A private browsing proxy from Gamble Limited Ltd. This tour covers all the key controls and takes under a minute, and can be restarted anytime from Settings.',
-                    pos: 'center'
-                },
-                {
-                    target: '#historyBtn',
-                    icon: '<i class="fas fa-clock-rotate-left"></i>',
-                    title: 'Recent History',
-                    body: 'Jump back to recently visited pages. If you close a tab by accident, open history to recover the URL. No browsing data ever leaves your device, or is saved longer than 10 entries.',
-                    pos: 'below'
-                },
-                {
-                    target: '#settingsBtn',
-                    icon: '<i class="fas fa-gear"></i>',
-                    title: 'Settings',
-                    body: 'Configure the WISP server, search engine, wallpaper, font size, cache, shortcuts and more. You can also read about Limitless Browser or restart the tutorial from here.',
-                    pos: 'below'
-                },
-                {
-                    target: '#navPillGroup',
-                    icon: '<i class="fas fa-arrow-left"></i>',
-                    title: 'Navigation Buttons',
-                    body: 'Back (<i class="fas fa-arrow-left" style="font-size:0.8em;"></i>), forward (<i class="fas fa-arrow-right" style="font-size:0.8em;"></i>), reload and home. The home button returns to the new tab page, and you can pause a page reloading by clicking the square in its place.',
-                    pos: 'below'
-                },
-                {
-                    target: '#newTab',
-                    icon: '<i class="fas fa-plus"></i>',
-                    title: 'New Tab',
-                    body: 'Open a new tab with this button or Alt+T. Tabs show favicons and scroll horizontally when you have many open. Use the <i class="fas fa-arrow-left"></i> <i class="fas fa-arrow-right"></i> arrows to scroll them.',
-                    pos: 'below'
-                },
-                {
-                    target: '#url',
-                    icon: '<i class="fas fa-magnifying-glass"></i>',
-                    title: 'Address and Search Bar',
-                    pad: 10,
-                    body: 'Type a URL or search term and press Enter. The lock icon shows connection security, and clicking on it shows site info. The bookmark icon saves the current page instantly.',
-                    pos: 'below'
-                },
-                {
-                    target: '#findOmniBtn',
-                    icon: '<i class="fa-solid fa-magnifying-glass-arrow-right"></i>',
-                    title: 'Find in Page',
-                    body: 'Search for text on the active page. Toggle the find bar with this button, Alt+F, or Ctrl+F. You can go to the next or previous match using the arrow buttons or Enter/Shift+Enter.',
-                    pos: 'below'
-                },
-                {
-                    target: '#bookmarkBtn',
-                    icon: '<i class="fas fa-bookmark"></i>',
-                    title: 'Bookmarks',
-                    body: 'Bookmark the current page with this button or Ctrl+D. Your bookmarks appear in the bar below the address bar. Right-click any bookmark to edit or remove it.',
-                    pos: 'below'
-                },
-                {
-                    target: '#extPuzzleBtn',
-                    icon: '<i class="fas fa-puzzle-piece"></i>',
-                    title: 'Extensions',
-                    body: 'Open the extensions button to manage installed add-ons, launch extension popups, and install new ones from the built-in store.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#devToggle',
-                    icon: '<i class="fas fa-server"></i>',
-                    title: 'Browser Logs',
-                    body: 'Opens the request log panel. See every fetch, cache hit, blocked tracker and error in real time. Essential for diagnosing proxy or network issues.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#codeBtn',
-                    icon: '<i class="fas fa-code"></i>',
-                    title: 'Page Inspector',
-                    body: 'Inspect the live DOM of any page. Browse the element tree, view computed styles, box model and attributes. Works even if devtools are disabled in your browser.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#blockToggle',
-                    icon: '<i class="fas fa-shield-halved"></i>',
-                    title: 'Ad and Tracker Blocking',
-                    body: 'Limitless blocks ads and trackers by default. The badge shows your current status. Click on it to toggle it off if a site is not loading correctly.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#bookmarksToggle',
-                    icon: '<i class="fas fa-chevron-up"></i>',
-                    title: 'Bookmarks Bar',
-                    body: 'Click the chevron to show or hide the bookmarks bar if it takes up too much space. To reenable click the down chevron that appears next to settings.',
-                    pos: 'below',
-                    targetFallback: '#showBookmarksBtn'
-                },
-                {
-                    target: '#metricsBtn',
-                    icon: '<i class="fas fa-chart-bar"></i>',
-                    title: 'Browser Metrics',
-                    body: 'Live stats at a glance: active requests, queue depth, memory, cache hit rate, network info and page performance. Useful for debugging slow sites.',
-                    pos: 'below-left'
-                },
-                {
-                    target: '#ntFavAddBtn',
-                    icon: '<i class="fas fa-star"></i>',
-                    title: 'Add Favorite',
-                    body: 'Pin your most-visited sites as favorites on the new tab page for instant access. You can add up to 6.',
-                    pos: 'below',
-                    requiresNewTab: true,
-                    targetFallback: '.nt-fav-add'
-                },
-                {
-                    target: null,
-                    icon: '<i class="fas fa-check-circle"></i>',
-                    title: "You're all set!",
-                    body: "That's the full tour! You can restart it any time from Settings. Enjoy Limitless Browser.",
-                    pos: 'center'
-                }
-            ];
-
-            let tutIdx = 0;
-            let tutActive = false;
-
-            function startTutorial(force = false) {
-                if (!force) {
-                    try {
-                        if (ls.getItem(TUTORIAL_KEY) === 'done') return;
-                    } catch (e) { }
-                }
-                tutIdx = 0;
-                tutActive = true;
-                const ov = document.getElementById('tutorialOverlay');
-                ov.style.display = 'block';
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    const bd = document.getElementById('tutorialBackdrop');
-                    if (bd) bd.style.opacity = '1';
-                    const svg = document.getElementById('tutorialSpotSvg');
-                    if (svg) svg.style.opacity = '0';
-                    showTutStep(0);
-                }));
-            }
-
-            function endTutorial(completed = false) {
-                tutActive = false;
-                const ov = document.getElementById('tutorialOverlay');
-                const card = document.getElementById('tutorialCard');
-
-                if (completed === true) {
-                    triggerSparks(card);
-                }
-
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(8px)';
-                const bd = document.getElementById('tutorialBackdrop');
-                if (bd) bd.style.opacity = '0';
-                const svg = document.getElementById('tutorialSpotSvg');
-                if (svg) svg.style.opacity = '0';
-                setTimeout(() => { ov.style.display = 'none'; }, 350);
-                try { ls.setItem(TUTORIAL_KEY, 'done'); } catch (e) { }
-               
-                _lbAnimLocked = false;
-                playLbAnimation(400);
-                const sr = document.getElementById('spotRect');
-                if (sr) { sr.setAttribute('width', '0'); sr.setAttribute('height', '0'); }
-                const cloneWrapEnd = document.getElementById('tutorialCloneWrap');
-                if (cloneWrapEnd) cloneWrapEnd.innerHTML = '';
-                const ringDivEnd = document.getElementById('tutorialRing');
-                if (ringDivEnd) ringDivEnd.style.display = 'none';
-                const so = document.getElementById('spotOverlay');
-                if (so) so.style.display = 'none';
-            }
-
-            function triggerSparks(el) {
-                if (!el) return;
-                const rect = el.getBoundingClientRect();
-                const count = 30;
-                const overlay = document.getElementById('tutorialOverlay');
-                const container = overlay || document.body;
-                const pad = 8;
-                for (let i = 0; i < count; i++) {
-                    const spark = document.createElement('div');
-                    spark.className = 'spark';
-                    const size = Math.random() * 10 + 10;
-                    spark.style.width = size + 'px';
-                    spark.style.height = size + 'px';
-                    let x, y;
-                    const edge = Math.floor(Math.random() * 4);
-                    if (edge === 0) {
-                        x = rect.left - pad + Math.random() * (rect.width + 2 * pad);
-                        y = rect.top - pad - Math.random() * 20;
-                    } else if (edge === 1) {
-                        x = rect.right + pad + Math.random() * 20;
-                        y = rect.top - pad + Math.random() * (rect.height + 2 * pad);
-                    } else if (edge === 2) {
-                        x = rect.left - pad + Math.random() * (rect.width + 2 * pad);
-                        y = rect.bottom + pad + Math.random() * 20;
-                    } else {
-                        x = rect.left - pad - Math.random() * 20;
-                        y = rect.top - pad + Math.random() * (rect.height + 2 * pad);
-                    }
-                    spark.style.left = x + 'px';
-                    spark.style.top = y + 'px';
-
-                    const angle = Math.random() * Math.PI * 2;
-                    const distance = Math.random() * 140 + 80;
-                    const tx = Math.cos(angle) * distance;
-                    const ty = Math.sin(angle) * distance;
-
-                    const duration = 1200 + Math.random() * 1200;
-                    spark.animate([
-                        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-                        { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
-                    ], {
-                        duration: duration,
-                        easing: 'cubic-bezier(0, .5, .5, 1)',
-                        fill: 'forwards'
-                    });
-
-                    container.appendChild(spark);
-                    setTimeout(() => spark.remove(), 2600);
-                }
-            }
-
-            function showTutStep(idx) {
-                const step = tutSteps[idx];
-                const card = document.getElementById('tutorialCard');
-                const arrow = document.getElementById('tutorialArrow');
-                const dots = document.getElementById('tutorialDots');
-                const title = document.getElementById('tutorialTitle');
-                const body = document.getElementById('tutorialBody');
-                const icon = document.getElementById('tutorialIcon');
-                const btnNext = document.getElementById('tutorialNext');
-                const btnBack = document.getElementById('tutorialBack');
-                const svgEl = document.getElementById('tutorialSpotSvg');
-                const so = document.getElementById('spotOverlay');
-
-                if (step.requiresNewTab && typeof showNewTab === 'function') {
-                    const isOnNewTab = document.getElementById('newtab')?.classList.contains('active');
-                    if (!isOnNewTab) { showNewTab(false); }
-                }
-
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.92) translateY(10px)';
-
-                dots.innerHTML = '';
-                tutSteps.forEach((_, i) => {
-                    const dot = document.createElement('button');
-                    dot.type = 'button';
-                    dot.className = 'tutorial-dot';
-                    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
-                    dot.style.cssText = `width:${i === idx ? '18px' : '7px'};height:7px;border:none;border-radius:3.5px;background:${i === idx ? 'var(--ac)' : 'rgba(255,255,255,0.2)'};transition:all .2s;cursor:pointer;padding:0;`;
-                    dot.addEventListener('click', () => {
-                        if (i === idx) return;
-                        tutIdx = i;
-                        showTutStep(i);
-                    });
-                    dots.appendChild(dot);
-                });
-
-                title.innerHTML = step.title;
-                body.innerHTML = step.body;
-                icon.innerHTML = step.icon;
-                btnNext.innerHTML = idx === tutSteps.length - 1 ? '<i class="fas fa-check" style="margin-right:5px;"></i>Done' : 'Next <i class="fas fa-arrow-right"></i>';
-                btnBack.style.display = idx > 0 ? 'block' : 'none';
-
-                const stepDelay = step.requiresNewTab ? 200 : 60;
-                setTimeout(() => {
-                    const sr = document.getElementById('spotRect');
-                    const cloneWrap = document.getElementById('tutorialCloneWrap');
-                    if (cloneWrap) cloneWrap.innerHTML = '';
-                    const ringDiv = document.getElementById('tutorialRing');
-
-                    if (step.target) {
-                        const el = document.querySelector(step.target) || (step.targetFallback ? document.querySelector(step.targetFallback) : null);
-                        if (el) {
-                            const r = el.getBoundingClientRect();
-                            const pad = step.pad !== undefined ? step.pad : 3;
-                            const computedRxRaw = parseFloat(getComputedStyle(el).borderRadius) || 0;
-                            const elRx = computedRxRaw > 40 ? 9999 : 8;
-
-                            sr.setAttribute('x', r.left - pad);
-                            sr.setAttribute('y', r.top - pad);
-                            sr.setAttribute('width', r.width + pad * 2);
-                            sr.setAttribute('height', r.height + pad * 2);
-                            sr.setAttribute('rx', elRx > 100 ? Math.min(sr.getAttribute('width'), sr.getAttribute('height')) / 2 + '' : elRx + pad + '');
-
-                            if (ringDiv) {
-                                ringDiv.style.left = (r.left - pad) + 'px';
-                                ringDiv.style.top = (r.top - pad) + 'px';
-                                ringDiv.style.width = (r.width + pad * 2) + 'px';
-                                ringDiv.style.height = (r.height + pad * 2) + 'px';
-                                ringDiv.style.borderRadius = elRx > 100 ? '50%' : (elRx + pad) + 'px';
-                                ringDiv.style.display = 'block';
-                            }
-
-                            if (cloneWrap) {
-                                cloneWrap.innerHTML = '';
-                                try {
-                                    const clone = el.cloneNode(true);
-                                    clone.removeAttribute('id');
-                                    const computedBR = getComputedStyle(el).borderRadius || elRx + 'px';
-                                    clone.style.cssText = '';
-                                    clone.style.position = 'absolute';
-                                    clone.style.left = r.left + 'px';
-                                    clone.style.top = r.top + 'px';
-                                    clone.style.width = r.width + 'px';
-                                    clone.style.height = r.height + 'px';
-                                    clone.style.margin = '0';
-                                    clone.style.pointerEvents = 'none';
-                                    clone.style.boxSizing = 'border-box';
-                                    clone.style.borderRadius = computedBR;
-                                    clone.style.overflow = 'hidden';
-                                    clone.style.transform = 'none';
-                                    clone.style.animation = 'none';
-                                    clone.style.transition = 'none';
-                                    clone.style.filter = 'none';
-                                    clone.style.backdropFilter = 'none';
-                                    clone.style.webkitBackdropFilter = 'none';
-                                    clone.style.boxShadow = 'none';
-                                    clone.style.opacity = '1';
-                                    clone.style.zIndex = '2';
-
-                                    const itemsToActivate = [];
-                                    if (clone.hasAttribute('disabled') || clone.classList.contains('disabled') || clone.classList.contains('bookmark-btn-disabled')) {
-                                        itemsToActivate.push(clone);
-                                    }
-                                    if (clone.querySelectorAll) {
-                                        clone.querySelectorAll('[disabled], .disabled, .bookmark-btn-disabled').forEach(item => {
-                                            itemsToActivate.push(item);
-                                        });
-                                    }
-                                    itemsToActivate.forEach(item => {
-                                        item.removeAttribute('disabled');
-                                        item.classList.remove('disabled', 'bookmark-btn-disabled');
-                                        item.style.opacity = '1';
-                                    });
-
-                                    cloneWrap.appendChild(clone);
-                                } catch (e) { }
-                            }
-
-                            const svgEl3 = document.getElementById('tutorialSpotSvg');
-                            if (svgEl3) svgEl3.style.opacity = '1';
-                            if (so) { so.setAttribute('mask', 'url(#spotMask)'); so.style.display = ''; }
-                            const bdReset = document.getElementById('tutorialBackdrop');
-                            if (bdReset) bdReset.style.background = '';
-
-                            positionCard(card, arrow, r, step.pos);
-                        } else {
-                            sr.setAttribute('width', '0'); sr.setAttribute('height', '0');
-                            if (ringDiv) ringDiv.style.display = 'none';
-                            centerCard(card, arrow);
-                        }
-                    } else {
-                        sr.setAttribute('width', '0'); sr.setAttribute('height', '0');
-                        if (ringDiv) ringDiv.style.display = 'none';
-                        const svgEl2 = document.getElementById('tutorialSpotSvg');
-                        if (svgEl2) svgEl2.style.opacity = '0';
-                        const bd2 = document.getElementById('tutorialBackdrop');
-                        if (bd2) bd2.style.background = 'rgba(0,0,0,0.48)';
-                        centerCard(card, arrow);
-                    }
-
-                    requestAnimationFrame(() => requestAnimationFrame(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'scale(1) translateY(0)';
-                    }));
-                }, 80);
-            }
-
-            function positionCard(card, arrow, targetRect, pos) {
-                const cw = 380;
-                const vw = window.innerWidth, vh = window.innerHeight;
-                const pad = 16;
-
-                function placeNub(cardLeft, cardTop, cardH, pr) {
-                    const cx = pr.left + pr.width / 2;
-                    const nubMin = 24, nubMax = cw - 24;
-                    const rawNub = cx - cardLeft - 6;
-                    arrow.style.left = Math.min(Math.max(rawNub, nubMin), nubMax) + 'px';
-                    arrow.style.right = '';
-                    if (cardTop + cardH <= pr.top + 4) {
-                        arrow.style.top = ''; arrow.style.bottom = '-7px';
-                        arrow.style.borderTop = 'none'; arrow.style.borderLeft = 'none';
-                        arrow.style.borderBottom = '1px solid var(--ac)';
-                        arrow.style.borderRight = '1px solid var(--ac)';
-                    } else {
-                        arrow.style.top = '-7px'; arrow.style.bottom = '';
-                        arrow.style.borderBottom = 'none'; arrow.style.borderRight = 'none';
-                        arrow.style.borderTop = '1px solid var(--ac)';
-                        arrow.style.borderLeft = '1px solid var(--ac)';
-                    }
-                    arrow.style.display = 'block';
-
-                    const nubPos = parseFloat(arrow.style.left);
-                    const card = arrow.parentElement;
-                    const isLeft = nubPos <= 28;
-                    const isRight = nubPos >= cw - 28;
-                    const isTop = arrow.style.top !== '';
-                    card.style.borderRadius = '16px';
-                    if (isLeft && isTop) card.style.borderTopLeftRadius = '6px';
-                    if (isRight && isTop) card.style.borderTopRightRadius = '6px';
-                    if (isLeft && !isTop) card.style.borderBottomLeftRadius = '6px';
-                    if (isRight && !isTop) card.style.borderBottomRightRadius = '6px';
-                }
-
-                if (pos === 'below' || pos === 'below-left') {
-                    let left = pos === 'below-left'
-                        ? Math.max(pad, targetRect.right - cw)
-                        : Math.max(pad, targetRect.left + targetRect.width / 2 - cw / 2);
-                    left = Math.min(left, vw - cw - pad);
-                    let top = targetRect.bottom + 26;
-                    const cardH = card.offsetHeight || 220;
-                    if (top + cardH + pad > vh) top = Math.max(pad, targetRect.top - cardH - 26);
-                    top = Math.max(pad, top);
-                    card.style.left = left + 'px'; card.style.top = top + 'px';
-                    card.style.bottom = ''; card.style.right = '';
-                    placeNub(left, top, card.offsetHeight || cardH, targetRect);
-                } else if (pos === 'above') {
-                    let left = Math.max(pad, targetRect.left + targetRect.width / 2 - cw / 2);
-                    left = Math.min(left, vw - cw - pad);
-                    const cardH = card.offsetHeight || 220;
-                    let top = targetRect.top - cardH - 26;
-                    if (top < pad) top = targetRect.bottom + 26;
-                    top = Math.min(top, vh - cardH - pad);
-                    top = Math.max(top, pad);
-                    card.style.left = left + 'px'; card.style.top = top + 'px';
-                    card.style.bottom = ''; card.style.right = '';
-                    placeNub(left, top, card.offsetHeight || cardH, targetRect);
-                }
-            }
-
-            function centerCard(card, arrow) {
-                const vw = window.innerWidth, vh = window.innerHeight;
-                card.style.left = (vw / 2 - 150) + 'px';
-                card.style.top = (vh / 2 - 100) + 'px';
-                card.style.bottom = '';
-                arrow.style.display = 'none';
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                var tn = document.getElementById('tutorialNext');
-                var tb = document.getElementById('tutorialBack');
-                var ts = document.getElementById('tutorialSkip');
-                if (tn) tn.addEventListener('click', () => {
-                    if (tutIdx >= tutSteps.length - 1) { endTutorial(true); return; }
-                    tutIdx++;
-                    showTutStep(tutIdx);
-                });
-                if (tb) tb.addEventListener('click', () => {
-                    if (tutIdx <= 0) return;
-                    tutIdx--;
-                    showTutStep(tutIdx);
-                });
-                if (ts) ts.addEventListener('click', endTutorial);
-            });
-
-            window.__lbStartTutorial = () => startTutorial(true);
-
             try {
                 if (ls.getItem('limitless:panelsleft') === '1') {
                     document.body.classList.add('panels-left');
                 }
             } catch (e) { }
 
-            setTimeout(() => {
-                const restartBtn = document.getElementById('restartTutorialBtn');
-                if (restartBtn) {
-                    restartBtn.addEventListener('click', () => {
-                        if (typeof hideSettingsPage === 'function') hideSettingsPage();
-                        if (typeof hideBookmarkModal === 'function') hideBookmarkModal();
-                        if (typeof hideShortcutEditModal === 'function') hideShortcutEditModal();
-                        if (typeof hideAddFavoriteModal === 'function') hideAddFavoriteModal();
-
-                        ["wallpaperModal", "metricsModal", "adblockModal", "historyPopup", "siteInfoPopup"].forEach(id => {
-                            const el = document.getElementById(id);
-                            if (el) el.style.display = "none";
-                        });
-
-                        const cm = document.getElementById("contextMenu");
-                        if (cm) cm.classList.remove("active");
-
-                        if (typeof logsEl !== "undefined" && logsEl) logsEl.classList.add("hidden");
-                        if (typeof elementsEl !== "undefined" && elementsEl) elementsEl.classList.add("hidden");
-
-                        setTimeout(() => {
-                            if (typeof showNewTab === 'function') showNewTab(false);
-                            setTimeout(() => startTutorial(true), 150);
-                        }, 80);
-                    });
-                }
-            }, 300);
-
-            // Delay tutorial until after libcurl init completes
-            let _libcurlInitDone = false;
-            let _tutorialWaiting = false;
-            function _maybeStartTutorial() {
-                if (_libcurlInitDone && _tutorialWaiting) {
-                    _tutorialWaiting = false;
-                    setTimeout(() => startTutorial(false), 400);
-                }
-            }
-            // Will be resolved by init() after libcurl is ready
+            // Called by init() after libcurl is ready (the old welcome tour that started here is gone: the ceremony tour replaces it).
             window._onLibcurlInitDone = function() {
-                // Drop the splash styling — subsequent overlay uses (page loading) stay as the normal small overlay
+                // Drop the splash styling, subsequent overlay uses (page loading) stay as the normal small overlay
                 overlay.classList.remove('splash');
-                _libcurlInitDone = true;
-                _maybeStartTutorial();
             };
-            // Re-enable the welcome tour so it appears automatically after the browser is ready.
-            _tutorialWaiting = true;
-            _maybeStartTutorial();
 
             // ── Fullscreen logic ──────────────────────────────────────────────
             function _doRequestFullscreen() {

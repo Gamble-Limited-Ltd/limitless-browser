@@ -19,6 +19,13 @@ T = {
  "mono":   {"dark": ("#0d0d0d","#171717","#f2f2f2","#9a9a9a","#2e2e2e","#f2f2f2","#bdbdbd","#0d0d0d","#1f1f1f"),
             "light":("#f4f4f2","#ffffff","#141414","#6a6a6a","#d8d8d8","#141414","#555555","#ffffff","#ededeb")},
  "vault":  {"dark": ("#000000","#0b0912","#ffffff","#d7ceb4","#c9a84c","#e2c87a","#c9a84c","#000000","#0b0912")},
+ # Paid themes (docs/1.0/design/picks-round3.md). Cardinal: ink, silver. Prime: garnet. Executive: gilt, onyx. Dark only except silver.
+ "ink":    {"dark": ("#0a1224","#111b34","#e6ecf8","#93a1c0","#26345a","#7aa2ff","#b9ccf5","#07122b","#2a3b6b")},
+ "silver": {"dark": ("#0f1114","#181b20","#eceef2","#9aa1ad","#2c3038","#c9d0da","#8f9bb0","#0f1114","#232830"),
+            "light":("#eef0f3","#fafbfc","#14171c","#5c6370","#cfd3da","#3b4656","#566174","#ffffff","#e2e6ec")},
+ "garnet": {"dark": ("#0d0709","#170c10","#efe6e8","#a8949a","#3a1d26","#e5506a","#f0d9dd","#0d0709","#2a1119")},
+ "gilt":   {"dark": ("#0c0a05","#16120a","#f4ecd6","#b8a982","#3d3318","#e6c15a","#f7e3a0","#0c0a05","#241c0c")},
+ "onyx":   {"dark": ("#000000","#0a0a0a","#f5f5f5","#a0a0a0","#262626","#e8d8a8","#9aa0a8","#000000","#141414")},
 }
 MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
 GLLMONO = "'DM Mono', " + MONO
@@ -31,6 +38,11 @@ TYPE = {
  "ledger": ("'Playfair Display', Georgia, serif", "'DM Sans', system-ui, sans-serif", GLLMONO, "2px"),
  "mono":   ("'Playfair Display', Georgia, serif", "'DM Sans', system-ui, sans-serif", GLLMONO, "2px"),
  "vault":  ("'Playfair Display', Georgia, serif", "'DM Sans', system-ui, sans-serif", GLLMONO, "2px"),
+ "ink":    ("'Fraunces', Georgia, serif", "'Outfit', system-ui, sans-serif", MONO, "10px"),
+ "silver": ("'Bodoni Moda', 'Didot', Georgia, serif", "'Jost', system-ui, sans-serif", MONO, "2px"),
+ "garnet": ("'Playfair Display', Georgia, serif", "'DM Sans', system-ui, sans-serif", GLLMONO, "2px"),
+ "gilt":   ("'Playfair Display', Georgia, serif", "'DM Sans', system-ui, sans-serif", GLLMONO, "2px"),
+ "onyx":   ("'Bodoni Moda', 'Didot', Georgia, serif", "'Jost', system-ui, sans-serif", MONO, "0"),
 }
 def colors(v):
     bg,surf,fg,mut,line,acc,acc2,on,acc3 = v

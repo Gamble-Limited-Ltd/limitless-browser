@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { menuItem } = require('./helpers');
 
 const THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault'];
 const OWNER = '99999999-9999-4999-8999-999999999999';
@@ -535,9 +536,9 @@ test.describe('leaving the admin panel', () => {
   const shown = (page) => page.locator('#lbAdmin.show');
   for (const [name, leave] of [
     ['the Close button', (page) => page.locator('#lbAdmClose').click()],
-    ['Home', (page) => page.locator('#home').click()],
+    ['Home', (page) => menuItem(page, 'home')],
     ['a new tab', (page) => page.locator('#newTab').click()],
-    ['Settings', (page) => page.locator('#settingsBtn').click()],
+    ['Settings', (page) => menuItem(page, 'settings')],
     ['closing its tab', (page) => page.evaluate(() => { const t = document.querySelector('.tab.active .tab-close, .tab.active [class*="close"]'); t.click(); })],
   ]) {
     test(`${name} hides it`, async ({ page }) => {
@@ -557,7 +558,7 @@ test.describe('leaving the admin panel', () => {
 test('Close returns to the previous page in the same tab and keeps every tab', async ({ page }) => {
   mockApi(page);
   await boot(page);
-  await page.locator('#settingsBtn').click();
+  await menuItem(page, 'settings');
   await expect(page.locator('#lbAboutAdmin')).toBeAttached();
   const tabsBefore = await page.locator('.tab').count();
   await page.evaluate(() => document.getElementById('lbAboutAdmin').click());

@@ -16,7 +16,10 @@
     /* Limitless theme boot: runs before first paint. Reads limitless:theme:v1 directly (not through the per-instance
        ls wrapper) because the gate's auth pages read the same un-prefixed key. JSON {theme, mode, mark}. */
     (function () {
-        var THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault'];
+        var THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'];
+        // Dark-only themes, and the lowest plan each paid theme needs (1 Cardinal, 2 Prime, 3 Executive). Cosmetic: the gate decides nothing here.
+        var DARK_ONLY = ['vault', 'ink', 'garnet', 'gilt', 'onyx'], NEEDS = { vault: 1, ink: 1, silver: 1, garnet: 2, gilt: 3, onyx: 3 };
+        var RANKS = { ordinal: 0, cardinal: 1, prime: 2, executive: 3 }, LF_KEY = 'limitless:lastfree:v1', rank = null;
         var MARKS = ['orbit', 'lens', 'wordmark'], MODES = ['light', 'dark', 'auto'], KEY = 'limitless:theme:v1';
         var st = { theme: 'luxury', mode: 'auto', mark: 'orbit' };
         try {
@@ -29,7 +32,7 @@
         } catch (e) {}
         var mq = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;
         function resolve() {
-            if (st.theme === 'vault') return 'dark';
+            if (DARK_ONLY.indexOf(st.theme) >= 0) return 'dark';
             if (st.mode === 'auto') return mq && mq.matches ? 'light' : 'dark';
             return st.mode;
         }
@@ -40,24 +43,48 @@
             r.setAttribute('data-lb-mark', st.mark);
             document.dispatchEvent(new CustomEvent('lb-theme-change'));
         }
+        // rank is null until /_lb/me answers with membership on (static server, old gate, membership off): then nothing is locked.
+        function allowed(id) { return rank === null || !NEEDS[id] || rank >= NEEDS[id]; }
+        function lastFree(me) {
+            var c = null;
+            try { c = localStorage.getItem(LF_KEY); } catch (e) {}
+            if (c && THEMES.indexOf(c) >= 0 && !NEEDS[c]) return c;
+            var g = me && me.plan && me.plan.lastFreeTheme;
+            return g && THEMES.indexOf(g) >= 0 && !NEEDS[g] ? g : 'luxury';
+        }
         window.LBTheme = {
-            THEMES: THEMES, MARKS: MARKS, MODES: MODES,
+            THEMES: THEMES, MARKS: MARKS, MODES: MODES, DARK_ONLY: DARK_ONLY, NEEDS: NEEDS, allowed: allowed,
             get: function () { return { theme: st.theme, mode: st.mode, mark: st.mark, resolved: resolve() }; },
+            // A plan change (first answer, renewal, lapse): a theme the plan no longer covers falls back to the last free one (PAID-TIERS-PLAN).
+            member: function (me) {
+                var t = me && me.plan && me.plan.tier || me && me.tier;
+                rank = t in RANKS ? RANKS[t] : null;
+                if (allowed(st.theme)) return;
+                var from = st.theme, to = lastFree(me);
+                window.LBTheme.set({ theme: to });
+                document.dispatchEvent(new CustomEvent('lb-theme-locked', { detail: { from: from, to: to } }));
+            },
             set: function (p) {
-                if (p.theme && THEMES.indexOf(p.theme) >= 0) st.theme = p.theme;
+                if (p.theme && THEMES.indexOf(p.theme) >= 0 && allowed(p.theme)) {
+                    st.theme = p.theme;
+                    if (!NEEDS[p.theme]) { try { localStorage.setItem(LF_KEY, p.theme); } catch (e) {} }
+                }
                 if (p.mode && MODES.indexOf(p.mode) >= 0) st.mode = p.mode;
                 if (p.mark && MARKS.indexOf(p.mark) >= 0) st.mark = p.mark;
                 try { localStorage.setItem(KEY, JSON.stringify({ theme: st.theme, mode: st.mode, mark: st.mark })); } catch (e) {}
                 apply();
             },
-            resolveFor: function (theme) { return theme === 'vault' ? 'dark' : resolve(); }
+            resolveFor: function (theme) { return DARK_ONLY.indexOf(theme) >= 0 ? 'dark' : resolve(); }
         };
         if (mq) { var cb = function () { if (st.mode === 'auto') apply(); }; if (mq.addEventListener) mq.addEventListener('change', cb); else if (mq.addListener) mq.addListener(cb); }
+        document.addEventListener('lb-member', function (e) { window.LBTheme.member(e.detail); });
+        if (!NEEDS[st.theme]) { try { localStorage.setItem(LF_KEY, st.theme); } catch (e) {} }
         apply();
         // SPEED 3.6: preload the active theme's display and body faces (same URLs as theme/fonts.css), boot theme only.
         var PL = { luxury: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'], fancy: ['fraunces/fraunces-normal-400-700', 'outfit/outfit-normal-300-600'],
             minimal: ['figtree/figtree-normal-300-600'], soft: ['quicksand/quicksand-normal-400-700', 'nunito/nunito-normal-400-700'],
-            retro: ['vt323/vt323-normal-400', 'ibmplexmono/ibmplexmono-normal-400'] };
+            retro: ['vt323/vt323-normal-400', 'ibmplexmono/ibmplexmono-normal-400'],
+            ink: ['fraunces/fraunces-normal-400-700', 'outfit/outfit-normal-300-600'], silver: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'], onyx: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'] };
         (PL[st.theme] || ['playfairdisplay/playfairdisplay-normal-400-700', 'dmsans/dmsans-normal-400-600']).forEach(function (f) {
             var l = document.createElement('link'); l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous';
             l.href = 'theme/fonts/' + f + '.woff2'; document.head.appendChild(l);
@@ -67,6 +94,7 @@
     <link rel="stylesheet" href="theme/fonts.css" />
     <link rel="stylesheet" href="theme/themes.css" />
     <link rel="stylesheet" href="theme/chrome.css" />
+    <link rel="stylesheet" href="theme/ui.css" />
     <link rel="stylesheet" href="vendor/fontawesome/6.7.2/css/all.min.css" />
     <script src="vendor/iso-639-1/2.1.11/index.js" defer
         onload="window._iso639Ready=true;"
@@ -4691,6 +4719,11 @@ html.zen-split-on #zenSplitClose { display: block; }
         <symbol id="lb-mk-orbit" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" style="fill:var(--lb-acc2,#BDFFFF)" stroke="none"/></g></symbol>
         <symbol id="lb-mk-lens" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 15.9A18 18 0 0 1 32 48.1A18 18 0 0 1 32 15.9Z" style="fill:var(--lb-acc2,#BDFFFF)" fill-opacity=".45" stroke="none"/><circle cx="24" cy="32" r="18" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="5"/><circle cx="40" cy="32" r="18" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="5"/></g></symbol>
         <symbol id="lb-mk-wordmark" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="8" width="11" height="46" rx="5.5" style="fill:var(--lb-acc,#4DA6FF)" stroke="none"/><circle cx="45" cy="48" r="6.5" style="fill:var(--lb-acc2,#BDFFFF)" stroke="none"/></g></symbol>
+            <!-- Tier marks (docs/1.0/UI.md 7.4, picks "rings"): Orbit plus a ring per plan. Ordinal is the plain Orbit. Fixed metal colours (they name the plan, not the theme). -->
+        <symbol id="lb-mk-tier-ordinal" viewBox="0 0 64 64"><use href="#lb-mk-orbit" width="64" height="64"/></symbol>
+        <symbol id="lb-mk-tier-cardinal" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="none" stroke="#c9d0da" stroke-width="2"/><use href="#lb-mk-orbit" x="10" y="10" width="44" height="44"/></symbol>
+        <symbol id="lb-mk-tier-prime" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="#0d0709"/><circle cx="32" cy="32" r="30.5" fill="none" stroke="#bdffff" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/><use href="#lb-mk-orbit" x="12" y="12" width="40" height="40"/></symbol>
+        <symbol id="lb-mk-tier-executive" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30.5" fill="none" stroke="#e6c15a" stroke-width="2"/><circle cx="32" cy="32" r="26.5" fill="none" stroke="#e6c15a" stroke-width="1" opacity=".7"/><use href="#lb-mk-orbit" x="13" y="13" width="38" height="38"/></symbol>
     </svg>
     <div class="app">
         <div class="titlebar">
@@ -4728,7 +4761,7 @@ html.zen-split-on #zenSplitClose { display: block; }
             <button class="nav-btn" id="historyBtn" title="Recent history (Alt+H)">
                 <i class="fas fa-clock-rotate-left"></i>
             </button>
-            <div
+            <div class="lb-tb-sep"
                 style="width:1px;height:22px;background:var(--bd);opacity:0.6;flex-shrink:0;align-self:center;margin:0 2px;">
             </div>
             <div class="nav-pill-group" id="navPillGroup">
@@ -5149,34 +5182,14 @@ html.zen-split-on #zenSplitClose { display: block; }
 
                             <nav style="display:flex; flex-direction:column; gap:2px; padding:0 12px; height:100%; min-height:0;">
                                 <div style="display:flex; flex-direction:column; gap:2px; flex:1 1 auto; min-height:0; overflow-y:auto; scrollbar-width:thin;">
-                                <button class="settings-nav-item active" data-section="skins"><i
-                                        class="fas fa-mask"></i><span>Skins</span></button>
-                                <button class="settings-nav-item" data-section="connection"><i
-                                        class="fas fa-network-wired"></i><span>Connection</span></button>
-                                <button class="settings-nav-item" data-section="search"><i
-                                        class="fas fa-magnifying-glass"></i><span>Search</span></button>
-                                <button class="settings-nav-item" data-section="privacy"><i
-                                        class="fas fa-shield-halved"></i><span>Privacy</span></button>
-                                <button class="settings-nav-item" data-section="cache"><i
-                                        class="fas fa-database"></i><span>Cache</span></button>
-                                <button class="settings-nav-item" data-section="filesandmedia"><i
-                                        class="fas fa-photo-film"></i><span>Files &amp; Media</span></button>
-                                <button class="settings-nav-item" data-section="appearance"><i
-                                        class="fas fa-palette"></i><span>Appearance</span></button>
-                                <button class="settings-nav-item" data-section="homescreen"><i
-                                        class="fas fa-house"></i><span>Home Screen</span></button>
-                                <button class="settings-nav-item" data-section="shortcuts"><i
-                                        class="fas fa-keyboard"></i><span>Shortcuts</span></button>
-                                <button class="settings-nav-item" data-section="language"><i
-                                        class="fas fa-language"></i><span>Language</span></button>
-                                <button class="settings-nav-item" data-section="fallback"><i
-                                        class="fas fa-rotate-left"></i><span>Fallback</span></button>
+                                <button class="settings-nav-item active" data-section="search"><svg class="lb-i" aria-hidden="true"><use href="theme/icons.svg#lb-i-gear"/></svg><span>General</span></button>
+                                <button class="settings-nav-item" data-section="appearance"><svg class="lb-i" aria-hidden="true"><use href="theme/icons.svg#lb-i-palette"/></svg><span>Appearance</span></button>
+                                <button class="settings-nav-item" data-section="privacy"><svg class="lb-i" aria-hidden="true"><use href="theme/icons.svg#lb-i-shield"/></svg><span>Privacy and data</span></button>
+                                <button class="settings-nav-item" data-section="connection"><svg class="lb-i" aria-hidden="true"><use href="theme/icons.svg#lb-i-globe"/></svg><span>Connection</span></button>
+                                <button class="settings-nav-item" data-section="membership"><svg class="lb-i" aria-hidden="true"><use href="theme/icons.svg#lb-i-card"/></svg><span>Membership</span></button>
                                 </div>
                                 <hr style="margin-top:auto; border:none; border-top:1px solid var(--bd); margin-bottom:4px; margin-left:4px; margin-right:4px; flex-shrink:0;">
-                                <button class="settings-nav-item" data-section="tutorial"><i
-                                        class="fas fa-map"></i><span>Tutorial</span></button>
-                                <button class="settings-nav-item" data-section="about"><i
-                                        class="fas fa-info-circle"></i><span>About</span></button>
+                                <button class="settings-nav-item" data-section="about"><svg class="lb-i" aria-hidden="true"><use href="theme/icons.svg#lb-i-info"/></svg><span>About</span></button>
                             </nav>
                         </div>
 
@@ -5588,6 +5601,9 @@ html.zen-split-on #zenSplitClose { display: block; }
                                         <div class="lb-tgrid" id="lbThemeGrid" role="group" aria-label="Theme"></div>
                                         <div class="lb-group-label">GLL</div>
                                         <div class="lb-tgrid" id="lbThemeGridGll" role="group" aria-label="GLL themes"></div>
+                                        <div class="lb-group-label">Plans</div>
+                                        <div class="lb-tgrid" id="lbThemeGridPaid" role="group" aria-label="Plan themes"></div>
+                                        <div class="lb-note" id="lbLockNote" role="status" style="margin-top:10px;"></div>
                                         <div class="lb-row-set" style="margin-top:18px;">
                                             <div>
                                                 <div class="settings-switch-label">Light or dark</div>
@@ -5602,6 +5618,22 @@ html.zen-split-on #zenSplitClose { display: block; }
                                         <div style="margin-top:18px;">
                                             <div class="settings-switch-label" style="margin-bottom:8px;">Mark</div>
                                             <div class="lb-mgrid" id="lbMarkGrid" role="group" aria-label="Mark"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card" id="lbTabLayoutCard">
+                                    <div class="settings-card-head"><i class="fas fa-table-columns"></i> Tab layout</div>
+                                    <div class="settings-card-body">
+                                        <div class="lb-row-set">
+                                            <div>
+                                                <div class="settings-switch-label">Where the tabs sit</div>
+                                                <div class="lb-note">Top is the classic strip. Side keeps your tabs in a rail on the left and folds to icons on a narrow window.</div>
+                                            </div>
+                                            <div class="lb-seg" id="lbTabLayoutSeg" role="group" aria-label="Tab layout">
+                                                <button type="button" data-v="top" aria-pressed="true">Top</button>
+                                                <button type="button" data-v="side" aria-pressed="false">Side</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -6229,31 +6261,8 @@ html.zen-split-on #zenSplitClose { display: block; }
                             </div>
 
                             
-                            <div class="settings-section" data-section="tutorial-page" style="display:none;">
-                                <div class="settings-card">
-                                    <div class="settings-card-head"><i class="fas fa-map"></i> Interactive Tour</div>
-                                    <div class="settings-card-body">
-                                        <div class="settings-hint" style="margin-bottom:14px;">Walk through 18 steps
-                                            covering navigation, search, bookmarks, ad blocking, metrics, browser logs,
-                                            page inspector, tabs, and the new tab page. Takes under a minute.</div>
-                                        <div style="display:flex;gap:20px;margin-bottom:18px;">
-                                            <span
-                                                style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);"><i
-                                                    class="fas fa-list-check" style="color:var(--ac);"></i> 18
-                                                steps</span>
-                                            <span
-                                                style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);"><i
-                                                    class="fas fa-clock" style="color:var(--ac);"></i> Under a
-                                                minute</span>
-                                        </div>
-                                        <button id="restartTutorialBtn"
-                                            style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 16px;background:var(--ac);color:#000;font-weight:600;font-size:13px;border:none;border-radius:8px;cursor:pointer;transition:opacity .15s;"
-                                            onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
-                                            <i class="fas fa-play"></i> Start Tour
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="settings-section" data-section="membership" style="display:none;"><div id="lbMemberPage"></div></div>
+
                             <div class="settings-section" data-section="about" style="display:none;">
                                 <div class="settings-card">
                                     <div class="settings-card-head"><i class="fas fa-info-circle"></i> About Limitless Browser
@@ -8306,81 +8315,7 @@ window._libcurlReady = true;
         })();
     </script>
     <script src="app/main.js"></script>
-
-    <div id="tutorialOverlay" style="display:none; position:fixed; inset:0; z-index:99999; pointer-events:all;">
-        <div id="tutorialBackdrop"
-            style="position:absolute; inset:0; backdrop-filter:blur(10px); -webkit-backdrop-filter: blur(10px); transition:opacity .35s; opacity:0; pointer-events:all;">
-        </div>
-        <svg id="tutorialSpotSvg"
-            style="position:absolute;inset:0;width:100%;height:100%;pointer-events:all;transition:opacity .35s;opacity:0;"
-            xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <mask id="spotMask">
-                    <rect width="100%" height="100%" fill="white" />
-                    <rect id="spotRect" x="0" y="0" width="0" height="0" rx="12" fill="black" />
-                </mask>
-            </defs>
-            <rect width="100%" height="100%" fill="rgba(0,0,0,0.48)" mask="url(#spotMask)" id="spotOverlay" />
-            <rect id="spotRing" x="0" y="0" width="0" height="0" rx="12" fill="none" stroke="var(--ac, #9de5ff)"
-                stroke-width="1" />
-        </svg>
-        <div id="tutorialCloneWrap" style="position:absolute;inset:0;pointer-events:none;z-index:2;">
-            <!-- pointer-events:none so the clone is visual-only; the SVG backdrop above intercepts all background clicks -->
-        </div>
-        <div id="tutorialRing"
-            style="position:absolute;pointer-events:none;border:1.5px solid #9de5ff;border-radius:8px;display:none;transition:none;z-index:3;">
-        </div>
-        <div id="tutorialCard" style="
-                        position:absolute;
-                        width:380px;
-                        background:var(--bg2);
-                        border:1px solid var(--ac);
-                        border-radius:16px;
-                        padding:24px 26px 20px;
-                        box-shadow:0 12px 50px rgba(0,0,0,0.7), 0 0 0 1px rgba(100,210,255,0.08);
-                        pointer-events:all;
-                        transition: opacity .15s ease, transform .2s cubic-bezier(0.34, 1.56, 0.64, 1);
-                        opacity:0;
-                        transform:translateY(8px);
-                        z-index:10;
-                    ">
-            <div id="tutorialDots" style="display:flex;gap:5px;margin-bottom:16px;align-items:center;"></div>
-            <div id="tutorialArrow"
-                style="position:absolute;width:12px;height:12px;background:var(--bg2);border:1px solid var(--ac);display:none;transform:rotate(45deg);z-index:-1;">
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;">
-                <div id="tutorialIcon" style="
-                                width:42px;height:42px;border-radius:11px;
-                                background:rgba(100,210,255,0.12);
-                                display:flex;align-items:center;justify-content:center;
-                                flex-shrink:0;color:var(--ac);font-size:18px;
-                            "></div>
-                <div style="flex:1;">
-                    <div id="tutorialTitle"
-                        style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:5px;line-height:1.2;"></div>
-                    <div id="tutorialBody" style="font-size:13.5px;color:var(--tx2);line-height:1.6;"></div>
-                </div>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;">
-                <button id="tutorialSkip" style="
-                                background:none;border:none;color:var(--tx3);
-                                font-size:12px;cursor:pointer;padding:0;
-                            ">Skip tour</button>
-                <div style="display:flex;gap:8px;">
-                    <button id="tutorialBack" style="
-                                    background:var(--bg3);border:1px solid var(--bd);
-                                    color:var(--tx2);border-radius:8px;padding:7px 18px;
-                                    font-size:13px;cursor:pointer;display:none;
-                                "><i class="fas fa-arrow-left" style="margin-right:5px;"></i>Back</button>
-                    <button id="tutorialNext" style="
-                                    background:var(--ac);border:none;
-                                    color:#000;border-radius:8px;padding:7px 20px;
-                                    font-size:13px;font-weight:700;cursor:pointer;
-                                ">Next</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <script src="app/ui.js"></script>
 
     <div class="lb-drawer" id="lbThemeDrawer" role="dialog" aria-label="Theme" aria-modal="false">
         <h4>Theme</h4>
@@ -8392,7 +8327,9 @@ window._libcurlReady = true;
         </div>
         <div class="lb-note" id="lbDrawerNote"></div>
     </div>
-    <script>
+
+
+<script>
     // Admin panel (limitless://admin). Owner only. The check service answers /_lb/admin/api/* with 404 to everyone else,
     // so the entry stays hidden unless whoami is 200. All data is shown with textContent, never as markup.
     (function () {
@@ -9206,23 +9143,35 @@ window._libcurlReady = true;
     /* Theme UI: settings Appearance grid, mode control, mark picker and the quick-switch drawer. State lives in window.LBTheme (head script). */
     (function () {
         var T = window.LBTheme; if (!T) return;
-        var NAMES = { luxury: 'Luxury', fancy: 'Fancy', minimal: 'Minimal', soft: 'Soft', retro: 'Retro', ledger: 'Gilded Ledger', mono: 'GLL Monochrome', vault: 'Vault' };
+        var NAMES = { luxury: 'Luxury', fancy: 'Fancy', minimal: 'Minimal', soft: 'Soft', retro: 'Retro', ledger: 'Gilded Ledger', mono: 'GLL Monochrome', vault: 'Vault', ink: 'Ink blue', silver: 'Silver', garnet: 'Garnet', gilt: 'Gilt', onyx: 'Onyx' };
+        var PLANN = { 1: 'Cardinal', 2: 'Prime', 3: 'Executive' };
         var MARKN = { orbit: 'Orbit', lens: 'Lens', wordmark: 'Wordmark' };
-        var LIMITLESS = ['luxury', 'fancy', 'minimal', 'soft', 'retro'], GLL = ['ledger', 'mono', 'vault'];
+        var LIMITLESS = ['luxury', 'fancy', 'minimal', 'soft', 'retro'], GLL = ['ledger', 'mono'], PAID = ['ink', 'silver', 'vault', 'garnet', 'gilt', 'onyx'];
         function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
         function scope(id, extra) { return '<span class="lb-scope ' + extra + '" data-lb-theme="' + id + '" data-lb-mode="' + T.resolveFor(id) + '"><i></i><i></i><i></i></span>'; }
-        var grid = document.getElementById('lbThemeGrid'), gridG = document.getElementById('lbThemeGridGll');
+        var grid = document.getElementById('lbThemeGrid'), gridG = document.getElementById('lbThemeGridGll'), gridP = document.getElementById('lbThemeGridPaid');
         var markGrid = document.getElementById('lbMarkGrid'), drawer = document.getElementById('lbThemeDrawer');
         var drawerList = document.getElementById('lbDrawerList'), btn = document.getElementById('lbThemeBtn');
         function card(id) {
             var b = el('button', 'lb-tcard', scope(id, 'lb-tprev') + '<span class="lb-tname">' + NAMES[id] + '</span>');
             b.type = 'button'; b.dataset.theme = id;
-            b.addEventListener('click', function () { T.set({ theme: id }); });
+            if (T.NEEDS[id]) b.insertAdjacentHTML('beforeend', '<span class="lb-tplan">' + PLANN[T.NEEDS[id]] + '</span><svg class="lb-seal" viewBox="0 0 24 24" aria-hidden="true"><use href="theme/icons.svg#lb-i-lock"/></svg>');
+            b.addEventListener('click', function () { choose(id); });
             return b;
         }
+        function lockNote(t) { var n = document.getElementById('lbLockNote'); if (n) n.textContent = t || ''; }
+        function choose(id) {
+            if (!T.allowed(id)) { lockNote(NAMES[id] + (id === 'vault' ? ' is reserved for paid plans.' : ' is part of the ' + PLANN[T.NEEDS[id]] + ' plan.')); return; }
+            lockNote(''); T.set({ theme: id });
+        }
+        document.addEventListener('lb-theme-locked', function (e) {
+            var d = e.detail;
+            lockNote(d.from === 'vault' ? 'Vault is reserved for paid plans. Switched to ' + NAMES[d.to] + '.' : NAMES[d.from] + ' needs the ' + PLANN[T.NEEDS[d.from]] + ' plan. Switched to ' + NAMES[d.to] + '.');
+        });
         function build() {
             if (grid) LIMITLESS.forEach(function (id) { grid.appendChild(card(id)); });
             if (gridG) GLL.forEach(function (id) { gridG.appendChild(card(id)); });
+            if (gridP) PAID.forEach(function (id) { gridP.appendChild(card(id)); });
             if (markGrid) {
                 T.MARKS.forEach(function (m) {
                     var b = el('button', 'lb-mcard', '<svg class="lb-mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#lb-mk-' + m + '"/></svg><span>' + MARKN[m] + '</span>');
@@ -9234,7 +9183,7 @@ window._libcurlReady = true;
             T.THEMES.forEach(function (id) {
                 var b = el('button', 'lb-drow', scope(id, 'lb-sw') + '<span>' + NAMES[id] + '</span>');
                 b.type = 'button'; b.dataset.theme = id;
-                b.addEventListener('click', function () { T.set({ theme: id }); });
+                b.addEventListener('click', function () { choose(id); });
                 drawerList.appendChild(b);
             });
             document.querySelectorAll('#lbModeSeg button, #lbDrawerMode button').forEach(function (b) {
@@ -9245,21 +9194,23 @@ window._libcurlReady = true;
             var s = T.get();
             document.querySelectorAll('.lb-tcard, .lb-drow').forEach(function (b) {
                 b.setAttribute('aria-pressed', b.dataset.theme === s.theme ? 'true' : 'false');
+                var lk = !T.allowed(b.dataset.theme); b.toggleAttribute('data-locked', lk); b.setAttribute('aria-disabled', lk ? 'true' : 'false');
                 var sc = b.querySelector('.lb-scope'); if (sc) sc.setAttribute('data-lb-mode', T.resolveFor(b.dataset.theme));
             });
             document.querySelectorAll('.lb-mcard').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mark === s.mark ? 'true' : 'false'); });
-            var vault = s.theme === 'vault';
+            var vault = T.DARK_ONLY.indexOf(s.theme) >= 0;
             document.querySelectorAll('#lbModeSeg button, #lbDrawerMode button').forEach(function (b) {
                 b.setAttribute('aria-pressed', (b.dataset.mode === s.mode || (vault && b.dataset.mode === 'dark')) ? 'true' : 'false');
                 b.disabled = vault && b.dataset.mode === 'light';
             });
-            var note = vault ? 'Vault is dark only.' : (s.mode === 'auto' ? 'Auto follows your system (now ' + s.resolved + ').' : '');
+            var note = vault ? NAMES[s.theme] + ' is dark only.' : (s.mode === 'auto' ? 'Auto follows your system (now ' + s.resolved + ').' : '');
             ['lbModeNote', 'lbDrawerNote'].forEach(function (id) { var n = document.getElementById(id); if (n) n.textContent = note; });
         }
         function openDrawer() { drawer.classList.add('open'); if (btn) btn.setAttribute('aria-expanded', 'true'); var f = drawer.querySelector('.lb-drow[aria-pressed="true"]') || drawer.querySelector('.lb-drow'); if (f) f.focus(); }
         function closeDrawer(refocus) { if (!drawer.classList.contains('open')) return; drawer.classList.remove('open'); if (btn) btn.setAttribute('aria-expanded', 'false'); if (refocus && btn) btn.focus(); }
         build(); sync();
         document.addEventListener('lb-theme-change', sync);
+        document.addEventListener('lb-member', sync);
         if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); drawer.classList.contains('open') ? closeDrawer(true) : openDrawer(); });
         document.addEventListener('mousedown', function (e) { if (drawer.classList.contains('open') && !drawer.contains(e.target) && !(btn && btn.contains(e.target))) closeDrawer(false); }, true);
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(true); });

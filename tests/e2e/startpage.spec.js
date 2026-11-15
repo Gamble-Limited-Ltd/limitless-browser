@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { menuItem } = require('./helpers');
 
 async function boot(page) {
   const errors = [];
@@ -35,7 +36,7 @@ test.describe('start page', () => {
     await expect(nt.locator('.nt-foot-r img.lb-stamp-d')).toBeVisible();
     await expect(nt.locator('.nt-foot-r img.lb-stamp-l')).toBeHidden();
     // The search field has focus on load, and the engine selector is a keyboard-reachable control.
-    await page.locator('#home').click();
+    await menuItem(page, 'home');
     await expect(search).toBeFocused();
     await expect(page.locator('#ntEngine')).toHaveAttribute('tabindex', '0');
     // The leftover buttons are gone (GitHub) or hidden (wallpaper).

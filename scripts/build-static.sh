@@ -33,6 +33,8 @@ if [ -d "$SRC/app" ]; then mkdir -p "$OUT/app/$SHA" && cp -a "$SRC/app/." "$OUT/
 if [[ ! "$SHA" =~ ^[0-9A-Za-z._-]+$ ]]; then echo "build-static: unsafe sha '$SHA'" >&2; exit 1; fi
 # S3: the application script lives in app/main.js (source) and is served from app/<sha>/main.js; the marker line is in that file.
 sed -i "s#<script src=\"app/main.js\"></script>#<script src=\"app/$SHA/main.js\"></script>#" "$OUT/index.html"
+sed -i "s#<script src=\"app/ui.js\"></script>#<script src=\"app/$SHA/ui.js\"></script>#" "$OUT/index.html"
+grep -q "<script src=\"app/$SHA/ui.js\"></script>" "$OUT/index.html" || { echo "build-static: could not point index.html at app/$SHA/ui.js" >&2; exit 1; }
 grep -q "<script src=\"app/$SHA/main.js\"></script>" "$OUT/index.html" || { echo "build-static: could not point index.html at app/$SHA/main.js" >&2; exit 1; }
 sed -i "/@LB_BUILD_SHA@/ s/|| 'dev';/|| '$SHA';/" "$OUT/app/$SHA/main.js"
 grep -q "|| '$SHA'; // @LB_BUILD_SHA@" "$OUT/app/$SHA/main.js" || { echo "build-static: could not stamp the build sha into app/main.js" >&2; exit 1; }

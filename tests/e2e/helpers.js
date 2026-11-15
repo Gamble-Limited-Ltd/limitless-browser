@@ -24,4 +24,10 @@ async function boot(page, { init, arg, tourTimeout = 12000, features = LEGACY_FE
   return errors;
 }
 
-module.exports = { boot, LEGACY_FEATURES };
+/** Click an item of the Limitless menu (the toolbar buttons moved into it in 1.0). */
+async function menuItem(page, id) {
+  await page.locator('#lbMenuBtn').click();
+  await page.locator(`#lbMenu .lb-mi[data-id="${id}"]`).click();
+}
+
+module.exports = { boot, menuItem, LEGACY_FEATURES };

@@ -39,3 +39,13 @@ test('nginx sends each gate reason to its page, and only /_lb/verify/ and the se
     else expect(body, loc).not.toContain('auth_request off');
   }
 });
+
+test('nginx serves the designed ceremony at /auth/welcome and its assets ungated, from this tree', () => {
+  const page = /location = \/auth\/welcome \{([\s\S]*?)\n  \}/.exec(nginx);
+  expect(page && page[1]).toContain('auth_request off');
+  expect(page && page[1]).toContain('rewrite ^ /theme/ceremony/index.html break;');
+  const assets = /location ~ \^\/theme\/\(([^)]*)\) \{([\s\S]*?)\n  \}/.exec(nginx);
+  expect(assets && assets[2]).toContain('auth_request off');
+  expect(assets && assets[1]).toContain('ceremony/');
+  expect(nginx.indexOf('location = /auth/welcome')).toBeLessThan(nginx.indexOf('location ^~ /auth/'));
+});

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-lb-theme="luxury" data-lb-mode="dark" data-lb-mark="orbit">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome to Limitless</title>
+<script>
+/* Same boot as the app: the theme key is shared with the gate's pages. Free themes only here: a paid theme saved on this device is shown as is. */
+(function () {
+  var r = document.documentElement, T = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'], D = ['vault', 'ink', 'garnet', 'gilt', 'onyx'];
+  try {
+    var j = JSON.parse(localStorage.getItem('limitless:theme:v1') || 'null');
+    if (j && T.indexOf(j.theme) >= 0) {
+      var m = D.indexOf(j.theme) >= 0 ? 'dark' : j.mode === 'light' || j.mode === 'dark' ? j.mode : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      r.setAttribute('data-lb-theme', j.theme); r.setAttribute('data-lb-mode', m);
+    }
+  } catch (e) {}
+})();
+</script>
+<link rel="stylesheet" href="/theme/fonts.css">
+<link rel="stylesheet" href="/theme/themes.css">
+<link rel="stylesheet" href="/theme/ceremony/ceremony.css">
+</head>
+<body>
+<main class="cw" id="cw" aria-live="polite">
+  <ol class="cw-dots" id="cwDots" aria-label="Progress"></ol>
+  <section class="cw-step" id="cwStep" tabindex="-1"></section>
+</main>
+<script src="/theme/ceremony/ceremony.js"></script>
+</body>
+</html>
