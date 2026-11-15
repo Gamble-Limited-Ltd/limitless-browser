@@ -96,6 +96,24 @@ better throughput to far or lossy sites and members on school Wi-Fi. Exact comma
 3.6 **Data saver hint.** When fair share is active (line is full), the gate sets a flag the app reads from `/_lb/me`
 and shows "The line is busy, Data saver helps" once per session. Never forces it.
 
+3.7 **VPS relay (built 2026-11-15, branch `slice/1.0-relay`, not deployed; replaces the 2026-11-11 "relay box" ticket design).** `/wisp/` never touches Cloudflare or home: the app
+reaches the VPS on its own DNS-only hostname (`deploy/relay-vps/`, placeholder `relay.taps-holdings.org`, TLS from Let's Encrypt on the VPS).
+- **VPS stack** (compose project `limitless-relay-vps`): `tls` (nginx, no access log), `relaygate` (the lbgate image in `GATE_MODE=relay`: no members DB, no sign-in, no personal data),
+  `relay` (epoxy, same image and config as `deploy/relay`), `dns` (unbound), `certbot` (HTTP-01). Egress rules: `deploy/relay-vps/egress-rules.sh`. Deploy: `deploy/relay-vps/deploy-vps.sh`.
+- **Token** (`~/limitless-gate` `src/edge/token.ts`): Ed25519 JWT, 300 s, reusable until it expires, claims = opaque member id (HMAC of the GLL ID sub keyed with the private key, never the sub), plan, weight, limits version, plus
+  effective limits (`bw`, `sk`, `cap`, `used`, `owner`). Sent as the WebSocket subprotocol `lbt.<token>`. Home issues it at `POST /_lb/relay-token` (session, Origin, rate limit, same allow rules as `/_gate/check`, 503 while the
+  VPS is not polling, 403 for a killed member). ONE function, `relayClaimsFor(sub)`, decides plan and weight (defaults `ordinal`, weight 1; S5 wires membership).
+- **Sync, no inbound port at home:** the VPS polls `POST /_lb/relay/sync` on the public home host every 1 s with the shared secret; body = byte counts, counters, live members; answer = kills, revocations, maintenance, limits.
+  A kill or revoke closes the VPS socket (close code 4403) on the next poll: 0.95 s measured in the rehearsal (`tests/stack/relay.spec.js`), 0.46 s in the load-test stand-in. Home merges the byte counts into usage and admin Usage and Health
+  (`relay: {vps: true}`). A home restart forgets the id map: live ids it cannot map are revoked and the app takes a new token.
+- **Fails closed:** the VPS refuses sockets until its first good poll and again after `RELAY_STALE_S` (120 s) without one, so a revoke cannot be missed for long.
+- **App** (`ownRelay` on, build `LB_FEATURE_OWNRELAY=true LB_FEATURE_OWNSOCKETS=4`; 0.3.0 defaults stay off): `LB_relayTok` caches the token and renews it when under 60 s are left (a 20 s timer renews under 100 s); libcurl's socket to our relay
+  is opened on the VPS with the token (`LB_openRelaySocket`, one line in the libcurl glue). No token or a refused socket = VPS down: the socket falls back to the same-origin `/wisp/` (410 in production, so the usual failure path runs), `LB_relayStatus().ours` becomes `down`,
+  the existing relay notice shows (consent for public relays), and the VPS is tried again after 20 s. Startup probe: token, then one handshake. Admin Health reads the VPS row.
+- **Tests:** gate `src/tests/relay.test.ts`, `relay-token.test.ts`; app `tests/e2e/relaytoken.spec.js`; rehearsal `tests/stack/relay.spec.js` (VPS stand-in `vps` in `deploy/rehearsal`: token, several sockets, forged token, revoke time, byte counts at home, VPS stopped drill and recovery).
+  Load test: `~/limitless-gate/scripts/relay-loadtest.ts` (20 members, JSON and Markdown report, own keys and fake home, never against the production instance); how to run it on the VPS: `S4-HOST-COMMANDS.md` 9.
+- **Not decided (Boss):** final hostname, `TOTAL_UPLINK_MBPS` (placeholder 150, replace with the measured number), whether the VPS runs BBR, the monthly transfer budget stage numbers (`PAID-TIERS-PLAN.md` 1).
+
 ## 4. Relay choice in the app
 - **Automatic by latency** (Boss's pick). At boot and after a relay failure the app measures each of our own relays
   (home `/wisp/`, and an off-site relay if one is ever added) with 3 WISP pings, picks the lowest median, and re-checks

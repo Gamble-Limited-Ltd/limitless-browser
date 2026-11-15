@@ -1,0 +1,44 @@
+# ${RELAY_HOST} is filled in at container start (NGINX_ENVSUBST_FILTER=WISP_); other $vars are nginx's.
+upstream relaygate { server relaygate:8080; keepalive 8; }
+
+server {
+  listen 443 ssl default_server;
+  server_name ${RELAY_HOST};
+  ssl_certificate     /etc/letsencrypt/live/${RELAY_HOST}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${RELAY_HOST}/privkey.pem;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  ssl_session_cache shared:ssl:5m;
+  ssl_session_timeout 1h;
+  # HTTP/1.1 only on purpose: browsers open WebSockets over h1.
+  add_header Strict-Transport-Security "max-age=31536000" always;
+  add_header X-Content-Type-Options nosniff always;
+
+  # WISP: the relay gate checks Origin and the token (subprotocol lbt.<token>). nginx adds only limits.
+  location ^~ /wisp/ {
+    limit_conn perip 64;
+    proxy_pass http://relaygate;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+    proxy_request_buffering off;
+  }
+
+  # Liveness for deploy-box.sh and the Kuma monitor: no data.
+  location = /healthz { proxy_pass http://relaygate; proxy_http_version 1.1; proxy_set_header Connection ""; }
+
+  location / { return 404; }
+}
+# Anything addressed by IP or another name: no answer.
+server {
+  listen 443 ssl;
+  server_name _;
+  ssl_certificate     /etc/letsencrypt/live/${RELAY_HOST}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${RELAY_HOST}/privkey.pem;
+  return 444;
+}

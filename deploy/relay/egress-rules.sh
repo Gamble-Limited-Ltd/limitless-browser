@@ -15,6 +15,9 @@ EGRESS=10.88.82.0/24     # lb_egress: relay's way out
 GATEOUT=10.88.83.0/24    # lb_gate_out: gate -> GLL ID
 EDGE=10.88.84.0/24       # lb_edge: web's published-port bridge (should not initiate anything)
 TAG="lb-egress"
+# Relay box (tunnel option A): the gate must reach the box control port on the LAN. Set the box address to allow exactly that
+# (tcp 9443) ahead of the 10/8 denial, e.g. EDGE_BOX=10.1.1.239 sudo -E deploy/relay/egress-rules.sh --apply. Use the same value with --remove.
+EDGE_BOX="${EDGE_BOX:-}"
 
 # Destinations the relay must never reach. (Includes every Docker bridge on this VM: 172.16/12, and the LAN 10/8.)
 DENY=(10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 127.0.0.0/8 0.0.0.0/8
@@ -24,6 +27,7 @@ rules() { # prints iptables arguments (without the leading "iptables"), one rule
   local d
   # relay: DOCKER-USER, inserted so the first listed ends up first
   for d in "${DENY[@]}"; do echo "-I DOCKER-USER -s $EGRESS -d $d -m comment --comment $TAG -j REJECT"; done
+  [ -z "$EDGE_BOX" ] || echo "-I DOCKER-USER -s $GATEOUT -d $EDGE_BOX/32 -p tcp --dport 9443 -m comment --comment $TAG -j ACCEPT"
   # gate_out: same denials (GLL ID is reached over its public name)
   for d in "${DENY[@]}"; do echo "-I DOCKER-USER -s $GATEOUT -d $d -m comment --comment $TAG -j REJECT"; done
   # web edge bridge: nothing to initiate outbound

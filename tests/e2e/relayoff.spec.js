@@ -37,8 +37,9 @@ test.describe('relay off (default)', () => {
   });
 });
 
-test('ownRelay true restores our relay: probe, candidate, the fallback key counts again', async ({ page }) => {
+test('ownRelay true restores our relay: probe (token first, then the VPS socket), candidate, the fallback key counts again', async ({ page }) => {
   await own(page, true);
+  await page.context().route('**/_lb/relay-token', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ url: 'ws://127.0.0.1:8599/wisp/', token: 'a.b.c', exp: 9999999999, ttl: 300 }) }));
   await boot(page, { features: null, init: `${WS_SPY}` });
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => ({ st: window.LB_relayStatus(), ws: window.__ws, label: document.getElementById('settingsRelayFallbackLabel').textContent }));

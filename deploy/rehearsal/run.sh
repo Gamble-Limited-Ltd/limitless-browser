@@ -10,6 +10,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 export REHEARSAL_WEB_PORT="${REHEARSAL_WEB_PORT:-8590}"
 export REHEARSAL_MOCK_PORT="${REHEARSAL_MOCK_PORT:-8591}"
+export REHEARSAL_VPS_PORT="${REHEARSAL_VPS_PORT:-8592}"   # VPS relay stand-in (plain ws, 127.0.0.1)
 export GATE_CONTEXT="${GATE_CONTEXT:-$HOME/limitless-gate}"
 # The mock GATE seeds an owner user with this id; the gate treats it as OWNER_SUB (admin panel tests).
 export REHEARSAL_OWNER_SUB="00000000-0000-4000-8000-0000000000a1"
@@ -26,7 +27,7 @@ if [ "${LB_SPEED:-0}" = 1 ] || [ "${LB_FAULTS:-0}" = 1 ]; then
 fi
 START=$(date +%s)
 
-for p in "$REHEARSAL_WEB_PORT" "$REHEARSAL_MOCK_PORT"; do
+for p in "$REHEARSAL_WEB_PORT" "$REHEARSAL_MOCK_PORT" "$REHEARSAL_VPS_PORT"; do
   if ss -ltn | awk '{print $4}' | grep -qE "[:.]$p\$"; then echo "rehearsal: port $p is in use" >&2; exit 1; fi
 done
 [ -d "$GATE_CONTEXT/test-support/mock-gate" ] || { echo "rehearsal: no mock gate under $GATE_CONTEXT" >&2; exit 1; }
@@ -42,6 +43,18 @@ chmod 644 "$RUN_DIR/relay.toml"
 export REHEARSAL_RELAY_CONFIG="$RUN_DIR/relay.toml"
 export REHEARSAL_CLIENT_SECRET="$(rand 32)"
 export REHEARSAL_GATE_ENV="$RUN_DIR/gate.env"
+export REHEARSAL_VPS_ENV="$RUN_DIR/vps.env"
+# Fresh Ed25519 pair and sync secret for the VPS stand-in, made by the gate's own script.
+[ -f "$GATE_CONTEXT/scripts/relay-keys.ts" ] || { echo "rehearsal: no scripts/relay-keys.ts under $GATE_CONTEXT (gate needs relay mode)" >&2; exit 1; }
+KEYS="$(cd "$GATE_CONTEXT" && node scripts/relay-keys.ts)"
+key() { printf '%s\n' "$KEYS" | grep "^$1=" | cut -d= -f2-; }
+(umask 077; cat > "$REHEARSAL_VPS_ENV" <<ENV
+PUBLIC_ORIGIN=http://127.0.0.1:$REHEARSAL_WEB_PORT
+RELAY_TOKEN_PUBLIC_KEY=$(key RELAY_TOKEN_PUBLIC_KEY)
+RELAY_SYNC_SECRET=$(key RELAY_SYNC_SECRET)
+TOTAL_UPLINK_MBPS=18
+ENV
+)
 (umask 077; cat > "$REHEARSAL_GATE_ENV" <<ENV
 GATE_ISSUER=http://127.0.0.1:$REHEARSAL_MOCK_PORT
 GATE_BACKCHANNEL_URL=http://mock-gate:$REHEARSAL_MOCK_PORT
@@ -50,6 +63,9 @@ GATE_CLIENT_SECRET=$REHEARSAL_CLIENT_SECRET
 PUBLIC_ORIGIN=http://127.0.0.1:$REHEARSAL_WEB_PORT
 SESSION_SECRET=$(rand 48)
 OWNER_SUB=$REHEARSAL_OWNER_SUB
+RELAY_PUBLIC_URL=ws://127.0.0.1:$REHEARSAL_VPS_PORT/wisp/
+RELAY_TOKEN_PRIVATE_KEY=$(key RELAY_TOKEN_PRIVATE_KEY)
+RELAY_SYNC_SECRET=$(key RELAY_SYNC_SECRET)
 ENV
 )
 
@@ -58,7 +74,7 @@ cleanup() {
   rc=$?
   if [ "${KEEP:-0}" = 1 ] && [ $rc -eq 0 ]; then
     echo "rehearsal: stack left up on 127.0.0.1:$REHEARSAL_WEB_PORT (mock on :$REHEARSAL_MOCK_PORT). Tear down:"
-    echo "  REHEARSAL_OWNER_SUB=x REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV ${DC[*]} down -v"
+    echo "  REHEARSAL_OWNER_SUB=x REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV REHEARSAL_VPS_ENV=$REHEARSAL_VPS_ENV ${DC[*]} down -v"
   else
     "${DC[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
     rm -rf "$RUN_DIR"
@@ -79,13 +95,14 @@ echo "rehearsal: starting stack"
 for i in $(seq 1 60); do
   if curl -fs -o /dev/null "http://127.0.0.1:$REHEARSAL_WEB_PORT/legal/" \
      && curl -fs -o /dev/null "http://127.0.0.1:$REHEARSAL_MOCK_PORT/healthz" \
-     && "${DC[@]}" exec -T lbgate wget -qO- http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
+     && "${DC[@]}" exec -T lbgate wget -qO- http://127.0.0.1:8080/healthz >/dev/null 2>&1 \
+     && curl -fs -o /dev/null "http://127.0.0.1:$REHEARSAL_VPS_PORT/healthz"; then break; fi
   [ "$i" = 60 ] && { "${DC[@]}" logs --tail 40 >&2; echo "rehearsal: stack did not become ready" >&2; exit 1; }
   sleep 1
 done
 
 echo "rehearsal: running stack tests"
 cd "$REPO"
-REHEARSAL_BASE="http://127.0.0.1:$REHEARSAL_WEB_PORT" REHEARSAL_MOCK="http://127.0.0.1:$REHEARSAL_MOCK_PORT" \
+REHEARSAL_VPS_PORT="$REHEARSAL_VPS_PORT" REHEARSAL_BASE="http://127.0.0.1:$REHEARSAL_WEB_PORT" REHEARSAL_MOCK="http://127.0.0.1:$REHEARSAL_MOCK_PORT" \
   REHEARSAL_PROJECT="$PROJECT" REHEARSAL_COMPOSE_FILE="$HERE/docker-compose.rehearsal.yml" \
   npx playwright test -c playwright.stack.config.js "$@" || { "${DC[@]}" logs --tail 60 lbgate web >&2; exit 1; }
