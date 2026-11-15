@@ -2,7 +2,7 @@
 
 What changed, in plain language. Newest first.
 
-## Next (1.0)
+## Unreleased 1.0.0
 
 - New Downloads panel in the menu: a queue with progress, pause and resume, retry and cancel. Files over your plan's size limit, or over 2 GB, are refused before they start.
 
