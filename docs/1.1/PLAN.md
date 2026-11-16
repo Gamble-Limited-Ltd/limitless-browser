@@ -15,5 +15,7 @@ Requested by Boss 2026-11-16. Base: `main` at `2f4c181` (1.0.1). Lane: Minor (1.
   Still out of scope: solving or auto-clicking CAPTCHAs or challenges, IP rotation, residential proxies, fingerprint spoofing beyond
   what a real current browser sends.
 - 2026-11-16, Boss: design pass is "gap audit, then all".
+- 2026-11-16, Boss: permission for VPS changes (`limitless-relay`) for the bot check work. Each change is backed up first,
+  applied one at a time with a relay check, logged with its rollback in `docs/1.1/BOTCHECK.md` and in `~/gll-agents/logs/changelog.md`.
 
 Last verified: 2026-11-16
