@@ -95,7 +95,7 @@ function s7(path, method, req, st, over) {
   const mp = path.match(/^membership\/members\/(.+)$/);
   if (mp) {
     const m = MEMBERS.find((x) => x.sub === mp[1]);
-    return json({ member: { ...m, admittedAt: Date.now() - 86400000 * 9, charterVersion: 'draft-2026-11-15', signedAt: Date.now() - 86400000 * 9, standingUntil: null }, name: m.name, loginName: m.loginName, events: [{ kind: 'warn', article: '4.2', note: 'Too loud', until: null, created_at: Date.now() - 3600000 }], receipts: [], certificateCode: 'LMT-0102-ABCD', sessions: [{ createdAt: Date.now() - 7200000, lastActive: Date.now() - 60000 }], usage: { sockets: 1, streams: 3, days: [{ day: '2026-11-14', bytes: 3 * GB }] } });
+    return json({ member: { ...m, admittedAt: Date.now() - 86400000 * 9, charterVersion: 'draft-2026-11-15', signedAt: Date.now() - 86400000 * 9, standingUntil: null }, name: m.name, loginName: m.loginName, events: [{ kind: 'warn', article: '4.2', note: 'Too loud', until: null, created_at: Date.now() - 3600000 }], receipts: [{ id: 11, kind: 'plan', tier: 'cardinal', amount: 15, paidOn: Date.now() - 30 * 86400000, howPaid: 'cash', paidUntil: Date.now() + 335 * 86400000, voided: false }], certificateCode: 'LMT-0102-ABCD', sessions: [{ createdAt: Date.now() - 7200000, lastActive: Date.now() - 60000 }], usage: { sockets: 1, streams: 3, days: [{ day: '2026-11-14', bytes: 3 * GB }] } });
   }
   if (path === 'membership/invites' && method === 'GET') return json({ invites: [{ id: 1, loginName: 'carol', email: null, createdAt: Date.now() - 86400000, expiresAt: Date.now() + 86400000 * 5, redeemedAt: null, revokedAt: null, number: null }, { id: 2, loginName: 'dan', email: null, createdAt: Date.now() - 86400000 * 3, expiresAt: Date.now() + 1, redeemedAt: Date.now() - 86400000, revokedAt: null, number: '0042' }] });
   if (path === 'membership/invites') return json({ id: 3, link: 'https://limitless.test/auth/invite/tok', expiresAt: Date.now() + 86400000 });
@@ -103,6 +103,7 @@ function s7(path, method, req, st, over) {
   if (path === 'membership/settings') { if (body.plansOpen !== undefined) st.plansOpen = body.plansOpen; return json({ ok: true }); }
   if (path === 'membership/requests' && method === 'GET') return json({ primeSeatsLeft: 3, requests: [{ id: 7, tier: 'prime', number: '0102', note: 'Paid <b>cash</b>', createdAt: Date.now() - 3600000 }] });
   if (path === 'membership/outbox' && method === 'GET') return json({ mail: [{ id: 4, to: 'a@kmlhs.org', subject: 'Welcome <i>Prime</i>', body: 'Line one\nLine two', createdAt: Date.now() - 60000, sentAt: null }, { id: 3, to: 'old@kmlhs.org', subject: 'Old', body: 'x', createdAt: Date.now() - 9e6, sentAt: Date.now() - 8e6 }] });
+  if (path === 'membership/transfer') return json({ stage: 'warn', fraction: 0.42 * 1.7, usedMeterGb: 3570, meterGb: 5000 });
   if (path.startsWith('membership/')) return json({ ok: true, signedOut: 1 });
   if (path === 'perf') return json({ daily: [{ day: '2026-10-20', device: 'desktop', metric: 'page_shown', n: 12, p50: 800, p90: 2100 }, { day: '2026-10-21', device: 'phone', metric: 'page_shown', n: 9, p50: 1500, p90: 4000 }] });
   if (path === 'usage/live') return json({ online: 2, sockets: 3, streams: 8, uplinkMbps: 18, fairShare: true, fairShareActive: false });
@@ -398,7 +399,10 @@ test.describe('admin panel S7', () => {
     await boot(page);
     await openAdmin(page);
     const inv = sec(page, 'Invites');
+    await expect(inv.getByRole('button', { name: /^Waiting/ })).toBeVisible();
+    await inv.getByRole('button', { name: /^Done/ }).click();
     await expect(inv).toContainText('Redeemed as 0042');
+    await inv.getByRole('button', { name: /^Sent/ }).click();
     await inv.locator('input[name=loginName]').fill('erin');
     await inv.locator('textarea[name=message]').fill('Welcome, Erin.');
     await inv.getByRole('button', { name: 'Create invite' }).click();
@@ -445,7 +449,7 @@ test.describe('admin panel S7', () => {
     await expect.poll(() => st.bodies.some((b) => b.plansOpen === true)).toBe(true);
     await expect(pl).toContainText('Members can see and request plans');
     await pl.locator('input[name="cardinal.weeklyGb"]').fill('30');
-    await pl.getByRole('button', { name: 'Save plans' }).click();
+    await pl.getByRole('button', { name: 'Save and apply' }).click();
     await expect.poll(() => st.bodies.filter((b) => b.tier).length).toBe(4);
     const card = st.bodies.find((b) => b.tier === 'cardinal');
     expect(card.limits.weeklyGb).toBe(30);
@@ -589,6 +593,92 @@ test.describe('admin panel S7', () => {
 });
 
 // Hotfix 0.2.1: the panel is an overlay page; every way of leaving it must hide it, and it has its own Close button.
+test.describe('admin panel 1.1 WP5', () => {
+  const sec = (page, id) => page.locator('#lbAdm' + id);
+  const unlock = async (page) => { await page.locator('#lbAdmStepup input[name=login]').fill('boss'); await page.locator('#lbAdmStepup input[name=password]').fill('right'); await page.locator('#lbAdmStepup button[type=submit]').click(); };
+
+  test('members: plan pill, master-detail beside the table at 1366 and under it at 390', async ({ page }) => {
+    mockApi(page);
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await boot(page); await openAdmin(page);
+    const m = sec(page, 'Members');
+    await expect(m.locator('.lb-adm-plan').first()).toContainText(/Ordinal|Cardinal|Prime|Executive/);
+    await m.getByRole('button', { name: 'Alice <b>A</b>' }).click();
+    const t = await m.locator('.lb-adm-mlist').boundingBox(), pr = await m.locator('#lbAdmProfile').boundingBox();
+    expect(pr.x).toBeGreaterThan(t.x + t.width - 2);
+    await page.setViewportSize({ width: 390, height: 800 });
+    const t2 = await m.locator('.lb-adm-mlist').boundingBox(), p2 = await m.locator('#lbAdmProfile').boundingBox();
+    expect(p2.y).toBeGreaterThan(t2.y + t2.height - 2);
+    expect(await page.evaluate(() => document.getElementById('lbAdmin').scrollWidth <= document.getElementById('lbAdmin').clientWidth + 1)).toBe(true);
+  });
+
+  test('void side sheet: reasons, suggested refund, second click, then POST membership/void', async ({ page }) => {
+    const st = mockApi(page);
+    await boot(page); await openAdmin(page);
+    const m = sec(page, 'Members');
+    await m.getByRole('button', { name: 'Alice <b>A</b>' }).click();
+    await m.getByRole('button', { name: 'Void plan' }).click();
+    const sh = page.locator('#lbAdmSheet');
+    await expect(sh).toHaveAttribute('role', 'dialog');
+    await expect(sh).toContainText('Suggested refund: $0');
+    await sh.getByLabel('Error').check();
+    await expect(sh).toContainText(/Suggested refund: \$1[3-4]/);
+    await sh.locator('#lbAdmVoidGo').click();
+    expect(st.calls).not.toContain('POST membership/void');
+    await sh.locator('#lbAdmVoidGo').click();
+    await unlock(page);
+    await expect.poll(() => st.calls).toContain('POST membership/void');
+    expect(st.bodies.find((b) => b.reason)).toMatchObject({ id: 11, reason: 'error' });
+    await expect(sh).toBeHidden();
+  });
+
+  test('top-up, trial and Executive send the right writes', async ({ page }) => {
+    const st = mockApi(page);
+    await boot(page); await openAdmin(page);
+    const m = sec(page, 'Members');
+    await m.getByRole('button', { name: 'Alice <b>A</b>' }).click();
+    await m.locator('#lbAdmTopup input[name=gb]').fill('25');
+    await m.getByRole('button', { name: 'Add top-up' }).click();
+    await unlock(page);
+    await expect.poll(() => st.calls).toContain('POST membership/topup');
+    expect(st.bodies.find((b) => b.gb)).toMatchObject({ gb: 25 });
+    await m.getByRole('button', { name: 'Start trial' }).click();
+    await expect.poll(() => st.calls).toContain('POST membership/trial');
+    await m.getByRole('button', { name: 'Make Executive' }).click();
+    await m.getByRole('button', { name: 'Confirm Executive' }).click();
+    await expect.poll(() => st.bodies.some((b) => b.tier === 'executive')).toBe(true);
+  });
+
+  test('plan limits turn amber until saved; transfer board shows ticks and the active brake; hop bar renders', async ({ page }) => {
+    mockApi(page);
+    await boot(page); await openAdmin(page);
+    const pl = sec(page, 'Plans');
+    const i = pl.locator('#lbAdmPlanForm input[name="cardinal.tabs"]');
+    await i.fill('20');
+    await expect(i).toHaveClass(/lb-adm-dirty/);
+    await expect(pl.getByRole('button', { name: 'Save and apply' })).toBeVisible();
+    const tr = sec(page, 'Transfer');
+    await expect(tr).toContainText('3570 of 5000 GB');
+    await expect(tr.locator('.lb-adm-tick')).toHaveCount(3);
+    await expect(tr.locator('.lb-adm-tile.on')).toContainText('warn');
+    await expect(sec(page, 'Hops').locator('#lbAdmHopBar .lb-adm-seg')).toHaveCount(2);
+    await expect(sec(page, 'Charts').locator('#lbAdmSpark svg')).toHaveCount(2);
+  });
+
+  test('invites tabs: waiting shows plan requests; queue "Waiting for cash" sends accept', async ({ page }) => {
+    const st = mockApi(page);
+    await boot(page); await openAdmin(page);
+    const inv = sec(page, 'Invites');
+    await inv.getByRole('button', { name: /^Waiting/ }).click();
+    await expect(inv).toContainText('PLAN REQUEST');
+    await sec(page, 'Queue').getByRole('button', { name: 'Waiting for cash' }).click();
+    await unlock(page);
+    await expect.poll(() => st.calls).toContain('POST membership/requests/accept');
+    expect(st.bodies.filter((b) => b.id === 7).length).toBeGreaterThan(0);
+    await expect(sec(page, 'Queue')).toContainText('[waiting_cash]');
+  });
+});
+
 test.describe('leaving the admin panel', () => {
   const shown = (page) => page.locator('#lbAdmin.show');
   for (const [name, leave] of [
