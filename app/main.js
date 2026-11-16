@@ -589,10 +589,17 @@
             // average the successes — but bail after 3 straight failures so a
             // genuinely dead server doesn't cost 10 full timeouts.
             async function probeWispPoolServer(url, attempts = 10, ms = 4000) {
+                // Our relay is the VPS behind a token (the same-origin /wisp/ answers 410): probe it the way LB_probeOur does.
+                let target = url, protos;
+                if (LB_OUR_WISP && url === LB_OUR_WISP) {
+                    const t = await LB_relayTok.get();
+                    if (!t) return { latency: null, healthy: false, samples: 0 };
+                    target = t.url; protos = ['lb.v1', 'lbt.' + t.token];
+                }
                 const samples = [];
                 let consecutiveFails = 0;
                 for (let i = 0; i < attempts; i++) {
-                    const latency = await probeWispLatency(url, ms);
+                    const latency = await probeWispLatency(target, ms, protos);
                     if (latency == null) {
                         if (++consecutiveFails >= 3) break;
                     } else {
@@ -603,6 +610,7 @@
                 if (!samples.length) return { latency: null, healthy: false, samples: 0 };
                 return { latency: samples.reduce((a, b) => a + b, 0) / samples.length, healthy: true, samples: samples.length };
             }
+            window.LB_probePool = (...a) => probeWispPoolServer(...a);   // test hook
             let wispBenchmarking = false;
             let _wispBenchmarkPromise = null;
             // Returns the in-flight benchmark promise if one is already running, so the

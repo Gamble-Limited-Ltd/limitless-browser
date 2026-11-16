@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 1.0.2
+
+- Settings > Connection: our relay no longer shows as unreachable in the relay list when it is working.
+
 ## 1.0.1
 
 - Everyone goes through the welcome ceremony and chooses their own member number, including members who used Limitless before 1.0.
