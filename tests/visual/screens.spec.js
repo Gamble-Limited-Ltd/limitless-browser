@@ -7,7 +7,7 @@ const { checkLayout, checkContrast } = require('./layout');
 
 const COMBOS = [];
 for (const t of ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono']) for (const m of ['dark', 'light']) COMBOS.push([t, m]);
-for (const t of ['vault', 'ink', 'garnet', 'gilt', 'onyx']) COMBOS.push([t, 'dark']);
+for (const t of ['vault', 'ink', 'garnet', 'crplat', 'gilt', 'onyx']) COMBOS.push([t, 'dark']);
 COMBOS.push(['silver', 'dark'], ['silver', 'light']);
 const SIZES = [[1366, 768], [2560, 1440]];
 const SHOT = new Set(['luxury/dark', 'soft/light', 'ink/dark']);

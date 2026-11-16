@@ -16,9 +16,9 @@
     /* Limitless theme boot: runs before first paint. Reads limitless:theme:v1 directly (not through the per-instance
        ls wrapper) because the gate's auth pages read the same un-prefixed key. JSON {theme, mode, mark}. */
     (function () {
-        var THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'];
+        var THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx', 'crplat'];
         // Dark-only themes, and the lowest plan each paid theme needs (1 Cardinal, 2 Prime, 3 Executive). Cosmetic: the gate decides nothing here.
-        var DARK_ONLY = ['vault', 'ink', 'garnet', 'gilt', 'onyx'], NEEDS = { vault: 1, ink: 1, silver: 1, garnet: 2, gilt: 3, onyx: 3 };
+        var DARK_ONLY = ['vault', 'ink', 'garnet', 'gilt', 'onyx', 'crplat'], NEEDS = { vault: 1, ink: 1, silver: 1, garnet: 2, gilt: 3, onyx: 3, crplat: 2 };
         var RANKS = { ordinal: 0, cardinal: 1, prime: 2, executive: 3 }, LF_KEY = 'limitless:lastfree:v1', rank = null;
         var MARKS = ['orbit', 'lens', 'wordmark'], MODES = ['light', 'dark', 'auto'], KEY = 'limitless:theme:v1';
         var st = { theme: 'luxury', mode: 'auto', mark: 'orbit' };
@@ -81,10 +81,11 @@
         if (!NEEDS[st.theme]) { try { localStorage.setItem(LF_KEY, st.theme); } catch (e) {} }
         apply();
         // SPEED 3.6: preload the active theme's display and body faces (same URLs as theme/fonts.css), boot theme only.
+        var CG = ['cormorantgaramond/cormorantgaramond-normal-400-600', 'spacegrotesk/spacegrotesk-normal-400-700'];
         var PL = { luxury: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'], fancy: ['fraunces/fraunces-normal-400-700', 'outfit/outfit-normal-300-600'],
             minimal: ['figtree/figtree-normal-300-600'], soft: ['quicksand/quicksand-normal-400-700', 'nunito/nunito-normal-400-700'],
             retro: ['vt323/vt323-normal-400', 'ibmplexmono/ibmplexmono-normal-400'],
-            ink: ['fraunces/fraunces-normal-400-700', 'outfit/outfit-normal-300-600'], silver: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'], onyx: ['bodonimoda/bodonimoda-normal-400-600', 'jost/jost-normal-300-500'] };
+            ink: CG, silver: CG, garnet: CG, gilt: CG, onyx: CG, crplat: CG };
         (PL[st.theme] || ['playfairdisplay/playfairdisplay-normal-400-700', 'dmsans/dmsans-normal-400-600']).forEach(function (f) {
             var l = document.createElement('link'); l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous';
             l.href = 'theme/fonts/' + f + '.woff2'; document.head.appendChild(l);
@@ -4719,11 +4720,13 @@ html.zen-split-on #zenSplitClose { display: block; }
         <symbol id="lb-mk-orbit" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="6"/><circle cx="50.02" cy="19.38" r="5.5" style="fill:var(--lb-acc2,#BDFFFF)" stroke="none"/></g></symbol>
         <symbol id="lb-mk-lens" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 15.9A18 18 0 0 1 32 48.1A18 18 0 0 1 32 15.9Z" style="fill:var(--lb-acc2,#BDFFFF)" fill-opacity=".45" stroke="none"/><circle cx="24" cy="32" r="18" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="5"/><circle cx="40" cy="32" r="18" style="stroke:var(--lb-acc,#4DA6FF)" stroke-width="5"/></g></symbol>
         <symbol id="lb-mk-wordmark" viewBox="0 0 64 64"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="8" width="11" height="46" rx="5.5" style="fill:var(--lb-acc,#4DA6FF)" stroke="none"/><circle cx="45" cy="48" r="6.5" style="fill:var(--lb-acc2,#BDFFFF)" stroke="none"/></g></symbol>
-            <!-- Tier marks (docs/1.0/UI.md 7.4, picks "rings"): Orbit plus a ring per plan. Ordinal is the plain Orbit. Fixed metal colours (they name the plan, not the theme). -->
-        <symbol id="lb-mk-tier-ordinal" viewBox="0 0 64 64"><use href="#lb-mk-orbit" width="64" height="64"/></symbol>
-        <symbol id="lb-mk-tier-cardinal" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="none" stroke="#c9d0da" stroke-width="2"/><use href="#lb-mk-orbit" x="10" y="10" width="44" height="44"/></symbol>
-        <symbol id="lb-mk-tier-prime" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="#0d0709"/><circle cx="32" cy="32" r="30.5" fill="none" stroke="#bdffff" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/><use href="#lb-mk-orbit" x="12" y="12" width="40" height="40"/></symbol>
-        <symbol id="lb-mk-tier-executive" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30.5" fill="none" stroke="#e6c15a" stroke-width="2"/><circle cx="32" cy="32" r="26.5" fill="none" stroke="#e6c15a" stroke-width="1" opacity=".7"/><use href="#lb-mk-orbit" x="13" y="13" width="38" height="38"/></symbol>
+        <!-- Tier marks (Design Room III "rings", geometry from the design, viewBox 96). Fixed metal colours: they name the plan, not the theme. Gold follows the --lb-gold tokens. -m: no compass points, for 20 px and below. -->
+        <defs><linearGradient id="lbIceG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#BDFFFF"/><stop offset="1" stop-color="#4DA6FF"/></linearGradient><linearGradient id="lbSilverG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9ced6"/><stop offset="1" stop-color="#6f7681"/></linearGradient><linearGradient id="lbCrimG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb8c3"/><stop offset=".5" stop-color="#e2526a"/><stop offset="1" stop-color="#6e1022"/></linearGradient><linearGradient id="lbGoldG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--lb-gold-hi,#f6d77a)"/><stop offset=".5" style="stop-color:var(--lb-gold,#D4A531)"/><stop offset="1" style="stop-color:var(--lb-gold2,#8A6A1C)"/></linearGradient></defs>
+        <symbol id="lb-mk-tier-ordinal" viewBox="0 0 96 96"><circle cx="48" cy="48" r="44" fill="none" stroke="url(#lbIceG)" stroke-width="1.2"/><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="#BDFFFF" stroke-width="6" stroke-linecap="round" transform="translate(16 16)"/><circle cx="66.02" cy="35.38" r="5.5" fill="#4DA6FF"/></symbol>
+        <symbol id="lb-mk-tier-cardinal" viewBox="0 0 96 96"><circle cx="48" cy="48" r="45" fill="none" stroke="url(#lbSilverG)" stroke-width="1.6"/><circle cx="48" cy="48" r="40" fill="none" stroke="#9aa3ad" stroke-width="0.6"/><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="#e8ebef" stroke-width="6" stroke-linecap="round" transform="translate(16 16)"/><circle cx="66.02" cy="35.38" r="5.5" fill="#9aa3ad"/></symbol>
+        <symbol id="lb-mk-tier-prime" viewBox="0 0 96 96"><circle cx="48" cy="48" r="46" fill="#0b0406"/><circle cx="48" cy="48" r="46" fill="none" stroke="url(#lbCrimG)" stroke-width="1.8"/><circle cx="48" cy="48" r="41" fill="none" stroke="#e2526a" stroke-width="0.7" stroke-dasharray="1.5 3"/><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="#e2526a" stroke-width="6" stroke-linecap="round" transform="translate(16 16)"/><circle cx="66.02" cy="35.38" r="5.5" fill="#ffffff"/></symbol>
+        <symbol id="lb-mk-tier-executive" viewBox="0 0 96 96"><circle cx="48" cy="48" r="46" fill="#000"/><circle cx="48" cy="48" r="46" fill="none" stroke="url(#lbGoldG)" stroke-width="1.8"/><circle cx="48" cy="48" r="41" fill="none" stroke="url(#lbGoldG)" stroke-width="0.8" stroke-dasharray="1.5 3"/><circle cx="48" cy="48" r="36" fill="none" stroke="url(#lbGoldG)" stroke-width="0.5"/><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="url(#lbGoldG)" stroke-width="6" stroke-linecap="round" transform="translate(16 16)"/><circle cx="66.02" cy="35.38" r="5.5" fill="var(--lb-gold-hi,#f6d77a)"/><circle cx="48" cy="7" r="2.2" fill="url(#lbGoldG)"/><circle cx="89" cy="48" r="2.2" fill="url(#lbGoldG)"/><circle cx="48" cy="89" r="2.2" fill="url(#lbGoldG)"/><circle cx="7" cy="48" r="2.2" fill="url(#lbGoldG)"/></symbol>
+        <symbol id="lb-mk-tier-executive-sm" viewBox="0 0 96 96"><circle cx="48" cy="48" r="46" fill="#000"/><circle cx="48" cy="48" r="46" fill="none" stroke="url(#lbGoldG)" stroke-width="3.4"/><circle cx="48" cy="48" r="40" fill="none" stroke="url(#lbGoldG)" stroke-width="1.6" stroke-dasharray="1.5 3"/><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" fill="none" stroke="url(#lbGoldG)" stroke-width="6" stroke-linecap="round" transform="translate(16 16)"/><circle cx="66.02" cy="35.38" r="5.5" fill="var(--lb-gold-hi,#f6d77a)"/></symbol>
     </svg>
     <div class="app">
         <div class="titlebar">
@@ -9177,10 +9180,10 @@ window._libcurlReady = true;
     /* Theme UI: settings Appearance grid, mode control, mark picker and the quick-switch drawer. State lives in window.LBTheme (head script). */
     (function () {
         var T = window.LBTheme; if (!T) return;
-        var NAMES = { luxury: 'Luxury', fancy: 'Fancy', minimal: 'Minimal', soft: 'Soft', retro: 'Retro', ledger: 'Gilded Ledger', mono: 'GLL Monochrome', vault: 'Vault', ink: 'Ink blue', silver: 'Silver', garnet: 'Garnet', gilt: 'Gilt', onyx: 'Onyx' };
+        var NAMES = { luxury: 'Luxury', fancy: 'Fancy', minimal: 'Minimal', soft: 'Soft', retro: 'Retro', ledger: 'Gilded Ledger', mono: 'GLL Monochrome', vault: 'Vault', ink: 'Ink blue', silver: 'Silver', garnet: 'Garnet', crplat: 'Crimson and platinum', gilt: 'Gilt', onyx: 'Onyx' };
         var PLANN = { 1: 'Cardinal', 2: 'Prime', 3: 'Executive' };
         var MARKN = { orbit: 'Orbit', lens: 'Lens', wordmark: 'Wordmark' };
-        var LIMITLESS = ['luxury', 'fancy', 'minimal', 'soft', 'retro'], GLL = ['ledger', 'mono'], PAID = ['ink', 'silver', 'vault', 'garnet', 'gilt', 'onyx'];
+        var LIMITLESS = ['luxury', 'fancy', 'minimal', 'soft', 'retro'], GLL = ['ledger', 'mono'], PAID = ['ink', 'silver', 'vault', 'garnet', 'crplat', 'gilt', 'onyx'];
         function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
         function scope(id, extra) { return '<span class="lb-scope ' + extra + '" data-lb-theme="' + id + '" data-lb-mode="' + T.resolveFor(id) + '"><i></i><i></i><i></i></span>'; }
         var grid = document.getElementById('lbThemeGrid'), gridG = document.getElementById('lbThemeGridGll'), gridP = document.getElementById('lbThemeGridPaid');

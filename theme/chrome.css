@@ -511,3 +511,32 @@ section.lb-dl[hidden] { display: none; }
 .lb-dl-link { color: var(--ac); text-underline-offset: 2px; }
 .lb-dl-empty, .lb-dl-fine { color: var(--tx3); margin: 8px 0 0; font-size: 12px; }
 .lb-dl-b:focus-visible, .lb-dl-add input:focus-visible, .lb-dl-link:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+
+/* ---------- 11. Paid themes: character (1.1 WP1, docs/1.1/DESIGN-GAPS.md section 8) ----------
+   Ink blue, Silver, Garnet, Crimson and platinum, Gilt, Onyx. Tokens only; the glow follows each theme's accent. */
+html:is([data-lb-theme="ink"], [data-lb-theme="silver"], [data-lb-theme="garnet"], [data-lb-theme="crplat"], [data-lb-theme="gilt"], [data-lb-theme="onyx"]):not([data-skin]) {
+  & .nt-time { font-weight: 400; }
+}
+html[data-lb-theme="ink"]:not([data-skin]) { & #newtab .nt-overlay { background: radial-gradient(900px 480px at 50% -8%, rgba(77, 140, 255, .18), transparent 65%); } }
+html[data-lb-theme="silver"]:not([data-skin]) { & #newtab .nt-overlay { background: radial-gradient(900px 480px at 50% -8%, rgba(223, 227, 233, .09), transparent 65%); } }
+html[data-lb-theme="garnet"]:not([data-skin]) {
+  & #newtab .nt-overlay { background: radial-gradient(900px 480px at 50% -8%, color-mix(in srgb, var(--lb-acc2) 30%, transparent), transparent 65%); }
+  & .navbar { box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--lb-acc2) 40%, transparent); }
+}
+html[data-lb-theme="crplat"]:not([data-skin]) {
+  & #newtab .nt-overlay { background: radial-gradient(900px 480px at 50% -8%, color-mix(in srgb, var(--lb-acc) 14%, transparent), transparent 65%); }
+  & .navbar { box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--lb-acc2) 30%, transparent); }
+}
+html:is([data-lb-theme="gilt"], [data-lb-theme="onyx"]):not([data-skin]) {
+  & .nt-time { background: linear-gradient(180deg, var(--lb-gold-hi, #f6d77a), var(--lb-gold, #D4A531) 55%, var(--lb-gold2, #8A6A1C)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  & .nt-time small { -webkit-text-fill-color: var(--lb-mut); }
+}
+html[data-lb-theme="gilt"]:not([data-skin]) #newtab .nt-overlay { background: radial-gradient(900px 480px at 50% -8%, color-mix(in srgb, var(--lb-gold, #D4A531) 22%, transparent), transparent 65%); }
+html[data-lb-theme="onyx"]:not([data-skin]) {
+  --lb-strip: #000;
+  & #newtab .nt-overlay { background: radial-gradient(900px 480px at 50% -8%, color-mix(in srgb, var(--lb-gold, #D4A531) 9%, transparent), transparent 65%); }
+  & .navbar { background: #000; box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--lb-gold, #D4A531) 22%, #000); }
+  & .tab.active { background: #000; }
+}
+/* Vertical rail: accent edge on the active tab (design: 2px accent, tier-neutral). */
+html[data-lb-tabs="side"]:is([data-lb-theme="ink"], [data-lb-theme="silver"], [data-lb-theme="garnet"], [data-lb-theme="crplat"], [data-lb-theme="gilt"], [data-lb-theme="onyx"]):not([data-skin]) .tab.active { box-shadow: inset 2px 0 0 var(--lb-acc); }

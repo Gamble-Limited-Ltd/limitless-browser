@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { boot } = require('./helpers');
 const { me, bootMember, refreshMe, openSettings } = require('./helpers-ui');
 
-const ALL = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'];
+const ALL = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx', 'crplat'];
 const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 
@@ -27,7 +27,7 @@ test('every theme and mode keeps 4.5:1 for text, muted text and text on the acce
 test('Ordinal: Vault, Ink blue, Silver, Garnet, Gilt and Onyx are locked and a click changes nothing', async ({ page }) => {
   const errors = await bootMember(page, me());
   await openSettings(page, 'appearance');
-  for (const id of ['vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx']) {
+  for (const id of ['vault', 'ink', 'silver', 'garnet', 'crplat', 'gilt', 'onyx']) {
     const tile = page.locator(`#lbThemeCard .lb-tcard[data-theme="${id}"]`);
     await expect(tile).toHaveAttribute('data-locked', '');
     await expect(tile).toHaveAttribute('aria-disabled', 'true');
@@ -56,13 +56,14 @@ test('Cardinal unlocks Vault, Ink blue and Silver but not Garnet; Prime unlocks 
   await openSettings(page, 'appearance');
   const locked = async (id) => (await page.locator(`#lbThemeCard .lb-tcard[data-theme="${id}"]`).getAttribute('data-locked')) !== null;
   for (const id of ['vault', 'ink', 'silver']) expect(await locked(id), id).toBe(false);
-  for (const id of ['garnet', 'gilt', 'onyx']) expect(await locked(id), id).toBe(true);
+  for (const id of ['garnet', 'crplat', 'gilt', 'onyx']) expect(await locked(id), id).toBe(true);
   await page.locator('#lbThemeCard .lb-tcard[data-theme="ink"]').click();
   expect(await page.evaluate(() => document.documentElement.getAttribute('data-lb-theme'))).toBe('ink');
   expect(await page.evaluate(() => document.documentElement.getAttribute('data-lb-mode'))).toBe('dark');
   answer = me({ tier: 'prime' }, { tier: 'prime', paidUntil: Date.now() + 90 * 864e5 });
   await refreshMe(page);
   expect(await locked('garnet')).toBe(false);
+  expect(await locked('crplat')).toBe(false);
   expect(await locked('gilt')).toBe(true);
   answer = me({ tier: 'executive' }, { tier: 'executive' });
   await refreshMe(page);

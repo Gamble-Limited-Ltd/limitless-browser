@@ -13,7 +13,7 @@
         var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 64 64'); s.setAttribute('class', 'mk'); s.setAttribute('aria-hidden', 'true');
         var p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', 'M53.92 30.08A22 22 0 1 1 41.30 12.06'); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '6'); p.setAttribute('stroke-linecap', 'round'); s.appendChild(p);
         var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', '50.02'); c.setAttribute('cy', '19.38'); c.setAttribute('r', '5.5'); c.setAttribute('fill', 'currentColor'); s.appendChild(c);
-        s.style.color = tier === 'executive' ? '#e6c15a' : tier === 'prime' ? '#e5506a' : tier === 'cardinal' ? '#c9d0da' : 'var(--lb-acc)'; return s;
+        s.style.color = tier === 'executive' ? 'var(--lb-gold, #D4A531)' : tier === 'prime' ? 'var(--lb-crim, #e2526a)' : tier === 'cardinal' ? 'var(--lb-silver, #dfe3e9)' : 'var(--lb-acc)'; return s;
     }
     function paintDots() { dots.textContent = ''; for (var i = 1; i <= 6; i++) { var li = el('li'); if (i <= step) li.setAttribute('data-on', ''); dots.appendChild(li); } dots.setAttribute('aria-label', 'Step ' + step + ' of 6'); }
     function show(n) { step = n; paintDots(); root.textContent = ''; root.style.animation = 'none'; void root.offsetWidth; root.style.animation = ''; STEPFN[n](); root.focus(); }

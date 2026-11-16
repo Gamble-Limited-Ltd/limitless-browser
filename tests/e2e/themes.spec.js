@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { menuItem } = require('./helpers');
 
 const KEY = 'limitless:theme:v1';
-const THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx'];
+const THEMES = ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono', 'vault', 'ink', 'silver', 'garnet', 'gilt', 'onyx', 'crplat'];
 // --lb-bg per docs/DESIGN.md section 1.
 const BG = {
   'luxury/dark': '#070a10', 'luxury/light': '#eeece6',

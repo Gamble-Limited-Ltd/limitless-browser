@@ -27,6 +27,7 @@ FAMILIES = [
     ("DM Mono", "DM+Mono:wght@300;400;500", "dmmono"),
     ("Pinyon Script", "Pinyon+Script", "pinyonscript"),
     ("Cormorant Garamond", "Cormorant+Garamond:ital,wght@0,400..600;1,400..600", "cormorantgaramond"),
+    ("Space Grotesk", "Space+Grotesk:wght@400..700", "spacegrotesk"),
 ]
 
 def get(url):
