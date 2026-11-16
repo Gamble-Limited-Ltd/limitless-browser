@@ -541,7 +541,7 @@
                     const ub = document.createElement('div');
                     ub.className = 'lb-ub show'; ub.id = 'lbBusyNote'; ub.setAttribute('role', 'status');
                     const dot = document.createElement('i'); dot.className = 'lb-ub-dot';
-                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg'; msg.textContent = 'The line is busy, Data saver helps';
+                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg'; msg.textContent = 'The line is busy right now. Data saver can help.';
                     const gap = document.createElement('span'); gap.className = 'lb-ub-gap';
                     const x = document.createElement('button'); x.type = 'button'; x.className = 'lb-ub-x'; x.id = 'lbBusyDismiss'; x.setAttribute('aria-label', 'Dismiss'); x.title = 'Dismiss';
                     x.innerHTML = '<i class="fas fa-xmark"></i>';

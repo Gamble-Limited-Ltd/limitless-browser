@@ -146,3 +146,11 @@ main { position: relative; }
 .lb-bar > i { display: block; height: 100%; background: var(--ac); border-radius: 3px; }
 .lb-vnote { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 100000; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-md); font: 13px var(--ui); box-shadow: 0 6px 24px rgba(0,0,0,.25); }
 #lbSiteClear { margin-top: 10px; }
+
+/* Narrow windows (about 400px): the settings side nav collapses to icons so the content keeps its width. */
+@media (max-width: 600px) {
+  .lb-set-side { width: 52px !important; min-width: 52px !important; }
+  .lb-set-side nav { padding: 0 6px !important; }
+  .lb-set-side .settings-nav-item { justify-content: center; padding: 10px 0; }
+  .lb-set-side .settings-nav-item span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
