@@ -31,4 +31,10 @@ Requested by Boss 2026-11-16. Base: `main` at `2f4c181` (1.0.1). Lane: Minor (1.
 - 2026-11-16, Boss (on `PLANS-AUDIT.md`): plan limits take the "recommended" sets from the Plan Numbers artifact
   (https://claude.ai/artifact/9V2K7cY62h9JrfBA6ydXVG); Ordinal gets a client-side 3 Mbit/s throttle (number from the gate catalog);
   Executive files are capped at 2 GB in 1.1 (the browser keeps downloads in memory; streaming to disk is later). Pricing page: in-app `limitless://plans`.
+- 2026-11-16, Boss approved the Director's letter (certificate page 2) and the signature "James Thiessen" over "Director of Gamble
+  Limited Ltd." (MEMBERSHIP.md 7.2) on the certificate, the letter and the notices. Letter text, with name, number and date filled per member:
+  "Welcome to Limitless. You are now member No. <number>, and the number is yours for as long as you keep your membership. /
+  Limitless was built to be a quiet, private way to use the web. Use it well, look after your account, and keep to the charter you
+  signed; it is on the next page. / If something breaks or feels wrong, use Report a problem in the menu. Every report reaches me. /
+  Yours sincerely,"
 Last verified: 2026-11-16
