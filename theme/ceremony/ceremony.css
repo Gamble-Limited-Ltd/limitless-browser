@@ -37,7 +37,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, .charter:focus-visib
 @keyframes fillin { to { fill-opacity: 1; stroke-width: 0; } }
 .reveal i { display: block; width: 120px; height: 1px; background: var(--lb-acc); }
 .cert { width: 100%; padding: 28px 24px; border: 1px solid var(--lb-line); outline: 1px solid var(--lb-line); outline-offset: -8px; text-align: center; display: grid; gap: 8px; justify-items: center; background: var(--lb-bg); }
-.cert[data-tier="cardinal"] { border-color: #c9d0da; } .cert[data-tier="prime"] { border-color: #e5506a; } .cert[data-tier="executive"] { border-color: #e6c15a; }
+.cert[data-tier="cardinal"] { border-color: var(--lb-silver, #dfe3e9); } .cert[data-tier="prime"] { border-color: var(--lb-crim, #e2526a); } .cert[data-tier="executive"] { border-color: var(--lb-gold, #D4A531); }
 .cert .t { font: 500 11px var(--lb-fm); letter-spacing: .28em; text-transform: uppercase; color: var(--lb-mut); }
 .cert .n { font: 500 54px 'Cormorant Garamond', Georgia, serif; letter-spacing: .08em; }
 .cert .nm { font: 400 34px 'Pinyon Script', cursive; }
