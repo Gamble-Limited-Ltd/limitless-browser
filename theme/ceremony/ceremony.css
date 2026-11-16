@@ -1,27 +1,30 @@
 /* Welcome ceremony (UI.md 6.1). Tokens only. Serif numerals and the signature use Cormorant Garamond and Pinyon Script. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { background: var(--lb-bg); }
+/* Tier colour for decoration: the tier hook --tc (WP1, set by [data-tier] on #cw). Light themes keep the theme accent so lines stay visible; cards and certificates are always dark and use --tc directly. */
+#cw { --cw-tc: var(--tc, var(--lb-acc)); --cw-tcon: var(--tcon, var(--lb-on)); }
+html[data-lb-mode="light"] #cw { --cw-tc: var(--lb-acc); --cw-tcon: var(--lb-on); }
 body { min-height: 100vh; display: grid; place-items: center; background: var(--lb-bg); color: var(--lb-fg); font-family: var(--lb-fb); padding: 24px; }
 .cw { width: min(640px, 100%); display: grid; gap: 22px; }
 .cw-dots { list-style: none; display: flex; gap: 8px; justify-content: center; }
 .cw-dots li { width: 28px; height: 2px; background: var(--lb-line); transition: background .24s cubic-bezier(.2, .7, .2, 1); }
-.cw-dots li[data-on] { background: var(--lb-acc); }
+.cw-dots li[data-on] { background: var(--cw-tc); }
 .cw-step { background: var(--lb-surf); border: 1px solid var(--lb-line); border-radius: var(--lb-r); padding: 40px 36px; display: grid; gap: 16px; justify-items: start; animation: cwIn .24s cubic-bezier(.2, .7, .2, 1); outline: none; }
 @keyframes cwIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 h1 { font-family: var(--lb-fd); font-weight: 500; font-size: 30px; line-height: 1.2; }
 p, .note { color: var(--lb-mut); font-size: 15px; line-height: 1.6; }
 .note { font-size: 12.5px; }
 .lab { font-size: 12.5px; color: var(--lb-fg); }
-.mk { width: 44px; height: 44px; }
+.mk { width: 44px; height: 44px; color: var(--cw-tc); }
 input[type="text"] { width: 100%; padding: 11px 12px; background: var(--lb-bg); color: var(--lb-fg); border: 1px solid var(--lb-line); border-radius: calc(var(--lb-r) * .5); font: inherit; font-size: 16px; }
 input.num { width: 160px; font: 500 28px 'Cormorant Garamond', Georgia, serif; letter-spacing: .3em; text-align: center; }
 .msg { min-height: 20px; font-size: 13px; color: var(--lb-mut); }
 .msg[data-ok] { color: var(--lb-fg); }
-.msg[data-err] { color: var(--lb-fg); border-left: 2px solid var(--lb-acc); padding-left: 8px; }
-button, a.btn { font: inherit; font-size: 14px; padding: 11px 24px; border-radius: calc(var(--lb-r) * .5); border: 1px solid var(--lb-acc); background: var(--lb-acc); color: var(--lb-on); cursor: pointer; text-decoration: none; display: inline-block; }
+.msg[data-err] { color: var(--lb-fg); border-left: 2px solid var(--cw-tc); padding-left: 8px; }
+button, a.btn { font: inherit; font-size: 14px; padding: 11px 24px; border-radius: calc(var(--lb-r) * .5); border: 1px solid var(--cw-tc); background: var(--cw-tc); color: var(--cw-tcon); cursor: pointer; text-decoration: none; display: inline-block; }
 button.g, a.btn.g { background: transparent; color: var(--lb-fg); border-color: var(--lb-line); }
 button:disabled { opacity: .5; cursor: default; }
-button:focus-visible, a:focus-visible, input:focus-visible, .charter:focus-visible { outline: 2px solid var(--lb-acc); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, .charter:focus-visible { outline: 2px solid var(--cw-tc); outline-offset: 2px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .charter { max-height: 220px; overflow: auto; padding: 14px 16px; border: 1px solid var(--lb-line); border-radius: calc(var(--lb-r) * .5); background: var(--lb-bg); font-size: 13.5px; line-height: 1.6; color: var(--lb-fg); width: 100%; }
 .charter b { display: block; margin-top: 10px; font-weight: 600; }
@@ -30,22 +33,84 @@ button:focus-visible, a:focus-visible, input:focus-visible, .charter:focus-visib
 .sig:empty { display: flex; align-items: center; min-height: 40px; }
 .sig:empty::before { content: 'Your signature appears here as you type'; font: 400 13px var(--lb-fb); letter-spacing: 0; color: var(--lb-mut); }
 .tick { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--lb-fg); }
+/* Invitation (step 1, invited members): CSS-only envelope. The paper card is real paper, so its two colours are local constants. */
+.eyebrow { font: 500 11px var(--lb-fm); letter-spacing: .3em; text-transform: uppercase; color: var(--lb-mut); }
+.envelope { --paper: #f3f1ea; --ink: #14181f; width: min(100%, 300px); aspect-ratio: 1.6; position: relative; perspective: 900px; margin: 8px auto; }
+.envelope .body { position: absolute; inset: 0; border-radius: 8px; background: color-mix(in srgb, var(--lb-surf) 80%, var(--lb-bg)); border: 1px solid color-mix(in srgb, var(--cw-tc) 40%, var(--lb-line)); }
+.envelope .flap { position: absolute; left: 0; right: 0; top: 0; height: 58%; transform-origin: top; background: color-mix(in srgb, var(--lb-surf) 70%, var(--lb-fg) 8%); clip-path: polygon(0 0, 100% 0, 50% 100%); transform: rotateX(180deg); z-index: 0; }
+.envelope .wax { position: absolute; left: 50%; top: 58%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--tc, var(--lb-acc)) 60%, #fff), var(--tc2, var(--lb-acc)) 70%); z-index: 3; display: grid; place-items: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .5); opacity: 0; }
+.envelope .wax .mk { width: 26px; height: 26px; color: var(--tcon, var(--lb-on)); }
+.envelope .letter { position: absolute; left: 8%; right: 8%; bottom: 8%; height: 76%; border-radius: 4px; background: var(--paper); color: var(--ink); display: grid; place-items: center; font: 400 30px 'Pinyon Script', 'Snell Roundhand', cursive; z-index: 1; transform: translateY(-38%); }
+@media (prefers-reduced-motion: no-preference) {
+  .envelope .flap { animation: flapopen 1s .5s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) both; }
+  .envelope .wax { animation: waxoff .5s .3s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) both; }
+  .envelope .letter { animation: slideup .8s 1.2s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) both; }
+}
+@keyframes flapopen { from { transform: none; z-index: 2; } to { transform: rotateX(180deg); z-index: 0; } }
+@keyframes waxoff { from { opacity: 1; } to { opacity: 0; transform: scale(.6); } }
+@keyframes slideup { from { transform: none; } to { transform: translateY(-38%); } }
+/* Reveal (step 4). Default: Engrave with serif numerals. ?reveal=seal: Engrave inside the seal. Both draw in the tier colour. */
 .reveal { width: 100%; display: grid; justify-items: center; gap: 12px; padding: 24px 0 8px; }
-.reveal svg { width: min(360px, 90%); height: auto; overflow: visible; }
-.reveal text { font: 500 92px 'Cormorant Garamond', Georgia, serif; letter-spacing: .06em; fill: var(--lb-fg); stroke: var(--lb-fg); stroke-width: 1.2; paint-order: stroke; stroke-dasharray: 620; stroke-dashoffset: 620; fill-opacity: 0; animation: draw 1.1s cubic-bezier(.2, .7, .2, 1) forwards, fillin .4s 1.1s ease forwards; }
-@keyframes draw { to { stroke-dashoffset: 0; } }
-@keyframes fillin { to { fill-opacity: 1; stroke-width: 0; } }
-.reveal i { display: block; width: 120px; height: 1px; background: var(--lb-acc); }
-.cert { width: 100%; padding: 28px 24px; border: 1px solid var(--lb-line); outline: 1px solid var(--lb-line); outline-offset: -8px; text-align: center; display: grid; gap: 8px; justify-items: center; background: var(--lb-bg); }
-.cert[data-tier="cardinal"] { border-color: var(--lb-silver, #dfe3e9); } .cert[data-tier="prime"] { border-color: var(--lb-crim, #e2526a); } .cert[data-tier="executive"] { border-color: var(--lb-gold, #D4A531); }
-.cert .t { font: 500 11px var(--lb-fm); letter-spacing: .28em; text-transform: uppercase; color: var(--lb-mut); }
-.cert .n { font: 500 54px 'Cormorant Garamond', Georgia, serif; letter-spacing: .08em; }
-.cert .nm { font: 400 34px 'Pinyon Script', cursive; }
-.cert .d { font-size: 12.5px; color: var(--lb-mut); }
-.card { width: 100%; display: flex; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--lb-line); border-radius: calc(var(--lb-r) * .7); background: var(--lb-bg); }
-.card b { font: 600 16px var(--lb-fd); display: block; }
+.reveal svg { width: min(400px, 92%); height: auto; overflow: visible; }
+.engrave text { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; fill: transparent; stroke: var(--cw-tc); stroke-width: 1.1; stroke-dasharray: 560; stroke-dashoffset: 560; }
+.engrave .rule { stroke: var(--cw-tc); stroke-width: 1; transform-origin: center; transform-box: fill-box; transform: scaleX(0); }
+.engrave .glow { opacity: 0; }
+.engrave text.num { animation: cwdraw 1.6s .2s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards, cwfill .8s 1.4s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards; }
+.engrave text.lbl { animation: cwdraw 1s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards, cwfill .6s .9s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards; }
+.engrave .rule { animation: cwrule .9s 1.3s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards; }
+.engrave .glow { animation: cwglow 2.4s 1s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards; }
+#cw[data-tier="executive"] .engrave { --cw-fill: url(#cwGold); }
+@keyframes cwdraw { to { stroke-dashoffset: 0; } }
+@keyframes cwfill { to { fill: var(--cw-fill, var(--lb-fg)); stroke-width: .3; } }
+@keyframes cwrule { to { transform: scaleX(1); } }
+@keyframes cwglow { 0% { opacity: 0; } 35% { opacity: .9; } 100% { opacity: .2; } }
+.seal { max-width: 230px; }
+.seal .ring { transform-origin: 110px 110px; fill: none; stroke: var(--cw-tc); }
+.seal .core { transform-origin: 110px 110px; }
+.seal .disc { fill: color-mix(in srgb, var(--tc2, #000) 14%, #000); stroke: var(--cw-tc); stroke-width: 1; }
+.seal .lbl { fill: var(--c-mut); font: 500 10px 'Space Grotesk', var(--lb-fb); letter-spacing: 5px; }
+.seal .num { fill: var(--c-ink); font: 500 50px 'Cormorant Garamond', Georgia, serif; }
+.seal { --c-ink: #f0e6e6; --c-mut: #a9aab5; }
+@media (prefers-reduced-motion: no-preference) {
+  .seal .ring { animation: cwspin 1.4s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) forwards; }
+  .seal .core { animation: cwpress .7s 1.1s var(--lb-ease, cubic-bezier(.2, .7, .2, 1)) both; }
+}
+@keyframes cwspin { from { transform: rotate(-200deg); } to { transform: rotate(0); } }
+@keyframes cwpress { from { opacity: 0; transform: scale(1.4); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .engrave text { animation: none; stroke-dashoffset: 0; fill: var(--cw-fill, var(--lb-fg)); stroke-width: 0; } .engrave .rule { animation: none; transform: none; } .engrave .glow { animation: none; opacity: .2; } }
+/* Member card (step 5, Ordinal): the same card as the app (theme/ui.css .lb-mc, WP2), copied here because this page cannot load ui.css. */
+.lb-mc { --mc-fg: #eae6dc; --mc-mut: #a3a9b6; --mc-f1: 'Cormorant Garamond', var(--lb-fd), Georgia, serif; --mc-f2: 'Space Grotesk', var(--lb-fb), system-ui, sans-serif; --mc-fm: 'JetBrains Mono', var(--lb-fm), monospace;
+  container-type: inline-size; position: relative; box-sizing: border-box; overflow: hidden; isolation: isolate; color: var(--mc-fg); font-family: var(--mc-f2); text-align: left; width: min(100%, 340px);
+  border: 1px solid color-mix(in srgb, var(--tc) 35%, var(--lb-line, #232a38));
+  background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tc) 14%, transparent), transparent 60%), linear-gradient(160deg, #0d121b, #070a10); background-color: #0a0e15;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .35), inset 0 1px 0 color-mix(in srgb, var(--tc) 20%, transparent); }
+.lb-mc-n { display: block; font-family: var(--mc-f1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-mc-t { display: block; font: 500 10.5px var(--mc-f2); letter-spacing: .2em; text-transform: uppercase; color: var(--tc); }
+.lb-mc-no, .lb-mc-brand { font-family: var(--mc-fm); letter-spacing: .14em; color: var(--mc-mut); }
+.lb-mc-card { aspect-ratio: 1.586; border-radius: 14px; padding: 7% 8% 6%; display: grid; grid-template-rows: auto 1fr auto; }
+.lb-mc-top { display: flex; justify-content: space-between; align-items: center; }
+.lb-mc-brand { font-family: var(--mc-f2); font-size: max(10px, 3.6cqw); letter-spacing: .3em; text-transform: uppercase; }
+.lb-mc-top .mk { width: 10cqw; height: 10cqw; color: var(--tc); }
+.lb-mc-card .lb-mc-nm { align-self: center; }
+.lb-mc-card .lb-mc-n { font-size: 10.5cqw; line-height: 1.1; }
+.lb-mc-card .lb-mc-t { font-size: max(10.5px, 3.5cqw); margin-top: 2cqw; }
+.lb-mc-ft { display: flex; justify-content: space-between; gap: 8px; font-size: max(10.5px, 3.3cqw); border-top: 1px solid color-mix(in srgb, var(--tc) 18%, transparent); padding-top: 2.6cqw; }
+/* Certificate panel (step 5, Cardinal and above): dark paper, double frame, serif title, signature in script. Tier colour only through --tc. */
+.cert { --c-ink: #eae6dc; --c-mut: #a3a9b6; position: relative; width: 100%; padding: 36px 28px; text-align: center; display: grid; gap: 8px; justify-items: center; color: var(--c-ink); border-radius: 4px;
+  background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--tc2) 20%, #000), #000 72%); border: 1px solid color-mix(in srgb, var(--tc) 55%, #000); }
+.cert::before { content: ""; position: absolute; inset: 8px; border: 1px solid color-mix(in srgb, var(--tc) 40%, transparent); pointer-events: none; }
+.cert::after { content: ""; position: absolute; inset: 13px; border: 1px solid color-mix(in srgb, var(--tc) 22%, transparent); pointer-events: none; }
+.cert > * { position: relative; z-index: 1; }
+.cert .orn { color: var(--tc); font-size: 11px; letter-spacing: .5em; }
+.cert .t { font: 500 11px var(--lb-fm); letter-spacing: .28em; text-transform: uppercase; color: var(--c-mut); }
+.cert .c-title { font: 500 28px/1.15 'Cormorant Garamond', Georgia, serif; color: var(--tc); }
+.cert .n { font: 500 54px 'Cormorant Garamond', Georgia, serif; letter-spacing: .08em; color: var(--c-ink); }
+.cert .nm { font: 400 34px 'Pinyon Script', 'Snell Roundhand', cursive; color: var(--c-ink); }
+.cert .d { font-size: 12.5px; color: var(--c-mut); }
+.cert[data-tier="executive"] .n { color: var(--lb-gold-hi, #f6d77a); }
+@media (max-width: 520px) { .cert { padding: 30px 18px; } .cert .n { font-size: 44px; } }
 ul.tour { list-style: none; display: grid; gap: 10px; width: 100%; }
 ul.tour li { padding: 10px 0; border-top: 1px solid var(--lb-line); font-size: 14px; color: var(--lb-fg); }
 ul.tour li span { color: var(--lb-mut); display: block; font-size: 13px; margin-top: 2px; }
 @media (max-width: 520px) { .cw-step { padding: 28px 20px; } }
-@media (prefers-reduced-motion: reduce) { .cw-step { animation: none; } .reveal text { animation: none; stroke-dashoffset: 0; fill-opacity: 1; stroke-width: 0; } }
+@media (prefers-reduced-motion: reduce) { .cw-step { animation: none; } }

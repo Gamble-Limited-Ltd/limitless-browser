@@ -6,6 +6,9 @@ What changed, in plain language. Newest first.
 
 - The "Human Check" card now appears only for real bot-check pages, not for login or error pages that mention a captcha.
 - Requests through our relay now look like your own browser's (same browser name, language and header order), which clears some sites that blocked or challenged them.
+- The Plans page has a new layout: three plans side by side, a comparison table, what each step adds, and the steps for asking. Your request shows how far it has got.
+- The page shown when a site cannot be reached now says which part failed (you, the relay or the site) and names the site and the wait.
+- The welcome page now takes the colour of your plan, and the last step shows your card or certificate.
 
 ## 1.0.1
 

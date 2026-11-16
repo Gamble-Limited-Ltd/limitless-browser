@@ -1647,6 +1647,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Error - Limitless Browser</title>
 <style>
 @import url('${LB_FONTS_CSS}');
+@import url('${new URL('theme/fonts.css', document.baseURI).href}');
 :root{${root}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--fg);font-family:var(--fb);min-height:100vh;display:grid;place-items:center;padding:24px}
@@ -4032,7 +4033,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     '.lb-pl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}',
                     '.lb-pl-in{font:inherit;color:var(--tx);background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:8px;max-width:100%}',
                     '.lb-pl-btn{font:inherit;color:var(--tx);background:var(--bg1,var(--bg0));border:1px solid var(--ac);border-radius:999px;padding:8px 18px;cursor:pointer}',
-                    '.lb-pl-btn.solid{background:var(--ac);color:var(--on,var(--bg0))}.lb-pl-btn:disabled{opacity:.5;cursor:default}',
+                    '.lb-pl-btn.solid{background:var(--ac);color:var(--lb-on,var(--bg0))}.lb-pl-btn:disabled{opacity:.5;cursor:default}',
                     '.lb-pl-btn:focus-visible,.lb-pl-in:focus-visible{outline:2px solid var(--ac);outline-offset:2px}',
                     '.lb-pl-msg{min-height:1.4em;color:var(--tx2)}.lb-pl-msg.err{color:var(--err)}',
                     '.lb-pl-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:relative;padding-top:6px;margin:14px 0}',
