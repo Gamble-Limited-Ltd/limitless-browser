@@ -25,7 +25,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, .charter:focus-visib
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .charter { max-height: 220px; overflow: auto; padding: 14px 16px; border: 1px solid var(--lb-line); border-radius: calc(var(--lb-r) * .5); background: var(--lb-bg); font-size: 13.5px; line-height: 1.6; color: var(--lb-fg); width: 100%; }
 .charter b { display: block; margin-top: 10px; font-weight: 600; }
+.charter b:first-child { margin-top: 0; }
 .sig { font: 400 38px 'Pinyon Script', 'Snell Roundhand', cursive; min-height: 52px; color: var(--lb-fg); width: 100%; border-bottom: 1px solid var(--lb-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sig:empty { display: flex; align-items: center; min-height: 40px; }
+.sig:empty::before { content: 'Your signature appears here as you type'; font: 400 13px var(--lb-fb); letter-spacing: 0; color: var(--lb-mut); }
 .tick { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--lb-fg); }
 .reveal { width: 100%; display: grid; justify-items: center; gap: 12px; padding: 24px 0 8px; }
 .reveal svg { width: min(360px, 90%); height: auto; overflow: visible; }
