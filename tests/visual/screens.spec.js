@@ -10,7 +10,7 @@ for (const t of ['luxury', 'fancy', 'minimal', 'soft', 'retro', 'ledger', 'mono'
 for (const t of ['vault', 'ink', 'garnet', 'crplat', 'gilt', 'onyx']) COMBOS.push([t, 'dark']);
 COMBOS.push(['silver', 'dark'], ['silver', 'light']);
 const SIZES = [[1366, 768], [2560, 1440]];
-const SHOT = new Set(['luxury/dark', 'soft/light', 'ink/dark']);
+const SHOT = new Set(['luxury/dark', 'soft/light', 'ink/dark', 'garnet/dark', 'gilt/dark', 'onyx/dark']);   // 1.1 WP2: garnet, gilt, onyx start and menu (DESIGN-GAPS 14); settings shots stay with the first three
 const GROUPS = ['search', 'appearance', 'privacy', 'connection', 'membership', 'about'];
 const MEMBER = me({ tier: 'executive', certificateCode: 'ABCD-1234', notices: [{ id: 'n1', text: 'The relay will be restarted on Sunday evening.', date: Date.UTC(2026, 10, 20, 12) }] }, { tier: 'executive', plansOpen: false, cap: { usedGb: 6.2, capGb: 12, period: 'week' }, download: { usedGb: 1.5, capGb: 10 } });
 
@@ -36,7 +36,7 @@ for (const [theme, mode] of COMBOS) for (const [w, h] of SIZES) {
       await expect(page.locator('.settings-nav-item.active')).toHaveAttribute('data-section', g);
       expect(await checkLayout(page), `settings ${g} layout`).toEqual([]);
       if (g === 'membership') expect(await checkContrast(page, '#lbMemberPage'), 'membership contrast').toEqual([]);
-      if (SHOT.has(key) && (g === 'search' || g === 'membership')) await expect(page).toHaveScreenshot(`settings-${g}-${tag}.png`);
+      if (SHOT.has(key) && !/garnet|gilt|onyx/.test(key) && (g === 'search' || g === 'membership')) await expect(page).toHaveScreenshot(`settings-${g}-${tag}.png`);
     }
   });
 }
@@ -80,3 +80,30 @@ for (const [theme, mode] of [['luxury', 'dark'], ['soft', 'light'], ['ink', 'dar
     if (theme === 'luxury') await expect(page).toHaveScreenshot(`ceremony-${step}-${w}.png`);
   });
 }
+
+// 1.1 WP2: the member card in the four tiers (foil card and strip), and the plan-granted moment (static under reduced motion).
+for (const [w, h] of SIZES) {
+  test(`member cards in four tiers ${w}x${h}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await bootMember(page, MEMBER);
+    await page.evaluate(() => {
+      const m = window.LB_member, host = document.createElement('div'); host.id = 'cardSheet';
+      host.style.cssText = 'position:fixed;inset:0;z-index:200000;background:#05070b;display:grid;grid-template-columns:repeat(4,300px);gap:24px;justify-content:center;align-content:center';
+      for (const t of ['ordinal', 'cardinal', 'prime', 'executive']) { const c = document.createElement('div'); c.style.cssText = 'display:grid;gap:16px'; c.append(LBUI.memberCard(m, 'card', { tier: t }), LBUI.memberCard(m, 'strip', { tier: t })); host.appendChild(c); }
+      document.body.appendChild(host);
+    });
+    expect(await checkContrast(page, '#cardSheet'), 'card contrast').toEqual([]);
+    if (w === 1366) await expect(page.locator('#cardSheet')).toHaveScreenshot('cards-four-tiers-1366.png');
+  });
+}
+test('plan granted moment 1366x768', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  let ans = me({ tier: 'ordinal' }, { tier: 'ordinal' });
+  await bootMember(page, () => ans);
+  ans = me({ tier: 'cardinal' }, { tier: 'cardinal', paidUntil: Date.UTC(2027, 10, 14) });
+  await page.evaluate(() => window.LB_meRefresh());
+  await expect(page.locator('#lbGranted')).toBeVisible();
+  await page.evaluate(() => document.getElementById('ntTimeText').textContent = '10:30');
+  expect(await checkContrast(page, '#lbGranted'), 'granted contrast').toEqual([]);
+  await expect(page).toHaveScreenshot('granted-cardinal-1366.png', { mask: [page.locator('#ntDate'), page.locator('#ntFavorites')] });
+});
