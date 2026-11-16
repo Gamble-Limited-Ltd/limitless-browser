@@ -5176,7 +5176,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                     <div style="position:relative; height:100%; display:flex; flex-direction:row;">
 
                         
-                        <div
+                        <div class="lb-set-side"
                             style="width:200px; min-width:200px; height:100%; background:color-mix(in srgb, var(--bg0) 70%, transparent); border-right:1px solid var(--bd); display:flex; flex-direction:column; padding:24px 0; backdrop-filter:blur(8px); overflow:hidden; min-height:0;">
 
 
@@ -5375,7 +5375,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                         <div class="settings-switch-row lb-a"><span class="lb-chip" aria-hidden="true"><i class="fas fa-ban"></i></span>
                                             <div>
                                                 <div class="settings-switch-label">Block WebRTC connections</div>
-                                                <div class="settings-hint">Prevents sites from establishing direct peer-to-peer connections that bypass the WISP tunnel and could expose your real IP address. Off by default — may break video calls and real-time apps.</div>
+                                                <div class="settings-hint">Prevents sites from establishing direct peer-to-peer connections that bypass the WISP tunnel and could expose your real IP address. Off by default, may break video calls and real-time apps.</div>
                                             </div>
                                             <div class="settings-switch" id="webrtcBlockSwitch">
                                                 <div class="settings-switch-track"><div class="settings-switch-thumb"></div></div>
@@ -5806,7 +5806,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                                 <div class="settings-switch-label">Match User-Agent to skin</div>
                                                 <div class="settings-hint">Websites will see the masked browser's
                                                     User-Agent string, not just its looks. Managed automatically while
-                                                    a skin is active — reload open pages to apply.</div>
+                                                    a skin is active, reload open pages to apply.</div>
                                             </div>
                                             <div class="settings-switch on" id="skinUASwitch">
                                                 <div class="settings-switch-track">
@@ -5840,7 +5840,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                     <div class="settings-card-head"><i class="fas fa-wand-magic-sparkles"></i> Limitless+ Studio</div>
                                     <div class="settings-card-body">
                                         <div class="settings-hint" style="margin-bottom:14px;">Build your own browser.
-                                            Every row borrows that piece from a real mask — mix Chrome's tabs with
+                                            Every row borrows that piece from a real mask: mix Chrome's tabs with
                                             Brave's toolbar and a Zen sidebar, or anything else. Touching any control
                                             switches you to the Limitless+ mask.</div>
                                         <div class="plus-row"><span class="plus-row-label">Color theme</span>
@@ -5905,7 +5905,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                                 <button data-val="zen"><svg viewBox="0 0 24 24" width="13" height="13" style="flex:none;"><circle cx="12" cy="12" r="9.6" fill="none" stroke="#f76f53" stroke-width="2.4"/><circle cx="12" cy="12" r="4.9" fill="none" stroke="#f76f53" stroke-width="2.4"/><circle cx="12" cy="12" r="1.5" fill="#f76f53"/></svg>Zen vertical tabs</button>
                                             </div>
                                         </div>
-                                        <div class="settings-hint" style="margin:4px 0 10px;">Zen vertical tabs replace the tab strip and toolbar entirely — the Tabs and Toolbar picks above go dormant while it's on.</div>
+                                        <div class="settings-hint" style="margin:4px 0 10px;">Zen vertical tabs replace the tab strip and toolbar entirely: the Tabs and Toolbar picks above go dormant while it's on.</div>
                                         <div class="plus-row" style="margin-top:16px;"><span class="plus-row-label">Preset</span>
                                             <button class="plus-chip" id="plusCopyPreset"><i class="fas fa-copy"></i> Copy</button>
                                             <button class="plus-chip" id="plusPastePreset"><i class="fas fa-paste"></i> Paste</button>
@@ -5918,7 +5918,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                     <div class="settings-card-head"><i class="fas fa-toggle-on"></i> Limitless+ Toolbar &amp; Modules</div>
                                     <div class="settings-card-body">
                                         <div class="settings-hint" style="margin-bottom:10px;">Every button and extra is
-                                            its own switch — strip the toolbar to nothing or turn everything on at once.
+                                            its own switch: strip the toolbar to nothing or turn everything on at once.
                                             Applies while the Limitless+ mask is active.</div>
                                         <div class="plus-mod-grid" id="plusModGrid"></div>
                                     </div>
@@ -5929,7 +5929,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                     <div class="settings-card-body">
                                         <div class="settings-hint" style="margin-bottom:12px;">Repaint anything. Core
                                             palette drives the whole UI; below it, every color the borrowed parts
-                                            actually use is listed — click a swatch to change that exact pixel color
+                                            actually use is listed: click a swatch to change that exact pixel color
                                             everywhere it appears.</div>
                                         <div class="plus-row"><span class="plus-row-label">Core palette</span></div>
                                         <div class="plus-swatches" id="plusBaseSwatches"></div>
@@ -5938,7 +5938,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                             <button class="plus-chip" id="plusPxReset">Reset colors</button>
                                         </div>
                                         <div class="plus-swatches" id="plusPxSwatches"></div>
-                                        <div class="settings-hint" id="plusPxHint" style="margin-top:8px;">Pick some borrowed parts first — their colors will appear here.</div>
+                                        <div class="settings-hint" id="plusPxHint" style="margin-top:8px;">Pick some borrowed parts first: their colors will appear here.</div>
                                     </div>
                                 </div>
 
@@ -6310,7 +6310,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                                     <div style="padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid var(--bd);">
                                                         <div style="margin-bottom:6px;">
                                                             <span style="color:var(--tx);font-weight:600;">Nautilus Labs</span>
-                                                            <span style="color:var(--tx3)"> — </span>
+                                                            <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                             The team behind GUST, the project this browser is based on
                                                         </div>
                                                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-left:2px;">
@@ -6323,7 +6323,7 @@ html.zen-split-on #zenSplitClose { display: block; }
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">Wisp Protocol</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         Mercury Workshop
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">WebSocket proxy tunnelling</span>
                                                     </div>
@@ -6335,43 +6335,43 @@ html.zen-split-on #zenSplitClose { display: block; }
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">libcurl.js</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         ading2210 &amp; contributors
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">curl compiled to WebAssembly</span>
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">PDF.js</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         Mozilla Foundation
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">v4.2.67 · PDF rendering engine</span>
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">Font Awesome</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         Fonticons, Inc.
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">v6.7.2 · Icon library</span>
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">iso-639-1</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         Meikidd
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">v2.1.11 · ISO language codes</span>
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">JetBrains Mono</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         JetBrains s.r.o.
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">Monospace font (code viewer)</span>
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">Space Grotesk</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         Florian Karsten
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">UI font, self-hosted</span>
                                                     </div>
                                                     <div>
                                                         <span style="color:var(--tx);font-weight:600;">IndexedDB &amp; Web APIs</span>
-                                                        <span style="color:var(--tx3)"> — </span>
+                                                        <span style="color:var(--tx3);margin-left:-.3em">: </span>
                                                         W3C / WHATWG
                                                         <span style="color:var(--tx3);font-size:11px;margin-left:4px;">Proxy cache, storage, sessions</span>
                                                     </div>

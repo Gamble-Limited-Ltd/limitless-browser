@@ -11,7 +11,7 @@ test('busy line shows the Data saver hint once per session and does not enable D
   const errors = await boot(page);
   const note = page.locator('#lbBusyNote');
   await expect(note).toBeVisible({ timeout: 15000 });
-  await expect(note).toHaveText('The line is busy, Data saver helps');
+  await expect(note).toHaveText('The line is busy right now. Data saver can help.');
   expect(await page.evaluate(() => localStorage.getItem('limitless:datasaver:v1'))).not.toBe('1');
   await page.locator('#lbBusyDismiss').click();
   await expect(note).toHaveCount(0);

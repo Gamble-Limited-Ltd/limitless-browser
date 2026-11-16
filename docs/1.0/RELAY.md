@@ -94,7 +94,7 @@ better throughput to far or lossy sites and members on school Wi-Fi. Exact comma
   under the total.
 
 3.6 **Data saver hint.** When fair share is active (line is full), the gate sets a flag the app reads from `/_lb/me`
-and shows "The line is busy, Data saver helps" once per session. Never forces it.
+and shows "The line is busy right now. Data saver can help." once per session. Never forces it.
 
 3.7 **VPS relay (built 2026-11-15, branch `slice/1.0-relay`, not deployed; replaces the 2026-11-11 "relay box" ticket design).** `/wisp/` never touches Cloudflare or home: the app
 reaches the VPS on its own DNS-only hostname (`deploy/relay-vps/`, placeholder `relay.taps-holdings.org`, TLS from Let's Encrypt on the VPS).

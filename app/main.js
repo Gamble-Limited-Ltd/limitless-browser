@@ -543,7 +543,7 @@
                     const ub = document.createElement('div');
                     ub.className = 'lb-ub show'; ub.id = 'lbBusyNote'; ub.setAttribute('role', 'status');
                     const dot = document.createElement('i'); dot.className = 'lb-ub-dot';
-                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg'; msg.textContent = 'The line is busy, Data saver helps';
+                    const msg = document.createElement('span'); msg.className = 'lb-ub-msg'; msg.textContent = 'The line is busy right now. Data saver can help.';
                     const gap = document.createElement('span'); gap.className = 'lb-ub-gap';
                     const x = document.createElement('button'); x.type = 'button'; x.className = 'lb-ub-x'; x.id = 'lbBusyDismiss'; x.setAttribute('aria-label', 'Dismiss'); x.title = 'Dismiss';
                     x.innerHTML = '<i class="fas fa-xmark"></i>';
@@ -3963,7 +3963,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                         const c = cat[t]; if (!c) continue;
                         const card = el('div', 'lb-pl-card' + (p.tier === t ? ' now' : '')); card.dataset.tier = t;
                         card.appendChild(el('h3', '', TIER_NAME[t]));
-                        card.appendChild(el('p', '', money(c.priceUsdYear)));
+                        card.appendChild(el('p', '', t !== 'ordinal' && !p.plansOpen ? 'Not open for sale yet' : money(c.priceUsdYear)));
                         const ul = el('ul');
                         ul.appendChild(el('li', '', c.tabs + ' open tabs'));
                         ul.appendChild(el('li', '', t === 'ordinal' ? 'Public relays, no data allowance of ours' : (c.weeklyGb ? c.weeklyGb + ' GB per week' : c.monthlyGb + ' GB per month')));
@@ -4048,7 +4048,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 function lbPlansRender(root, me) {
                     const inner = el('div', 'lb-wn-in');
                     inner.appendChild(el('h1', '', 'Plans'));
-                    inner.appendChild(el('p', '', 'Typical limits for each plan. They may change with notice. Prices are per year.'));
+                    inner.appendChild(el('p', '', 'Typical limits for each plan. They may change with notice.' + (me.plan && me.plan.plansOpen ? ' Prices are per year.' : ' Paid plans are not open for sale yet.')));
                     inner.appendChild(lbPlansCatalog(me));
                     inner.appendChild(el('p', 'lb-wn-state', 'Further plans are granted by invitation.'));
                     inner.appendChild(lbPlansAccount(me));
@@ -5215,7 +5215,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
                 // instead of throwing a cryptic TypeError that leaves the iframe white.
                 if (typeof curl === 'undefined' || curl === null) {
-                    return Promise.reject(new Error('libcurl not ready — WISP connection may still be initializing or failed to load'));
+                    return Promise.reject(new Error('libcurl not ready: WISP connection may still be initializing or failed to load'));
                 }
                 if (shouldSkip(url)) {
                     try {
@@ -9660,7 +9660,7 @@ _VIEWER_DL_JS +
                                 `The settings page <code>${url}</code> does not exist.`,
                                 ["Check for typos in the address", "Valid settings pages: " + [...VALID_SETTINGS_SECTIONS].join(", ")]
                             );
-                            setTabTitle("Settings — Not Found");
+                            setTabTitle("Settings: Not Found");
                             isErrorPage = true;
                             const errTab = tabs.find(t => t.id === initiatorTabId);
                             if (errTab) errTab.hasError = true;
@@ -12420,9 +12420,9 @@ _VIEWER_DL_JS +
                                 // 30s timeout — filtering proxies (Lightspeed etc.) can significantly
                                 // slow CDN fetches. 15s was too short for throttled school networks.
                                 const _warnTimer = setTimeout(() => {
-                                    log('libcurl.js is taking longer than usual to load — CDN may be slow or throttled...', 'warn');
+                                    log('libcurl.js is taking longer than usual to load: CDN may be slow or throttled...', 'warn');
                                 }, 10000);
-                                setTimeout(() => { clearInterval(poll); clearTimeout(_warnTimer); rj(new Error("Timed out waiting for libcurl.js to load (30s) — the CDN may be slow or unreachable")); }, 30000);
+                                setTimeout(() => { clearInterval(poll); clearTimeout(_warnTimer); rj(new Error("Timed out waiting for libcurl.js to load (30s): the CDN may be slow or unreachable")); }, 30000);
                             });
                         }
                         await libcurl.load_wasm();
@@ -12617,7 +12617,7 @@ _VIEWER_DL_JS +
                 el.innerHTML =
                     '<div class="xs-wrap">' +
                     '<div class="xs-head"><div class="xs-logo"><i class="fas fa-puzzle-piece"></i></div>' +
-                    '<div><div class="xs-title">Limitless Extensions<small>Install real Chrome extensions — powered by the Chrome Web Store</small></div></div></div>' +
+                    '<div><div class="xs-title">Limitless Extensions<small>Install real Chrome extensions: powered by the Chrome Web Store</small></div></div></div>' +
                     '<div class="xs-searchrow">' +
                     '<div class="xs-search"><i class="fas fa-magnifying-glass"></i><input id="xsSearch" placeholder="Search the Chrome Web Store" autocomplete="off" spellcheck="false"></div>' +
                     '<button class="xs-btn primary" id="xsSearchBtn"><i class="fas fa-magnifying-glass"></i> Search</button>' +
@@ -12723,7 +12723,7 @@ _VIEWER_DL_JS +
                     const html = (r && r.buf && r.buf.byteLength) ? new TextDecoder('utf-8').decode(new Uint8Array(r.buf)) : '';
                     const items = parseStoreHtml(html);
                     if (items.length) renderStoreGrid(items);
-                    else if (query) grid.innerHTML = '<div class="xs-empty">No results parsed for "' + query + '".<br>The store may have withheld data — paste the extension\'s URL / ID above to install it directly.</div>';
+                    else if (query) grid.innerHTML = '<div class="xs-empty">No results parsed for "' + query + '".<br>The store may have withheld data: paste the extension\'s URL / ID above to install it directly.</div>';
                     // no query + parse empty → keep the seed grid already shown
                 } catch (e) {
                     if (token !== _xsLoadToken) return;
@@ -12744,7 +12744,7 @@ _VIEWER_DL_JS +
                 currentDoc = null;
                 if (push) { hist = hist.slice(0, histIdx + 1); hist.push(storeUrl); histIdx = hist.length - 1; updateNav(); }
                 updateTabUrl(storeUrl);
-                setTabTitle(query ? 'Extensions — ' + query : 'Extensions');
+                setTabTitle(query ? 'Extensions: ' + query : 'Extensions');
                 setStatus("idle", "Ready");
                 extStoreLoad(query);
             }
@@ -12857,7 +12857,7 @@ _VIEWER_DL_JS +
                         }
                         try {
                             ls.setItem('limitless:wisp:v1', val);
-                            showStatusMsg(wispStatus, "Saved — applying...", "ok");
+                            showStatusMsg(wispStatus, "Saved. Applying...", "ok");
                             await applyWispUrl(val);
                             showStatusMsg(wispStatus, "Saved & connected!", "ok");
                         } catch (e) {
@@ -12871,7 +12871,7 @@ _VIEWER_DL_JS +
                         wispInput.value = defaultWisp;
                         try {
                             ls.setItem('limitless:wisp:v1', defaultWisp);
-                            showStatusMsg(wispStatus, "Reset — applying...", "ok");
+                            showStatusMsg(wispStatus, "Reset. Applying...", "ok");
                             await applyWispUrl(defaultWisp);
                             showStatusMsg(wispStatus, "Reset & connected!", "ok");
                         } catch (e) {
@@ -14097,7 +14097,7 @@ _VIEWER_DL_JS +
                             try {
                                 if (scriptEl) ls.setItem('limitless:render:scriptlimit', scriptEl.textContent.trim());
                                 if (imgEl)    ls.setItem('limitless:render:imglimit',    imgEl.textContent.trim());
-                                if (statusEl) showStatusMsg(statusEl, 'Saved — applies on next page load.', 'ok');
+                                if (statusEl) showStatusMsg(statusEl, 'Saved. Applies on next page load.', 'ok');
                             } catch(e) {}
                         });
                     }
@@ -14141,7 +14141,7 @@ _VIEWER_DL_JS +
                         if (pVal)  ls.setItem('limitless:ua:page:v1', pVal);
                         else       ls.removeItem('limitless:ua:page:v1');
                         if (statusEl) {
-                            statusEl.textContent = 'Saved — reload a page to apply.';
+                            statusEl.textContent = 'Saved. Reload a page to apply.';
                             setTimeout(() => { statusEl.textContent = ''; }, 3000);
                         }
                     } catch(e) {}
@@ -16182,7 +16182,7 @@ _VIEWER_DL_JS +
                     // official mods list
                     queueFetch(GX_MODS_API, { internal: true }, PRIORITY.fetch || 1).then(r => JSON.parse(decodeBuf(r))).then(list => {
                         const box = gxEasy.querySelector('#gxeModList');
-                        if (!Array.isArray(list)) { box.innerHTML = '<div class="gxe-note">Could not load list (rate limited?) — use install-from-URL.</div>'; return; }
+                        if (!Array.isArray(list)) { box.innerHTML = '<div class="gxe-note">Could not load list (rate limited?): use install-from-URL.</div>'; return; }
                         box.innerHTML = '';
                         list.filter(x => x.type === 'dir').forEach(x => {
                             const row = document.createElement('div');
@@ -16203,7 +16203,7 @@ _VIEWER_DL_JS +
                         syncGXModUI();
                     }).catch(() => {
                         const box = gxEasy.querySelector('#gxeModList');
-                        box.innerHTML = '<div class="gxe-note">Could not load list — use install-from-URL.</div>';
+                        box.innerHTML = '<div class="gxe-note">Could not load list: use install-from-URL.</div>';
                     });
                 }
                 function syncGXModUI() {
@@ -17940,7 +17940,7 @@ _VIEWER_DL_JS +
                         // internal:true so an installed ad-blocker can't DNR-block the CRX.
                         const crxUrl = 'https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx2,crx3&prodversion=9999.0.0.0&x=id%3D' + id + '%26installsource%3Dondemand%26uc';
                         const r = await queueFetch(crxUrl, { internal: true }, PRIORITY.other);
-                        if (!r || !r.buf || !r.buf.byteLength) throw new Error('CRX download failed (empty response — the item may be a theme/app or region-locked)');
+                        if (!r || !r.buf || !r.buf.byteLength) throw new Error('CRX download failed (empty response: the item may be a theme/app or region-locked)');
                         return API.install(r.buf, id + '.crx');
                     },
                     async install(buffer, filename) {
