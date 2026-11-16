@@ -128,7 +128,7 @@ test('error card: calm wording by class, themed, details folded, Report a proble
   const no = page.locator('#lbRelayNo'); if (await no.isVisible().catch(() => false)) await no.click();
   await f.locator('#report').click();
   await expect(page.locator('#lbReportDlg')).toBeVisible();
-  await expect(page.locator('#lbRepCat')).toHaveValue(/Broken site|Slow/);
+  await expect(page.locator('#lbRepCat')).toHaveValue(/^(broken|slow)$/)   // option values are the gate's category ids;
 });
 
 test('bot check detection: only 403/429/503 with a known challenge marker, and the card names the category', async ({ page }) => {

@@ -288,4 +288,4 @@ All in `app/ui.js` (+ `theme/ui.css`); `app/main.js` has five small hooks: `LB_f
 ## Legal v2 dark launch (2026-11-01, contract in ~/gll-planning/legal-hall/PLAN.md)
 `LEGAL_VERSION` (YYYY-MM-DD) on the `web` container, from `deploy/.env` (gitignored; compose pass-through, empty default). nginx cannot read env, so `deploy/web/legal-v2.sh` (an nginx `docker-entrypoint.d` script) writes `/tmp/legal-v2.conf` at container start, included by the `/legal/` location. Unset, empty or invalid: empty file, `/legal/` exactly as before. Set: `/legal/terms(.html)` and `/legal/privacy(.html)` 302 to `https://hall.taps-holdings.org/legal/terms|privacy`; `/legal/` itself stays served (it holds the AGPL source link). No consent storage here: GATE sign-in is acceptance. Go-live: put `LEGAL_VERSION=<date>` in `deploy/.env` and `docker compose -p limitless-browser -f deploy/docker-compose.yml up -d web` (recreate, no rebuild); gate side is `LEGAL_VERSION` in `deploy/gate.env`. Test: `npm run test:legal` (throwaway nginx container).
 
-Last verified: 2026-11-15
+Last verified: 2026-11-16
