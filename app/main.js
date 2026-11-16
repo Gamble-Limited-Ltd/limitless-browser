@@ -4082,9 +4082,13 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     } catch (_) { if (my === plansToken) state('Plans could not be loaded.', true); }
                 }
                 // Notices: 14 and 3 days before the plan ends, and once when a fallback to public relays starts. Each shows once.
-                function lbPlansBanner(id, text) {
+                function lbPlansBanner(id, text, o) {
                     const mainEl = document.querySelector('main');
                     if (!mainEl || !mainEl.parentNode || document.getElementById(id)) return;
+                    if (window.LBUI && window.LBUI.notice) {   // 1.1 WP3: the card that follows the member's theme (ui.js)
+                        const n = window.LBUI.notice({ id, cls: 'lb-nt-bar', tier: o && o.tier, days: o && o.days, level: o && o.days <= 3 ? 'soon' : '', title: text, dismiss: true, action: { label: 'Plans', fn: () => { n.remove(); go(PLANS_URL, true); } } });
+                        mainEl.parentNode.insertBefore(n, mainEl); return;
+                    }
                     const ub = el('div', 'lb-ub show'); ub.id = id; ub.setAttribute('role', 'status');
                     const msg = el('span', 'lb-ub-msg', text);
                     const open = el('button', 'lb-ub-x', 'Plans'); open.type = 'button'; open.onclick = () => { ub.remove(); go(PLANS_URL, true); };
@@ -4098,11 +4102,11 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     const left = p.paidUntil - Date.now(); if (left <= 0) return;
                     const days = left / 86400000;
                     const stage = days <= 3 ? '3' : days <= 14 ? '14' : null; if (!stage) return;
-                    if (once('limitless:plan-expiry:' + p.paidUntil + ':' + stage)) lbPlansBanner('lbPlansExpiry', 'Your ' + TIER_NAME[p.tier] + ' plan ends on ' + fmtDate(p.paidUntil) + '.');
+                    if (once('limitless:plan-expiry:' + p.paidUntil + ':' + stage)) lbPlansBanner('lbPlansExpiry', 'Your ' + TIER_NAME[p.tier] + ' plan ends on ' + fmtDate(p.paidUntil) + '.', { tier: p.tier, days: Math.ceil(days) });
                 }
                 function lbPlansFallbackNotice(me) {
                     const f = me && me.plan && me.plan.fallback; if (!f) return;
-                    if (once('limitless:plan-fallback:' + f + ':' + new Date().toISOString().slice(0, 7))) lbPlansBanner('lbPlansFallback', f === 'cap' ? 'Your allowance is used up, so pages load through public relays until it resets.' : 'Our relay is resting, so pages load through public relays for now.');
+                    if (once('limitless:plan-fallback:' + f + ':' + new Date().toISOString().slice(0, 7))) lbPlansBanner('lbPlansFallback', f === 'cap' ? 'Your allowance is used up, so pages load through public relays until it resets.' : 'Our relay is resting, so pages load through public relays for now.', { tier: me.plan.tier });
                 }
                 document.addEventListener('lb-member', (e) => { try { lbPlansExpiryNotice(e.detail); lbPlansFallbackNotice(e.detail); } catch (_) {} });
                 {
