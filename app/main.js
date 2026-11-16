@@ -690,7 +690,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -721,7 +721,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -5501,6 +5501,31 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 for (const [k] of e) delete h[k];
                 for (const [k, v] of e) h[k] = v;
             }
+            // 1.1 Ordinal speed throttle (features.speedCap): Ordinal rides public relays that never reach our gate, so the app paces response
+            // bodies (page fetches and the Downloads panel) to the plan's speedMbps with a token bucket (burst 0.25 s). Only the effective
+            // tier ordinal with /_lb/me data is paced; paid tiers are limited by the relay. Known limit: the app is open source, so a modified copy skips it.
+            window.LB_speedCap = (function () {
+                let tokens = 0, last = 0, at = 0;
+                const mbps = () => {
+                    const m = window.LB_member, p = m && m.membership === 'on' && m.plan;
+                    if (!p || p.tier !== 'ordinal' || (window.LB_features && window.LB_features.speedCap === false)) return 0;
+                    return Number(p.limits && p.limits.speedMbps) || Number(p.catalog && p.catalog.ordinal && p.catalog.ordinal.speedMbps) || 0;
+                };
+                return {
+                    mbps,
+                    async pace(n, signal) {
+                        const r = mbps() * 125; if (!r || !(n > 0)) return;   // bytes per ms
+                        const now = performance.now();
+                        tokens = Math.min(r * 250, (at === r ? tokens : r * 250) + (now - last) * r); at = r; last = now;
+                        tokens -= n;
+                        if (tokens >= 0) return;
+                        await new Promise((res, rj) => {
+                            const t = setTimeout(res, -tokens / r);
+                            if (signal) signal.addEventListener('abort', () => { clearTimeout(t); rj(new DOMException('Aborted', 'AbortError')); }, { once: true });
+                        });
+                    },
+                };
+            })();
             async function doFetch(url, opts = {}) {
                 if (_netStall) return Promise.reject(new TypeError('Failed to fetch'));
                 const method = opts.method || "GET";
@@ -5790,6 +5815,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                         }
                     }
                 }
+                await window.LB_speedCap.pace(buf.byteLength, opts.signal);
                 const hdrs = {};
                 resp.headers?.forEach?.((v, k) => hdrs[k.toLowerCase()] = v);
                 // Ensure Content-Range is forwarded for 206
@@ -18376,6 +18402,7 @@ _VIEWER_DL_JS +
                         while (sg.got < sg.len) {
                             await yieldToPages();
                             const { done, value } = await rd.read(); if (done) break;
+                            await window.LB_speedCap.pace(value.length);
                             const v = value.length > sg.len - sg.got ? value.subarray(0, sg.len - sg.got) : value;
                             sg.chunks.push(v); sg.got += v.length; it.got += v.length; rateTick(it); paint(it);
                         }
@@ -18449,7 +18476,7 @@ _VIEWER_DL_JS +
                             paint(it); return true;
                         };
                         it.rt = Date.now(); it.rb = it.got;
-                        if (rd) { for (;;) { await yieldToPages(); const { done, value } = await rd.read(); if (done) break; if (!take(value)) return; } }
+                        if (rd) { for (;;) { await yieldToPages(); const { done, value } = await rd.read(); if (done) break; await window.LB_speedCap.pace(value.length); if (!take(value)) return; } }
                         else { const b = new Uint8Array(await resp.arrayBuffer()); if (!take(b)) return; }
                         if (it.total != null && it.got < it.total) throw new Error('short body');
                         save(it);
