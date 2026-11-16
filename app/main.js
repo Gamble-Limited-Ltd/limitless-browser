@@ -3972,9 +3972,12 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                         card.appendChild(el('p', '', t !== 'ordinal' && !p.plansOpen ? 'Not open for sale yet' : money(c.priceUsdYear)));
                         const ul = el('ul');
                         ul.appendChild(el('li', '', c.tabs + ' open tabs'));
+                        if (c.dailyMinutes) ul.appendChild(el('li', '', 'About ' + (c.dailyMinutes >= 60 ? c.dailyMinutes / 60 + ' hours' : c.dailyMinutes + ' minutes') + ' a day'));
                         ul.appendChild(el('li', '', t === 'ordinal' ? 'Public relays, no data allowance of ours' : (c.weeklyGb ? c.weeklyGb + ' GB per week' : c.monthlyGb + ' GB per month')));
                         if (t !== 'ordinal') ul.appendChild(el('li', '', 'Our own relay, up to about ' + c.speedMbps + ' Mbit/s'));
-                        ul.appendChild(el('li', '', 'Downloads up to ' + c.downloadMbPerFile + ' MB per file'));
+                        if (t === 'ordinal' && c.speedMbps) ul.appendChild(el('li', '', 'Speed limited to ' + c.speedMbps + ' Mbit/s in the app'));
+                        ul.appendChild(el('li', '', 'Downloads up to ' + (c.downloadMbPerFile >= 1024 ? c.downloadMbPerFile / 1024 + ' GB' : c.downloadMbPerFile + ' MB') + ' per file' + (c.downloadsPerDay > 0 ? ', ' + c.downloadsPerDay + ' a day' : '')));
+                        if (c.videoMaxP > 0) ul.appendChild(el('li', '', 'Video up to ' + c.videoMaxP + 'p'));
                         card.appendChild(ul);
                         wrap.appendChild(card);
                     }

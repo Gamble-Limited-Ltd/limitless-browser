@@ -8,9 +8,9 @@ const { boot } = require('./helpers');
 
 const DAY = 86400000;
 const catalog = {
-  ordinal: { priceUsdYear: 0, tabs: 4, weeklyGb: 0, monthlyGb: 0, speedMbps: 0, downloadMbPerFile: 10 },
-  cardinal: { priceUsdYear: 15, tabs: 15, weeklyGb: 20, monthlyGb: 0, speedMbps: 20, downloadMbPerFile: 25 },
-  prime: { priceUsdYear: 35, tabs: 25, weeklyGb: 0, monthlyGb: 100, speedMbps: 40, downloadMbPerFile: 500 },
+  ordinal: { priceUsdYear: 0, tabs: 4, weeklyGb: 0, monthlyGb: 0, speedMbps: 3, downloadMbPerFile: 10, dailyMinutes: 240, downloadsPerDay: 10, videoMaxP: 480, loadNowPerDay: 0 },
+  cardinal: { priceUsdYear: 15, tabs: 15, weeklyGb: 12, monthlyGb: 0, speedMbps: 15, downloadMbPerFile: 100, dailyMinutes: 0, downloadsPerDay: 0, videoMaxP: 720, loadNowPerDay: 0 },
+  prime: { priceUsdYear: 35, tabs: 25, weeklyGb: 0, monthlyGb: 100, speedMbps: 30, downloadMbPerFile: 1024, dailyMinutes: 0, downloadsPerDay: 0, videoMaxP: 1080, loadNowPerDay: 0 },
 };
 const baseMe = (plan = {}, extra = {}) => ({
   membership: 'on', number: '0102', tier: 'ordinal', standing: 'good', busy: false, receipts: [],
@@ -45,6 +45,20 @@ test('plans page shows three plans with typical limits and the invitation footno
   await expect(page.locator('#lbPlans')).toContainText('never ask for card details');
   expect(await page.locator('#lbPlans input[autocomplete^="cc-"], #lbPlans input[name*="card" i]').count()).toBe(0);
   expect(errors).toEqual([]);
+});
+
+test('plans page cards show the 1.1 catalog fields: Ordinal 4 hours, 3 Mbit/s, 10 downloads a day, video cap; files in GB', async ({ page }) => {
+  await mock(page, () => baseMe());
+  await boot(page);
+  await openPlans(page);
+  const o = page.locator('.lb-pl-card[data-tier="ordinal"]');
+  await expect(o).toContainText('About 4 hours a day');
+  await expect(o).toContainText('Speed limited to 3 Mbit/s in the app');
+  await expect(o).toContainText('Downloads up to 10 MB per file, 10 a day');
+  await expect(o).toContainText('Video up to 480p');
+  await expect(page.locator('.lb-pl-card[data-tier="cardinal"]')).toContainText('Downloads up to 100 MB per file');
+  await expect(page.locator('.lb-pl-card[data-tier="cardinal"]')).toContainText('Video up to 720p');
+  await expect(page.locator('.lb-pl-card[data-tier="prime"]')).toContainText('Downloads up to 1 GB per file');
 });
 
 test('request form: needs a reason and the tick box, then posts and shows the waiting line', async ({ page }) => {

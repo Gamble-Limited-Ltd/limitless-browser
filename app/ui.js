@@ -266,7 +266,7 @@
         if (l.weeklyGb) out.push(['Data per week', l.weeklyGb + ' GB']);
         if (l.monthlyGb) out.push(['Data per month', l.monthlyGb + ' GB']);
         if (l.speedMbps) out.push(['Speed', l.speedMbps + ' Mbit/s']);
-        if (l.downloadMbPerFile != null && l.downloadsPerDay != null) out.push(['Downloads', 'up to ' + l.downloadMbPerFile + ' MB each, ' + (l.downloadsPerDay > 0 ? l.downloadsPerDay + ' a day' : 'any number a day')]);
+        if (l.downloadMbPerFile != null && l.downloadsPerDay != null) out.push(['Downloads', 'up to ' + (l.downloadMbPerFile >= 1024 ? l.downloadMbPerFile / 1024 + ' GB' : l.downloadMbPerFile + ' MB') + ' each, ' + (l.downloadsPerDay > 0 ? l.downloadsPerDay + ' a day' : 'any number a day')]);
         if (l.videoMaxP != null) out.push(['Video', l.videoMaxP > 0 ? 'up to ' + l.videoMaxP + 'p' : 'No limit']);
         if (l.loadNowPerDay) out.push(['Load Now', l.loadNowPerDay + ' a day']);
         return out;

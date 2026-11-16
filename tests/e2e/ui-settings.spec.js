@@ -59,6 +59,17 @@ test('membership page: name before number, tier, plan limits, coming soon while 
   await expect(root).toContainText('Certificates begin at the Cardinal plan');
 });
 
+test('membership page limit lines: files in GB from 1 GB, Ordinal speed and downloads a day', async ({ page }) => {
+  await bootMember(page, me({}, { limits: { speedMbps: 3, downloadMbPerFile: 10, downloadsPerDay: 10 } }));
+  await openSettings(page, 'membership');
+  await expect(page.locator('#lbMemberPage .lb-dl')).toContainText('3 Mbit/s');
+  await expect(page.locator('#lbMemberPage .lb-dl')).toContainText('up to 10 MB each, 10 a day');
+  await bootMember(page, me({ tier: 'executive' }, { tier: 'executive', limits: { downloadMbPerFile: 2048, downloadsPerDay: 0 } }));
+  await page.evaluate(() => window.LB_meRefresh());
+  await openSettings(page, 'membership');
+  await expect(page.locator('#lbMemberPage .lb-dl')).toContainText('up to 2 GB each, any number a day');
+});
+
 test('plans open: the coming soon line becomes a link', async ({ page }) => {
   await bootMember(page, me({}, { plansOpen: true }));
   await openSettings(page, 'membership');
