@@ -133,6 +133,29 @@ as 0.3.0 first. Sections 0.1, 0.4 and the build cards still show the old recomme
   server-side gating, member data, migration) before S6/S7 build on the S5 API; R2 after S7 + S9 (admin, money path, `plans_open`, HALL)
   before the release gates; R3 end-of-dev review of the whole `release/1.0.0` diff before the release record.
 
+### 0.2d Relay speed and data savings (Boss, 2026-11-15, after the VPS tests)
+VPS test (short runs, Boss's go): raw link about 500 Mbit/s in; through the relay 20 members 199 Mbit/s, 1 member 8.8 Mbit/s;
+each stream tops out near 2.2 Mbit/s. RackNerd meters in plus out, so 5 TB is about 2.5 TB delivered. Numbers page:
+https://claude.ai/artifact/9V2K7cY62h9JrfBA6ydXVG (plan limits and prices NOT decided yet).
+**All of the following ships in 1.0** (Boss chose one release; 1.0 waits and its gates rerun):
+- Diagnose the per-stream limit now, then try every server fix that helps: relay container TCP buffers + BBR, epoxy tuning or
+  update, faster gate forwarding, and a per-connection ceiling once fast.
+- Split downloads by plan: Ordinal 1 part, Cardinal 2, Prime 4, Executive 8 (files over about 20 MB, servers with Range).
+- Pages first: downloads yield relay bandwidth while a page loads.
+- No-visible-effect savings: request compressed responses (check first), AVIF/WebP Accept on every image request, no
+  pre-fetch of images far below the screen, ignore prefetch/prerender hints, HaGeZi Normal blocklist (was Light).
+- Video hard cap by plan: Ordinal 480p (app only, public relays), Cardinal 720p, Prime 1080p, Executive none. Enforced by
+  forcing player quality on known video sites plus a speed limit to video hosts on our relay.
+- One video at a time (background tabs and muted autoplay header videos pause). Data saver turns on by itself at 90 % of the
+  allowance, with a note.
+- Data meter in the menu; per-site usage report in the account panel, kept on the member's device only.
+- Big files: member setting, off by default, to send files over 200 MB through public relays (privacy note).
+- **Usage stats (server side):** daily bytes per site per plan, no member link, kept 30 days. Reverses "no routine logs of the
+  sites you visit" for this aggregate only; legal text change auto-approved by Boss. Pushed back once (minors, the gate's
+  "never log destinations" rule); Boss chose per plan per site. The gate rule changes to: no per-member destinations.
+- Every saving gets its own build/admin kill switch.
+- Not chosen: click-to-load embeds, lighter web fonts, video sites via public relays, night bonus.
+
 ### 0.3 Simplifications applied (no decision needed; they follow from existing rules)
 1. **All membership and plan data lives in the lbgate SQLite** (`members`, plus `paid_until`, `plan`, `amount`,
    `receipt_note`, `executive` columns when D2 lands). No GLL ID schema change, keeping the 2026-11-10 "no GATE change" rule.
