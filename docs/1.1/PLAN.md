@@ -28,4 +28,7 @@ Requested by Boss 2026-11-16. Base: `main` at `2f4c181` (1.0.1). Lane: Minor (1.
 - 2026-11-16, Boss: the gate and HALL items are in 1.1 too. Gate (`~/limitless-gate`, `slice/1.1-gate` from `main` 85fa464): certificate
   PDF fonts and rich gold (G1), member pages (G4), small `/_lb/me` fields (G5). HALL (`~/gll-launcher`): per-tier verify pages (G2) and the
   plans page (G3), started when a slot frees (portfolio limit of 3 slices in flight), after WP4 fixes the plans markup.
+- 2026-11-16, Boss (on `PLANS-AUDIT.md`): plan limits take the "recommended" sets from the Plan Numbers artifact
+  (https://claude.ai/artifact/9V2K7cY62h9JrfBA6ydXVG); Ordinal gets a client-side 3 Mbit/s throttle (number from the gate catalog);
+  Executive files are capped at 2 GB in 1.1 (the browser keeps downloads in memory; streaming to disk is later). Pricing page: in-app `limitless://plans`.
 Last verified: 2026-11-16
