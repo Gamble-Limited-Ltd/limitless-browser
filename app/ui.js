@@ -51,6 +51,7 @@
         ['theme', 'palette', 'Theme', '', proxy('lbThemeBtn')],
         ['fullscreen', 'fullscreen', 'Fullscreen', 'F11', proxy('fullscreenBtn')],
         '-',
+        ['plans', 'card', 'Plans', '', function () { if (window.LB_go) window.LB_go('limitless://plans'); }],
         ['membership', 'card', 'Membership', '', function () { openSettings('membership'); }],
         ['report', 'flag', 'Report a problem', '', function () { if (window.LBReport) window.LBReport.open(); }],
         ['settings', 'gear', 'Settings', 'Alt+P', proxy('settingsBtn')],
@@ -265,7 +266,9 @@
         if (l.weeklyGb) out.push(['Data per week', l.weeklyGb + ' GB']);
         if (l.monthlyGb) out.push(['Data per month', l.monthlyGb + ' GB']);
         if (l.speedMbps) out.push(['Speed', l.speedMbps + ' Mbit/s']);
-        if (l.downloadMbPerFile != null && l.downloadsPerDay != null) out.push(['Downloads', 'up to ' + l.downloadMbPerFile + ' MB each, ' + l.downloadsPerDay + ' a day']);
+        if (l.downloadMbPerFile != null && l.downloadsPerDay != null) out.push(['Downloads', 'up to ' + l.downloadMbPerFile + ' MB each, ' + (l.downloadsPerDay > 0 ? l.downloadsPerDay + ' a day' : 'any number a day')]);
+        if (l.videoMaxP != null) out.push(['Video', l.videoMaxP > 0 ? 'up to ' + l.videoMaxP + 'p' : 'No limit']);
+        if (l.loadNowPerDay) out.push(['Load Now', l.loadNowPerDay + ' a day']);
         return out;
     }
     /* Expiry notice: 14 days and 3 days before paidUntil (in app only). Executive and Ordinal have no end date. */
@@ -280,7 +283,7 @@
         var open = m && m.plan && m.plan.plansOpen === true, n = el('div', 'lb-pl');
         if (!open) { n.textContent = 'Paid plans are coming soon.'; n.dataset.state = 'soon'; return n; }
         n.dataset.state = 'open'; n.appendChild(document.createTextNode('Paid plans are open. '));
-        var a = el('a', null, 'See the plans'); a.href = 'https://hall.taps-holdings.org/'; a.target = '_blank'; a.rel = 'noopener'; n.appendChild(a); return n;
+        var a = el('a', null, 'See the plans'); a.href = 'limitless://plans'; a.addEventListener('click', function (e) { e.preventDefault(); if (window.LB_go) window.LB_go('limitless://plans'); }); n.appendChild(a); return n;
     }
     window.LBUI.plansLine = plansLine;
     function paintMembership() {
@@ -402,6 +405,7 @@
     window.LB_tabGate = function (count) {
         var l = limits(), cap = l && l.tabs; var m = member();
         if (!cap || count < cap) return true;
+        if (tierOf(m) === 'ordinal') return 'plans';   // 1.1: Ordinal's 5th tab is the buy page (createTab opens limitless://plans)
         var tier = tierOf(m), old = $('lbCapDlg'); if (old) old.remove();
         var d = el('div', 'lb-dlg'); d.id = 'lbCapDlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'lbCapT');
         var card = el('div', 'lb-dlg-card'); var h = el('h2', 'lb-dlg-t', tier === 'prime' ? 'Why are you using so many tabs!?' : 'That is all your tabs'); h.id = 'lbCapT';
