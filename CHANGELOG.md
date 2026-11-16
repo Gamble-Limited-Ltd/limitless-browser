@@ -4,6 +4,8 @@ What changed, in plain language. Newest first.
 
 ## 1.1.0 (in progress)
 
+- Free plan: the start page shows a thin bar with your time left today, "Day finished" now appears on the start page itself (search is paused until midnight), and the 15 minute warning is a small note in the corner. Plan notices now take their look from your theme and show a day count.
+- When a plan is ended by the Director, a notice shows what was paid and any refund the gate recorded.
 - The "Human Check" card now appears only for real bot-check pages, not for login or error pages that mention a captcha.
 - Requests through our relay now look like your own browser's (same browser name, language and header order), which clears some sites that blocked or challenged them.
 

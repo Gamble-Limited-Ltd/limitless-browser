@@ -534,7 +534,7 @@
      * Steps come from plan.catalog and only while plans are open. Ids lbCapDlg and lbCapT stay. */
     var NUMW = { 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five' };
     function stepText(c, withDay) {
-        var t = (c.tabs || 0) + ' tabs';
+        var t = (c.tabs || 0) + (c.tabs === 1 ? ' tab' : ' tabs');
         if (c.dailyMinutes > 0) return t + ', about ' + c.dailyMinutes / 60 + ' h a day';
         return t + (withDay ? '' : ', no daily limit');
     }
