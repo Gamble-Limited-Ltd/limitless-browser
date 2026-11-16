@@ -83,7 +83,8 @@ test('Executive invite, redeem, sign-in, ceremony, certificate, public verify, s
   // Bob signs in and is held at the welcome ceremony (no browsing, no relay token yet).
   const bob = await signIn(browser, 'bob');
   expect((await bob.req.get('/_lb/me', { maxRedirects: 0 })).status()).not.toBe(200); // held by nginx at the ceremony
-  await bob.page.goto('/auth/welcome');
+  await bob.page.goto('/');   // opening the app lands on the designed ceremony, not the gate's fallback form under "/"
+  await expect(bob.page).toHaveURL(/\/auth\/welcome$/);
   await expect(bob.page.getByRole('heading', { name: 'Welcome', exact: true })).toBeVisible(); // the designed page (S6), invited kind
   expect(await (await bob.req.get('/auth/welcome/state')).json()).toMatchObject({ kind: 'invited', tier: 'executive', number: null, signed: false });
   await bob.page.getByRole('button', { name: 'Begin' }).click();
