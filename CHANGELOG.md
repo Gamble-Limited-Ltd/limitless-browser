@@ -4,6 +4,11 @@ What changed, in plain language. Newest first.
 
 ## 1.0.0
 
+- Your plan can limit video quality (480p Ordinal, 720p Cardinal, 1080p Prime, no limit Executive). On YouTube the player is held to that size, and on other sites the largest version at or below it is picked. A short note says so once per session.
+- Only one video plays at a time: when you leave a tab its video and audio pause, and muted autoplay videos that are not on screen wait until you scroll to them. A video you started yourself keeps playing while you scroll.
+- When you have used 90 % of this week's or month's allowance, Data saver turns on by itself, once per period, with a calm note. If you turn it off, it stays off until the next period.
+- The menu shows how much of your allowance (and your download allowance) you have used, as a small bar. Ordinal has none.
+- Membership page: "Where your data went" lists the sites that used the most data this week. The list stays on this device and is never sent to us. A Clear button empties it.
 - Executive members get a Load Now button on the Plans page: for a minute your page loads go first on our relay. Signed-in members also send a small, anonymous page load time sample (about 1 in 5 loads, never the site, never with Data saver) so we can see how fast pages are
 - New Plans page (About, Plans): the three plans with typical limits, your own plan and usage, your receipts, a 24 hour trial button and a short form to ask for a plan. Nothing is charged in the app and no card details are ever asked for. A note appears 14 and 3 days before a plan ends, and the first time your allowance sends you to public relays. Plans are not open for requests until the switch is turned on.
 - New Downloads panel in the menu: a queue with progress, pause and resume, retry and cancel. Files over your plan's size limit, or over 2 GB, are refused before they start.

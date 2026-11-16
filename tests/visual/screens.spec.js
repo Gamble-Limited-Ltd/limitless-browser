@@ -12,7 +12,7 @@ COMBOS.push(['silver', 'dark'], ['silver', 'light']);
 const SIZES = [[1366, 768], [2560, 1440]];
 const SHOT = new Set(['luxury/dark', 'soft/light', 'ink/dark']);
 const GROUPS = ['search', 'appearance', 'privacy', 'connection', 'membership', 'about'];
-const MEMBER = me({ tier: 'executive', certificateCode: 'ABCD-1234', notices: [{ id: 'n1', text: 'The relay will be restarted on Sunday evening.', date: Date.UTC(2026, 10, 20, 12) }] }, { tier: 'executive', plansOpen: false });
+const MEMBER = me({ tier: 'executive', certificateCode: 'ABCD-1234', notices: [{ id: 'n1', text: 'The relay will be restarted on Sunday evening.', date: Date.UTC(2026, 10, 20, 12) }] }, { tier: 'executive', plansOpen: false, cap: { usedGb: 6.2, capGb: 12, period: 'week' }, download: { usedGb: 1.5, capGb: 10 } });
 
 for (const [theme, mode] of COMBOS) for (const [w, h] of SIZES) {
   test(`${theme}/${mode} ${w}x${h}: start page, menu and settings`, async ({ page }) => {

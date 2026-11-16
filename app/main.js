@@ -688,7 +688,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -719,7 +719,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -2120,7 +2120,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                             const doc = frame.contentDocument || frame.contentWindow?.document;
                             if (doc) lbSleep.leaving(currentTab, doc);
                             if (doc) {
-                                doc.querySelectorAll('video, audio').forEach(el => { try { el.pause(); } catch(e){} });
+                                if (window.LB_pauseMedia) window.LB_pauseMedia(doc); else doc.querySelectorAll('video, audio').forEach(el => { try { el.pause(); } catch(e){} });
                             }
                         } catch (e) {}
                         // Save scroll position and blob URL
@@ -5179,6 +5179,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             // ── Page pipeline helpers (1.0 S1) ──────────────────────────────────
             // Data saver (Settings > Connection, limitless:datasaver:v1, default off): Save-Data header, no image pre-warm,
             // lazy margin 50 %, preload none and no autoplay, image limit 100.
+            window.LB_ls = ls; // read by app/ui.js (auto Data saver)
             function lbDataSaver() { try { return ls.getItem('limitless:datasaver:v1') === '1'; } catch (_) { return false; } }
             // Read by makeProxyScript (the injected runtime): lazy offscreen images and the data saver media rules.
             function lbLazyConfig() {
@@ -5742,6 +5743,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     const shortUrl = url.replace(/^https?:\/\//, '').slice(0, 55);
                     log(`<i class="fas fa-circle-xmark" style="color:var(--err)"></i><span style="color:var(--err)">${resp.status}</span> <span style="color:var(--tx3)">${shortUrl}</span>`, "err");
                 }
+                try { if (window.LB_siteBytes) window.LB_siteBytes(url, buf.byteLength); } catch (_) {}
                 return {
                     status: finalStatus,
                     mime,
@@ -6068,6 +6070,7 @@ const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
 const SPELLCHECK = ${JSON.stringify(!!spellcheck)};
 const LB_LAZY = ${JSON.stringify(lbLazyConfig())};
+${window.LB_videoRuntime ? '(' + window.LB_videoRuntime + ')(' + JSON.stringify(window.LB_videoConfig(baseUrl)) + ');' : ''}   // video cap and one video at a time (app/ui.js)
 const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
