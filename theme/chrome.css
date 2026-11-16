@@ -490,6 +490,7 @@ html[data-lb-theme="vault"]:not([data-skin]) {
 /* Downloads panel (1.0 S8): .lb-dl-* */
 .lb-dl { position: fixed; top: 56px; right: 12px; z-index: 9000; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 80px); overflow: auto;
   background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-lg); box-shadow: 0 12px 36px rgba(0,0,0,.35); padding: 12px; font: 13px var(--ui); }
+section.lb-dl { display: block; margin: 0; gap: 0; }   /* ui.css uses .lb-dl for a definition list (grid) */
 .lb-dl[hidden] { display: none; }
 .lb-dl-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .lb-dl-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
