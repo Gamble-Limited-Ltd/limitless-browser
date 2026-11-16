@@ -77,3 +77,20 @@ test('worker active and version.json unreachable: "Cannot reach Limitless", no s
   await expect(page.locator('#overlayText')).toHaveText(/Cannot reach Limitless/, { timeout: 30000 });
   expect(await page.evaluate(() => ({ access: window.LB_access, curl: window.LB_net.curl }))).toEqual({ access: 'offline', curl: null });
 });
+
+test('theme CSS comes from the network first: a new release never paints with the last release styles', async ({ page }) => {
+  await withVersion(page, { sw: true });
+  await boot(page, { init: stamp, arg: SHA });
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
+  expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  await expect.poll(async () => (await cacheKeys(page)).some((k) => k.endsWith('/theme/themes.css'))).toBe(true);
+  // The next release changes themes.css under the same URL (it is not versioned).
+  await page.context().route('**/theme/themes.css', (r) => r.fulfill({ contentType: 'text/css', body: '/* next-release */' }));
+  expect(await page.evaluate(async () => (await fetch('/theme/themes.css')).text())).toBe('/* next-release */');
+  // Offline: the cached copy is still served.
+  await page.context().unroute('**/theme/themes.css');
+  await page.context().route('**/theme/themes.css', (r) => r.abort());
+  expect(await page.evaluate(async () => (await fetch('/theme/themes.css')).text())).toContain('next-release');
+});

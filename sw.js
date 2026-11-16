@@ -16,7 +16,7 @@ const CACHE = 'lb-shell-' + SHA;
 const PRECACHE = []; // @LB_PRECACHE@
 const NEVER = /^\/(wisp|auth|_lb|_gate|legal|verify)(\/|$)|^\/(version\.json|CHANGELOG\.md|sw\.js)$/;
 const FIRST = /^\/(app|vendor|fonts|theme\/fonts)\//;   // versioned or immutable: cache first
-const SWR = /^\/theme\//;                                // changes with releases: serve cached, refresh behind
+const SWR = /^\/theme\//;                                // not versioned by URL: network first, cache only when offline
 
 function storable(res, allowHtml) {
   if (!res || res.status !== 200 || res.redirected || res.type !== 'basic') return false;
@@ -63,13 +63,10 @@ async function navigate(req) {
 async function shell(e, req, url) {
   const c = await caches.open(CACHE);
   const key = url.origin + url.pathname;   // query strings are not part of the identity of a versioned file
-  const hit = await c.match(key);
   const refresh = () => fetch(req).then((res) => { if (storable(res, false)) c.put(key, res.clone()); return res; });
-  if (hit) {
-    if (!FIRST.test(url.pathname)) e.waitUntil(refresh().catch(() => {}));
-    return hit;
-  }
-  return refresh();
+  // Theme CSS changes under the same URL; serving the cached copy first painted a new release with the last release's styles.
+  if (!FIRST.test(url.pathname)) return refresh().catch(async (err) => (await c.match(key)) || Promise.reject(err));
+  return (await c.match(key)) || refresh();
 }
 
 self.addEventListener('fetch', (e) => {
