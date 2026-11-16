@@ -340,6 +340,51 @@
         var a = el('a', null, 'See the plans'); a.href = 'limitless://plans'; a.addEventListener('click', function (e) { e.preventDefault(); if (window.LB_go) window.LB_go('limitless://plans'); }); n.appendChild(a); return n;
     }
     window.LBUI.plansLine = plansLine;
+    /* ---------- Notices that follow the theme (1.1 WP3, DESIGN-GAPS 7) ----------
+     * One card for plan notices: surface, line and accent come from the member's theme, the tier shows only in the 16 px mark,
+     * urgency is the day count and a stronger border (data-level="soon"), never a new colour. */
+    function notice(o) {
+        var n = el('div', 'lb-nt' + (o.cls ? ' ' + o.cls : '')); n.setAttribute('role', 'status');
+        if (o.id) n.id = o.id; if (o.level) n.dataset.level = o.level; if (o.kind) n.dataset.kind = o.kind;
+        if (o.tier) n.appendChild(markSvg(o.tier, 16));
+        if (o.days != null) n.appendChild(el('span', 'lb-nt-n', String(o.days)));
+        var t = el('div', 'lb-nt-t'); t.appendChild(el('div', 'lb-nt-h', o.title)); if (o.text) t.appendChild(el('div', 'lb-nt-s', o.text)); n.appendChild(t);
+        if (o.action) { var a = el('button', 'lb-nt-a', o.action.label); a.type = 'button'; a.addEventListener('click', o.action.fn); n.appendChild(a); }
+        if (o.dismiss) { var x = el('button', 'lb-nt-x'); x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.title = 'Dismiss'; x.appendChild(icon('close')); x.addEventListener('click', function () { n.remove(); if (o.onDismiss) o.onDismiss(); }); n.appendChild(x); }
+        return n;
+    }
+    window.LBUI.notice = notice;
+    function fmtLong(ms) { return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    /* The Director's notice card: formal (centred), letter (left, signed) or plan (a ledger, plain wording where money is involved).
+     * o: {kind, stamp, title, text, rows: [[label, value]], sig} */
+    function directorNotice(o) {
+        var c = el('div', 'lb-dn lb-dn-' + o.kind);
+        if (o.stamp) c.appendChild(el('div', 'lb-nt-stamp', o.stamp));
+        var h = el('h2', 'lb-dn-t', o.title); c.appendChild(h);
+        if (o.text) c.appendChild(el('p', 'lb-dn-p', o.text));
+        if (o.rows && o.rows.length) { var led = el('div', 'lb-led'); o.rows.forEach(function (r) { var row = el('div', 'lb-led-r'); row.appendChild(el('span', 'lb-led-k', r[0])); row.appendChild(el('span', 'lb-led-v', r[1])); led.appendChild(row); }); c.appendChild(led); }
+        if (o.sig) { c.appendChild(el('div', 'lb-nt-sig', 'The Director')); c.appendChild(el('div', 'lb-nt-role', 'Director, Gamble Limited Ltd.')); }
+        return { card: c, title: h };
+    }
+    window.LBUI.directorNotice = directorNotice;
+    /* Plan ended by the Director: opened from lb-member when /_lb/me carries plan.endedNotice {tier, reason, fault, endedAt, paid, refund, paidUntil}.
+     * The ledger shows only the fields the gate sent. Shown once per endedAt. */
+    var ENDED_KEY = 'limitless:plan-ended:v1';
+    function has(v) { return v != null && v !== ''; }
+    function endedCheck(m) {
+        var e = m && m.plan && m.plan.endedNotice; if (!e || !e.endedAt || $('lbPlanEnded') || store(ENDED_KEY) === String(e.endedAt)) return;
+        var tn = TIER_NAME[e.tier] || 'paid', now = TIER_NAME[tierOf(m)] || 'Ordinal', rows = [['Plan', tn + (e.paidUntil ? ', paid until ' + fmtLong(e.paidUntil) : '')]];
+        if (has(e.reason)) rows.push(['Reason', String(e.reason)]);
+        if (has(e.paid)) rows.push(['Paid', String(e.paid)]);
+        if (has(e.refund)) rows.push(['Refund', String(e.refund)]);
+        var dn = directorNotice({ kind: 'plan', stamp: e.fault ? 'Ended in error' : 'Plan ended', title: e.fault ? 'Your ' + tn + ' plan was ended by mistake' : 'Your ' + tn + ' plan has ended',
+            text: e.fault ? 'This was our mistake. You are on ' + now + ' now.' : 'Your plan ended on ' + fmtLong(e.endedAt) + '. You are on ' + now + ' now.', rows: rows, sig: true });
+        var d = el('div', 'lb-dlg'); d.id = 'lbPlanEnded'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'lbPlanEndedT'); dn.title.id = 'lbPlanEndedT';
+        var card = el('div', 'lb-dlg-card'); card.appendChild(dn.card);
+        var row = el('div', 'lb-dlg-row'), ok = el('button', 'lb-btn lb-btn-p', 'OK'); ok.type = 'button';
+        function close() { store(ENDED_KEY, String(e.endedAt)); d.remove(); } ok.addEventListener('click', close); row.appendChild(ok); card.appendChild(row); d.appendChild(card);
+        d.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') close(); }); document.body.appendChild(d); ok.focus();
+    }
     /* Membership panel (1.1 WP2, DESIGN-GAPS 4): the card first, a summary row (only cells that have data), plain rows, the limits folded. */
     function sumCell(label, value, frac) {
         var c = el('div', 'lb-sum-c'); c.appendChild(el('div', 'lb-sum-l', label)); c.appendChild(el('div', 'lb-sum-v', value));
@@ -463,21 +508,17 @@
             var x = el('button', 'lb-bul-x', 'Dismiss'); x.type = 'button'; x.addEventListener('click', function () { var g = dismissed(); g.push(n.id); store(DISMISSED, JSON.stringify(g.slice(-50))); paintStart(); });
             f.appendChild(x); b.appendChild(f); box.appendChild(b);
         });
-        var ex = expiry(m);
-        if (ex) { var e = el('div', 'lb-expiry'); e.dataset.level = ex.level; e.setAttribute('role', 'status'); e.appendChild(document.createTextNode(ex.text + ' ')); var a = el('button', 'lb-link', 'Membership'); a.type = 'button'; a.addEventListener('click', function () { openSettings('membership'); }); e.appendChild(a); box.appendChild(e); }
+        var ex = expiry(m), tr = m.plan && m.plan.trial, open = m.plan && m.plan.plansOpen === true;
+        if (ex) box.appendChild(notice({ cls: 'lb-expiry', kind: 'expiry', level: ex.level, tier: tierOf(m), days: ex.days, title: ex.text, text: 'After that you are on Ordinal.', action: { label: 'Membership', fn: function () { openSettings('membership'); } } }));
+        if (tr && tr.endsAt > Date.now() && TIER_NAME[tr.tier]) { var hrs = Math.ceil((tr.endsAt - Date.now()) / 36e5); box.appendChild(notice({ cls: 'lb-expiry', kind: 'trial', tier: tr.tier, title: 'Your ' + TIER_NAME[tr.tier] + ' trial ends in ' + hrs + (hrs === 1 ? ' hour' : ' hours'), action: open ? { label: 'Plans', fn: function () { if (window.LB_go) window.LB_go('limitless://plans'); } } : null })); }
         // member card
         var tier = tierOf(m), c = memberCard(m, 'strip', { tag: 'button' }); c.classList.add('lb-card'); c.id = 'lbMemberCard'; c.setAttribute('aria-label', 'Membership: ' + (m.name || '') + ', number ' + pad(m.number));
         c.addEventListener('click', function () { openSettings('membership'); }); box.appendChild(c);
-        if (tier === 'ordinal' || tier === 'cardinal' || tier === 'prime') {
-            var l = (m.plan && m.plan.limits) || {}, pl = plansLine(m), ln = [];
-            if (l.tabs) ln.push(l.tabs + ' tabs'); if (l.dailyMinutes) ln.push(l.dailyMinutes / 60 + ' hours a day');
-            var line = el('div', 'lb-planline'); line.appendChild(document.createTextNode((TIER_NAME[tier] + (ln.length ? ': ' + ln.join(', ') : '')) + '. ')); line.appendChild(pl.firstChild ? pl : document.createTextNode('')); box.appendChild(line);
-        }
-        var d = dayState(); if (d && d.left <= 0) { var f2 = el('div', 'lb-planline', 'Your time for today is finished.'); box.appendChild(f2); }
+        if (tier === 'ordinal') { var pln = el('div', 'lb-planline'); fillPlanLine(pln, m); box.appendChild(pln); }   // paid members never see it
     }
     document.addEventListener('lb-member', function () {
         var m = member(); if (m) { store(ME_KEY, JSON.stringify({ name: m.name || '', number: m.number, tier: tierOf(m) })); paintSplash(m.name, m.number, tierOf(m)); }
-        paintStart(); paintRailMe(); dayCheck(); maybeTour(); grantCheck(m);
+        paintStart(); paintRailMe(); dayCheck(); maybeTour(); grantCheck(m); endedCheck(m);
     });
 
     /* ---------- Plan limits shown in the app: tab cap and the daily time (Ordinal, client side only: public relays never reach our gate, PLAN 0.3) ---------- */
@@ -486,16 +527,40 @@
         var l = limits(), cap = l && l.tabs; var m = member();
         if (!cap || count < cap) return true;
         if (tierOf(m) === 'ordinal') return 'plans';   // 1.1: Ordinal's 5th tab is the buy page (createTab opens limitless://plans)
-        var tier = tierOf(m), old = $('lbCapDlg'); if (old) old.remove();
-        var d = el('div', 'lb-dlg'); d.id = 'lbCapDlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'lbCapT');
-        var card = el('div', 'lb-dlg-card'); var h = el('h2', 'lb-dlg-t', tier === 'prime' ? 'Why are you using so many tabs!?' : 'That is all your tabs'); h.id = 'lbCapT';
-        card.appendChild(h);
-        card.appendChild(el('p', 'lb-note', 'Your ' + TIER_NAME[tier] + ' plan allows ' + cap + ' open tabs. Close one to open another.'));
-        if (tier !== 'prime' && tier !== 'executive') card.appendChild(plansLine(m));
-        var row = el('div', 'lb-dlg-row'); var ok = el('button', 'lb-btn lb-btn-p', 'Got it'); ok.type = 'button'; ok.addEventListener('click', function () { d.remove(); }); row.appendChild(ok); card.appendChild(row); d.appendChild(card); document.body.appendChild(d); ok.focus();
-        d.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.remove(); });
+        capDialog(m, cap);
         return false;
     };
+    /* The limit dialog (1.1 WP3, DESIGN-GAPS 6): Cardinal and (via LBUI.capDialog) Ordinal get the staircase, Prime the joke line and the number only.
+     * Steps come from plan.catalog and only while plans are open. Ids lbCapDlg and lbCapT stay. */
+    var NUMW = { 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five' };
+    function stepText(c, withDay) {
+        var t = (c.tabs || 0) + (c.tabs === 1 ? ' tab' : ' tabs');
+        if (c.dailyMinutes > 0) return t + ', about ' + c.dailyMinutes / 60 + ' h a day';
+        return t + (withDay ? '' : ', no daily limit');
+    }
+    function capDialog(m, cap) {
+        m = m || member(); var l = (m && m.plan && m.plan.limits) || {}, p = (m && m.plan) || {}, tier = tierOf(m) || 'ordinal', old = $('lbCapDlg'); cap = cap || l.tabs || 0; if (old) old.remove();
+        var open = p.plansOpen === true, cat = p.catalog || {}, prime = tier === 'prime', exec = tier === 'executive';
+        var d = el('div', 'lb-dlg'); d.id = 'lbCapDlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'lbCapT');
+        var card = el('div', 'lb-dlg-card lb-steps lb-tier-' + tier);
+        var strip = el('div', 'lb-st-tabs'); strip.setAttribute('aria-hidden', 'true');
+        for (var i = 0; i < (prime ? 5 : 4); i++) strip.appendChild(el('span', prime ? 'lb-st-t lb-st-faded' : 'lb-st-t')); strip.appendChild(el('span', 'lb-st-t lb-st-new')); card.appendChild(strip);
+        var h = el('h2', 'lb-dlg-t', prime ? 'Why are you using so many tabs!?' : tier === 'ordinal' ? (NUMW[cap] || cap) + ' tabs is the free limit' : 'That is all your tabs'); h.id = 'lbCapT'; card.appendChild(h);
+        if (prime) card.appendChild(el('div', 'lb-st-no', 'No. ' + pad(m.number)));
+        card.appendChild(el('p', 'lb-note', tier === 'ordinal' ? (open ? 'Close a tab to open another, or move up for more room.' : 'Close a tab to open another.') : 'Your ' + TIER_NAME[tier] + ' plan allows ' + cap + ' open tabs. Close one to open another.'));
+        var next = !prime && !exec && open ? ['cardinal', 'prime'].filter(function (t) { return RANK[t] > RANK[tier] && cat[t] && cat[t].tabs; }) : [];
+        if (next.length) {
+            var row = el('div', 'lb-st-row'), now = el('div', 'lb-step lb-tier-' + tier); now.appendChild(el('div', 'lb-step-l', 'You now')); now.appendChild(el('div', 'lb-step-v', stepText({ tabs: cap, dailyMinutes: l.dailyMinutes }, true))); row.appendChild(now);
+            next.forEach(function (t) { var c = el('div', 'lb-step lb-tier-' + t); c.appendChild(el('div', 'lb-step-l', TIER_NAME[t])); c.appendChild(el('div', 'lb-step-v', stepText(cat[t]))); row.appendChild(c); });
+            card.appendChild(row);
+        }
+        var btns = el('div', 'lb-dlg-row'), back = el('button', 'lb-btn' + (next.length ? '' : ' lb-btn-p'), 'Back to my tabs'); back.type = 'button'; back.addEventListener('click', function () { d.remove(); });
+        if (!prime && !exec && open) { var see = el('button', 'lb-btn lb-btn-p', 'See the plans'); see.type = 'button'; see.addEventListener('click', function () { d.remove(); if (window.LB_go) window.LB_go('limitless://plans'); }); btns.appendChild(back); btns.appendChild(see); } else btns.appendChild(back);
+        card.appendChild(btns); d.appendChild(card); document.body.appendChild(d); back.focus();
+        d.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.remove(); });
+        var add = $('newTab'); if (add) { add.classList.remove('lb-bounce'); void add.offsetWidth; add.classList.add('lb-bounce'); setTimeout(function () { add.classList.remove('lb-bounce'); }, 300); }
+    }
+    window.LBUI.capDialog = capDialog;
     var DT = 'limitless:daytime:v1';
     function today() { var n = new Date(); return n.getFullYear() + '-' + (n.getMonth() + 1) + '-' + n.getDate(); }
     function dayRead() { try { var j = JSON.parse(store(DT) || 'null'); if (j && j.day === today()) return j; } catch (_) {} return { day: today(), ms: 0 }; }
@@ -504,24 +569,47 @@
         var left = l.dailyMinutes * 60000 - dayRead().ms; return { left: left, limit: l.dailyMinutes * 60000 };
     }
     function dayAdd(ms) { var d = dayRead(); d.ms += ms; store(DT, JSON.stringify(d)); dayCheck(); }
+    /* Plans line on the start page: a thin bar and the time left, then a quiet Plans link (only while plans are open). Updated in place by the 15 s tick. */
+    function leftText(ms) { var mn = Math.max(0, Math.ceil(ms / 60000)), h = Math.floor(mn / 60); return h ? h + ' h' + (mn % 60 ? ' ' + (mn % 60) + ' m' : '') : mn + ' m'; }
+    function fillPlanLine(line, m) {
+        var st = dayState(), open = m && m.plan && m.plan.plansOpen === true, l = (m && m.plan && m.plan.limits) || {}, ln = [];
+        if (l.tabs) ln.push(l.tabs + ' tabs'); if (l.dailyMinutes) ln.push(l.dailyMinutes / 60 + ' hours a day');
+        line.title = 'Ordinal' + (ln.length ? ': ' + ln.join(', ') : '') + '. ' + (open ? 'Paid plans are open.' : 'Paid plans are coming soon.');
+        var key = (st ? Math.ceil(st.left / 60000) : 'x') + (open ? 'o' : 'c'); if (line.dataset.k === key) return; line.dataset.k = key; line.textContent = '';
+        var t = st ? (st.left > 0 ? leftText(st.left) + ' left today' : 'No time left today') : 'Free plan';
+        if (st) { var bar = el('span', 'lb-bar'); bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Time left today'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100'); var pc = Math.max(0, Math.min(100, Math.round(st.left / st.limit * 100))); bar.setAttribute('aria-valuenow', String(pc)); var f = el('i'); f.style.width = pc + '%'; bar.appendChild(f); line.appendChild(bar); }
+        line.appendChild(el('span', 'lb-pl-t', t));
+        if (open) { var a = el('a', 'lb-pl-a', 'Plans'); a.href = 'limitless://plans'; a.addEventListener('click', function (e) { e.preventDefault(); if (window.LB_go) window.LB_go('limitless://plans'); }); line.appendChild(a); }
+    }
+    function hoursUsed(ms) { var mn = Math.round(ms / 60000); return mn >= 60 ? 'About ' + (mn / 60) + (mn === 60 ? ' hour' : ' hours') : 'About ' + mn + ' minutes'; }
+    function setPaused(on) { ['.nt-search', '#ntFavorites'].forEach(function (q) { var n = document.querySelector(q); if (n) { n.inert = on; n.classList.toggle('lb-paused', on); } }); }
     function dayCheck() {
-        var st = dayState(), done = $('lbDayDone'), note = $('lbDayNote');
-        if (!st) { if (done) done.remove(); if (note) note.remove(); return; }
+        var st = dayState(), done = $('lbDayDone'), note = $('lbDayNote'), pl = document.querySelector('.lb-planline');
+        if (pl) fillPlanLine(pl, member());
+        if (!st) { if (done) done.remove(); if (note) note.remove(); setPaused(false); return; }
         if (st.left <= 0) {
             if (note) note.remove();
-            if (!done) {
-                done = el('div', 'lb-dayDone'); done.id = 'lbDayDone'; done.setAttribute('role', 'alert');
-                done.appendChild(el('h2', null, 'Your time for today is finished')); done.appendChild(el('p', null, 'It starts again tomorrow. Settings and your membership page stay open.'));
-                done.appendChild(plansLine(member())); document.querySelector('main').appendChild(done);
+            var search = document.querySelector('.nt-search');
+            if (!done && search) {
+                var open = member().plan.plansOpen === true;
+                done = el('div', 'lb-dayDone'); done.id = 'lbDayDone'; done.setAttribute('role', 'status');
+                done.appendChild(el('h2', null, 'Search is paused until midnight'));
+                var p = el('p', null, hoursUsed(st.limit) + ' used today' + (open ? '. Plans have no daily limit. ' : '.'));
+                if (open) { var a = el('a', null, 'Plans'); a.href = 'limitless://plans'; a.addEventListener('click', function (e) { e.preventDefault(); if (window.LB_go) window.LB_go('limitless://plans'); }); p.appendChild(a); }
+                done.appendChild(p); search.parentNode.insertBefore(done, search.nextSibling);
+                // a page is open (not the start page, not Settings): go back to the start page once
+                var nt = $('newtab'), sp = $('settingsPage');
+                if (nt && !nt.classList.contains('active') && (!sp || getComputedStyle(sp).display === 'none') && window.LB_home) window.LB_home();
             }
-            return;
+            setPaused(true); return;
         }
-        if (done) done.remove();
+        if (done) done.remove(); setPaused(false);
         if (st.left <= 15 * 60000 && !note && store('limitless:daynote:v1') !== today()) {
-            note = el('div', 'lb-ub show'); note.id = 'lbDayNote'; note.setAttribute('role', 'status');
-            note.appendChild(el('i', 'lb-ub-dot')); note.appendChild(el('span', 'lb-ub-msg', 'About 15 minutes left today on your plan')); note.appendChild(el('span', 'lb-ub-gap'));
-            var x = el('button', 'lb-ub-x'); x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.appendChild(icon('close')); x.addEventListener('click', function () { store('limitless:daynote:v1', today()); note.remove(); }); note.appendChild(x);
-            var mn = document.querySelector('main'); mn.parentNode.insertBefore(note, mn);
+            note = el('div', 'lb-toast'); note.id = 'lbDayNote'; note.setAttribute('role', 'status');
+            note.appendChild(icon('clock'));
+            var tx = el('div', 'lb-nt-t'); tx.appendChild(el('div', 'lb-nt-h', '15 minutes left today')); tx.appendChild(el('div', 'lb-nt-s', 'Free time starts again at midnight.')); note.appendChild(tx);
+            var x = el('button', 'lb-nt-a', 'OK'); x.type = 'button'; x.addEventListener('click', function () { store('limitless:daynote:v1', today()); note.remove(); }); note.appendChild(x);
+            document.body.appendChild(note);
         }
     }
     window.LBUI.dayTime = { add: dayAdd, state: dayState, check: dayCheck };

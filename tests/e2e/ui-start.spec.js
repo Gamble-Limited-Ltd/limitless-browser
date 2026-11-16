@@ -68,10 +68,11 @@ test('expiry line on the start page at 14 days and again worded for 3 days; none
 test('plans line says coming soon while plans are not open, and links when they are', async ({ page }) => {
   let answer = me();
   await bootMember(page, () => answer);
-  await expect(page.locator('.lb-planline')).toContainText('Ordinal: 4 tabs, 4 hours a day. Paid plans are coming soon.');
+  await expect(page.locator('.lb-planline')).toHaveAttribute('title', 'Ordinal: 4 tabs, 4 hours a day. Paid plans are coming soon.');
+  await expect(page.locator('.lb-planline a')).toHaveCount(0);
   answer = me({}, { plansOpen: true });
   await refreshMe(page);
-  await expect(page.locator('.lb-planline a')).toHaveText('See the plans');
+  await expect(page.locator('.lb-planline a')).toHaveText('Plans');
 });
 
 test('tab cap: the fifth tab for Ordinal opens the plans page, a sixth switches to it; closing frees a slot', async ({ page }) => {
@@ -107,12 +108,12 @@ test('tab cap for Prime: the joke line, no plans nag', async ({ page }) => {
   await expect(page.locator('#lbCapDlg .lb-pl')).toHaveCount(0);
 });
 
-test('daily time: 15 minute note, then a Day finished card over the page that settings can still be opened from; resets next day', async ({ page }) => {
+test('daily time: 15 minute note, then Day finished on the start page, settings still open; resets next day', async ({ page }) => {
   await bootMember(page, me({}, { limits: { dailyMinutes: 60 } }));
   await page.evaluate(() => window.LBUI.dayTime.add(46 * 60000));
-  await expect(page.locator('#lbDayNote')).toContainText('About 15 minutes left today');
+  await expect(page.locator('#lbDayNote')).toContainText('15 minutes left today');
   await page.evaluate(() => window.LBUI.dayTime.add(20 * 60000));
-  await expect(page.locator('#lbDayDone')).toContainText('Your time for today is finished');
+  await expect(page.locator('#lbDayDone')).toContainText('Search is paused until midnight');
   await expect(page.locator('#lbDayNote')).toHaveCount(0);
   await page.locator('#lbMenuBtn').click();
   await expect(page.locator('#lbMenu')).toBeVisible();

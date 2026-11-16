@@ -107,3 +107,71 @@ test('plan granted moment 1366x768', async ({ page }) => {
   expect(await checkContrast(page, '#lbGranted'), 'granted contrast').toEqual([]);
   await expect(page).toHaveScreenshot('granted-cardinal-1366.png', { mask: [page.locator('#ntDate'), page.locator('#ntFavorites')] });
 });
+
+// 1.1 WP3: free-tier limits and notices (DESIGN-GAPS 6, 7). 1366x768, in the member's own theme.
+const WP3_CAT = { ordinal: { tabs: 4, dailyMinutes: 240 }, cardinal: { tabs: 15, dailyMinutes: 0 }, prime: { tabs: 25, dailyMinutes: 0 }, executive: { tabs: 50, dailyMinutes: 0 } };
+const MASK = (page) => [page.locator('#ntDate'), page.locator('#ntFavorites')];
+async function wp3Boot(page, theme, mode, answer) {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.addInitScript(([t, m]) => localStorage.setItem('limitless:theme:v1', JSON.stringify({ theme: t, mode: m, mark: 'orbit' })), [theme, mode]);
+  await bootMember(page, answer);
+  await page.evaluate(() => document.getElementById('ntTimeText').textContent = '10:30');
+}
+for (const [theme, mode] of [['luxury', 'dark'], ['soft', 'light'], ['ink', 'dark']]) {
+  test(`${theme}/${mode}: plans line, day finished and the fifteen minute toast`, async ({ page }) => {
+    await wp3Boot(page, theme, mode, me({}, { plansOpen: true, limits: { dailyMinutes: 240 } }));
+    await page.evaluate(() => LBUI.dayTime.add(110 * 60000));
+    await expect(page.locator('.lb-planline .lb-bar')).toBeVisible();
+    expect(await checkLayout(page), 'plans line layout').toEqual([]);
+    expect(await checkContrast(page, '.lb-startm'), 'plans line contrast').toEqual([]);
+    await expect(page).toHaveScreenshot(`wp3-planline-${theme}-${mode}.png`, { mask: MASK(page) });
+    await page.evaluate(() => LBUI.dayTime.add(115 * 60000));
+    await expect(page.locator('#lbDayNote')).toBeVisible();
+    await page.waitForTimeout(300);
+    expect(await checkContrast(page, '#lbDayNote'), 'toast contrast').toEqual([]);
+    await expect(page).toHaveScreenshot(`wp3-toast-${theme}-${mode}.png`, { mask: MASK(page) });
+    await page.evaluate(() => LBUI.dayTime.add(20 * 60000));
+    await expect(page.locator('#lbDayDone')).toBeVisible();
+    expect(await checkLayout(page), 'day finished layout').toEqual([]);
+    expect(await checkContrast(page, '#lbDayDone'), 'day finished contrast').toEqual([]);
+    await expect(page).toHaveScreenshot(`wp3-dayfinished-${theme}-${mode}.png`, { mask: MASK(page) });
+  });
+  test(`${theme}/${mode}: plan notices, the broadcast line and the staircase`, async ({ page }) => {
+    const paid = { tier: 'cardinal', paidUntil: Date.now() + 2.5 * 864e5, plansOpen: true, catalog: WP3_CAT, limits: { tabs: 1, dailyMinutes: 0 }, trial: { tier: 'prime', endsAt: Date.now() + 21 * 36e5 - 1000 } };
+    await wp3Boot(page, theme, mode, me({ tier: 'cardinal', notices: [{ id: 'n1', text: 'Maintenance on Saturday from 02:00 to 02:30. Limitless is unavailable for those thirty minutes.', date: Date.UTC(2026, 10, 14, 12) }] }, paid));
+    await expect(page.locator('.lb-expiry').first()).toBeVisible();
+    expect(await checkLayout(page), 'notices layout').toEqual([]);
+    expect(await checkContrast(page, '.lb-startm'), 'notices contrast').toEqual([]);
+    await expect(page).toHaveScreenshot(`wp3-notices-${theme}-${mode}.png`, { mask: MASK(page) });
+    await page.locator('#newTab').click();
+    await expect(page.locator('#lbCapDlg .lb-step')).toHaveCount(2);
+    await page.waitForTimeout(350);
+    expect(await checkLayout(page), 'staircase layout').toEqual([]);
+    expect(await checkContrast(page, '#lbCapDlg'), 'staircase contrast').toEqual([]);
+    await expect(page).toHaveScreenshot(`wp3-staircase-${theme}-${mode}.png`, { mask: MASK(page) });
+  });
+}
+test('ink/dark: Ordinal staircase, Prime out of tabs, plan ended and the Director forms', async ({ page }) => {
+  await wp3Boot(page, 'ink', 'dark', me({}, { plansOpen: true, catalog: WP3_CAT }));
+  await page.evaluate(() => LBUI.capDialog());
+  expect(await checkContrast(page, '#lbCapDlg'), 'ordinal staircase contrast').toEqual([]);
+  await expect(page).toHaveScreenshot('wp3-staircase-ordinal-ink-dark.png', { mask: MASK(page) });
+  await page.evaluate(() => { window.LB_member = { ...window.LB_member, plan: { ...window.LB_member.plan, tier: 'prime', limits: { ...window.LB_member.plan.limits, tabs: 25 } } }; LBUI.capDialog(); });
+  expect(await checkContrast(page, '#lbCapDlg'), 'prime out contrast').toEqual([]);
+  await expect(page).toHaveScreenshot('wp3-prime-out-ink-dark.png', { mask: MASK(page) });
+  await page.evaluate(() => document.getElementById('lbCapDlg').remove());
+  await page.evaluate(() => {
+    document.documentElement.setAttribute('data-lb-theme', 'ink');
+    const mk = (id, o, ok) => { const d = LBUI.el('div', 'lb-dlg'); d.id = id; const c = LBUI.el('div', 'lb-dlg-card'); c.appendChild(LBUI.directorNotice(o).card); d.appendChild(c); document.body.appendChild(d); };
+    mk('wpEnded', { kind: 'plan', stamp: 'Plan ended', title: 'Your Prime plan has ended', text: 'Your plan ended on 20 November 2026. You are on Ordinal now.', rows: [['Plan', 'Prime, paid until 18 June 2027'], ['Reason', 'Account shared']], sig: true });
+  });
+  expect(await checkContrast(page, '#wpEnded'), 'plan ended contrast').toEqual([]);
+  await expect(page).toHaveScreenshot('wp3-planended-ink-dark.png', { mask: MASK(page) });
+  await page.evaluate(() => {
+    document.getElementById('wpEnded').remove();
+    const mk = (id, o) => { const d = LBUI.el('div', 'lb-dlg'); d.id = id; const c = LBUI.el('div', 'lb-dlg-card'); c.appendChild(LBUI.directorNotice(o).card); d.appendChild(c); document.body.appendChild(d); };
+    mk('wpForm', { kind: 'formal', stamp: 'Membership ended', title: 'Your membership has ended', text: 'Under Article II of the Membership Rules, the membership of No. 0031 ended on 10 November 2026. The number is retired and the certificate is void.', rows: [['Member', 'No. 0031'], ['Effective', '2026-11-10'], ['Rule', 'Article II, Confidentiality']] });
+  });
+  expect(await checkContrast(page, '#wpForm'), 'formal notice contrast').toEqual([]);
+  await expect(page).toHaveScreenshot('wp3-formal-ink-dark.png', { mask: MASK(page) });
+});

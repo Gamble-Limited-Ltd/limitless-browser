@@ -103,19 +103,12 @@ a.lb-btn { text-decoration: none; display: inline-block; }
 
 /* ---------- Start page: bulletin, expiry line, member card ---------- */
 .lb-startm { display: grid; gap: 12px; justify-items: center; margin: 18px auto 0; width: min(440px, 92%); }
-.lb-bulletin { width: 100%; box-sizing: border-box; padding: 14px 18px; background: var(--bg1); border: 1px solid var(--bd); border-top: 2px solid var(--ac); border-radius: var(--radius-sm); text-align: left; }
-.lb-bul-l { font: 500 10px var(--lb-fm); letter-spacing: .24em; text-transform: uppercase; color: var(--tx3); }
-.lb-bul-t { font: 500 17px/1.4 'Cormorant Garamond', Georgia, serif; color: var(--tx); margin: 6px 0 8px; }
+.lb-bulletin { width: 100%; box-sizing: border-box; padding: 12px 4px; background: none; border: 0; border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd); text-align: left; }
+.lb-bul-l { font: 500 11px var(--lb-fm); letter-spacing: .3em; text-transform: uppercase; color: var(--lb-link); }
+.lb-bul-t { font: 500 18px/1.4 'Cormorant Garamond', Georgia, serif; color: var(--tx); margin: 6px 0 8px; }
 .lb-bul-f { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; color: var(--tx3); }
 .lb-bul-x, .lb-link { background: none; border: 0; padding: 0; color: var(--lb-link); font: inherit; font-size: 11.5px; cursor: pointer; text-decoration: underline; }
 .lb-bul-x:focus-visible, .lb-link:focus-visible, .lb-mc:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
-.lb-expiry { width: 100%; box-sizing: border-box; font-size: 12.5px; color: var(--tx); padding: 8px 12px; border-left: 2px solid var(--ac); background: var(--bg1); }
-.lb-expiry[data-level="soon"] { border-left-width: 4px; }
-.lb-planline { font-size: 12px; color: var(--tx3); text-align: center; }
-.lb-planline .lb-pl { display: inline; font-size: inherit; margin: 0; color: var(--tx3); }
-.lb-dayDone { position: absolute; inset: 0; z-index: 50; display: grid; place-content: center; justify-items: center; gap: 10px; background: var(--bg0); color: var(--tx); text-align: center; padding: 24px; }
-.lb-dayDone h2 { font: 600 26px var(--lb-fd); }
-.lb-dayDone p { color: var(--tx2); }
 main { position: relative; }
 
 /* ---------- Tour (not modal) ---------- */
@@ -238,3 +231,62 @@ html:is([data-lb-theme="mono"], [data-lb-theme="ledger"], [data-lb-theme="vault"
 @keyframes lb-gr-sweep { to { transform: translateX(70%); } }
 @keyframes lb-gr-spark { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
 @keyframes lb-gr-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* ---------- 1.1 WP3: free-tier limits and notices that follow the theme (DESIGN-GAPS 6 and 7) ---------- */
+/* Plans notice card: surface, line and accent from the theme; the tier shows only in the 16 px mark. */
+.lb-nt { width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: var(--lb-sp-3, 12px); padding: 10px 14px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-left: 2px solid var(--ac); border-radius: var(--radius-sm); text-align: left; }
+.lb-nt[data-level="soon"] { border-width: 2px; border-color: var(--ac); }
+.lb-nt .lb-mk { width: 16px; height: 16px; flex: none; }
+.lb-nt-n { font: 600 28px/1 'Cormorant Garamond', Georgia, serif; min-width: 1.2ch; text-align: center; flex: none; }
+.lb-nt-t { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.lb-nt-h { font-size: 13px; font-weight: 600; color: var(--tx); }
+.lb-nt-s { font-size: 12px; color: var(--tx2); }
+.lb-nt-a { flex: none; padding: 5px 14px; border-radius: 999px; border: 0; background: var(--ac); color: var(--lb-on, #000); font: 600 12px var(--ui); cursor: pointer; }
+.lb-nt-a:focus-visible, .lb-nt-x:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.lb-nt-x { flex: none; width: 24px; height: 24px; display: grid; place-items: center; background: none; border: 0; color: var(--tx2); cursor: pointer; border-radius: 6px; }
+.lb-nt-x .lb-i { width: 14px; height: 14px; }
+.lb-expiry { font-size: 12.5px; }
+/* Plans line (Ordinal start page): a thin bar, the time left, a quiet link */
+.lb-planline { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 12px; color: var(--tx2); }
+.lb-planline .lb-bar { width: 60px; height: 4px; flex: none; display: block; }
+.lb-planline .lb-bar > i { background: var(--tc, var(--ac)); }
+.lb-planline .lb-pl-a { color: var(--lb-link); text-decoration: underline; }
+.lb-planline .lb-pl-a:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+/* Day finished: the start page itself, search dimmed */
+.lb-dayDone { text-align: center; display: grid; gap: 4px; justify-items: center; margin: 14px auto 0; color: var(--tx); }
+.lb-dayDone h2 { font: 600 20px var(--lb-fd); margin: 0; }
+.lb-dayDone p { color: var(--tx2); font-size: 13px; margin: 0; }
+.lb-dayDone a { color: var(--lb-link); text-decoration: underline; }
+.lb-paused { opacity: .45; pointer-events: none; }
+/* Fifteen minutes left: a toast, bottom right */
+.lb-toast { position: fixed; right: 20px; bottom: 20px; z-index: 100000; display: flex; align-items: center; gap: 12px; max-width: min(360px, calc(100vw - 32px)); padding: 12px 14px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd); border-radius: var(--radius-md); box-shadow: 0 6px 24px rgba(0, 0, 0, .25); animation: lb-toast-in var(--lb-dur, 220ms) var(--lb-ease, cubic-bezier(.2, .7, .2, 1)); }
+.lb-toast > .lb-i { width: 20px; height: 20px; flex: none; color: var(--lb-link); }
+@keyframes lb-toast-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+/* Next steps staircase (limit dialog) */
+.lb-steps { width: min(520px, 94vw); }
+.lb-st-tabs { display: flex; gap: 6px; align-items: flex-end; height: 22px; }
+.lb-st-t { width: 54px; height: 18px; border-radius: 6px 6px 0 0; background: var(--bg2); border: 1px solid var(--bd); border-bottom: 0; }
+.lb-st-faded { opacity: .5; }
+.lb-st-new { background: none; border: 1px dashed var(--tc, var(--ac)); border-bottom: 0; }
+.lb-st-no { font: 500 12px var(--lb-fm); letter-spacing: .14em; color: var(--tx2); }
+.lb-st-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
+.lb-step { padding: 10px 12px; border: 1px solid var(--bd); border-top: 2px solid var(--tc, var(--ac)); border-radius: var(--radius-sm); background: var(--bg0); display: grid; gap: 4px; align-content: start; }
+.lb-step-l { font: 500 11px var(--lb-fm); letter-spacing: .2em; text-transform: uppercase; color: var(--tx2); }
+.lb-step-v { font-size: 13px; color: var(--tx); }
+#newTab.lb-bounce { animation: lb-nudge 240ms var(--lb-ease, cubic-bezier(.2, .7, .2, 1)); }
+@keyframes lb-nudge { 30% { transform: translateX(5px); } 60% { transform: translateX(-2px); } }
+/* The Director's notices (plan ended; the formal and letter forms share the card) */
+.lb-dn { display: grid; gap: 10px; text-align: left; }
+.lb-dn-formal { text-align: center; justify-items: center; }
+.lb-nt-stamp { justify-self: start; font: 500 11px var(--lb-fm); letter-spacing: .24em; text-transform: uppercase; color: var(--lb-link); border: 1px solid var(--lb-link); padding: 3px 8px; border-radius: 2px; transform: rotate(-1deg); }
+.lb-dn-formal .lb-nt-stamp { justify-self: center; }
+.lb-dn-t { font: 600 24px/1.2 'Cormorant Garamond', Georgia, serif; margin: 0; }
+.lb-dn-p { margin: 0; color: var(--tx2); font-size: 13.5px; line-height: 1.5; }
+.lb-led { display: grid; border: 1px solid var(--bd); border-radius: var(--radius-sm); background: var(--bg0); }
+.lb-led-r { display: flex; justify-content: space-between; gap: 16px; padding: 8px 12px; border-top: 1px solid var(--bd); font: 500 12.5px var(--lb-fm); }
+.lb-led-r:first-child { border-top: 0; }
+.lb-led-k { color: var(--tx2); }
+.lb-led-v { color: var(--tx); text-align: right; }
+.lb-nt-sig { font: 400 30px/1.1 'Pinyon Script', 'Cormorant Garamond', cursive; color: var(--tx); margin-top: 4px; }
+.lb-nt-role { font-size: 11.5px; color: var(--tx2); }
+@media (prefers-reduced-motion: reduce) { .lb-toast, #newTab.lb-bounce { animation: none; } }
