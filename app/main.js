@@ -2850,7 +2850,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
 
             // SPEED 4.7: host-suffix blocklist (Set, one lookup per label). Until vendor/blocklist loads, SKIP_DOMAINS (substring) is the fallback.
             const LB_blocklist = (() => {
-                const FILE = 'vendor/blocklist/2026-11-14/hosts.txt';
+                const FILE = 'vendor/blocklist/2026-11-15/hosts.txt';
                 let set = null, pending = null;
                 const legacy = () => SKIP_DOMAINS.filter(d => /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d));   // domain-like old entries stay blocked after the list loads
                 function hostBlocked(host) {

@@ -53,6 +53,19 @@ test.describe('blocklist', () => {
     expect(r.ok).toBe(false);
   });
 
+  test('the shipped list is HaGeZi Normal: a Normal-only domain is blocked', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      LB_blocklist.reset();
+      const t0 = performance.now();
+      await LB_blocklist.load();
+      return { ms: Math.round(performance.now() - t0), size: LB_blocklist.size(), only: LB_shouldSkip('https://cdn.7zip.io/a.js'), ok: LB_shouldSkip('https://example.com/') };
+    });
+    expect(r.size).toBeGreaterThan(200000);
+    expect(r.only).toBe(true);
+    expect(r.ok).toBe(false);
+    console.log('blocklist load ms (local server, parse included): ' + r.ms);
+  });
+
   // 0.3.0 speed gate: the 570 KB list must not compete with the first page, so it waits for a finished page and an idle fetch queue.
   test('list download waits for a finished page and an idle fetch queue', async ({ page }) => {
     const r = await page.evaluate(async () => {
