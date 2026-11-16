@@ -164,7 +164,7 @@ test.describe('downloads panel (S8)', () => {
     expect(await page.evaluate(() => __pulled)).toBeLessThanOrEqual(16384);
     const row = page.locator('#lbDl .lb-dl-row', { hasText: 'big.bin' });
     await expect(row).toContainText('10 MB');
-    await expect(row.getByRole('link', { name: /plans/i })).toHaveAttribute('href', /^https:\/\/hall\.taps-holdings\.org/);
+    await expect(row.getByRole('link', { name: /plans/i })).toHaveAttribute('href', 'limitless://plans');
     expect(await page.evaluate(() => LB_downloads.ls.getItem('limitless:dlcount:v1'))).toBeNull();
   });
 

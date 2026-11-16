@@ -89,3 +89,13 @@ test('expiry levels: none beyond 14 days, near at 14, soon at 3 or less, none fo
   expect(r[3][2]).toContain('ends in 1 day,');
   expect(r.slice(4)).toEqual([null, null, null]);
 });
+
+test('membership page limits: 0 downloads a day means any number; video and Load Now lines', async ({ page }) => {
+  await bootMember(page, me({ tier: 'executive' }, { tier: 'executive', limits: { tabs: 50, dailyMinutes: 0, downloadMbPerFile: 2048, downloadsPerDay: 0, videoMaxP: 0, loadNowPerDay: 10 } }));
+  await openSettings(page, 'membership');
+  const dl = page.locator('#lbMemberPage .lb-dl');
+  await expect(dl).toContainText('up to 2048 MB each, any number a day');
+  await expect(dl).toContainText('Load Now');
+  await expect(dl).toContainText('10 a day');
+  await expect(dl).toContainText('No limit');
+});

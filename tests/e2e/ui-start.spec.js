@@ -73,18 +73,29 @@ test('plans line says coming soon while plans are not open, and links when they 
   await expect(page.locator('.lb-planline a')).toHaveText('See the plans');
 });
 
-test('tab cap: the fifth tab for Ordinal opens a card instead; closing one frees a slot; Prime gets the joke line', async ({ page }) => {
+test('tab cap: the fifth tab for Ordinal opens the plans page, a sixth switches to it; closing frees a slot', async ({ page }) => {
   const errors = await bootMember(page, me());
   for (let i = 0; i < 3; i++) await page.locator('#newTab').click();
   await expect(page.locator('#tabStrip .tab')).toHaveCount(4);
   await page.locator('#newTab').click();
+  await expect(page.locator('#tabStrip .tab')).toHaveCount(5);
+  await expect(page.locator('#lbPlans')).toBeVisible();
+  await expect(page.locator('#lbCapDlg')).toHaveCount(0);
+  await page.locator('#newTab').click();
+  await expect(page.locator('#tabStrip .tab')).toHaveCount(5);
+  await expect(page.locator('#lbPlans')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('tab cap for Cardinal: a card, no redirect', async ({ page }) => {
+  await bootMember(page, me({ tier: 'cardinal' }, { tier: 'cardinal', paidUntil: Date.now() + 200 * 864e5, limits: { tabs: 2, dailyMinutes: 0 } }));
+  await page.locator('#newTab').click();
+  await page.locator('#newTab').click();
   await expect(page.locator('#lbCapDlg')).toBeVisible();
-  await expect(page.locator('#lbCapDlg')).toContainText('Your Ordinal plan allows 4 open tabs');
-  await expect(page.locator('#lbCapDlg .lb-pl')).toHaveText('Paid plans are coming soon.');
-  await expect(page.locator('#tabStrip .tab')).toHaveCount(4);
+  await expect(page.locator('#lbCapDlg')).toContainText('Your Cardinal plan allows 2 open tabs');
+  await expect(page.locator('#tabStrip .tab')).toHaveCount(2);
   await page.keyboard.press('Escape');
   await expect(page.locator('#lbCapDlg')).toHaveCount(0);
-  expect(errors).toEqual([]);
 });
 
 test('tab cap for Prime: the joke line, no plans nag', async ({ page }) => {
@@ -153,4 +164,12 @@ test('tour: three steps, skippable, once', async ({ page }) => {
   await page.reload();
   await expect(page.locator('#lbMemberCard')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('#lbTour')).toHaveCount(0);
+});
+
+test('plans line, menu entry and cap-free links all go to the in-app plans page', async ({ page }) => {
+  await bootMember(page, me({}, { plansOpen: true }));
+  await expect(page.locator('.lb-planline a')).toHaveAttribute('href', 'limitless://plans');
+  await page.locator('#lbMenuBtn').click();
+  await page.locator('#lbMenu [data-id="plans"]').click();
+  await expect(page.locator('#lbPlans')).toBeVisible();
 });

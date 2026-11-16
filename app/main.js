@@ -1920,7 +1920,13 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             const pendingNewTabIds = new Set();
 
             function createTab(url = HOME_INTERNAL) {
-                if (window.LB_tabGate && !window.LB_tabGate(tabs.length)) return;   // S6: plan tab cap (app/ui.js)
+                const gate = window.LB_tabGate ? window.LB_tabGate(tabs.length) : true;   // S6: plan tab cap (app/ui.js)
+                if (gate === false) return;
+                if (gate === 'plans') {   // 1.1: Ordinal over the cap: the new tab is the buy page, and only one such tab
+                    const pt = tabs.find((t) => t.url === 'limitless://plans');
+                    if (pt) { switchToTab(pt.id); return; }
+                    url = 'limitless://plans';
+                }
                 const tab = {
                     id: nextTabId++,
                     title: "New Tab",
@@ -18263,7 +18269,7 @@ _VIEWER_DL_JS +
             // the Ordinal numbers are enforced here because Ordinal rides public relays (paid tiers' bytes are counted by the gate).
             // Anything over 2 GB is refused. `features.downloads` false (build LB_FEATURE_DOWNLOADS) turns the whole thing off. Styles: `.lb-dl-*` in theme/chrome.css.
             window.LB_downloads = (function () {
-                const MB = 1048576, HARD = 2048 * MB, KEY = 'limitless:dlcount:v1', PLANS = 'https://hall.taps-holdings.org/';
+                const MB = 1048576, HARD = 2048 * MB, KEY = 'limitless:dlcount:v1', PLANS = 'limitless://plans';
                 const cfg = { backoff: [1000, 3000, 8000] };
                 const items = []; const rows = new Map(); let seq = 0, panel = null, list = null, meAt = 0, tick = 0;
                 const enabled = () => !(window.LB_features && window.LB_features.downloads === false);
@@ -18464,7 +18470,7 @@ _VIEWER_DL_JS +
                     r.el.dataset.status = it.status; r.s.textContent = text(it);
                     if (it.plans && it.status === 'refused' || it.plans && it.status === 'error') {
                         const open = window.LB_member && window.LB_member.plan && window.LB_member.plan.plansOpen === true;
-                        if (open) { const a = el('a', 'lb-dl-link', ' See the plans'); a.href = PLANS; a.target = '_blank'; a.rel = 'noopener'; r.s.appendChild(a); } else r.s.appendChild(document.createTextNode(' Paid plans are coming soon.'));
+                        if (open) { const a = el('a', 'lb-dl-link', ' See the plans'); a.href = PLANS; a.addEventListener('click', (e) => { e.preventDefault(); window.LB_go(PLANS); }); r.s.appendChild(a); } else r.s.appendChild(document.createTextNode(' Paid plans are coming soon.'));
                     }
                     if (r.st !== it.status) {
                         r.st = it.status; r.b.textContent = '';
