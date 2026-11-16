@@ -5139,6 +5139,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 return p;
             }
             async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
+                if (priority === PRIORITY.image && !opts.__img) opts = { ...opts, __img: true };
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
                 // instead of throwing a cryptic TypeError that leaves the iframe white.
@@ -5392,12 +5393,19 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             }
             window.LB_deadlines = { connect: 10000, body: 30000 };   // L4 (ms); a test hook too
             window.LB_queueState = () => ({ fetching, queued: fetchQueue.length });
+            const LB_PREWARM_TOP = 6;
+            const LB_IMG_ACCEPT = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
             async function doFetch(url, opts = {}) {
                 if (_netStall) return Promise.reject(new TypeError('Failed to fetch'));
                 const method = opts.method || "GET";
                 const headers = {
                     ...(opts.headers || {})
                 };
+                // Savings (1.0 PLAN 0.2d): every image request asks for AVIF/WebP (features.imgAccept); libcurl.js already sends
+                // Accept-Encoding "deflate, gzip, br" and decodes the body, so features.compress off sends "identity" (kill switch).
+                if (window.LB_features.imgAccept !== false && !headers.Accept && !headers.accept &&
+                    (opts.__img || /\.(png|jpe?g|gif|webp|avif|svg|ico|bmp)$/i.test(url.split(/[?#]/)[0]))) headers.Accept = LB_IMG_ACCEPT;
+                if (window.LB_features.compress === false && !headers['Accept-Encoding'] && !headers['accept-encoding']) headers['Accept-Encoding'] = 'identity';
                 let origin = new URL(url).origin;
                 const cookieHeader = getCookieHeader(url);
                 let usedJarCookie = false;
@@ -10000,6 +10008,9 @@ _VIEWER_DL_JS +
                     // Also strip modulepreload: Next.js/React/Vite emit these for ES module chunks;
                     // inside a blob iframe they resolve against blob: origin and fail with CORS errors.
                     doc.querySelectorAll('link[rel="preconnect"], link[rel="dns-prefetch"], link[rel="prerender"], link[rel="prefetch"], link[rel="modulepreload"]').forEach(l => l.remove());
+                    // features.noPrefetch: also drop a preload of another page (as=document) and Speculation Rules (the browser would
+                    // prefetch or prerender pages the member never opens). Preloads of css, font, script and image stay.
+                    if (window.LB_features.noPrefetch !== false) doc.querySelectorAll('link[rel~="prefetch"], link[rel~="prerender"], link[rel~="preload"][as="document"], script[type="speculationrules"]').forEach(l => l.remove());
                     doc.querySelectorAll('base[target]').forEach(b => b.removeAttribute('target'));
 
                     // Set base href before proxy script injection. If the page ships its
@@ -10278,7 +10289,12 @@ _VIEWER_DL_JS +
                         doc.querySelectorAll('iframe[src]').forEach(f => kick(f.getAttribute('src'), PRIORITY.html));
                         const _il = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch (e) { return null; } })() || (_saver ? '100' : '300'), 10));
                         const _pre = _saver ? 0 : (window.LB_features.lazyImg === false ? _il : Math.min(_il, 24));
-                        if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || '')).slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image, true));
+                        // features.lazyPrefetch (with lazyImg): only the first LB_PREWARM_TOP images in document order (likely above the fold),
+                        // plus eager or fetchpriority=high ones, are pre-warmed; the rest wait until the page runtime scrolls near them.
+                        const _topOnly = window.LB_features.lazyImg !== false && window.LB_features.lazyPrefetch !== false;
+                        if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || ''))
+                            .filter((im, i) => !_topOnly || i < LB_PREWARM_TOP || im.getAttribute('loading') === 'eager' || /^high$/i.test(im.getAttribute('fetchpriority') || ''))
+                            .slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image, true));
                     }
 
                     // url() in CSS: fonts and images become data: URIs, everything else an absolute URL. S3 4.5: the base64 step is
@@ -10305,7 +10321,7 @@ _VIEWER_DL_JS +
                             const { abs, ext, isFont } = v;
                             todo.set(key, `url("${abs}")`);
                             try {
-                                const r = await queueFetch(abs, { signal: tabCtrl.signal }, PRIORITY.font);
+                                const r = await queueFetch(abs, isFont ? { signal: tabCtrl.signal } : { signal: tabCtrl.signal, __img: true }, PRIORITY.font);
                                 if (r.buf && r.buf.byteLength > 0) {
                                     const fontMime = ext === 'woff2' ? 'font/woff2'
                                         : ext === 'woff' ? 'font/woff'
