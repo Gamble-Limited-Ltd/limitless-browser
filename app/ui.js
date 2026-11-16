@@ -517,7 +517,7 @@
         if (tier === 'ordinal') { var pln = el('div', 'lb-planline'); fillPlanLine(pln, m); box.appendChild(pln); }   // paid members never see it
     }
     document.addEventListener('lb-member', function () {
-        var m = member(); if (m) { store(ME_KEY, JSON.stringify({ name: m.name || '', number: m.number, tier: tierOf(m) })); paintSplash(m.name, m.number, tierOf(m)); }
+        var m = member(); if (m && (m.number == null || m.number === '')) { try { localStorage.removeItem(ME_KEY); } catch (_) {} } else if (m) { store(ME_KEY, JSON.stringify({ name: m.name || '', number: m.number, tier: tierOf(m) })); paintSplash(m.name, m.number, tierOf(m)); }
         paintStart(); paintRailMe(); dayCheck(); maybeTour(); grantCheck(m); endedCheck(m);
     });
 

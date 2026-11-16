@@ -52,3 +52,11 @@ test('nginx serves the designed ceremony at /auth/welcome and its assets ungated
   expect(assets && assets[1]).toContain('ceremony/');
   expect(nginx.indexOf('location = /auth/welcome')).toBeLessThan(nginx.indexOf('location ^~ /auth/'));
 });
+
+test('nginx names the gate reason on a bare 403, so a version.json fetch can tell welcome from invite only', () => {
+  const invite = /location @invite \{([\s\S]*?)\n  \}/.exec(nginx);
+  expect(invite && invite[1]).toContain('add_header X-LB-Reason $lb_reason always;');
+  expect(invite && invite[1].indexOf('add_header X-LB-Reason')).toBeLessThan(invite ? invite[1].indexOf('return 403') : 0);
+  // version.json is fetched with Accept */*, so lb_html is 0 there and it gets the bare 403 (with the reason), never a redirect.
+  expect(/map \$http_accept \$lb_html \{\s*default 0;/.test(nginx)).toBe(true);
+});
