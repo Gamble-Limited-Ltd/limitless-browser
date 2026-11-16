@@ -11,8 +11,7 @@ Read both before touching names, credits, license text or features.
 - **0.3.0 deployed by Boss 2026-11-15 09:43 (`072c108`, rotation preflight OK; 24 h hold until 2026-11-16 09:43).** 1.0 build started 2026-11-15. Release record `docs/releases/0.3.0.md` (Minor; speed gate fails on the fx-frames
   fixture only, rows that already failed before 0.3, so it ships only on Boss's override; HALL legal text must change first, notes section 6).
   S1, S2a, S2b, S3 and fetch core were built 2026-11-10 to 11-12 and reused (Boss, 2026-11-14); relay off, blocklist, fault fixes, libcurl 0.7.5
-  and font preload were added 2026-11-14/15. the VPS relay (S4) and membership (S5) are merged into `release/1.0.0` (2026-11-15, not deployed; the old `slice/1.0-edge` ticket box is superseded). Then
-  1.0.0 (VPS relay, membership, UI, admin, paid tiers). Plan and decisions: `docs/1.0/PLAN.md` section 0.2b; build cards in section 8.
+  and font preload were added 2026-11-14/15. **1.0.0 (checked 2026-11-15 night):** `release/1.0.0` holds S4 to S9b, the speed and savings slices (PLAN 0.2d) and the version bump; record `docs/releases/1.0.0.md` (Major; open: real-site run, VPS drills on the real pair after deploy, HALL 0.6.0 deploy, Boss's final plan numbers and prices). NOT deployed; `main` is still 0.3.0 and is fast-forwarded only in Boss's deploy block. The VPS relay runs `5aef5b9` (gate `07aeed1`, `TOTAL_UPLINK_MBPS=300`). Plan and decisions: `docs/1.0/PLAN.md` 0.2b to 0.2d; build cards in section 8.
 - Removed (stage 2, 2026-10-19): Discord client, new-tab widgets, AI assistant, translate, `svg/`. Upstream fixes are
   cherry-picked by hand; the fork was in step with `upstream/main` 08515a7 as of 2026-10-18.
 - **Invite only (decided 2026-10-17):** sign-in through GLL ID (GATE) is required and only users Boss approves get in.

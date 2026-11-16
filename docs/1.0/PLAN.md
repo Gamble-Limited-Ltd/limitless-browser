@@ -137,7 +137,7 @@ as 0.3.0 first. Sections 0.1, 0.4 and the build cards still show the old recomme
 VPS test (short runs, Boss's go): raw link about 500 Mbit/s in; through the relay 20 members 199 Mbit/s, 1 member 8.8 Mbit/s;
 each stream tops out near 2.2 Mbit/s. RackNerd meters in plus out, so 5 TB is about 2.5 TB delivered. Numbers page:
 https://claude.ai/artifact/9V2K7cY62h9JrfBA6ydXVG (plan limits and prices NOT decided yet).
-**All of the following ships in 1.0** (Boss chose one release; 1.0 waits and its gates rerun):
+**All of the following ships in 1.0** (Boss chose one release; 1.0 waits and its gates rerun). **Status 2026-11-15 night: built and merged into `release/1.0.0` (Browser `slice/1.0-savings`, `slice/1.0-videoui`, `slice/1.0-videosock`, `slice/1.0-speed-vps`; gate `slice/1.0-speed`), e2e and stack green, VPS redeployed; not deployed at home.** Root cause of the slow test: the load-test gate's default 18 Mbit/s shared limit plus a mid-run revoke, and a fair-share bug (fixed); 1 member now 491 Mbit/s uncapped, 100 with the 50 Mbit/s per-socket ceiling.
 - Diagnose the per-stream limit now, then try every server fix that helps: relay container TCP buffers + BBR, epoxy tuning or
   update, faster gate forwarding, and a per-connection ceiling once fast.
 - Split downloads by plan: Ordinal 1 part, Cardinal 2, Prime 4, Executive 8 (files over about 20 MB, servers with Range).
