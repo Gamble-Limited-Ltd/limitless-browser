@@ -16,7 +16,7 @@ Sources, newest wins: (A) Boss's artifact "Limitless Plan Numbers" (2026-11-16, 
 | 7 | Other tiers: no daily time | PT 2 | gate `:85,102,119` = 0; `dayState` returns null unless tier is ordinal | OK |
 | 8 | Notice at 15 min left (Ordinal) | PT 2, R3 | `ui.js` `dayCheck` (once a day, dismissable) | OK |
 | 9 | "Day finished" card and start-page line when time is up | R3 | `ui.js` `dayCheck`, `paintStart` | OK |
-| 10 | Ordinal speed: public relays plus a speed limit inside the app (Boss's pick, A: 3 Mbit/s recommended, number NOT decided) | A | nothing. Gate `speedMbps` 0 for ordinal; no throttle in `main.js` | missing, NOT built: the number is Boss's and a client throttle is a pipeline change (section 3) |
+| 10 | Ordinal speed: public relays plus a speed limit inside the app (Boss's pick, A: 3 Mbit/s recommended, number NOT decided) | A | nothing. Gate `speedMbps` 0 for ordinal; no throttle in `main.js` | DONE (1.1 slice `slice/1.1-throttle`): `LB_speedCap` token bucket, 3 Mbit/s from the gate catalog, `features.speedCap` |
 | 11 | Cardinal speed cap | PT 2, A (C1 10 / C2 15 / C3 20, none decided) | gate `:88` = 20 (C3 draft) | OK as placeholder, flagged (section 4) |
 | 12 | Prime speed cap | A (P1 25 / P2 30 / P3 40) | gate `:105` = 40 (P3 draft) | OK as placeholder, flagged |
 | 13 | Executive speed, then slow stage | A (E2 80 / E3 80 then 3 Mbit/s) | gate `:122` = 80, knob `slow_stage_mbps` = 2 (`:139`) | OK as placeholder, flagged |
@@ -78,6 +78,11 @@ All are in `src/membership.ts`, and the number changes wait for Boss (A is a men
 3. `prime.speedMbps: 40` -> 30 (P2); `downloadMbPerFile: 500` -> 1024 (D-P2, matches the 20 GB allowance already set).
 4. `executive.monthlyGb: 250` -> 200 and knob `slow_stage_mbps` `'2'` -> `'3'` (E3); `downloadMbPerFile: 2048` -> 4096 (D-E2) only after the Browser 2 GB in-memory limit is lifted, so keep 2048 for now.
 5. Not a number: the plans catalog in `me()` (`membership.ts` ~1010) omits `dailyMinutes`, `downloadsPerDay`, `videoMaxP`, `loadNowPerDay`. Add them so the plans page can show Ordinal's 4 h and 10 a day.
+
+### 4a. Done 2026-11-16 (Boss: recommended sets, Executive files 2 GB in 1.1, Ordinal 3 Mbit/s, prices unchanged)
+- Items 1 to 4: gate `slice/1.1-gate-plans` sets Ordinal 3, Cardinal 15 Mbit/s / 12 GB a week / 100 MB, Prime 30 Mbit/s / 1024 MB, Executive 200 GB and slow stage 3 Mbit/s; file cap stays 2048 MB. A guarded one-time migration moves stored rows still on the old defaults (admin edits stay).
+- Item 5: `/_lb/me` `plan.catalog` now has `dailyMinutes`, `downloadsPerDay`, `videoMaxP`, `loadNowPerDay`, `speedMbps`. The plans page cards and Membership lines show them (rules 36, 47).
+- Rule 10 (Ordinal throttle) built, see CLAUDE.md "Ordinal speed throttle". Rules 22 to 24 now carry the decided numbers; the Executive 4 GB file cap is deferred (streaming downloads to disk).
 
 ## 5. Conflicts between sources (Boss to decide)
 
