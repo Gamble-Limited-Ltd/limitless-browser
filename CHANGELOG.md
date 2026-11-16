@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.0.1
+
+- Everyone goes through the welcome ceremony and chooses their own member number, including members who used Limitless before 1.0.
+- Themes: after an update, the new themes now change colors on the first load (the browser kept last version's theme file until a reload).
+
 ## 1.0.0
 
 - Membership: every GLL ID account can now sign in and gets the free Ordinal plan, which browses through public relays as before. Our own relay comes with the paid plans.

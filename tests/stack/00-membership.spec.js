@@ -5,6 +5,7 @@
 // Needs the gate with MEMBERSHIP=on:
 //   LB_REHEARSAL_MEMBERSHIP=1 flock /tmp/limitless-rehearsal.lock deploy/rehearsal/run.sh tests/stack/00-membership.spec.js
 const { test, expect } = require('@playwright/test');
+const { finishCeremony } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -51,6 +52,10 @@ test.beforeAll(async () => { await mock('/reset'); });
 
 test('an invite for a non-kmlhs.org email is refused', async ({ browser }) => {
   const owner = await signIn(browser, 'owner');
+  // The owner goes through the ceremony too (1.0.1) and keeps 0000; until signed the gate holds them like anyone.
+  expect((await owner.req.get('/_lb/me', { maxRedirects: 0 })).status()).not.toBe(200);
+  await finishCeremony(owner.req);
+  expect((await (await owner.req.get('/auth/welcome/state')).json()).number).toBe('0000');
   expect((await post(owner.req, '/step-up', { login: 'owner', password: 'owner-pass-1' })).status()).toBe(200);
   const r = await post(owner.req, '/membership/invites', { loginName: 'bob', email: 'bob@example.com', message: 'Hello' });
   expect(r.status()).toBe(400);

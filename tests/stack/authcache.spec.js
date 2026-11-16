@@ -49,6 +49,7 @@ const wispOpens = (page) =>
 test.describe('auth cache', () => {
   test('a signed-in user gets MISS then HIT, with per-hop timing on app files and the WISP upgrade', async ({ browser }) => {
     const u = await user(browser, 'alice');
+    await u.page.close(); // the open app polls gated routes (relay token, /_lb/me) and would refresh the entry during the wait
     await new Promise((r) => setTimeout(r, CACHE_WINDOW_MS + 500)); // start from an expired entry
     const first = await u.req.get('/version.json');
     const second = await u.req.get('/version.json');
