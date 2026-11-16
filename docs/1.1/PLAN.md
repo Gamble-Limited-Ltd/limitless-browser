@@ -25,4 +25,7 @@ Requested by Boss 2026-11-16. Base: `main` at `2f4c181` (1.0.1). Lane: Minor (1.
 - Work packages from `DESIGN-GAPS.md` run one at a time next to the bot check slice (light schedule: at most 2 slices in flight):
   WP1 Foundations, WP2 Member identity, WP3 Limits and notices, WP4 Pages, WP5 Admin. Gate/HALL items in that doc are out of 1.1 Browser scope.
 
+- 2026-11-16, Boss: the gate and HALL items are in 1.1 too. Gate (`~/limitless-gate`, `slice/1.1-gate` from `main` 85fa464): certificate
+  PDF fonts and rich gold (G1), member pages (G4), small `/_lb/me` fields (G5). HALL (`~/gll-launcher`): per-tier verify pages (G2) and the
+  plans page (G3), started when a slot frees (portfolio limit of 3 slices in flight), after WP4 fixes the plans markup.
 Last verified: 2026-11-16
