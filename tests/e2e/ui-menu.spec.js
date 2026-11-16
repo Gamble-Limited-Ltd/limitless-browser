@@ -61,17 +61,30 @@ test('every icon-only toolbar button has an accessible name', async ({ page }) =
   expect(bad).toEqual([]);
 });
 
-test('Report a problem sends category and note, and says so plainly when the gate has no route yet', async ({ page }) => {
-  let body = null;
-  await page.route('**/_lb/reports', (route) => { body = route.request().postDataJSON(); return route.fulfill({ status: 404, body: '' }); });
+test('Report a problem posts the gate contract (/_lb/report, category id, site only when ticked) and says when it fails', async ({ page }) => {
+  const bodies = [];
+  let status = 200;
+  await page.route('**/_lb/report', (route) => { bodies.push(route.request().postDataJSON()); return route.fulfill({ status, contentType: 'application/json', body: '{"ok":true}' }); });
   await boot(page);
+  await page.evaluate(() => window.LBReport.open('Broken site', 'news.example.org'));
+  await expect(page.locator('#lbRepCat')).toHaveValue('broken');
+  await page.locator('#lbRepSend').click();
+  await expect(page.locator('#lbRepMsg')).toHaveText('Write a few words about what happened first.');
+  expect(bodies).toEqual([]);
+  await page.locator('#lbRepNote').fill('Images missing');
+  await page.locator('#lbRepHost').check();
+  await page.locator('#lbRepSend').click();
+  await expect(page.locator('#lbRepMsg')).toHaveText('Thank you. Your report was sent.');
+  expect(bodies).toEqual([{ category: 'broken', note: 'Images missing', includeSite: true, site: 'https://news.example.org/' }]);
+  await page.keyboard.press('Escape');
+  status = 503;
   await page.locator('#lbMenuBtn').click();
   await page.locator('#lbMenu .lb-mi[data-id="report"]').click();
-  await page.locator('#lbRepCat').selectOption('Slow');
+  await page.locator('#lbRepCat').selectOption('slow');
   await page.locator('#lbRepNote').fill('It crawls');
   await page.locator('#lbRepSend').click();
   await expect(page.locator('#lbRepMsg')).toHaveText('Reports are not available right now. Please try again later.');
-  expect(body).toEqual({ category: 'Slow', note: 'It crawls' });
+  expect(bodies[1]).toEqual({ category: 'slow', note: 'It crawls' });
   await page.keyboard.press('Escape');
   await expect(page.locator('#lbReportDlg')).toHaveCount(0);
 });
