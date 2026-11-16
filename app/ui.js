@@ -16,11 +16,26 @@
     function member() { return window.LB_member || null; }
     function tierOf(m) { return m ? ((m.plan && m.plan.tier) || m.tier || 'ordinal') : null; }
     function pad(n) { return n == null ? '' : String(n).padStart(4, '0'); }
-    function markSvg(tier) {
-        var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 64 64'); s.setAttribute('class', 'lb-mk lb-tier-mark'); s.setAttribute('aria-hidden', 'true');
-        var u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#lb-mk-tier-' + (TIER_NAME[tier] ? tier : 'ordinal')); s.appendChild(u); return s;
+    // px (optional): at 20 px and below Executive uses the small mark (no compass points, WP1 symbol lb-mk-tier-executive-sm)
+    function markSvg(tier, px) {
+        var t = TIER_NAME[tier] ? tier : 'ordinal', s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 96 96'); s.setAttribute('class', 'lb-mk lb-tier-mark'); s.setAttribute('aria-hidden', 'true');
+        var u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#lb-mk-tier-' + t + (t === 'executive' && px && px <= 20 ? '-sm' : '')); s.appendChild(u); return s;
     }
-    window.LBUI = { el: el, icon: icon, store: store, member: member, tierOf: tierOf, pad: pad, markSvg: markSvg, TIER_NAME: TIER_NAME, STANDING: STANDING };
+    var RANK = { ordinal: 0, cardinal: 1, prime: 2, executive: 3 };
+    function sinceShort(ms) { return new Date(ms).toLocaleDateString('en', { month: 'short', year: 'numeric' }); }
+    /* The member card (kind 'card', 1.586:1 foil card) and the strip (kind 'strip', one row). Colours come from the tier hooks --tc/--tc2/--tcon (WP1).
+     * o: { tag: 'button' for a clickable one, tier: show another tier's card }. Text only through textContent. */
+    function memberCard(m, kind, o) {
+        o = o || {}; var tier = o.tier || tierOf(m) || 'ordinal', strip = kind === 'strip';
+        var r = el(o.tag || 'div', 'lb-mc lb-mc-' + (strip ? 'strip' : 'card') + ' lb-tier-' + tier); r.dataset.tier = tier; if (o.tag === 'button') r.type = 'button';
+        var nm = el('div', 'lb-mc-nm'); nm.appendChild(el('span', 'lb-mc-n', m.name || 'Member')); nm.appendChild(el('small', 'lb-mc-t', TIER_NAME[tier]));
+        var no = el('span', 'lb-mc-no', m.number != null ? 'No. ' + pad(m.number) : '');
+        if (strip) { r.appendChild(markSvg(tier)); r.appendChild(nm); r.appendChild(no); return r; }
+        var top = el('div', 'lb-mc-top'); top.appendChild(el('span', 'lb-mc-brand', 'Limitless')); top.appendChild(markSvg(tier)); r.appendChild(top); r.appendChild(nm);
+        var ft = el('div', 'lb-mc-ft'); ft.appendChild(no); if (m.admittedAt) ft.appendChild(el('span', 'lb-mc-since', 'Since ' + sinceShort(m.admittedAt))); r.appendChild(ft);
+        return r;
+    }
+    window.LBUI = { el: el, icon: icon, store: store, member: member, tierOf: tierOf, pad: pad, markSvg: markSvg, memberCard: memberCard, TIER_NAME: TIER_NAME, STANDING: STANDING };
 
     /* ---------- Developer mode (Settings > General, limitless:devmode:v1) ---------- */
     var DEV = 'limitless:devmode:v1';
@@ -60,8 +75,10 @@
     function paintHeader() {
         var h = menu.querySelector('.lb-mh'); if (!h) return;
         h.textContent = '';
-        var m = member();
-        h.appendChild(markSvg(tierOf(m)));
+        var m = member(), tier = tierOf(m) || 'ordinal';
+        h.className = 'lb-mh lb-tier-' + tier; h.dataset.tier = tier;
+        var pi = menu.querySelector('[data-id="plans"]'); if (pi) { if (m && m.plan && m.plan.plansOpen === true) pi.dataset.accent = '1'; else delete pi.dataset.accent; }
+        h.appendChild(markSvg(tier));
         var t = el('div', 'lb-mh-t');
         t.appendChild(el('div', 'lb-mh-name', m && m.name ? m.name : 'Limitless Browser'));
         if (m && m.number != null) {
@@ -212,6 +229,43 @@
         window.addEventListener('resize', applyTabs);
         applyTabs();
     }
+    /* The member strip pinned at the foot of the vertical rail (1.1 WP2); CSS shows it only with data-lb-tabs=side, the mark alone when the rail is collapsed */
+    function paintRailMe() {
+        var tb = document.querySelector('.titlebar'); if (!tb) return;
+        var old = tb.querySelector('.lb-rail-me'), m = member(); if (old) old.remove();
+        if (!m) return;
+        var c = memberCard(m, 'strip', { tag: 'button' }); c.classList.add('lb-rail-me'); c.setAttribute('aria-label', 'Membership: ' + (m.name || '') + ', number ' + pad(m.number));
+        c.addEventListener('click', function () { openSettings('membership'); }); tb.appendChild(c);
+    }
+
+    /* ---------- The card turns over (1.1 WP2, DESIGN-GAPS 12): the first open after a plan is granted ---------- */
+    var LT = 'limitless:lasttier:v1', LG = 'limitless:lastgrant:v1';
+    function closeGranted() { var d = $('lbGranted'); if (d) d.remove(); }
+    function showGranted(m, oldTier) {
+        closeGranted();
+        var tier = tierOf(m), d = el('div', 'lb-dlg lb-gr'); d.id = 'lbGranted'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'lbGrT'); d.dataset.tier = tier;
+        var card = el('div', 'lb-dlg-card lb-gr-card lb-tier-' + tier), stack = el('div', 'lb-gr-stack');
+        var o = memberCard(m, 'card', { tier: oldTier }); o.classList.add('lb-gr-old'); var n = memberCard(m, 'card'); n.classList.add('lb-gr-new');
+        var sw = el('div', 'lb-gr-sweep'), sp = el('div', 'lb-gr-sparks'); sp.setAttribute('aria-hidden', 'true');
+        for (var i = 0; i < 12; i++) { var a = Math.PI * 2 * i / 12 + .3, r = 90 + (i % 3) * 28, k = el('i'); k.style.setProperty('--dx', Math.round(Math.cos(a) * r * 1.4) + 'px'); k.style.setProperty('--dy', Math.round(Math.sin(a) * r) + 'px'); k.style.animationDelay = (.8 + (i % 4) * .05) + 's'; sp.appendChild(k); }
+        stack.append(o, n, sw, sp); card.appendChild(stack);
+        var msg = el('div', 'lb-gr-msg'), h = el('h2', 'lb-gr-t'); h.id = 'lbGrT'; h.appendChild(document.createTextNode('You are now ')); h.appendChild(el('em', null, TIER_NAME[tier])); msg.appendChild(h);
+        var p = m.plan || {};
+        msg.appendChild(el('p', 'lb-note', (p.paidUntil ? 'From today until ' + fmtDate(p.paidUntil) + '. ' : 'From today. ') + 'Your new theme and certificate are ready in Membership.'));
+        card.appendChild(msg);
+        var row = el('div', 'lb-dlg-row'), go = el('button', 'lb-btn lb-btn-p', 'See what is new'), later = el('button', 'lb-btn', 'Later'); go.type = later.type = 'button';
+        go.addEventListener('click', function () { closeGranted(); openSettings('membership'); }); later.addEventListener('click', closeGranted);
+        row.append(go, later); card.appendChild(row); d.appendChild(card); document.body.appendChild(d); go.focus();
+        d.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeGranted(); });
+    }
+    // Shown when the tier rises (limitless:lasttier:v1) or the gate's plan.grantedAt moves (limitless:lastgrant:v1, also a renewal). First load ever, a drop and the same state stay silent.
+    function grantCheck(m) {
+        var p = m && m.plan; if (!p) return;
+        var tier = tierOf(m), lt = store(LT), lg = store(LG), gr = p.grantedAt != null ? Number(p.grantedAt) : null, known = RANK[lt] != null;
+        var rise = known && RANK[tier] > RANK[lt], regrant = gr != null && lg != null && gr > Number(lg) && tier !== 'ordinal';
+        store(LT, tier); if (gr != null) store(LG, String(gr));
+        if (rise || regrant) showGranted(m, known ? lt : 'ordinal');
+    }
 
     /* ---------- Settings in six groups (UI.md 5): each group shows its old sections together; keys and handlers are untouched ---------- */
     var GROUPS = [
@@ -286,33 +340,61 @@
         var a = el('a', null, 'See the plans'); a.href = 'limitless://plans'; a.addEventListener('click', function (e) { e.preventDefault(); if (window.LB_go) window.LB_go('limitless://plans'); }); n.appendChild(a); return n;
     }
     window.LBUI.plansLine = plansLine;
+    /* Membership panel (1.1 WP2, DESIGN-GAPS 4): the card first, a summary row (only cells that have data), plain rows, the limits folded. */
+    function sumCell(label, value, frac) {
+        var c = el('div', 'lb-sum-c'); c.appendChild(el('div', 'lb-sum-l', label)); c.appendChild(el('div', 'lb-sum-v', value));
+        if (frac != null) { var b = el('div', 'lb-bar'); b.setAttribute('role', 'progressbar'); b.setAttribute('aria-label', label); b.setAttribute('aria-valuemin', '0'); b.setAttribute('aria-valuemax', '100'); b.setAttribute('aria-valuenow', String(Math.round(Math.max(0, Math.min(1, frac)) * 100))); var f = el('i'); f.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%'; b.appendChild(f); c.appendChild(b); }
+        return c;
+    }
+    function summaryRow(m, tier) {
+        var p = m.plan || {}, l = p.limits || {}, c = p.cap, cells = [];
+        if (tier === 'executive' && p.loadNowLeft != null) cells.push(sumCell('Load Now', p.loadNowLeft + ' left today', l.loadNowPerDay ? p.loadNowLeft / l.loadNowPerDay : null));
+        else if (c && c.capGb > 0) cells.push(sumCell(l.monthlyGb && !l.weeklyGb ? 'This month' : 'This week', num(c.usedGb || 0) + ' of ' + num(c.capGb) + ' GB', (c.usedGb || 0) / c.capGb));
+        if (p.topupGbLeft > 0) cells.push(sumCell('Extra data', num(p.topupGbLeft) + ' GB left', l.topupGb ? p.topupGbLeft / l.topupGb : null));
+        if (p.paidUntil && tier !== 'ordinal') { var d = Math.ceil((p.paidUntil - Date.now()) / 864e5); if (d > 0) cells.push(sumCell('Your plan', d + (d === 1 ? ' day left' : ' days left'), Math.min(1, d / 365))); }
+        if (!cells.length) return null;
+        var row = el('div', 'lb-sum'); cells.forEach(function (c2) { row.appendChild(c2); }); return row;
+    }
+    function mpRow(label, parts) {
+        var r = el('div', 'lb-row'), v = el('div', 'lb-row-v'); r.appendChild(el('div', 'lb-row-l', label));
+        parts.forEach(function (x) { if (x) v.appendChild(x); }); r.appendChild(v); return r;
+    }
     function paintMembership() {
         var root = $('lbMemberPage'); if (!root) return;
         var m = member(); root.textContent = '';
-        var card = el('div', 'settings-card'), body = el('div', 'settings-card-body');
-        if (!m) { body.appendChild(el('div', 'settings-hint', 'Membership details appear here once you are signed in with a member account.')); card.appendChild(body); root.appendChild(card); return; }
-        var tier = tierOf(m), top = el('div', 'lb-mp-top'); top.appendChild(markSvg(tier));
-        var id = el('div'); id.appendChild(el('div', 'lb-mp-name', m.name || 'Member'));
-        id.appendChild(el('div', 'lb-mp-num', 'No. ' + pad(m.number)));
-        var bits = [TIER_NAME[tier], STANDING[m.standing] + (m.standing === 'suspended' && m.standingUntil ? ' until ' + fmtDate(m.standingUntil) : '')];
-        if (m.admittedAt) bits.push('Member since ' + fmtMonth(m.admittedAt));
-        id.appendChild(el('div', 'lb-note', bits.join(' · ')));
-        top.appendChild(id); body.appendChild(top); card.appendChild(body); root.appendChild(card);
-        var pc = el('div', 'settings-card'), ph = el('div', 'settings-card-head'); ph.appendChild(icon('card')); ph.appendChild(document.createTextNode(' Your plan'));
-        var pb = el('div', 'settings-card-body'); pb.appendChild(el('div', 'settings-switch-label', TIER_NAME[tier] + ' plan'));
-        var ex = expiry(m); if (m.plan && m.plan.paidUntil && tier !== 'ordinal') pb.appendChild(el('div', 'lb-note' + (ex ? ' lb-warn' : ''), ex ? ex.text : 'Paid until ' + fmtDate(m.plan.paidUntil) + '.'));
-        var dl = el('dl', 'lb-dl'); limitLines(m).forEach(function (r) { dl.appendChild(el('dt', null, r[0])); dl.appendChild(el('dd', null, r[1])); });
-        var u = m.plan && m.plan.used; if (u) { dl.appendChild(el('dt', null, 'Used today')); dl.appendChild(el('dd', null, gib(u.todayBytes || 0))); }
-        pb.appendChild(dl); if (tier === 'ordinal' || tier === 'cardinal' || tier === 'prime') pb.appendChild(plansLine(m));
-        pc.append(ph, pb); root.appendChild(pc);
-        var cc = el('div', 'settings-card'), ch = el('div', 'settings-card-head'); ch.appendChild(icon('check')); ch.appendChild(document.createTextNode(' Certificate and Charter'));
-        var cb = el('div', 'settings-card-body');
+        if (!m) { var card = el('div', 'settings-card'), body = el('div', 'settings-card-body'); body.appendChild(el('div', 'settings-hint', 'Membership details appear here once you are signed in with a member account.')); card.appendChild(body); root.appendChild(card); return; }
+        var tier = tierOf(m), p = m.plan || {};
+        var wrap = el('div', 'lb-mp-card'); wrap.appendChild(memberCard(m, 'card')); root.appendChild(wrap);
+        var sum = summaryRow(m, tier); if (sum) root.appendChild(sum);
+        var rows = el('div', 'lb-rows'); root.appendChild(rows);
+        var ex = expiry(m);
+        if (p.paidUntil && tier !== 'ordinal') rows.appendChild(mpRow('Paid until', [el('span', null, fmtDate(p.paidUntil)), ex ? el('div', 'lb-note lb-warn', ex.text) : null]));
+        if (p.plansOpen === true && p.trialAvailable) {
+            var next = tier === 'ordinal' ? 'cardinal' : 'prime', tb = el('button', 'lb-btn', 'Start trial'), msg = el('span', 'lb-note'); tb.type = 'button'; msg.setAttribute('role', 'status');
+            tb.addEventListener('click', function () {
+                tb.disabled = true;
+                fetch('/_lb/trial', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: '{}' }).then(function (r) { if (r.status === 200) { if (window.LB_meRefresh) window.LB_meRefresh(); } else { tb.disabled = false; msg.textContent = 'The trial could not start right now.'; } }, function () { tb.disabled = false; msg.textContent = 'The trial could not start right now.'; });
+            });
+            rows.appendChild(mpRow('Try ' + TIER_NAME[next] + ' for 24 hours', [tb, msg]));
+        }
+        var cert = [];
         if (m.certificateCode) {
-            cb.appendChild(el('div', 'lb-note', 'Certificate code ' + m.certificateCode));
-            ['screen', 'print'].forEach(function (v) { var a = el('a', 'lb-btn', v === 'screen' ? 'Download PDF (screen)' : 'Download PDF (print)'); a.href = '/_lb/me/certificate.pdf?variant=' + v; a.download = ''; a.style.marginRight = '8px'; cb.appendChild(a); });
-        } else cb.appendChild(el('div', 'lb-note', 'Certificates begin at the Cardinal plan. Your member card is on the start page.'));
-        var ch2 = el('div', 'lb-note', 'Charter version ' + (m.charterVersion || 'not signed') + '. '); var ra = el('a', null, 'Read the Rules'); ra.href = '/legal/terms.html'; ra.target = '_blank'; ra.rel = 'noopener'; ch2.appendChild(ra);
-        cb.appendChild(ch2); cc.append(ch, cb); root.appendChild(cc);
+            cert.push(el('div', 'lb-note', 'Certificate code ' + m.certificateCode));
+            ['screen', 'print'].forEach(function (v) { var a = el('a', 'lb-btn', v === 'screen' ? 'Download PDF (screen)' : 'Download PDF (print)'); a.href = '/_lb/me/certificate.pdf?variant=' + v; a.download = ''; a.style.marginRight = '8px'; cert.push(a); });
+        } else cert.push(el('div', 'lb-note', 'Certificates begin at the Cardinal plan. Your member card is on the start page.'));
+        rows.appendChild(mpRow('Certificate', cert));
+        var pill = el('span', 'lb-pill'); pill.dataset.standing = m.standing || 'good'; pill.appendChild(el('i', 'lb-dot'));
+        pill.appendChild(document.createTextNode((STANDING[m.standing] || STANDING.good) + (m.standing === 'suspended' && m.standingUntil ? ' until ' + fmtDate(m.standingUntil) : '')));
+        rows.appendChild(mpRow('Standing', [pill]));
+        var ra = el('a', null, 'Read the Rules'); ra.href = '/legal/terms.html'; ra.target = '_blank'; ra.rel = 'noopener';
+        var chv = el('span', null, (m.charterVersion || 'Not signed') + ' '); chv.appendChild(ra);
+        rows.appendChild(mpRow('Charter', [chv]));
+        // the limit lines stay as they were (plans slice), folded
+        var inc = el('details', 'lb-incl'); inc.appendChild(el('summary', null, 'What your ' + TIER_NAME[tier] + ' plan includes'));
+        var dl = el('dl', 'lb-dl'); limitLines(m).forEach(function (r) { dl.appendChild(el('dt', null, r[0])); dl.appendChild(el('dd', null, r[1])); });
+        var u = p.used; if (u) { dl.appendChild(el('dt', null, 'Used today')); dl.appendChild(el('dd', null, gib(u.todayBytes || 0))); }
+        inc.appendChild(dl); root.appendChild(inc);
+        if (tier === 'ordinal' || tier === 'cardinal' || tier === 'prime') root.appendChild(plansLine(m));
         if (feat('siteReport')) root.appendChild(siteCard());
     }
     document.addEventListener('lb-member', function () { var g = document.querySelector('.settings-section[data-section="membership"]'); if (g && g.style.display === 'flex') paintMembership(); });
@@ -345,15 +427,16 @@
 
     /* ---------- Splash: the member's name, the number small beneath (UI.md 4). Cached per device (limitless:me:v1: name and number only) ---------- */
     var ME_KEY = 'limitless:me:v1';
-    function paintSplash(name, number) {
+    // 1.1 WP2: the number and tier word are a mono footer line at the very bottom of the splash (the mark draws in by CSS)
+    function paintSplash(name, number, tier) {
         var w = document.querySelector('.lb-sp-word'); if (!w) return;
         if (!name) return;
         w.textContent = name; w.classList.add('lb-sp-name');
-        var n = document.querySelector('.lb-sp-num');
-        if (!n) { n = el('div', 'lb-sp-num'); w.parentNode.insertBefore(n, w.nextSibling); }
-        n.textContent = number != null && number !== '' ? 'No. ' + pad(number) : '';
+        var sp = w.closest('.lb-splash'), f = document.querySelector('.lb-sp-foot');
+        if (!f && sp) { f = el('div', 'lb-sp-foot'); sp.appendChild(f); }
+        if (f) f.textContent = [number != null && number !== '' ? 'No. ' + pad(number) : '', TIER_NAME[tier] || ''].filter(Boolean).join(' · ');
     }
-    function splashFromCache() { try { var c = JSON.parse(store(ME_KEY) || 'null'); if (c && c.name) paintSplash(String(c.name).slice(0, 80), c.number); } catch (_) {} }
+    function splashFromCache() { try { var c = JSON.parse(store(ME_KEY) || 'null'); if (c && c.name) paintSplash(String(c.name).slice(0, 80), c.number, c.tier); } catch (_) {} }
 
     /* ---------- Start page: member card, bulletin, expiry line, plans line (UI.md 4) ---------- */
     var DISMISSED = 'limitless:notices-dismissed:v1';
@@ -383,11 +466,8 @@
         var ex = expiry(m);
         if (ex) { var e = el('div', 'lb-expiry'); e.dataset.level = ex.level; e.setAttribute('role', 'status'); e.appendChild(document.createTextNode(ex.text + ' ')); var a = el('button', 'lb-link', 'Membership'); a.type = 'button'; a.addEventListener('click', function () { openSettings('membership'); }); e.appendChild(a); box.appendChild(e); }
         // member card
-        var tier = tierOf(m), c = el('button', 'lb-card lb-card-' + tier); c.type = 'button'; c.id = 'lbMemberCard'; c.setAttribute('aria-label', 'Membership: ' + (m.name || '') + ', number ' + pad(m.number));
-        c.appendChild(markSvg(tier));
-        var t = el('span', 'lb-card-t'); t.appendChild(el('span', 'lb-card-n', (m.name || 'Member') + ' · No. ' + pad(m.number)));
-        t.appendChild(el('span', 'lb-card-s', TIER_NAME[tier] + (m.admittedAt ? ' · since ' + fmtMonth(m.admittedAt) : '')));
-        c.appendChild(t); c.addEventListener('click', function () { openSettings('membership'); }); box.appendChild(c);
+        var tier = tierOf(m), c = memberCard(m, 'strip', { tag: 'button' }); c.classList.add('lb-card'); c.id = 'lbMemberCard'; c.setAttribute('aria-label', 'Membership: ' + (m.name || '') + ', number ' + pad(m.number));
+        c.addEventListener('click', function () { openSettings('membership'); }); box.appendChild(c);
         if (tier === 'ordinal' || tier === 'cardinal' || tier === 'prime') {
             var l = (m.plan && m.plan.limits) || {}, pl = plansLine(m), ln = [];
             if (l.tabs) ln.push(l.tabs + ' tabs'); if (l.dailyMinutes) ln.push(l.dailyMinutes / 60 + ' hours a day');
@@ -396,8 +476,8 @@
         var d = dayState(); if (d && d.left <= 0) { var f2 = el('div', 'lb-planline', 'Your time for today is finished.'); box.appendChild(f2); }
     }
     document.addEventListener('lb-member', function () {
-        var m = member(); if (m) { store(ME_KEY, JSON.stringify({ name: m.name || '', number: m.number })); paintSplash(m.name, m.number); }
-        paintStart(); dayCheck(); maybeTour();
+        var m = member(); if (m) { store(ME_KEY, JSON.stringify({ name: m.name || '', number: m.number, tier: tierOf(m) })); paintSplash(m.name, m.number, tierOf(m)); }
+        paintStart(); paintRailMe(); dayCheck(); maybeTour(); grantCheck(m);
     });
 
     /* ---------- Plan limits shown in the app: tab cap and the daily time (Ordinal, client side only: public relays never reach our gate, PLAN 0.3) ---------- */

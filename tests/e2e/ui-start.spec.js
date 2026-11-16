@@ -6,11 +6,12 @@ const { me, bootMember, refreshMe } = require('./helpers-ui');
 test('start page: member card shows name and number, tier and since, and opens the Membership group', async ({ page }) => {
   await bootMember(page, me({ tier: 'cardinal' }, { tier: 'cardinal', paidUntil: Date.now() + 200 * 864e5 }));
   const card = page.locator('#lbMemberCard');
-  await expect(card.locator('.lb-card-n')).toHaveText('Alex Morgan · No. 0047');
-  await expect(card.locator('.lb-card-s')).toHaveText('Cardinal · since November 2026');
+  await expect(card.locator('.lb-mc-n')).toHaveText('Alex Morgan');
+  await expect(card.locator('.lb-mc-t')).toHaveText('Cardinal');
+  await expect(card.locator('.lb-mc-no')).toHaveText('No. 0047');
   await card.click();
   await expect(page.locator('.settings-nav-item.active')).toHaveText('Membership');
-  await expect(page.locator('#lbMemberPage .lb-mp-name')).toHaveText('Alex Morgan');
+  await expect(page.locator('#lbMemberPage .lb-mc-card .lb-mc-n')).toHaveText('Alex Morgan');
 });
 
 test('start page without membership data shows no card', async ({ page }) => {
@@ -22,21 +23,21 @@ test('start page without membership data shows no card', async ({ page }) => {
 test('splash: name first, number small beneath, from the per-device cache; mark and wordmark only when there is none', async ({ page }) => {
   await boot(page);
   await expect(page.locator('.lb-sp-word')).toHaveText('Limitless');
-  await expect(page.locator('.lb-sp-num')).toHaveCount(0);
-  await page.addInitScript(() => localStorage.setItem('limitless:me:v1', JSON.stringify({ name: 'Alex Morgan', number: '0047' })));
+  await expect(page.locator('.lb-sp-foot')).toHaveCount(0);
+  await page.addInitScript(() => localStorage.setItem('limitless:me:v1', JSON.stringify({ name: 'Alex Morgan', number: '0047', tier: 'cardinal' })));
   await page.reload();
   await expect(page.locator('.lb-sp-word')).toHaveText('Alex Morgan');
-  await expect(page.locator('.lb-sp-num')).toHaveText('No. 0047');
+  await expect(page.locator('.lb-sp-foot')).toHaveText('No. 0047 · Cardinal');
   // The splash is hidden once the app is up: check order in the DOM, and the stacking with the splash forced visible.
   await page.addStyleTag({ content: '.lb-splash { display: flex !important; position: fixed; inset: 0; z-index: 999999; }' });
-  const w = await page.locator('.lb-sp-word').boundingBox(), n = await page.locator('.lb-sp-num').boundingBox();
+  const w = await page.locator('.lb-sp-word').boundingBox(), n = await page.locator('.lb-sp-foot').boundingBox(), vh = page.viewportSize().height;
   expect(w.y + w.height).toBeLessThanOrEqual(n.y + 1);
-  expect(n.height).toBeLessThan(w.height);
+  expect(n.y + n.height).toBeGreaterThan(vh - 80);   // the footer line sits at the very bottom
 });
 
-test('the cache is written from /_lb/me and holds name and number only', async ({ page }) => {
+test('the cache is written from /_lb/me and holds name, number and tier only', async ({ page }) => {
   await bootMember(page, me());
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('limitless:me:v1')))).toEqual({ name: 'Alex Morgan', number: '0047' });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('limitless:me:v1')))).toEqual({ name: 'Alex Morgan', number: '0047', tier: 'ordinal' });
 });
 
 test('bulletin: label, serif text, date, dismiss is remembered on this device', async ({ page }) => {
