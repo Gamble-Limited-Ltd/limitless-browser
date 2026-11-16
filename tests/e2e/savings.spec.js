@@ -120,7 +120,7 @@ test.describe('image Accept', () => {
   });
 
   test('features.imgAccept=false leaves the Accept alone', async ({ page }) => {
-    await stubbed(page, { imgAccept: false });
+    await stubbed(page, { imgAccept: false, reqHygiene: false });   // hygiene sends Chromium's own image Accept, the same string
     const log = await pageWith(page, '<html><head><title>t</title></head><body><img src="/p.png"></body></html>', { '/p.png': { headers: { 'content-type': 'image/png' }, body: 'x' } });
     expect(log.find((x) => x.url === '/p.png').accept).not.toBe(IMG_ACCEPT);
   });
