@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.1.0 (in progress)
+
+- The "Human Check" card now appears only for real bot-check pages, not for login or error pages that mention a captcha.
+- Requests through our relay now look like your own browser's (same browser name, language and header order), which clears some sites that blocked or challenged them.
+
 ## 1.0.1
 
 - Everyone goes through the welcome ceremony and chooses their own member number, including members who used Limitless before 1.0.
