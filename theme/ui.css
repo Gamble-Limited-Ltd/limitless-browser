@@ -91,7 +91,7 @@ html[data-lb-tabs="side"][data-lb-rail-min][data-lb-theme]:not([data-skin]) {
 .lb-mp-top .lb-tier-mark { width: 56px; height: 56px; }
 .lb-mp-name { font: 600 24px var(--lb-fd); }
 .lb-mp-num { font: 500 13px var(--lb-fm); letter-spacing: .12em; color: var(--tx2); margin-top: 2px; }
-.lb-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 20px; margin: 12px 0; font-size: 13px; }
+dl.lb-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 20px; margin: 12px 0; font-size: 13px; }
 .lb-dl dt { color: var(--tx3); }
 .lb-dl dd { margin: 0; color: var(--tx); }
 .lb-warn { color: var(--tx); border-left: 2px solid var(--ac); padding-left: 8px; }
