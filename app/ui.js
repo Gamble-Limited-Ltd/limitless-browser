@@ -124,8 +124,8 @@
         else if (skin && bt.parentNode === act) nav.appendChild(bt);
     }
 
-    /* ---------- Report a problem (ADMIN.md 8). POST /_lb/reports is the gate's S7/S9 route; until it exists the dialog says so. ---------- */
-    var CATS = ['Slow', 'Broken site', 'Looks wrong', 'Account', 'Bot check', 'Other'];
+    /* ---------- Report a problem (ADMIN.md 8). POST /_lb/report; category ids are the gate's REPORT_CATEGORIES (limitless-gate src/panel.ts). ---------- */
+    var CATS = [['slow', 'Slow'], ['broken', 'Broken site'], ['looks', 'Looks wrong'], ['account', 'Account'], ['bot', 'Bot check'], ['other', 'Other']];
     window.LBReport = {
         open: function (cat, host) {
             var old = $('lbReportDlg'); if (old) old.remove();
@@ -133,7 +133,7 @@
             var card = el('div', 'lb-dlg-card');
             var h = el('h2', 'lb-dlg-t', 'Report a problem'); h.id = 'lbRepT';
             var sel = el('select', 'lb-dlg-in'); sel.id = 'lbRepCat'; sel.setAttribute('aria-label', 'Category');
-            CATS.forEach(function (c) { var o = el('option', null, c); o.value = c; if (c === cat) o.selected = true; sel.appendChild(o); });
+            CATS.forEach(function (c) { var o = el('option', null, c[1]); o.value = c[0]; if (c[0] === cat || c[1] === cat) o.selected = true; sel.appendChild(o); });
             var note = el('textarea', 'lb-dlg-in'); note.id = 'lbRepNote'; note.maxLength = 500; note.rows = 4; note.placeholder = 'What happened? (500 characters)'; note.setAttribute('aria-label', 'What happened');
             var lab = el('label', 'lb-dlg-tick'); var tick = el('input'); tick.type = 'checkbox'; tick.id = 'lbRepHost'; lab.append(tick, el('span', null, "Include the site's address (domain only)"));
             var msg = el('div', 'lb-note'); msg.id = 'lbRepMsg'; msg.setAttribute('role', 'status');
@@ -143,10 +143,12 @@
             function esc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
             cancel.onclick = close; document.addEventListener('keydown', esc, true);
             send.onclick = function () {
+                var text = note.value.trim().slice(0, 500);
+                if (!text) { msg.textContent = 'Write a few words about what happened first.'; note.focus(); return; }
                 send.disabled = true; msg.textContent = 'Sending';
-                var body = { category: sel.value, note: note.value.slice(0, 500) };
-                if (tick.checked && host) body.host = host;
-                fetch('/_lb/reports', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+                var body = { category: sel.value, note: text };
+                if (tick.checked && host) { body.includeSite = true; body.site = 'https://' + host + '/'; }
+                fetch('/_lb/report', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                     .then(function (r) { if (!r.ok) throw new Error('x'); msg.textContent = 'Thank you. Your report was sent.'; send.hidden = true; cancel.textContent = 'Close'; })
                     .catch(function () { msg.textContent = 'Reports are not available right now. Please try again later.'; send.disabled = false; });
             };

@@ -21,11 +21,11 @@ test.describe('relay off (default)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('Settings > Connection says "Public relays (until 1.0)" and the switch is disabled', async ({ page }) => {
+  test('Settings > Connection says "Public relays (your plan)" and the switch is disabled', async ({ page }) => {
     await noVersion(page);
     await boot(page, { features: null });
     const s = await page.evaluate(() => { const sw = document.getElementById('settingsRelayFallbackSwitch'); sw.click(); return { label: document.getElementById('settingsRelayFallbackLabel').textContent, disabled: sw.classList.contains('disabled'), on: sw.classList.contains('on') }; });
-    expect(s).toEqual({ label: 'Public relays (until 1.0)', disabled: true, on: true });
+    expect(s).toEqual({ label: 'Public relays (your plan)', disabled: true, on: true });
   });
 
   test('the dead pool entries are gone and nothing is left in the pool that is not wss', async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('public relay copy', () => {
     await expect(notice).toBeVisible({ timeout: 30000 });
     await expect(notice).toContainText('run by other operators');
     await expect(notice).toContainText('connection metadata');
-    await expect(notice).toContainText('until Limitless 1.0 brings its own relay');
+    await expect(notice).toContainText('Our own relay comes with paid plans');
     await page.locator('#lbRelayNo').click();
     await expect(notice).toHaveCount(0);
     expect(await page.evaluate(() => localStorage.getItem('gi_n:limitless:notice-publicrelays:v1'))).toBe('1');
