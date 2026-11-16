@@ -21,6 +21,11 @@ What changed, in plain language. Newest first.
 - Free plans show their limits: Ordinal members have 4 open tabs and about 4 hours a day. A note appears when about 15 minutes are left.
 - The old interactive tour is gone. A short tour after the welcome replaces it.
 - Tabs can sit on the left (Settings, Appearance, Tab layout). The rail folds to icons on a narrow window or with the button at its top.
+- Pages use less data. Pictures are requested as AVIF or WebP where the site offers them. Pictures far below the screen are no longer fetched before you scroll to them. Hints that make a browser fetch pages you may never open (prefetch, prerender, and speculation rules) are ignored. Compressed responses were already on and stay on.
+- The ad and tracker blocklist is bigger: HaGeZi Multi Normal replaces Light, so more trackers are blocked. It downloads once, after your first page, and is then kept on your device.
+- Downloads of files over 20 MB are split into parallel parts, as many as your plan allows (Ordinal 1, Cardinal 2, Prime 4, Executive 8), when the site supports it. Pause, resume, retry and cancel work as before.
+- Downloads use their own connection to our relay, count separately from browsing, and wait while a page is loading, so a download does not slow your browsing. If your monthly download allowance is used up, the Downloads panel says so.
+- New in Settings, Connection: send downloads over 200 MB through public relays to save your allowance. It is off by default. Public relays are run by other people and can see which sites you connect to.
 
 ## 0.3.0
 
