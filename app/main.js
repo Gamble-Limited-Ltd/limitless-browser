@@ -5466,6 +5466,35 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             window.LB_queueState = () => ({ fetching, queued: fetchQueue.length });
             const LB_PREWARM_TOP = 6;
             const LB_IMG_ACCEPT = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
+            // Request hygiene (1.1, features.reqHygiene, docs/1.1/BOTCHECK.md): send what the user's real browser would send, nothing else.
+            // UA = the saved one or navigator.userAgent; Chromium UAs get matching sec-ch-ua*, Firefox UAs get none; Accept and Accept-Language
+            // follow the engine; no Origin on plain GETs, no Referer on a top-level navigation; headers in the engine's usual order.
+            const lbHygieneOn = () => window.LB_features.reqHygiene !== false;
+            function lbIsChromium(ua) { return /Chrome\/\d+/.test(ua) && !/Firefox\/|Edg\/|OPR\//.test(ua); }
+            function lbClientHints(ua) {
+                if (!lbIsChromium(ua)) return null;
+                const v = (/Chrome\/(\d+)/.exec(ua) || [])[1], u = navigator.userAgentData;
+                // the real hints only while they agree with the UA string (a changed UA must not mix versions)
+                const uad = ua === navigator.userAgent && u && u.brands && u.brands.some((x) => x.brand === 'Chromium' && x.version === v) ? u : null;
+                const brands = uad && uad.brands && uad.brands.length ? uad.brands.map((b) => `"${b.brand}";v="${b.version}"`).join(', ')
+                    : `"Chromium";v="${v}", "Google Chrome";v="${v}", "Not.A/Brand";v="99"`;
+                const plat = (uad && uad.platform) || (/CrOS/.test(ua) ? 'Chrome OS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : 'Linux');
+                const mob = uad ? uad.mobile : /Mobile/.test(ua);
+                return { 'sec-ch-ua': brands, 'sec-ch-ua-mobile': mob ? '?1' : '?0', 'sec-ch-ua-platform': `"${plat}"` };
+            }
+            function lbAcceptLang(ff) {
+                const l = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en-US']).slice(0, 4);
+                const q = ff ? [1, 0.5, 0.3, 0.2] : [1, 0.9, 0.8, 0.7];
+                return l.map((x, i) => (i ? `${x};q=${q[i]}` : x)).join(',');
+            }
+            const LB_ORDER_CH = ['sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform', 'upgrade-insecure-requests', 'user-agent', 'accept', 'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-user', 'sec-fetch-dest', 'referer', 'accept-encoding', 'accept-language', 'cookie'];
+            const LB_ORDER_FF = ['user-agent', 'accept', 'accept-language', 'accept-encoding', 'referer', 'cookie', 'upgrade-insecure-requests', 'sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user'];
+            function lbOrderHeaders(h, chromium) {   // in place; unknown headers keep their place at the front
+                const R = chromium ? LB_ORDER_CH : LB_ORDER_FF, rank = (k) => R.indexOf(k.toLowerCase());
+                const e = Object.entries(h).map((x, i) => [x, i]).sort((a, b) => (rank(a[0][0]) - rank(b[0][0])) || (a[1] - b[1])).map((x) => x[0]);
+                for (const [k] of e) delete h[k];
+                for (const [k, v] of e) h[k] = v;
+            }
             async function doFetch(url, opts = {}) {
                 if (_netStall) return Promise.reject(new TypeError('Failed to fetch'));
                 const method = opts.method || "GET";
@@ -5484,8 +5513,10 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     headers.Cookie = cookieHeader;
                     usedJarCookie = true;
                 }
-                if (pageUrl && !headers.Origin && !headers.origin) headers.Origin = new URL(pageUrl).origin;
-                if (pageUrl && !headers.Referer && !headers.referer) {
+                const _hyg = lbHygieneOn(), _nav = !!(_hyg && opts.__nav);
+                let _autoOrigin = false;
+                if (pageUrl && !headers.Origin && !headers.origin) { headers.Origin = new URL(pageUrl).origin; _autoOrigin = true; }
+                if (pageUrl && !headers.Referer && !headers.referer && !_nav) {
                     const pageOrigin = new URL(pageUrl).origin;
                     let ref = pageOrigin;
                     try {
@@ -5501,12 +5532,12 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 // User-Agent — prefer saved UA, fall back to a current Chrome string
                 if (!headers['User-Agent'] && !headers['user-agent']) {
                     const _savedReqUA = (() => { try { return ls.getItem('limitless:ua:request:v1'); } catch { return null; } })();
-                    headers['User-Agent'] = _savedReqUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36';
+                    headers['User-Agent'] = _savedReqUA || (_hyg && navigator.userAgent) || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36';
                 }
 
                 // Accept-Language
                 if (!headers['Accept-Language'] && !headers['accept-language']) {
-                    headers['Accept-Language'] = 'en-US,en;q=0.9';
+                    headers['Accept-Language'] = _hyg ? lbAcceptLang(/Firefox\//.test(headers['User-Agent'] || headers['user-agent'] || '')) : 'en-US,en;q=0.9';
                 }
 
                 // Data saver (Settings > Connection): ask servers for lighter responses
@@ -5525,7 +5556,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                         } catch { return false; }
                     })();
 
-                    const isNavigation = !pageUrl || url === pageUrl;
+                    const isNavigation = !pageUrl || url === pageUrl || _nav;
                     if (isNavigation) {
                         // Top-level document navigation
                         headers['Sec-Fetch-Mode'] = 'navigate';
@@ -5568,6 +5599,22 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                                                   : isDoc    ? 'document'
                                                   :            'empty';   // XHR / fetch → empty
                     }
+                }
+                if (_hyg) {
+                    const _ua = headers['User-Agent'] || headers['user-agent'] || '', _cr = lbIsChromium(_ua), _ff = /Firefox\//.test(_ua);
+                    const _has = (k) => Object.keys(headers).some((x) => x.toLowerCase() === k);
+                    const _hints = lbClientHints(_ua);
+                    if (_hints) for (const k in _hints) if (!_has(k)) headers[k] = _hints[k];
+                    if (_nav && (_cr || _ff)) {
+                        if (!_has('upgrade-insecure-requests')) headers['Upgrade-Insecure-Requests'] = '1';
+                        if (!_has('accept')) headers.Accept = _cr ? 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+                    } else if (!_has('accept') && (_cr || _ff)) {
+                        const _d = headers['Sec-Fetch-Dest'];
+                        headers.Accept = _d === 'style' ? 'text/css,*/*;q=0.1' : _d === 'image' ? LB_IMG_ACCEPT : '*/*';
+                    }
+                    // Origin only on CORS or non-GET requests, as a browser sends it
+                    if (_autoOrigin && (_nav || (/^(GET|HEAD)$/i.test(method) && headers['Sec-Fetch-Mode'] !== 'cors'))) delete headers.Origin;
+                    lbOrderHeaders(headers, _cr);
                 }
                 // ── End browser fingerprint normalisation ──────────────────────
                 let body = opts.body;
@@ -9903,7 +9950,8 @@ _VIEWER_DL_JS +
                 try {
                     log(`<i class="fas fa-arrow-right" style="color:var(--ac)"></i>` + url + ` <span style="color:var(--tx3);font-size:11px;font-family:var(--mono)">via ${WISP.replace(/^wss?:\/\//, '').split('/')[0]}</span>`, "info");
                     const opts = {
-                        signal: tabCtrl.signal
+                        signal: tabCtrl.signal,
+                        __nav: true   // top-level document (request hygiene)
                     };
                     if (method === "POST" && body) {
                         opts.method = "POST";
