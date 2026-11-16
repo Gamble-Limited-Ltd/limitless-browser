@@ -313,7 +313,7 @@
             // No token (home says no, VPS not polling, offline) = the VPS is down: the socket falls back to the same-origin /wisp/
             // (410 in production, so the normal failure path runs: the relay notice, then public relays when allowed).
             const LB_relayTok = {
-                cur: null, pending: null,
+                cur: null, pending: null, denied: false,
                 left() { return this.cur ? this.cur.at + this.cur.ttl * 1000 - Date.now() : -1; },
                 async get(force) {
                     if (!force && this.left() > 60000) return this.cur;
@@ -323,6 +323,8 @@
                         const timer = setTimeout(() => ctl.abort(), 4000);
                         try {
                             const r = await fetch('/_lb/relay-token', { method: 'POST', credentials: 'same-origin', cache: 'no-store', signal: ctl.signal });
+                            // 403 for a session nginx let through = this member's plan rides public relays (Ordinal, or over cap or the brake).
+                            this.denied = r.status === 403;
                             if (!r.ok) { this.cur = null; return null; }
                             const j = await r.json();
                             if (!j || typeof j.url !== 'string' || !/^wss?:\/\//.test(j.url) || typeof j.token !== 'string') { this.cur = null; return null; }
@@ -466,7 +468,7 @@
                 m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lbRelayHead');
                 m.innerHTML = '<div class="lb-notice"><span class="lb-tag">Public relays</span>' +
                     '<h3 id="lbRelayHead">Browsing now goes through public relays.</h3>' +
-                    '<p>They are run by other operators, who can see connection metadata such as which sites you connect to. This stays until Limitless 1.0 brings its own relay.</p>' +
+                    '<p>They are run by other operators, who can see connection metadata such as which sites you connect to. Our own relay comes with paid plans.</p>' +
                     '<div class="lb-notice-btns"><button type="button" class="lb-btn p" id="lbRelayNo">Got it</button></div></div>';
                 document.body.appendChild(m);
                 const close = () => { try { ls.setItem(LB_PUBLIC_NOTICE_KEY, '1'); } catch (_) {} m.remove(); document.removeEventListener('keydown', onKey, true); };
@@ -567,7 +569,7 @@
                 window.LB_meRefresh = poll;
                 timer = setTimeout(poll, 1500);
             })();
-            // Settings > Connection switch. While our relay is off it reads "Public relays (until 1.0)", on and disabled; the saved key is untouched.
+            // Settings > Connection switch. While our relay is off (build switch, or a plan without it) it reads "Public relays (your plan)", on and disabled; the saved key is untouched.
             function LB_paintRelaySwitch() {
                 const sw = document.getElementById('settingsRelayFallbackSwitch');
                 if (!sw) return;
@@ -575,7 +577,7 @@
                 sw.classList.toggle('disabled', !LB_ownRelay);
                 sw.setAttribute('aria-disabled', LB_ownRelay ? 'false' : 'true');
                 const lab = document.getElementById('settingsRelayFallbackLabel'), hint = document.getElementById('settingsRelayFallbackHint');
-                if (lab) lab.textContent = LB_ownRelay ? 'Allow third-party relays' : 'Public relays (until 1.0)';
+                if (lab) lab.textContent = LB_ownRelay ? 'Allow third-party relays' : 'Public relays (your plan)';
                 if (hint) hint.textContent = LB_ownRelay
                     ? 'Off by default. Limitless uses its own relay. Third-party relays are not run by Gamble Limited Ltd. Changing this reloads the page.'
                     : 'Until Limitless 1.0 brings its own relay, browsing goes through public relays run by other operators. They can see connection metadata. This cannot be turned off for now.';
@@ -12389,7 +12391,11 @@ _VIEWER_DL_JS +
                     await initCache();
                     log("Cache initialized", "info");
 
-                    LB_applyRelayMode(await window.LB_featuresReady);   // our relay on or off, decided before any session exists
+                    let _lbF = await window.LB_featuresReady;
+                    // Our relay is for plans that include it. A plan without it (Ordinal, the free tier) gets 403 from the token route and
+                    // browses on public relays exactly as in 0.3.0, instead of the "our relay is not reachable" consent wall.
+                    if (_lbF && _lbF.ownRelay === true && window.LB_access === 'ok') { await LB_relayTok.get(true); if (LB_relayTok.denied) _lbF = Object.assign({}, _lbF, { ownRelay: false }); }
+                    LB_applyRelayMode(_lbF);   // our relay on or off, decided before any session exists
                     if (window.LB_access !== 'ok') { LB_cannotReach(); return; }   // fail closed: no session, no browsing
 
                     try {

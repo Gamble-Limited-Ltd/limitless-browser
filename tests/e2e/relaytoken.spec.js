@@ -149,6 +149,8 @@ test('token cache: reused while more than 60 s are left, renewed before it ends,
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ url: 'wss://relay.example/wisp/', token: 'tok' + n, exp: 9999999999, ttl: 300 }) });
   });
   await setup(page);
+  await page.evaluate(async () => { await window.LB_relayTok.pending; window.LB_relayTok.cur = null; });   // boot asked for one already (plan check)
+  n = 0;
   const r = await page.evaluate(async () => {
     const T = window.LB_relayTok;
     const a = await T.get();
@@ -184,3 +186,24 @@ test('version.json ownRelay true turns it on, anything else leaves it off', asyn
   await p2.evaluate(() => window.LB_featuresReady);
   expect(await p2.evaluate(() => window.LB_features.ownRelay)).toBe(false);
 });
+
+// 1.0 launch: Ordinal (the free tier, and every member while plans are closed) has no relay in its plan, so the token route answers 403.
+// That member browses on public relays as in 0.3.0, never behind the "our relay is not reachable" consent wall. A 503 (VPS down) still is.
+for (const [status, own, head] of [[403, false, 'Browsing now goes through public relays.'], [503, true, 'Our relay is not reachable right now.']]) {
+  test(`relay token ${status} at boot: ownRelay ${own}, notice "${head}"`, async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__heads = [];
+      new MutationObserver(() => { const h = document.getElementById('lbRelayHead'); if (h && !window.__heads.includes(h.textContent)) window.__heads.push(h.textContent); })
+        .observe(document, { childList: true, subtree: true });
+    });
+    await page.route('**/_lb/relay-token', (r) => r.fulfill({ status }));
+    await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"dev","features":{"ownRelay":true,"ownSockets":4}}' }));
+    const errors = await setup(page);
+    await expect.poll(() => page.evaluate(() => window.__heads.length)).toBeGreaterThan(0);
+    const r = await page.evaluate(() => ({ s: window.LB_relayStatus(), heads: window.__heads }));
+    expect(r.s.ownRelay).toBe(own);
+    expect(r.s.fallbackAllowed).toBe(!own);
+    expect(r.heads).toEqual([head]);
+    expect(errors).toEqual([]);
+  });
+}
