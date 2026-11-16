@@ -103,7 +103,7 @@ test.describe('own relay shards', () => {
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
     const f = await page.evaluate(() => ({ ...window.LB_features }));
-    expect(f).toMatchObject({ ownRelay: true, ownSockets: 1, worker: false, respCache: false, sw: true, pipeline: false, lazyImg: false, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true });
+    expect(f).toMatchObject({ ownRelay: true, ownSockets: 1, worker: false, respCache: false, sw: true, pipeline: false, lazyImg: false, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true });
     expect(await page.evaluate(() => window.LB_router.route('ws://' + location.host + '/wisp/a.test:443').url)).toBe(`ws://127.0.0.1:${PORT}/wisp/a.test:443`);
   });
 
@@ -111,7 +111,25 @@ test.describe('own relay shards', () => {
     await page.route('**/version.json*', (r) => r.fulfill({ status: 404, body: 'no' }));
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
-    expect(await page.evaluate(() => ({ ...window.LB_features }))).toMatchObject({ ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true });
+    expect(await page.evaluate(() => ({ ...window.LB_features }))).toMatchObject({ ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true });
+  });
+});
+
+test.describe('video socket', () => {
+  test('a video host stream gets its own v/ socket; with the switch off it shares the shards', async ({ page }) => {
+    await setup(page);
+    const out = await page.evaluate(() => {
+      const base = 'ws://' + location.host + '/wisp/';
+      const on = window.__mk({ videoSock: () => true }).r, off = window.__mk({ videoSock: () => false }).r;
+      const u = (r, h) => r.route(base + h + ':443').url;
+      return { v1: u(on, 'rr3---sn-x.googlevideo.com'), v2: u(on, 'a.vimeocdn.com'), page: u(on, 's.test'), fake: u(on, 'notgooglevideo.com'),
+        offV: u(off, 'rr3---sn-x.googlevideo.com') };
+    });
+    expect(out.v1).toMatch(/\/wisp\/v\/rr3---sn-x\.googlevideo\.com:443$/);
+    expect(out.v2).toMatch(/\/wisp\/v\/a\.vimeocdn\.com:443$/);
+    expect(out.page).toMatch(/\/wisp\/[1-4]\/s\.test:443$/);
+    expect(out.fake).toMatch(/\/wisp\/[1-4]\/notgooglevideo\.com:443$/);
+    expect(out.offV).toMatch(/\/wisp\/[1-4]\/rr3---sn-x\.googlevideo\.com:443$/);
   });
 });
 

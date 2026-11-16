@@ -688,7 +688,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -719,7 +719,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -758,6 +758,9 @@
             //     capping the whole browser. The gate accepts any /wisp/* path.
             //   - multi-relay (opt-in, needs third-party relays allowed): per-site sticky, spread, or race.
             // Everything here is a plain object built by LB_makeRouter(deps) so it can be tested with a stub Socket.
+            // Must match VIDEO_HOST_SUFFIXES in limitless-gate src/sites.ts (the relay caps these streams).
+            const LB_VIDEO_SUFFIXES = ['googlevideo.com', 'vimeocdn.com', 'ttvnw.net', 'dmcdn.net'];
+            const LB_isVideoHost = (h) => { h = String(h).toLowerCase().replace(/\.$/, ''); return LB_VIDEO_SUFFIXES.some((x) => h === x || h.endsWith('.' + x)); };
             function LB_makeRouter(d) {
                 const sticky = new Map();      // hostname -> relay root (multi-relay)
                 const sockets = new Map();     // final base url -> Set of live sockets
@@ -817,7 +820,10 @@
                         // Downloads panel hosts: our relay's own `dl/` socket (never sharded), or the best public relay for big files.
                         const dk = !R.pinned && R.dl.get(p.hp);
                         if (dk && dk.kind === 'public') { const pub = (d.publicRoots && d.publicRoots(p.host)) || []; if (pub.length) roots = [pub[0]]; }
-                        const bases = dk && dk.kind === 'own' && roots.length === 1 && roots[0] === d.ownBase() ? [roots[0] + 'dl/'] : roots.map(R.finalBase);
+                        // features.videoSock: video CDN streams get their own `v/` socket so a capped video never pauses the page sockets.
+                        const ownOnly = roots.length === 1 && roots[0] === d.ownBase();
+                        const bases = dk && dk.kind === 'own' && ownOnly ? [roots[0] + 'dl/']
+                            : ownOnly && d.videoSock && d.videoSock() && LB_isVideoHost(p.host) ? [roots[0] + 'v/'] : roots.map(R.finalBase);
                         bases.forEach((b, i) => rootOf.set(b, roots[i]));
                         const urls = bases.map(b => b + p.hp);
                         return { url: urls[0], base: bases[0], host: p.host, port: p.port, race: urls.length > 1 ? urls : null, bases };
@@ -949,6 +955,7 @@
             function lbMultiMode() { try { const m = ls.getItem(LB_MULTI_MODE_KEY); return m === 'spread' || m === 'race' ? m : 'site'; } catch { return 'site'; } }
             const LB_router = LB_makeRouter({
                 ownBase: () => LB_OUR_WISP,
+                videoSock: () => window.LB_features.videoSock !== false,
                 ownSockets: () => (LB_OUR_WISP ? Math.min(lbOwnSocketsSetting(), window.LB_features.ownSockets) : 1),
                 // Multi-relay needs third-party relays to be allowed; the switch is locked in Settings otherwise.
                 multiOn: () => { try { return LB_fallbackAllowed && ls.getItem(LB_MULTI_KEY) === '1'; } catch { return false; } },
