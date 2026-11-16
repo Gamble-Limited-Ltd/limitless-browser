@@ -355,13 +355,16 @@
                     let t = null;
                     try { t = await this._d.token(); } catch (_) { t = null; }
                     if (this._closed) return;
+                    // features.dlClass: a socket for the Downloads panel (router base `<own>dl/`) says so in a third subprotocol, so the relay
+                    // counts its bytes as download bytes and serves it after browsing traffic. Everything else is unchanged.
+                    const dl = !!(this._d.isDl && this._d.isDl(this.url));
                     if (t) {
-                        try { return this._attach(new this._d.WebSocket(t.url, ['lb.v1', 'lbt.' + t.token]), true); } catch (_) {}
+                        try { return this._attach(new this._d.WebSocket(t.url, dl ? ['lb.v1', 'lbt.' + t.token, 'lbk.dl'] : ['lb.v1', 'lbt.' + t.token]), true, dl); } catch (_) {}
                     }
                     this._markDown();
                     this._attach(new this._d.WebSocket(this.url), false);
                 }
-                _attach(ws, vps) {
+                _attach(ws, vps, dl) {
                     this._inner = ws;
                     try { ws.binaryType = this._bt; } catch (_) {}
                     ws.addEventListener('open', () => {
@@ -374,6 +377,12 @@
                     ws.addEventListener('message', (e) => { if (this._inner === ws && !this._closed) this._fire('message', new MessageEvent('message', { data: e.data })); });
                     const gone = (e) => {
                         if (this._inner !== ws || this._closed) return;
+                        // A download socket the relay refuses (429, monthly download allowance used up) while normal sockets work is not
+                        // a relay outage: no fallback to public relays (that would dodge the allowance), the panel shows the message.
+                        if (dl && ((vps && !this._opened && this._d.up && this._d.up()) || (e.type === 'close' && (e.code === 4429 || /429/.test(e.reason || ''))))) {
+                            try { this._d.onDlRefused && this._d.onDlRefused(); } catch (_) {}
+                            if (!this._opened) { this._closed = true; this.readyState = 3; try { ws.close(); } catch (_) {} this._fire('error', new Event('error')); this._fire('close', new CloseEvent('close', { code: 4429 })); return; }
+                        }
                         if (vps && !this._opened) { this._markDown(); try { ws.close(); } catch (_) {} this._attach(new this._d.WebSocket(this.url), false); return; }
                         if (e.type === 'error') { this._fire('error', new Event('error')); return; }
                         this._closed = true; this.readyState = 3;
@@ -410,6 +419,9 @@
                 WebSocket: window.WebSocket,
                 token: () => LB_relayTok.get(),
                 markUp() { _lbRelayOurs = 'ok'; },
+                isDl: (url) => !!LB_OUR_WISP && url.startsWith(LB_OUR_WISP + 'dl/'),
+                up: () => _lbRelayOurs === 'ok',
+                onDlRefused() { window.LB_dlRefusedAt = Date.now(); },
                 onDown() { _lbRelayOurs = 'down'; if (!LB_fallbackAllowed) LB_showRelayNotice(); },
             });
             // Startup probe of the VPS (replaces the probe of the tunnel /wisp/): token, then one WebSocket handshake with it.
@@ -745,6 +757,9 @@
                     epoch: 0,                  // L2: counts sockets the network (not we) closed or failed; doFetch compares it before and after a request
                     noteDrop(base) { R.epoch++; try { d.onDrop && d.onDrop(base); } catch (_) {} },
                     pinned: null,              // set by LB_swapSession(url, {pin:true}) while a retry is on a chosen relay
+                    dl: new Map(),             // "host:port" -> {kind: 'own'|'public', n}: hosts the Downloads panel is fetching from (features.dlClass, dlpublic)
+                    dlMark(hp, kind) { const e = R.dl.get(hp); if (e && e.kind === kind) e.n++; else R.dl.set(hp, { kind, n: 1 }); },
+                    dlUnmark(hp) { const e = R.dl.get(hp); if (e && --e.n <= 0) R.dl.delete(hp); },
                     sticky,
                     seen: new WeakSet(),       // relay connections already watched for a drop
                     parse(raw) {
@@ -789,7 +804,10 @@
                                 else { roots = [ranked[0]]; sticky.set(p.host, ranked[0]); }
                             }
                         }
-                        const bases = roots.map(R.finalBase);
+                        // Downloads panel hosts: our relay's own `dl/` socket (never sharded), or the best public relay for big files.
+                        const dk = !R.pinned && R.dl.get(p.hp);
+                        if (dk && dk.kind === 'public') { const pub = (d.publicRoots && d.publicRoots(p.host)) || []; if (pub.length) roots = [pub[0]]; }
+                        const bases = dk && dk.kind === 'own' && roots.length === 1 && roots[0] === d.ownBase() ? [roots[0] + 'dl/'] : roots.map(R.finalBase);
                         bases.forEach((b, i) => rootOf.set(b, roots[i]));
                         const urls = bases.map(b => b + p.hp);
                         return { url: urls[0], base: bases[0], host: p.host, port: p.port, race: urls.length > 1 ? urls : null, bases };
@@ -927,6 +945,7 @@
                 mode: lbMultiMode,
                 candidates: (host) => rankPoolCandidates(host, null),
                 markFailed: markWispFailed,
+                publicRoots: (host) => (LB_fallbackAllowed ? (rankPoolCandidates(host, null) || []).filter(r => r && r !== LB_OUR_WISP) : []),
                 onDrop: () => {},
                 get Socket() { return libcurl.wisp.WispWebSocket; },
             });
@@ -961,7 +980,19 @@
                 return next;
             }
             window.LB_swapSession = LB_swapSession;
-            window.LB_net = { get curl() { return curl; }, set curl(v) { curl = v; } };   // test hook
+            // The Downloads panel's own libcurl session (features.dlClass / big files over public relays): separate connections, so the
+            // router can put them on the `dl/` socket. Null means "use the browsing session" (relay off, no token, switch off).
+            let lbDlSess = null, lbDlStub = null;
+            function lbDlSession(pub) {
+                if (lbDlStub) return lbDlStub;
+                const own = window.LB_features.dlClass !== false && LB_ownRelay && !!LB_OUR_WISP && !!LB_relayTok.cur;
+                if (!own && !pub) return null;
+                if (!lbDlSess) { lbDlSess = new libcurl.HTTPSession(); lbApplyConnections(lbDlSess); }
+                return lbDlSess;
+            }
+            function lbDlSessionReset() { const o = lbDlSess; lbDlSess = null; if (o) setTimeout(() => { try { o.close(); } catch (_) {} }, 60000); }
+            window.LB_dl = { session: lbDlSession, reset: lbDlSessionReset, mark: (hp, k) => LB_router.dlMark(hp, k), unmark: (hp) => LB_router.dlUnmark(hp) };
+            window.LB_net = { get curl() { return curl; }, set curl(v) { curl = v; }, get dlCurl() { return lbDlStub; }, set dlCurl(v) { lbDlStub = v; } };   // test hook
 
             // Settings > Connection: sockets to our relay, multi-relay switch and mode.
             (function () {
@@ -3703,10 +3734,21 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             // Navigation timing marks for the speed harness (tests/stack/speed.spec.js). Always on, local only, no network:
             // ms since go() started a top-level load. Marks: firstBytes (document response in), dom (parsed), shown (overlay
             // hidden), load (iframe load event).
+            // Pages first (features.pagesFirst): while a top-level page load runs (go() start until 'shown', at most LB_PF_MAX ms) the
+            // Downloads panel holds new requests and pauses reading, so a download does not slow browsing on the shared relay.
+            const LB_PF_MAX = 10000;
+            window.LB_pagesFirst = {
+                until: 0, waiters: [], timer: 0,
+                on() { return !(window.LB_features && window.LB_features.pagesFirst === false); },
+                holding() { return this.on() && this.until > Date.now(); },
+                begin() { if (!this.on()) return; this.until = Date.now() + LB_PF_MAX; clearTimeout(this.timer); this.timer = setTimeout(() => this.end(), LB_PF_MAX); },
+                end() { this.until = 0; clearTimeout(this.timer); this.timer = 0; for (const r of this.waiters.splice(0)) r(); },
+                wait() { return this.holding() ? new Promise((r) => this.waiters.push(r)) : Promise.resolve(); },
+            };
             window.__lbPerf = {
                 runs: [], cur: null,
-                start(url) { const c = { url, t0: performance.now(), marks: {} }; this.cur = c; this.runs.push(c); if (this.runs.length > 60) this.runs.shift(); return c; },
-                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') lbPerfSample(c.marks.shown); } }
+                start(url) { window.LB_pagesFirst.begin(); const c = { url, t0: performance.now(), marks: {} }; this.cur = c; this.runs.push(c); if (this.runs.length > 60) this.runs.shift(); return c; },
+                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') { window.LB_pagesFirst.end(); lbPerfSample(c.marks.shown); } } }
             };
             // S9b: anonymous load-time sample (docs/1.0/PAID-TIERS-PLAN.md): signed-in members on a membership server only, 1 in 5 page
             // loads, at most one per 10 s, never with Data saver, never the URL or host. features.perf = false is the kill switch.
@@ -18201,7 +18243,7 @@ _VIEWER_DL_JS +
                 const slots = () => (lbDataSaver() ? 1 : 2);
                 const busy = () => items.filter((x) => x.status === 'active' || x.status === 'retrying').length;
 
-                function refuse(it, msg, plans) { it.status = 'refused'; it.note = msg; it.plans = !!plans; it.parts = []; paint(it); pump(); }
+                function refuse(it, msg, plans) { it.status = 'refused'; it.note = msg; it.plans = !!plans; it.parts = []; it.segs = null; dlUnmark(it); paint(it); pump(); }
                 // the early checks: 2 GB first, then the plan's per-file limit (size known from Content-Length or Content-Range)
                 function vet(total) {
                     if (total > HARD) return { msg: 'This file is over 2 GB. Limitless keeps a download in memory, so 2 GB is the most it can take.' };
@@ -18220,14 +18262,72 @@ _VIEWER_DL_JS +
                         if (j && j.membership === 'on') window.LB_member = j;
                     } catch (_) {}
                 }
+                const SPLIT_MIN = 20 * MB, PUBLIC_MIN = 200 * MB;
+                const parts = () => { const n = Math.floor(Number(lim().downloadParts)); return window.LB_features.dlSplit === false || !(n > 1) ? 1 : Math.min(8, n); };
+                const publicOn = () => { try { return ls.getItem('limitless:dlpublic:v1') === '1'; } catch (_) { return false; } };
+                const hpOf = (url) => { try { const u = new URL(url); return u.hostname + ':' + (u.port || (u.protocol === 'https:' ? 443 : 80)); } catch (_) { return ''; } };
+                // One request of a download. It goes over the Downloads panel's own session and relay socket when there is one
+                // (features.dlClass, or public relays for a big file); identity encoding keeps Content-Length and Range exact.
+                function dlFetch(it, headers, signal) {
+                    const sess = window.LB_dl.session(it.pub) || curl;
+                    const h = { 'Accept-Encoding': 'identity', ...headers };
+                    if (sess !== curl) { const hp = hpOf(it.url); if (hp && it.mark !== hp) { dlUnmark(it); window.LB_dl.mark(hp, it.pub ? 'public' : 'own'); it.mark = hp; } }
+                    return sess.fetch(it.url, { method: 'GET', headers: h, signal });
+                }
+                function dlUnmark(it) { if (it.mark) { window.LB_dl.unmark(it.mark); it.mark = ''; } }
+                const rateTick = (it) => { const now = Date.now(); if (now - it.rt >= 500) { it.rate = (it.got - it.rb) * 1000 / (now - it.rt); it.rt = now; it.rb = it.got; } };
+                // Pages first: a page load in the browser holds new requests and reads (never more than 10 s).
+                const yieldToPages = () => (window.LB_pagesFirst ? window.LB_pagesFirst.wait() : Promise.resolve());
+                // One part of a split download: reads `resp` into seg.chunks until the part is full (the first request is the whole
+                // file, so it is stopped after part 0).
+                async function readSeg(it, sg, resp, stop) {
+                    const rd = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+                    if (!rd) throw new Error('no stream');
+                    try {
+                        while (sg.got < sg.len) {
+                            await yieldToPages();
+                            const { done, value } = await rd.read(); if (done) break;
+                            const v = value.length > sg.len - sg.got ? value.subarray(0, sg.len - sg.got) : value;
+                            sg.chunks.push(v); sg.got += v.length; it.got += v.length; rateTick(it); paint(it);
+                        }
+                    } finally { if (sg.got >= sg.len) { try { rd.cancel(); } catch (_) {} if (stop) stop(); } }
+                    if (sg.got < sg.len) throw new Error('short body');
+                }
+                async function runSegs(it, first, ctl) {
+                    const jobs = it.segs.map(async (sg, i) => {
+                        if (sg.got >= sg.len) return;
+                        if (i === 0 && first) return readSeg(it, sg, first, () => { try { it.c0.abort(); } catch (_) {} });
+                        await yieldToPages();
+                        const resp = await dlFetch(it, { Range: 'bytes=' + (sg.s + sg.got) + '-' + (sg.s + sg.len - 1) }, ctl.signal);
+                        const cr = /bytes\s+(\d+)-/.exec((resp.headers && resp.headers.get && resp.headers.get('content-range')) || '');
+                        if (resp.status !== 206 || !cr || +cr[1] !== sg.s + sg.got) { const e = new Error('Range refused'); e.rangeRefused = true; throw e; }
+                        return readSeg(it, sg, resp);
+                    });
+                    const res = await Promise.allSettled(jobs);
+                    const bad = res.find((r) => r.status === 'rejected');
+                    if (bad) {
+                        try { ctl.abort(); } catch (_) {}
+                        if (bad.reason && bad.reason.rangeRefused && !it.intent) {   // the server will not do ranges for us: one request, from the start
+                            it.segs = null; it.noSplit = true; it.parts = []; it.segs = null; it.got = 0;
+                            return run(it);
+                        }
+                        throw bad.reason;
+                    }
+                    it.parts = it.segs.flatMap((x) => x.chunks);
+                    save(it);
+                }
                 async function run(it) {
                     it.status = 'active'; it.intent = ''; const ctl = it.ctl = new AbortController(); paint(it);
                     try {
                         if (!it.vetted) { await refreshMe(); const d = dayMsg(); if (d) return refuse(it, d.msg, d.plans); }
+                        await yieldToPages();
+                        if (ctl.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+                        if (it.segs) { it.rt = Date.now(); it.rb = it.got; return await runSegs(it, null, ctl); }   // resume of a split download
                         const h = {}; if (it.got > 0 && it.ranges) h.Range = 'bytes=' + it.got + '-'; if (lbDataSaver()) h['Save-Data'] = 'on';
-                        const resp = await curl.fetch(it.url, { method: 'GET', headers: h, signal: ctl.signal });
+                        const c0 = it.c0 = new AbortController(); ctl.signal.addEventListener('abort', () => c0.abort(), { once: true });
+                        const resp = await dlFetch(it, h, c0.signal);
                         if (resp.status !== 200 && resp.status !== 206) { it.fatal = true; throw new Error('The site answered ' + resp.status + '.'); }
-                        if (resp.status === 200 && it.got > 0) { it.parts = []; it.got = 0; }   // the server ignored Range: start again
+                        if (resp.status === 200 && it.got > 0) { it.parts = []; it.segs = null; it.got = 0; }   // the server ignored Range: start again
                         const g = (k) => resp.headers && resp.headers.get && resp.headers.get(k);
                         const cr = /\/(\d+)\s*$/.exec(g('content-range') || ''), cl = parseInt(g('content-length') || '', 10);
                         const total = cr ? +cr[1] : (resp.status === 200 && cl >= 0 ? cl : null);
@@ -18241,23 +18341,35 @@ _VIEWER_DL_JS +
                             if (v) { try { ctl.abort(); } catch (_) {} return refuse(it, v.msg, v.plans); }
                             it.vetted = true; bump();
                         }
+                        // Big file and the member allows it: leave our relay, run it on a public relay (setting limitless:dlpublic:v1, off by default).
+                        if (total != null && total > PUBLIC_MIN && !it.pub && !it.pubTried && publicOn() && LB_fallbackAllowed) {
+                            it.pubTried = true; it.pub = true; try { c0.abort(); } catch (_) {} dlUnmark(it); window.LB_dl.reset();
+                            it.got = 0; it.parts = []; return await run(it);
+                        }
+                        if (resp.status === 200 && it.got === 0 && !it.noSplit && it.ranges && total != null && total > SPLIT_MIN && parts() > 1) {
+                            const n = parts(), size = Math.ceil(total / n);
+                            it.segs = Array.from({ length: n }, (_, i) => ({ s: i * size, len: Math.max(0, Math.min(size, total - i * size)), got: 0, chunks: [] })).filter((x) => x.len > 0);
+                            it.rt = Date.now(); it.rb = it.got;
+                            return await runSegs(it, resp, ctl);
+                        }
                         const mb = Number(lim().downloadMbPerFile) || 0, cap = mb > 0 ? mb * MB : HARD;
                         const rd = resp.body && resp.body.getReader ? resp.body.getReader() : null;
                         const take = (v) => {
-                            it.parts.push(v); it.got += v.length;
-                            const now = Date.now(); if (now - it.rt >= 500) { it.rate = (it.got - it.rb) * 1000 / (now - it.rt); it.rt = now; it.rb = it.got; }
+                            it.parts.push(v); it.got += v.length; rateTick(it);
                             if (it.total == null && it.got > cap) { try { ctl.abort(); } catch (_) {} refuse(it, 'Stopped at ' + (mb > 0 ? mb + ' MB' : '2 GB') + ': the site did not say how big this file is, and ' + (mb > 0 ? 'your plan allows ' + mb + ' MB per file.' : 'Limitless takes 2 GB at most.'), mb > 0); return false; }
                             paint(it); return true;
                         };
                         it.rt = Date.now(); it.rb = it.got;
-                        if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; if (!take(value)) return; } }
+                        if (rd) { for (;;) { await yieldToPages(); const { done, value } = await rd.read(); if (done) break; if (!take(value)) return; } }
                         else { const b = new Uint8Array(await resp.arrayBuffer()); if (!take(b)) return; }
                         if (it.total != null && it.got < it.total) throw new Error('short body');
                         save(it);
                     } catch (e) {
                         if (it.status === 'refused') return;
+                        // our relay refused the download socket (429): the monthly download allowance is used up
+                        if (!it.intent && window.LB_dlRefusedAt && Date.now() - window.LB_dlRefusedAt < 20000 && it.mark) return refuse(it, 'Your download allowance for this month is used up.', true);
                         if (it.intent === 'pause') { it.status = 'paused'; it.note = ''; }
-                        else if (it.intent === 'cancel') { it.status = 'cancelled'; it.parts = []; it.got = 0; it.note = ''; }
+                        else if (it.intent === 'cancel') { it.status = 'cancelled'; it.parts = []; it.segs = null; it.got = 0; it.note = ''; }
                         else if (it.fatal) { it.status = 'error'; it.note = e.message; }
                         else if (it.tries < cfg.backoff.length) {
                             it.status = 'retrying'; it.note = 'Connection lost, trying again';
@@ -18265,13 +18377,13 @@ _VIEWER_DL_JS +
                             it.timer = setTimeout(() => { it.timer = 0; if (it.status === 'retrying') run(it); }, ms); return;
                         } else { it.status = 'error'; it.note = 'The connection dropped. Check your connection and try again.'; }
                     }
-                    paint(it); pump();
+                    dlUnmark(it); paint(it); pump();
                 }
                 function save(it) {
                     const u = URL.createObjectURL(new Blob(it.parts, { type: (it.mime || 'application/octet-stream').split(';')[0] }));
                     const a = document.createElement('a'); a.href = u; a.download = it.name; a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
                     setTimeout(() => URL.revokeObjectURL(u), 30000);
-                    it.parts = []; it.status = 'done'; it.note = 'Saved'; paint(it); pump();
+                    it.parts = []; it.segs = null; dlUnmark(it); it.status = 'done'; it.note = 'Saved'; paint(it); pump();
                 }
                 function pump() { for (const it of items) { if (busy() >= slots()) break; if (it.status === 'queued') run(it); } }
                 function add(url, name) {
@@ -18290,9 +18402,9 @@ _VIEWER_DL_JS +
                 }
                 const act = {
                     pause(it) { if (it.status === 'active' || it.status === 'retrying') { it.intent = 'pause'; clearTimeout(it.timer); it.timer = 0; if (it.status === 'retrying') { it.status = 'paused'; paint(it); pump(); } else it.ctl.abort(); } else if (it.status === 'queued') { it.status = 'paused'; paint(it); } },
-                    resume(it) { if (it.status !== 'paused') return; if (!it.ranges) { it.parts = []; it.got = 0; } it.tries = 0; it.status = 'queued'; paint(it); pump(); },
+                    resume(it) { if (it.status !== 'paused') return; if (!it.ranges) { it.parts = []; it.segs = null; it.got = 0; } it.tries = 0; it.status = 'queued'; paint(it); pump(); },
                     retry(it) { if (it.status !== 'error') return; it.tries = 0; it.fatal = false; it.note = ''; it.status = 'queued'; paint(it); pump(); },
-                    cancel(it) { if (it.status === 'active') { it.intent = 'cancel'; it.ctl.abort(); } else if (it.status === 'queued' || it.status === 'paused' || it.status === 'retrying') { clearTimeout(it.timer); it.status = 'cancelled'; it.parts = []; it.got = 0; paint(it); pump(); } },
+                    cancel(it) { if (it.status === 'active') { it.intent = 'cancel'; it.ctl.abort(); } else if (it.status === 'queued' || it.status === 'paused' || it.status === 'retrying') { clearTimeout(it.timer); it.status = 'cancelled'; it.parts = []; it.segs = null; it.got = 0; paint(it); pump(); } },
                     remove(it) { items.splice(items.indexOf(it), 1); const r = rows.get(it.id); if (r) r.el.remove(); rows.delete(it.id); paint(); },
                 };
                 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
