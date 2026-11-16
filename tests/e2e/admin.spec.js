@@ -291,13 +291,12 @@ test.describe('admin page', () => {
     await row.getByRole('button', { name: 'Confirm revoke' }).click();
     await expect.poll(() => st.calls).toContain('POST users/revoke');
     expect(st.bodies.at(-1)).toEqual({ sub: ALICE });
-    // Edit limits for alice: blank = default.
-    await root.locator('#lbAdmUsage tr', { hasText: 'alice' }).last().getByRole('button', { name: 'Limits' }).click();
-    await root.locator('input[name=bandwidthMbps]').fill('10');
-    await root.locator('input[name=dailyGb]').fill('2');
-    await root.locator('button', { hasText: 'Save limits' }).click();
-    await expect.poll(() => st.calls).toContain('POST overrides');
-    expect(st.bodies.at(-1)).toEqual({ sub: ALICE, bandwidthMbps: 10, dailyByteCap: 2 * GB, maxSockets: null });
+    // 1.0: Usage shows use only; limits come from plans (Plans and knobs) and per-member overrides live in the member profile.
+    const usage = root.locator('#lbAdmUsage');
+    await expect(usage.locator('tr', { hasText: 'alice' }).first()).toContainText('17 GB of 20 GB');
+    await expect(usage.getByRole('button', { name: 'Limits' })).toHaveCount(0);
+    await expect(usage).not.toContainText('Default:');
+    await expect(usage).not.toContainText('until 1.0');
   });
 
   for (const theme of THEMES) {

@@ -8589,39 +8589,19 @@ window._libcurlReady = true;
             else secUsers.appendChild(t.wrap);
         }
 
-        async function saveLimits(row, form) {
-            function num(name, mult) {
-                var v = form.elements[name].value.trim();
-                if (v === '') return null;
-                var n = Number(v);
-                return isFinite(n) && n >= 0 ? Math.round(n * mult) : NaN;
-            }
-            var body = { sub: row.sub, bandwidthMbps: num('bandwidthMbps', 1), dailyByteCap: num('dailyGb', GB), maxSockets: num('maxSockets', 1) };
-            if ([body.bandwidthMbps, body.dailyByteCap, body.maxSockets].some(function (v) { return v !== null && !isFinite(v); })) { say('Enter numbers only, or leave a box empty for the default.', true); return; }
-            var r = await write('overrides', body);
-            if (r.status === 200) { S.editing = null; say('Limits saved for ' + (row.loginName || 'this user') + '.'); await load(true); }
-            else say(errText(r), true);
-        }
-        function limitText(r) {
-            var parts = [];
-            parts.push(r.bandwidthMbps > 0 ? r.bandwidthMbps + ' Mbit/s' : 'No speed limit');
-            parts.push(r.maxSockets + ' connections');
-            return parts.join(', ') + (r.override ? ' (custom)' : '');
-        }
         function renderUsage() {
             var d = S.usage;
-            head(secUsage, 'Usage', 'Data used through the proxy today and over 30 days. Limits are per user.');
+            head(secUsage, 'Usage', 'Data used through our relay today and over 30 days. Limits come from each member\'s plan (Plans and knobs); one member\'s own limits are in their profile.');
             if (!d) { secUsage.appendChild(el('p', 'lb-adm-note', 'Loading')); return; }
             var warns = d.rows.filter(function (r) { return r.warn.bytes || r.warn.sockets; });
-            secUsage.appendChild(el('p', 'lb-adm-note', (window.LB_features && window.LB_features.ownRelay === true ? 'Live now: ' + d.live.sockets + ' connections, ' + d.live.streams + ' streams. ' : 'Public relays until 1.0: no live connection counts. ') + 'Default: ' +
-                (d.defaults.bandwidthMbps > 0 ? d.defaults.bandwidthMbps + ' Mbit/s' : 'no speed limit') + ', ' + fmtBytes(d.defaults.dailyByteCap) + ' a day, ' + d.defaults.maxSockets + ' connections.'));
+            if (window.LB_features && window.LB_features.ownRelay === true) secUsage.appendChild(el('p', 'lb-adm-note', 'Live now: ' + d.live.sockets + ' connections, ' + d.live.streams + ' streams.'));
             if (warns.length) {
                 var w = el('p', 'lb-adm-note'); w.style.color = 'var(--warn)';
                 w.textContent = warns.length + (warns.length === 1 ? ' user is' : ' users are') + ' at 80 percent or more of a limit.';
                 secUsage.appendChild(w);
             }
             if (!d.rows.length) { secUsage.appendChild(el('p', 'lb-adm-note', 'No use yet.')); return; }
-            var t = table(['User', 'Today', '30 days', 'Live', 'Limits', '']);
+            var t = table(['User', 'Today', '30 days', 'Live']);
             d.rows.forEach(function (r) {
                 var tr = el('tr', r.warn.bytes || r.warn.sockets ? 'lb-adm-warn' : ''), nm = el('td', 'lb-adm-name', r.loginName || ('Account ' + r.sub.slice(0, 8)));
                 if (r.owner) nm.appendChild(el('span', 'lb-adm-chip', 'Owner'));
@@ -8629,24 +8609,8 @@ window._libcurlReady = true;
                 today.appendChild(tv);
                 if (r.dailyCap > 0) { var m = el('div', 'lb-adm-meter'), bar = el('i'); bar.style.width = Math.min(100, Math.round(r.todayBytes / r.dailyCap * 100)) + '%'; m.appendChild(bar); today.appendChild(m); }
                 var live = el('td', '', r.sockets + ' / ' + r.streams + (r.warn.sockets ? ' (near the limit)' : ''));
-                tr.append(nm, today, el('td', '', fmtBytes(r.bytes30)), live, el('td', '', r.owner ? 'No limits' : limitText(r)));
-                var td = el('td'), act = el('div', 'lb-adm-act');
-                if (!r.owner) act.appendChild(btn('Limits', '', function () { S.editing = S.editing === r.sub ? null : r.sub; renderUsage(); }));
-                td.appendChild(act); tr.appendChild(td); t.body.appendChild(tr);
-                if (S.editing === r.sub) {
-                    var er = el('tr', 'lb-adm-edit'), ec = el('td'); ec.colSpan = 6;
-                    var f = el('form', 'lb-adm-form');
-                    function lab(text, name, val, ph) { var l = el('label', '', text), i = el('input'); i.name = name; i.type = 'number'; i.min = '0'; i.step = 'any'; i.placeholder = ph; if (val !== null && val !== undefined) i.value = val; l.appendChild(i); return l; }
-                    var o = r.override || {};
-                    f.append(lab('Speed (Mbit/s, 0 = no limit)', 'bandwidthMbps', o.bandwidthMbps, 'Default'),
-                        lab('Per day (GB, 0 = no cap)', 'dailyGb', o.dailyByteCap === null || o.dailyByteCap === undefined ? null : Math.round(o.dailyByteCap / GB * 100) / 100, 'Default'),
-                        lab('Connections', 'maxSockets', o.maxSockets, 'Default'));
-                    var sv = btn('Save limits', 'pri'); sv.type = 'submit';
-                    var rs = btn('Use defaults', '', function () { f.reset(); Array.prototype.forEach.call(f.elements, function (x) { if (x.name) x.value = ''; }); saveLimits(r, f); });
-                    f.append(sv, rs);
-                    f.addEventListener('submit', function (e) { e.preventDefault(); saveLimits(r, f); });
-                    ec.appendChild(f); er.appendChild(ec); t.body.appendChild(er);
-                }
+                tr.append(nm, today, el('td', '', fmtBytes(r.bytes30)), live);
+                t.body.appendChild(tr);
             });
             secUsage.appendChild(t.wrap);
         }
