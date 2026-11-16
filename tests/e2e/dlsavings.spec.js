@@ -274,7 +274,7 @@ test('the Settings switch for big downloads is off by default, stores limitless:
   const r = await page.evaluate(() => {
     const sw = document.getElementById('settingsDlPublicSwitch');
     const card = document.getElementById('settingsDlPublicCard');
-    const get = () => localStorage.getItem('limitless:dlpublic:v1');
+    const get = () => LB_downloads.ls.getItem('limitless:dlpublic:v1');
     const before = { stored: get(), on: sw.classList.contains('on') };
     sw.click();
     const after = { stored: get(), on: sw.classList.contains('on') };
