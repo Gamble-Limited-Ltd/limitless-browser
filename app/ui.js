@@ -315,9 +315,29 @@
     document.addEventListener('lb-member', function () { var g = document.querySelector('.settings-section[data-section="membership"]'); if (g && g.style.display === 'flex') paintMembership(); });
 
     /* ---------- Bot check (a plain card, never a way around it): TESTING 10 ---------- */
-    window.LB_botCheck = function (status, html) {
+    // 1.1 (docs/1.1/BOTCHECK.md): only a real interstitial counts, never a bare substring. A 403/429/503 is a challenge when
+    // the response headers say so (cf-mitigated: challenge), or a vendor marker sits in a SMALL page (Cloudflare "Just a moment" /
+    // "Attention Required", Akamai, PerimeterX, DataDome, Imperva) or a captcha widget is nearly all the page has. A login or
+    // error page that merely embeds reCAPTCHA is long and has real text, so it is not flagged. features.botCard=false restores the old test.
+    window.LB_botCheck = function (status, html, hdrs) {
         if (status !== 403 && status !== 429 && status !== 503) return false;
-        return /cf-chl|cdn-cgi\/challenge-platform|Just a moment\.\.\.|g-recaptcha|h-captcha|hcaptcha\.com\/1\/api|Attention Required! \| Cloudflare/i.test(String(html).slice(0, 60000));
+        var t = String(html || '').slice(0, 60000);
+        if (!feat('botCard')) return /cf-chl|cdn-cgi\/challenge-platform|Just a moment\.\.\.|g-recaptcha|h-captcha|hcaptcha\.com\/1\/api|Attention Required! \| Cloudflare/i.test(t);
+        var h = {}; try { Object.keys(hdrs || {}).forEach(function (k) { h[k.toLowerCase()] = String(hdrs[k]).toLowerCase(); }); } catch (_) {}
+        if (/challenge/.test(h['cf-mitigated'] || '')) return true;
+        var m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(t), title = m ? m[1].replace(/\s+/g, ' ').trim() : '';
+        var small = String(html || '').length < 40000;
+        var cf = /cloudflare/.test(h.server || '') || 'cf-ray' in h;
+        if (cf && small && (/^(Just a moment\.\.\.|Attention Required! \| Cloudflare|Checking your browser)/i.test(title) || /cdn-cgi\/challenge-platform\/h\/[a-z]\/orchestrate|cf-chl-|cf_chl_opt/i.test(t))) return true;
+        if (small && (/datadome/.test(h.server || '') || 'x-datadome' in h || /captcha-delivery\.com|geo\.captcha-delivery/i.test(t))) return true;
+        if (small && (/px-captcha|_pxCaptcha|Press &(amp;)? Hold|perimeterx\.net/i.test(t) || /Incapsula incident ID|_Incapsula_Resource/i.test(t))) return true;
+        if (small && /^Access Denied$/i.test(title) && /errors\.edgesuite\.net|Reference #\d+\.[0-9a-f]+/i.test(t)) return true;
+        // a captcha widget as the main content: short visible text around it
+        if (small && /g-recaptcha|h-captcha|hcaptcha\.com\/1\/api|cf-turnstile|challenges\.cloudflare\.com\/turnstile/i.test(t)) {
+            var txt = t.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (txt.length < 300 && /human|robot|verify|captcha|security check|not a bot|unusual traffic/i.test(txt + ' ' + title)) return true;
+        }
+        return false;
     };
 
     /* ---------- Splash: the member's name, the number small beneath (UI.md 4). Cached per device (limitless:me:v1: name and number only) ---------- */

@@ -117,7 +117,7 @@ as 0.3.0 first. Sections 0.1, 0.4 and the build cards still show the old recomme
 - **Certificates:** Cardinal, Prime and Executive may show one; Ordinal has the member card only. **Placeholder prices:** Cardinal $15/yr, Prime $35/yr,
   Executive per person. Other placeholder knobs: `PAID-TIERS-PLAN.md` section 11.
 - **parse5:** pre-approved only if the harness shows DOMParser time over about 100 ms (logged in the changelog when added).
-- **Bot checks:** no evasion; the harness compares home, public and VPS relays on challenge-prone sites (advisory), the app shows a plain notice card
+- **Bot checks (superseded by `docs/1.1/PLAN.md` 2026-11-16: false positives fixed, request hygiene allowed):** no evasion; the harness compares home, public and VPS relays on challenge-prone sites (advisory), the app shows a plain notice card
   and Report a problem gets a "bot check" category. A datacenter VPS IP is likely challenged more than home, so the VPS will not fix it alone.
 - Build cards for S8, S9 and the 0.3.0 release are in section 8.
 - **Review answers (Boss, 2026-11-14, `REVIEW-2026-11-14.md` 5):** trials stay off until "Plans open for sale" is on; 0.3.0 boot fails closed
