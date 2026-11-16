@@ -657,6 +657,16 @@
                     })
                     .sort((a, b) => (wispHealth[a]?.latency ?? 5000) - (wispHealth[b]?.latency ?? 5000));
             }
+            // Public relays only (never ours), healthiest first, whatever the "allow public relays" setting says: the member's own
+            // "send big downloads through public relays" switch (limitless:dlpublic:v1) is the consent for those downloads.
+            function lbPublicRoots(host) {
+                const now = Date.now();
+                const saved = (() => { try { return ls.getItem('limitless:fallback:wisp') || DEFAULT_FALLBACK_WISP; } catch { return DEFAULT_FALLBACK_WISP; } })();
+                return [...new Set([...WISP_POOL_DEFAULTS, saved].filter(u => u && u !== LB_OUR_WISP))]
+                    .filter(u => wispHealth[u]?.healthy !== false)
+                    .filter(u => { const cd = wispHostCooldown.get(u + '|' + host); return !cd || cd <= now; })
+                    .sort((a, b) => (wispHealth[a]?.latency ?? 5000) - (wispHealth[b]?.latency ?? 5000));
+            }
             let wispRotationCursor = 0;
             // Weighted round-robin pick for a fresh (non-retry) navigation — faster
             // benchmarked servers get more turns in the rotation, slower/untested
@@ -945,7 +955,7 @@
                 mode: lbMultiMode,
                 candidates: (host) => rankPoolCandidates(host, null),
                 markFailed: markWispFailed,
-                publicRoots: (host) => (LB_fallbackAllowed ? (rankPoolCandidates(host, null) || []).filter(r => r && r !== LB_OUR_WISP) : []),
+                publicRoots: lbPublicRoots,
                 onDrop: () => {},
                 get Socket() { return libcurl.wisp.WispWebSocket; },
             });
@@ -1008,6 +1018,15 @@
                 if (minus) minus.addEventListener('click', () => set(lbOwnSocketsSetting() - 1));
                 if (plus) plus.addEventListener('click', () => set(lbOwnSocketsSetting() + 1));
                 render();
+
+                // Big downloads over public relays (off by default, limitless:dlpublic:v1); read by LB_downloads.
+                const dsw = document.getElementById('settingsDlPublicSwitch');
+                if (dsw) {
+                    const dOn = () => { try { return ls.getItem('limitless:dlpublic:v1') === '1'; } catch { return false; } };
+                    const dPaint = () => { dsw.classList.toggle('on', dOn()); dsw.setAttribute('aria-checked', dOn() ? 'true' : 'false'); };
+                    dsw.addEventListener('click', () => { try { ls.setItem('limitless:dlpublic:v1', dOn() ? '0' : '1'); } catch (_) {} dPaint(); });
+                    dPaint();
+                }
 
                 const sw = document.getElementById('settingsMultiRelaySwitch');
                 const mode = document.getElementById('settingsMultiRelayMode');
@@ -18342,7 +18361,7 @@ _VIEWER_DL_JS +
                             it.vetted = true; bump();
                         }
                         // Big file and the member allows it: leave our relay, run it on a public relay (setting limitless:dlpublic:v1, off by default).
-                        if (total != null && total > PUBLIC_MIN && !it.pub && !it.pubTried && publicOn() && LB_fallbackAllowed) {
+                        if (total != null && total > PUBLIC_MIN && !it.pub && !it.pubTried && publicOn()) {
                             it.pubTried = true; it.pub = true; try { c0.abort(); } catch (_) {} dlUnmark(it); window.LB_dl.reset();
                             it.got = 0; it.parts = []; return await run(it);
                         }
