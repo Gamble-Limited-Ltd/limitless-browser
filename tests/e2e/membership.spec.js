@@ -31,6 +31,9 @@ test('nginx sends each gate reason to its page, and only /_lb/verify/ and the se
   const rows = Object.fromEntries([...(m ? m[1] : '').matchAll(/^\s*(\w+)\s+(\/\S+);/gm)].map((r) => [r[1], r[2]]));
   expect(rows).toEqual({ default: '/auth/invite', removed: '/auth/removed', suspended: '/auth/suspended', welcome: '/auth/welcome' });
   expect(nginx).toContain('proxy_pass $gate$lb_deny_path;');
+  // A welcome-state member opening any page is sent to the designed ceremony, not shown the gate's fallback form at that URL.
+  const invite = /location @invite \{([\s\S]*?)\n  \}/.exec(nginx);
+  expect(invite && invite[1]).toContain('if ($lb_reason = welcome) { return 302 /auth/welcome; }');
   // Every /_lb/ location except verify and the relay sync (authenticated by its shared secret in the gate) is gated.
   const blocks = [...nginx.matchAll(/location (?:=|\^~) (\/_lb\/\S+) \{([\s\S]*?)\n  \}/g)];
   expect(blocks.length).toBeGreaterThanOrEqual(4);
