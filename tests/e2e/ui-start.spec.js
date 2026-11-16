@@ -131,10 +131,10 @@ test('error card: calm wording by class, themed, details folded, Report a proble
   await expect(page.locator('#lbRepCat')).toHaveValue(/^(broken|slow)$/)   // option values are the gate's category ids;
 });
 
-test('bot check detection: only 403/429/503 with a known challenge marker, and the card names the category', async ({ page }) => {
+test('bot check detection: only 403/429/503 and a real interstitial (details in botcheck.spec.js)', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => [window.LB_botCheck(403, '<title>Just a moment...</title>'), window.LB_botCheck(200, '<title>Just a moment...</title>'), window.LB_botCheck(503, '<form class="g-recaptcha">'), window.LB_botCheck(403, '<h1>Forbidden</h1>')]);
-  expect(r).toEqual([true, false, true, false]);
+  const r = await page.evaluate(() => { const cf = { server: 'cloudflare', 'cf-ray': 'x' }; return [window.LB_botCheck(403, '<title>Just a moment...</title>', cf), window.LB_botCheck(200, '<title>Just a moment...</title>', cf), window.LB_botCheck(403, '<h1>Forbidden</h1>', {})]; });
+  expect(r).toEqual([true, false, false]);
 });
 
 test('tour: three steps, skippable, once', async ({ page }) => {
