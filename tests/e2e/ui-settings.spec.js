@@ -49,9 +49,9 @@ test('membership page: name before number, tier, plan limits, coming soon while 
   await bootMember(page, me());
   await openSettings(page, 'membership');
   const root = page.locator('#lbMemberPage');
-  await expect(root.locator('.lb-mp-name')).toHaveText('Alex Morgan');
-  await expect(root.locator('.lb-mp-num')).toHaveText('No. 0047');
-  expect((await root.locator('.lb-mp-name').boundingBox()).y).toBeLessThan((await root.locator('.lb-mp-num').boundingBox()).y);
+  await expect(root.locator('.lb-mc-card .lb-mc-n')).toHaveText('Alex Morgan');
+  await expect(root.locator('.lb-mc-card .lb-mc-no')).toHaveText('No. 0047');
+  expect((await root.locator('.lb-mc-card .lb-mc-n').boundingBox()).y).toBeLessThan((await root.locator('.lb-mc-card .lb-mc-ft').boundingBox()).y);
   await expect(root).toContainText('Ordinal plan');
   await expect(root.locator('.lb-dl')).toContainText('Open tabs');
   await expect(root.locator('.lb-dl')).toContainText('4 hours');
