@@ -150,7 +150,7 @@ PY
 LT_TARGET=<host:80 of a large public test file> LT_PATH=</path> LT_MEMBERS=20 LT_SECONDS=60 LT_MAX_BYTES=500000000 \
   docker compose -p limitless-relay-vps --profile loadtest up --abort-on-container-exit loadtest
 kill $SAMPLER; cat lt/out/report.md; ls lt/out
-docker compose -p limitless-relay-vps --profile loadtest down
+docker compose -p limitless-relay-vps --profile loadtest rm -sf loadtest relaygate-lt   # NOT "down": that stops the real relay stack too (happened 2026-11-15)
 ```
 The report (`lt/out/report.json` and `report.md`) holds per member Mbit/s, aggregate, p50/p95/p99 connect-to-first-data latency, CPU per Mbit/s (sum of the sampled containers), bytes up and down against the relay's own count, and the revoke time of member 0 (halfway through the run). `LT_TARGET` must be a plain HTTP (port 80) file server Boss chooses; none is recorded here.
 Local self-test of the script (loopback only, no VPS): `cd ~/limitless-gate && node scripts/relay-loadtest.ts --local --members 20 --seconds 10 --out /tmp/lt` (measured 2026-11-15: 20 members, about 107 Mbit/s each way through the in-process stand-in, revoke 0.46 s, relay byte count 99.8 % of the clients').

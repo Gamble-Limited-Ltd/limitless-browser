@@ -51,11 +51,11 @@ VERSION=0.1.0
 if [ -f "$SRC/package.json" ]; then
   VERSION="$(node -e 'try{console.log(require(process.argv[1]).version||"0.1.0")}catch(e){console.log("0.1.0")}' "$SRC/package.json")"
 fi
-# Kill switches the app reads at boot (features in version.json, see CLAUDE.md "Feature switches"). Defaults are on except ownRelay, pageCache and warm (0.3.0).
+# Kill switches the app reads at boot (features in version.json, see CLAUDE.md "Feature switches"). Defaults are on except pageCache and warm.
 # To turn one off for a release, export it for the build, e.g. LB_FEATURE_WORKER=false ./deploy.sh
-# 0.3.0: our relay is off (public relays only until 1.0). 1.0 flips LB_FEATURE_OWNRELAY back to true and OWNSOCKETS to 4.
-FEAT_OWNRELAY="${LB_FEATURE_OWNRELAY:-false}"
-FEAT_SOCKETS="${LB_FEATURE_OWNSOCKETS:-0}"
+# 1.0.0: our VPS relay is on (LB_FEATURE_OWNRELAY=false LB_FEATURE_OWNSOCKETS=0 is the 0.3.0 public-relays-only build).
+FEAT_OWNRELAY="${LB_FEATURE_OWNRELAY:-true}"
+FEAT_SOCKETS="${LB_FEATURE_OWNSOCKETS:-4}"
 FEAT_WORKER="${LB_FEATURE_WORKER:-true}"
 FEAT_CACHE="${LB_FEATURE_RESPCACHE:-true}"
 FEAT_SW="${LB_FEATURE_SW:-true}"

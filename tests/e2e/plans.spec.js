@@ -195,7 +195,7 @@ async function perfRun(page, { rand = 0.1, member = true, features, datasaver = 
     arg: [rand],
     ...(features ? { features } : {}),
   });
-  if (datasaver) await page.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.includes('limitless:')); localStorage.setItem(k.slice(0, k.indexOf('limitless:')) + 'limitless:datasaver:v1', '1'); });
+  if (datasaver) await page.evaluate(() => { const k = Object.keys(localStorage).find((x) => /^gi_.*limitless:/.test(x)); localStorage.setItem(k.slice(0, k.indexOf('limitless:')) + 'limitless:datasaver:v1', '1'); });
   await page.evaluate(() => window.LB_meRefresh());
   await page.evaluate((k) => { for (let i = 0; i < k; i++) { window.__lbPerf.start('https://secret.example/path'); window.__lbPerf.mark('shown'); } }, marks);
   await page.waitForTimeout(400);

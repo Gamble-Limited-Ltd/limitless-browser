@@ -2,7 +2,7 @@
 
 What changed, in plain language. Newest first.
 
-## Unreleased 1.0.0
+## 1.0.0
 
 - Executive members get a Load Now button on the Plans page: for a minute your page loads go first on our relay. Signed-in members also send a small, anonymous page load time sample (about 1 in 5 loads, never the site, never with Data saver) so we can see how fast pages are
 - New Plans page (About, Plans): the three plans with typical limits, your own plan and usage, your receipts, a 24 hour trial button and a short form to ask for a plan. Nothing is charged in the app and no card details are ever asked for. A note appears 14 and 3 days before a plan ends, and the first time your allowance sends you to public relays. Plans are not open for requests until the switch is turned on.
@@ -19,7 +19,6 @@ What changed, in plain language. Newest first.
 - The splash greets you by name, with your number small beneath it. The start page has a member card, and notices from the Director appear as a small engraved bulletin that you can dismiss.
 - When a page cannot load, you now get a calm card with one plain sentence, Try again, Report a problem and the technical details folded away. When a site asks for a human check, a plain card says so.
 - Free plans show their limits: Ordinal members have 4 open tabs and about 4 hours a day. A note appears when about 15 minutes are left.
-- The welcome ceremony has a new look: number, Charter, a reveal of your number, your certificate or member card, and a short tour.
 - The old interactive tour is gone. A short tour after the welcome replaces it.
 - Tabs can sit on the left (Settings, Appearance, Tab layout). The rail folds to icons on a narrow window or with the button at its top.
 
