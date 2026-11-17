@@ -1618,39 +1618,65 @@
                 'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
                 'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check']
             };
-            function renderErrorPage(url, errorType, errorCode, errorDescription, errorSuggestions) {
+            // Which hop failed (design "Error page": You -> Relay -> site). 'you' offline, 'relay' a dropped relay link (or our relay marked down), else the site.
+            // ctx comes from the caught error: { lbCat, lbDrop }. Pure and exposed for tests.
+            window.LB_errHop = function (errorType, ctx) {
+                if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'you';
+                if (ctx && ctx.lbDrop) return 'relay';
+                try { const s = window.LB_relayStatus && window.LB_relayStatus(); if (s && s.ownRelay && s.ours === false) return 'relay'; } catch (_) {}
+                return errorType === 'Network Error' || errorType === 'Connection Interrupted' ? 'relay' : 'site';
+            };
+            function renderErrorPage(url, errorType, errorCode, errorDescription, errorSuggestions, ctx) {
                 const _esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-                const calm = LB_CALM[errorType] || ['This page could not be loaded', 'Something went wrong while loading it.', 'Broken site'];
-                const cs = getComputedStyle(document.documentElement), tok = k => (cs.getPropertyValue('--lb-' + k).trim() || '').replace(/[;{}<]/g, '');
-                const root = `--bg:${tok('bg') || '#070a10'};--surf:${tok('surf') || '#0e131c'};--fg:${tok('fg') || '#eae6dc'};--mut:${tok('mut') || '#8d93a0'};--line:${tok('line') || '#232a38'};--acc:${tok('acc') || '#BDFFFF'};--on:${tok('on') || '#07101a'};--fd:${(tok('fd') || 'Georgia, serif').replace(/"/g, "'")};--fb:${(tok('fb') || 'system-ui, sans-serif').replace(/"/g, "'")}`;
+                const calm = (LB_CALM[errorType] || ['This page could not be loaded', 'Something went wrong while loading it.', 'Broken site']).slice();
+                let host = ''; try { host = new URL(url).hostname; } catch (_) {}
+                const hop = ctx ? window.LB_errHop(errorType, ctx) : null;
+                if (hop === 'you') { calm[0] = 'You look to be offline'; calm[1] = 'This device has no connection right now. Check your network, then try again.'; }
+                else if (hop === 'relay') { calm[1] = 'The link to the relay dropped for a moment. Trying again usually fixes it.'; }
+                else if (hop === 'site' && errorType === 'Connection Timeout' && host) { calm[1] = host + ' did not respond within ' + Math.round(((window.LB_deadlines && window.LB_deadlines.connect) || 10000) / 1000) + ' seconds. The relay is fine; the site may be down or slow.'; }
+                else if (hop === 'site' && errorType === 'DNS Resolution Failed' && host) { calm[1] = host + ' could not be found. The address may have a typo, or the site may no longer exist.'; }
+                const cs = getComputedStyle(document.documentElement), tok = k => (cs.getPropertyValue('--lb-' + k).trim() || '').replace(/[;{}<]/g, ''), rt = k => (cs.getPropertyValue('--' + k).trim() || '').replace(/[;{}<]/g, '');
+                const root = `--bg:${tok('bg') || '#070a10'};--surf:${tok('surf') || '#0e131c'};--fg:${tok('fg') || '#eae6dc'};--mut:${tok('mut') || '#8d93a0'};--line:${tok('line') || '#232a38'};--acc:${tok('acc') || '#BDFFFF'};--on:${tok('on') || '#07101a'};--ok:${rt('ok') || '#1d7a43'};--bad:${rt('err') || '#b3261e'};--fd:${(tok('fd') || 'Georgia, serif').replace(/"/g, "'")};--fb:${(tok('fb') || 'system-ui, sans-serif').replace(/"/g, "'")};--fm:${(tok('fm') || 'ui-monospace, monospace').replace(/"/g, "'")}`;
                 const rest = (errorSuggestions || []).slice(0, 4).map(x => `<li>${_esc(x)}</li>`).join('');
-                const tech = [['Type', errorType], ['Code', errorCode], ['Address', url], ['Detail', errorDescription]].filter(r => r[1]).map(r => `<dt>${_esc(r[0])}</dt><dd>${_esc(r[1])}</dd>`).join('');
+                const rs = (() => { try { const s = window.LB_relayStatus && window.LB_relayStatus(); return s ? (s.ours ? 'own' : 'public') : ''; } catch (_) { return ''; } })();
+                const tech = [['Type', errorType], ['Code', errorCode], ['Address', url], ['Detail', errorDescription], ['Relay', rs]].filter(r => r[1]).map(r => `<dt>${_esc(r[0])}</dt><dd>${_esc(r[1])}</dd>`).join('');
                 const bot = errorType === 'Human Check';
+                const dot = (bad) => `<i class="${bad ? 'x' : ''}" aria-hidden="true"></i>`;
+                const hops = hop && !bot ? `<div class="hops" role="group" aria-label="Where it failed: ${hop === 'you' ? 'your device' : hop === 'relay' ? 'the relay' : 'the site'}"><span>${dot(hop === 'you')}You${hop === 'you' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'relay')}Relay${hop === 'relay' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'site')}${_esc(host || 'Site')}${hop === 'site' ? '<b class="vh"> (failed)</b>' : ''}</span></div>` : '';
                 frame.srcdoc = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Error - Limitless Browser</title>
 <style>
 @import url('${LB_FONTS_CSS}');
+@import url('${new URL('theme/fonts.css', document.baseURI).href}');
 :root{${root}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--fg);font-family:var(--fb);min-height:100vh;display:grid;place-items:center;padding:24px}
-.card{width:min(520px,100%);padding:40px 36px;background:var(--surf);border:1px solid var(--line);border-radius:6px;display:grid;gap:14px;justify-items:start}
-.mk{width:34px;height:34px;opacity:.7}
-h1{font-family:var(--fd);font-weight:500;font-size:26px;line-height:1.25}
+.card{width:min(560px,100%);padding:36px 32px;background:var(--surf);border:1px solid var(--line);border-radius:14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:start}
+.big{font-family:'Cormorant Garamond',var(--fd);font-size:64px;line-height:.9;color:var(--mut)}
+.body{display:grid;gap:12px;justify-items:start;min-width:0}
+h1{font-family:'Cormorant Garamond',var(--fd);font-weight:500;font-size:28px;line-height:1.2}
 .cause{color:var(--mut);font-size:15px;line-height:1.55}
+.hops{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:11px/1.4 var(--fm);color:var(--mut)}
+.hops span{display:inline-flex;align-items:center;gap:4px}
+.hops i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}.hops i.x{background:var(--bad)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 ul{color:var(--mut);font-size:13.5px;line-height:1.6;padding-left:18px}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-button{font:inherit;font-size:14px;padding:10px 20px;border-radius:4px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--fg)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+button{font:inherit;font-size:14px;padding:10px 22px;border-radius:999px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--fg)}
 button.p{background:var(--acc);border-color:var(--acc);color:var(--on)}
 button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-details{width:100%;margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
+details{width:100%;margin-top:4px;border-top:1px solid var(--line);padding-top:12px}
 summary{cursor:pointer;color:var(--mut);font-size:13px}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin-top:10px;font-size:12.5px}
-dt{color:var(--mut)}dd{word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace}
+dt{color:var(--mut)}dd{word-break:break-all;font-family:var(--fm)}
+@media (max-width:480px){.card{grid-template-columns:1fr;padding:28px 20px}.big{font-size:44px}}
 </style></head><body>
 <main class="card" role="alert">
-<svg class="mk" viewBox="0 0 64 64" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M53.92 30.08A22 22 0 1 1 41.30 12.06" stroke="currentColor" stroke-width="6" style="color:var(--mut)"/><circle cx="50.02" cy="19.38" r="5.5" fill="currentColor" style="color:var(--mut)"/></svg>
+<span class="big" aria-hidden="true">!</span>
+<div class="body">
 <h1>${_esc(calm[0])}</h1>
 <p class="cause">${_esc(calm[1])}</p>
+${hops}
 ${bot ? '' : (rest ? '<ul>' + rest + '</ul>' : '')}
 <div class="row">
 ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
@@ -1658,6 +1684,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
 <button onclick="window.parent.postMessage({type:'goBack'}, '*')">Go back</button>
 </div>
 <details><summary>Technical details</summary><dl>${tech}</dl></details>
+</div>
 </main></body></html>`;
             }
 
@@ -3958,29 +3985,192 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                         return { status: r.status, json: j };
                     } catch (_) { return { status: 0, json: {} }; }
                 };
+                // 1.1 WP4 (docs/1.1/DESIGN-GAPS.md 5): three columns, comparison table, "what each step adds", steps, tier tiles, request track.
+                // Tier colour comes from the WP1 hooks (--tc/--tc2/--tcon on [data-tier]); on light themes text stays --tx and the tier colour is decoration only.
                 const css = document.createElement('style');
-                css.textContent = '.lb-pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}.lb-pl-card{border:1px solid var(--bd);border-radius:10px;padding:14px;background:var(--bg1,var(--bg0))}.lb-pl-card h3{margin:0 0 6px}.lb-pl-card.now{border-color:var(--ac)}.lb-pl-card ul{margin:6px 0;padding-left:18px}.lb-pl-card li{margin:2px 0}.lb-pl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.lb-pl-in{font:inherit;color:var(--tx);background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:8px;max-width:100%}.lb-pl-btn{font:inherit;color:var(--tx);background:var(--bg1,var(--bg0));border:1px solid var(--ac);border-radius:8px;padding:8px 14px;cursor:pointer}.lb-pl-btn:disabled{opacity:.5;cursor:default}.lb-pl-btn:focus-visible,.lb-pl-in:focus-visible{outline:2px solid var(--ac);outline-offset:2px}.lb-pl-msg{min-height:1.4em;color:var(--tx2)}.lb-pl-msg.err{color:var(--err)}@media (max-width:720px){.lb-pl-grid{grid-template-columns:1fr}}';
+                css.textContent = [
+                    '.lb-wn-in.lb-pl-wide{max-width:1040px}',
+                    '.lb-pl-card,.lb-pl-add,.lb-pl-tile,.lb-pl-cmp th[data-tier]{--pl-tc:var(--tx)}',
+                    'html[data-lb-mode="dark"] .lb-pl-card,html[data-lb-mode="dark"] .lb-pl-add,html[data-lb-mode="dark"] .lb-pl-tile,html[data-lb-mode="dark"] .lb-pl-cmp th[data-tier]{--pl-tc:var(--tc,var(--ac))}',
+                    '.lb-pl-hero{display:grid;gap:10px;max-width:62ch}',
+                    '.lb-wn-in .lb-pl-hero h1{font:500 clamp(32px,6vw,56px)/1.04 "Cormorant Garamond",var(--lb-fd,serif);margin:0}',
+                    '.lb-pl-eb,.lb-pl-sec{font:500 11px var(--lb-fm,monospace);letter-spacing:.3em;text-transform:uppercase;color:var(--tx2)}',
+                    '.lb-wn-in h2.lb-pl-h{font:500 1.9rem/1.15 "Cormorant Garamond",var(--lb-fd,serif);border-top:0;padding-top:0;margin:44px 0 12px}',
+                    '.lb-pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:30px 0 14px;align-items:stretch}',
+                    '.lb-pl-card{position:relative;border:1px solid var(--bd);border-radius:14px;padding:24px;background:var(--bg1,var(--bg0));display:grid;grid-template-rows:auto auto 1fr auto;gap:16px;min-width:0}',
+                    '.lb-pl-card.feat{border-color:color-mix(in srgb,var(--tc) 55%,var(--bd));transform:translateY(-8px);box-shadow:0 18px 40px rgba(0,0,0,.28)}',
+                    'html[data-lb-mode="dark"] .lb-pl-card.feat{background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 7%,var(--bg1,var(--bg0))),var(--bg1,var(--bg0)))}',
+                    '.lb-pl-card.now{border-color:var(--tc)}',
+                    '.lb-pl-flag{position:absolute;top:-10px;left:24px;font:500 10px var(--lb-fm,monospace);letter-spacing:.14em;text-transform:uppercase;background:var(--tc);color:var(--tcon);padding:2px 8px;border-radius:4px}',
+                    '.lb-pl-hd{display:flex;align-items:center;gap:10px}.lb-pl-hd svg{width:30px;height:30px}',
+                    '.lb-pl-card h3,.lb-pl-add h3{margin:0;font:500 1.8rem/1 "Cormorant Garamond",var(--lb-fd,serif);color:var(--pl-tc)}',
+                    '.lb-pl-pr{font:500 1.2rem "Cormorant Garamond",var(--lb-fd,serif);border-bottom:1px solid var(--bd);padding-bottom:12px}',
+                    '.lb-pl-card ul{list-style:none;margin:0;padding:0;display:grid;gap:7px;font-size:13px;align-content:start}',
+                    '.lb-pl-card li{display:flex;gap:8px;align-items:flex-start;margin:0}.lb-pl-card li svg{flex:none;width:14px;height:14px;margin-top:3px;color:var(--pl-tc)}',
+                    '.lb-pl-go{justify-self:stretch;text-align:center}.lb-pl-card.feat .lb-pl-go:not(:disabled){background:var(--tc);border-color:var(--tc);color:var(--tcon)}',
+                    '.lb-pl-tw{overflow-x:auto;border:1px solid var(--bd);border-radius:12px}',
+                    'table.lb-pl-cmp{border-collapse:separate;border-spacing:0;width:100%;min-width:560px;font-size:13px}',
+                    '.lb-pl-cmp th,.lb-pl-cmp td{padding:10px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--bd);font-weight:400}',
+                    '.lb-pl-cmp thead th{border-top:0;font:500 1.15rem "Cormorant Garamond",var(--lb-fd,serif);box-shadow:inset 0 -2px 0 var(--pl-tc,var(--bd));color:var(--pl-tc,var(--tx))}',
+                    '.lb-pl-cmp tbody th{position:sticky;left:0;background:var(--bg0);color:var(--tx2);z-index:1}',
+                    '.lb-pl-cmp tr.sec th{background:var(--bg1,var(--bg0));font:500 11px var(--lb-fm,monospace);letter-spacing:.18em;text-transform:uppercase}',
+                    '.lb-pl-adds{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:16px}',
+                    '.lb-pl-add{padding:20px;background:var(--bg1,var(--bg0));border:1px solid var(--bd);border-radius:14px;display:grid;gap:10px;align-content:start}',
+                    '.lb-pl-add .lb-pl-hd h3{font-size:1.5rem}.lb-pl-add p{margin:0;font-size:13px;color:var(--tx2)}',
+                    '.lb-pl-add .plus{display:grid;gap:6px;font-size:13px}.lb-pl-add .plus span::before{content:"+ ";color:var(--pl-tc);font-family:var(--lb-fm,monospace)}',
+                    '.lb-pl-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));border:1px solid var(--bd);border-radius:14px;overflow:hidden}',
+                    '.lb-pl-steps>div{padding:20px 16px;background:var(--bg1,var(--bg0));border-left:1px solid var(--bd);display:grid;gap:6px;align-content:start}.lb-pl-steps>div:first-child{border-left:0}',
+                    '.lb-pl-steps b{font:500 2.4rem/1 "Cormorant Garamond",var(--lb-fd,serif);color:var(--tx)}.lb-pl-steps h4{margin:0;font:500 1.3rem "Cormorant Garamond",var(--lb-fd,serif)}.lb-pl-steps p{margin:0;font-size:13px;color:var(--tx2)}',
+                    '.lb-pl-form{display:grid;gap:14px;border:1px solid var(--bd);border-radius:14px;background:var(--bg1,var(--bg0));padding:clamp(18px,4vw,30px);margin-top:16px}',
+                    '.lb-wn-in .lb-pl-form h2{border-top:0;padding-top:0;margin:0;font:500 1.9rem "Cormorant Garamond",var(--lb-fd,serif)}',
+                    '.lb-pl-lab{font-size:13px;color:var(--tx2)}',
+                    '.lb-pl-ro{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px dashed var(--bd);border-radius:8px;padding:9px 12px;font-size:14px}',
+                    '.lb-pl-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;border:0;padding:0;margin:0}',
+                    '.lb-pl-tile{position:relative;border:1px solid var(--bd);border-radius:12px;padding:14px;display:grid;gap:4px;cursor:pointer;background:var(--bg0);transition:border-color var(--lb-dur,220ms) var(--lb-ease,ease)}',
+                    '.lb-pl-tile:has(input:checked){border-color:var(--tc);background:color-mix(in srgb,var(--tc) 8%,var(--bg0))}.lb-pl-tile:has(input:focus-visible){outline:2px solid var(--ac);outline-offset:2px}',
+                    '.lb-pl-tile input,.lb-pl-vh{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
+                    '.lb-pl-tile b{font:500 1.3rem "Cormorant Garamond",var(--lb-fd,serif);color:var(--pl-tc)}.lb-pl-tile small{color:var(--tx2);font-size:12px}',
+                    '.lb-pl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}',
+                    '.lb-pl-in{font:inherit;color:var(--tx);background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:8px;max-width:100%}',
+                    '.lb-pl-btn{font:inherit;color:var(--tx);background:var(--bg1,var(--bg0));border:1px solid var(--ac);border-radius:999px;padding:8px 18px;cursor:pointer}',
+                    '.lb-pl-btn.solid{background:var(--ac);color:var(--lb-on,var(--bg0))}.lb-pl-btn:disabled{opacity:.5;cursor:default}',
+                    '.lb-pl-btn:focus-visible,.lb-pl-in:focus-visible{outline:2px solid var(--ac);outline-offset:2px}',
+                    '.lb-pl-msg{min-height:1.4em;color:var(--tx2)}.lb-pl-msg.err{color:var(--err)}',
+                    '.lb-pl-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:relative;padding-top:6px;margin:14px 0}',
+                    '.lb-pl-track::before{content:"";position:absolute;left:12.5%;right:12.5%;top:17px;height:2px;background:var(--bd)}',
+                    '.lb-pl-track .fill{position:absolute;left:12.5%;top:17px;height:2px;background:var(--ac);width:0;transition:width .9s var(--lb-ease,ease)}',
+                    '.lb-pl-track .st{position:relative;display:grid;justify-items:center;gap:8px;text-align:center;font-size:12px;color:var(--tx2);padding-inline:4px}',
+                    '.lb-pl-track .st i{width:24px;height:24px;border-radius:50%;border:2px solid var(--bd);background:var(--bg0);display:block;transition:border-color .4s,background .4s}',
+                    '.lb-pl-track .st.done i{border-color:var(--ac);background:var(--ac)}.lb-pl-track .st.now i{border-color:var(--ac);box-shadow:0 0 0 5px color-mix(in srgb,var(--ac) 18%,transparent)}.lb-pl-track .st.no i{border-color:var(--tx2);background:var(--tx2)}',
+                    '.lb-pl-track .st.done,.lb-pl-track .st.now,.lb-pl-track .st.no{color:var(--tx)}.lb-pl-track small{display:block;color:var(--tx2);font-size:11px}',
+                    '.lb-pl-terms{border:1px solid var(--bd);border-radius:14px;background:var(--bg1,var(--bg0));display:grid}',
+                    '.lb-pl-terms>div{padding:14px 20px;border-top:1px solid var(--bd);display:grid;grid-template-columns:minmax(0,11rem) minmax(0,1fr);gap:16px;font-size:14px}.lb-pl-terms>div:first-child{border-top:0}',
+                    '.lb-pl-terms b{font:500 1.2rem "Cormorant Garamond",var(--lb-fd,serif)}.lb-pl-terms span{color:var(--tx2)}',
+                    '@media (max-width:820px){.lb-pl-grid{grid-template-columns:1fr}.lb-pl-card.feat{transform:none}.lb-pl-terms>div{grid-template-columns:1fr;gap:4px}}',
+                    '@media (prefers-reduced-motion:reduce){.lb-pl-track .fill,.lb-pl-track .st i,.lb-pl-tile{transition:none}}'
+                ].join('');
                 document.head.appendChild(css);
+                const LB_TIERS = ['ordinal', 'cardinal', 'prime'];
+                const plIcon = (name) => (window.LBUI && window.LBUI.icon ? window.LBUI.icon(name) : document.createComment(''));
+                const plMark = (t) => (window.LBUI && window.LBUI.markSvg ? window.LBUI.markSvg(t) : document.createComment(''));
+                const hoursOf = (m) => (m >= 60 ? m / 60 + ' hours' : m + ' minutes');
+                const fileOf = (c) => (c.downloadMbPerFile >= 1024 ? c.downloadMbPerFile / 1024 + ' GB' : c.downloadMbPerFile + ' MB');
+                const dataOf = (c) => (c.weeklyGb ? c.weeklyGb + ' GB per week' : c.monthlyGb ? c.monthlyGb + ' GB per month' : null);
+                const plPrice = (me, t) => { const p = me.plan || {}, c = (p.catalog || {})[t]; return t !== 'ordinal' && !p.plansOpen ? 'Not open for sale yet' : money(c ? c.priceUsdYear : null); };
 
                 function lbPlansCatalog(me) {
                     const p = me.plan || {}, cat = p.catalog || {};
                     const wrap = el('div', 'lb-pl-grid');
-                    for (const t of ['ordinal', 'cardinal', 'prime']) {
+                    const rank = { ordinal: 0, cardinal: 1, prime: 2, executive: 3 };
+                    for (const t of LB_TIERS) {
                         const c = cat[t]; if (!c) continue;
-                        const card = el('div', 'lb-pl-card' + (p.tier === t ? ' now' : '')); card.dataset.tier = t;
-                        card.appendChild(el('h3', '', TIER_NAME[t]));
-                        card.appendChild(el('p', '', t !== 'ordinal' && !p.plansOpen ? 'Not open for sale yet' : money(c.priceUsdYear)));
+                        const card = el('div', 'lb-pl-card' + (p.tier === t ? ' now' : '') + (t === 'cardinal' ? ' feat' : '')); card.dataset.tier = t;
+                        if (t === 'cardinal') card.appendChild(el('span', 'lb-pl-flag', 'First step up'));
+                        const hd = el('div', 'lb-pl-hd'); hd.append(plMark(t), el('h3', '', TIER_NAME[t]));
                         const ul = el('ul');
-                        ul.appendChild(el('li', '', c.tabs + ' open tabs'));
-                        if (c.dailyMinutes) ul.appendChild(el('li', '', 'About ' + (c.dailyMinutes >= 60 ? c.dailyMinutes / 60 + ' hours' : c.dailyMinutes + ' minutes') + ' a day'));
-                        ul.appendChild(el('li', '', t === 'ordinal' ? 'Public relays, no data allowance of ours' : (c.weeklyGb ? c.weeklyGb + ' GB per week' : c.monthlyGb + ' GB per month')));
-                        if (t !== 'ordinal') ul.appendChild(el('li', '', 'Our own relay, up to about ' + c.speedMbps + ' Mbit/s'));
-                        if (t === 'ordinal' && c.speedMbps) ul.appendChild(el('li', '', 'Speed limited to ' + c.speedMbps + ' Mbit/s in the app'));
-                        ul.appendChild(el('li', '', 'Downloads up to ' + (c.downloadMbPerFile >= 1024 ? c.downloadMbPerFile / 1024 + ' GB' : c.downloadMbPerFile + ' MB') + ' per file' + (c.downloadsPerDay > 0 ? ', ' + c.downloadsPerDay + ' a day' : '')));
-                        if (c.videoMaxP > 0) ul.appendChild(el('li', '', 'Video up to ' + c.videoMaxP + 'p'));
-                        card.appendChild(ul);
+                        const add = (txt) => { const li = el('li'); li.append(plIcon('check'), el('span', '', txt)); ul.appendChild(li); };
+                        add(c.tabs + ' open tabs');
+                        if (c.dailyMinutes) add('About ' + hoursOf(c.dailyMinutes) + ' a day');
+                        add(t === 'ordinal' ? 'Public relays, no data allowance of ours' : dataOf(c));
+                        if (t !== 'ordinal') add('Our own relay, up to about ' + c.speedMbps + ' Mbit/s');
+                        if (t === 'ordinal' && c.speedMbps) add('Speed limited to ' + c.speedMbps + ' Mbit/s in the app');
+                        add('Downloads up to ' + fileOf(c) + ' per file' + (c.downloadsPerDay > 0 ? ', ' + c.downloadsPerDay + ' a day' : ''));
+                        if (c.videoMaxP > 0) add('Video up to ' + c.videoMaxP + 'p');
+                        const go = el('button', 'lb-pl-btn lb-pl-go', ''); go.type = 'button';
+                        if (p.tier === t) { go.textContent = 'Your plan'; go.disabled = true; }
+                        else if (rank[t] < rank[p.tier || 'ordinal']) { go.textContent = 'Included'; go.disabled = true; }
+                        else if (!p.plansOpen) { go.textContent = 'Not open yet'; go.disabled = true; }
+                        else { go.textContent = 'Ask for ' + TIER_NAME[t]; go.onclick = () => { const f = document.getElementById('lbPlansRequest'); const tile = f && f.querySelector('.lb-pl-tile[data-tier="' + t + '"] input'); if (tile) { tile.checked = true; tile.dispatchEvent(new Event('change', { bubbles: true })); } if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; }
+                        card.append(hd, el('div', 'lb-pl-pr', plPrice(me, t)), ul, go);
                         wrap.appendChild(card);
                     }
+                    return wrap;
+                }
+                // Values the catalog lacks are shown as "Varies, not promised" (neutral), never invented.
+                function lbPlansTable(me) {
+                    const cat = (me.plan || {}).catalog || {}, V = 'Varies, not promised';
+                    const T = LB_TIERS.filter((t) => cat[t]);
+                    const rows = [
+                        ['Loading'],
+                        ['Relay', (t) => (t === 'ordinal' ? 'Public relays' : 'Our own relay')],
+                        ['Speed', (t, c) => (c.speedMbps ? (t === 'ordinal' ? c.speedMbps + ' Mbit/s in the app' : 'Up to about ' + c.speedMbps + ' Mbit/s') : V)],
+                        ['Daily time', (t, c) => (c.dailyMinutes ? 'About ' + hoursOf(c.dailyMinutes) : 'No daily limit')],
+                        ['Room'],
+                        ['Open tabs', (t, c) => String(c.tabs)],
+                        ['Data', (t, c) => dataOf(c) || 'None of ours (public relays)'],
+                        ['Video', (t, c) => (c.videoMaxP > 0 ? 'Up to ' + c.videoMaxP + 'p' : V)],
+                        ['Downloads'],
+                        ['Per file', (t, c) => 'Up to ' + fileOf(c)],
+                        ['Per day', (t, c) => (c.downloadsPerDay > 0 ? String(c.downloadsPerDay) : 'Any number')],
+                        ['Membership'],
+                        ['Certificate', (t) => (t === 'ordinal' ? 'Member card only' : 'Certificate of membership')],
+                        ['Themes', (t) => (t === 'ordinal' ? 'Free themes' : t === 'cardinal' ? 'Plus Ink blue and Silver' : 'Plus Garnet and Crimson and platinum')],
+                        ['Trial', (t) => (t === 'ordinal' ? 'Try Cardinal for 24 hours' : t === 'cardinal' ? 'Try Prime for 24 hours' : 'Not needed')]
+                    ];
+                    const wrap = el('div', 'lb-pl-tw'); wrap.tabIndex = 0; wrap.setAttribute('role', 'region'); wrap.setAttribute('aria-label', 'Plan comparison');
+                    const tb = el('table', 'lb-pl-cmp'); tb.id = 'lbPlansTable';
+                    const hr = el('tr'); hr.appendChild(el('th', '', '')); hr.firstChild.setAttribute('scope', 'col');
+                    for (const t of T) { const th = el('th', '', TIER_NAME[t]); th.dataset.tier = t; th.setAttribute('scope', 'col'); hr.appendChild(th); }
+                    const head = el('thead'); head.appendChild(hr); tb.appendChild(head);
+                    const body = el('tbody');
+                    for (const r of rows) {
+                        const tr = el('tr', r.length === 1 ? 'sec' : '');
+                        if (r.length === 1) { const th = el('th', '', r[0]); th.colSpan = T.length + 1; tr.appendChild(th); }
+                        else { const th = el('th', '', r[0]); th.setAttribute('scope', 'row'); tr.appendChild(th); for (const t of T) tr.appendChild(el('td', '', r[1](t, cat[t]))); }
+                        body.appendChild(tr);
+                    }
+                    tb.appendChild(body); wrap.appendChild(tb); return wrap;
+                }
+                // "What each step adds": only the differences from the step before, computed from the catalog.
+                function lbPlansAdds(me) {
+                    const cat = (me.plan || {}).catalog || {}, wrap = el('div', 'lb-pl-adds'); wrap.id = 'lbPlansAdds';
+                    for (let i = 0; i < LB_TIERS.length; i++) {
+                        const t = LB_TIERS[i], c = cat[t]; if (!c) continue;
+                        const box = el('div', 'lb-pl-add'); box.dataset.tier = t;
+                        const hd = el('div', 'lb-pl-hd'); hd.append(plMark(t), el('h3', '', TIER_NAME[t])); box.appendChild(hd);
+                        if (!i) {
+                            box.appendChild(el('span', 'lb-pl-sec', 'Free'));
+                            box.appendChild(el('p', '', 'Where everyone starts. Public relays, ' + c.tabs + ' open tabs' + (c.dailyMinutes ? ', about ' + hoursOf(c.dailyMinutes) + ' a day' : '') + ', downloads up to ' + fileOf(c) + '.'));
+                        } else {
+                            const b = cat[LB_TIERS[i - 1]] || {}, d = [];
+                            if (b.speedMbps !== undefined && LB_TIERS[i - 1] === 'ordinal') d.push('Our own relay');
+                            if (c.tabs !== b.tabs) d.push(c.tabs + ' open tabs');
+                            if (b.dailyMinutes && !c.dailyMinutes) d.push('No daily time limit');
+                            if (dataOf(c) && dataOf(c) !== dataOf(b)) d.push(dataOf(c));
+                            if (c.speedMbps && c.speedMbps !== b.speedMbps && LB_TIERS[i - 1] !== 'ordinal') d.push('Up to about ' + c.speedMbps + ' Mbit/s');
+                            if (c.downloadMbPerFile !== b.downloadMbPerFile) d.push('Downloads up to ' + fileOf(c) + ' per file');
+                            if (c.videoMaxP !== b.videoMaxP && c.videoMaxP > 0) d.push('Video up to ' + c.videoMaxP + 'p');
+                            box.appendChild(el('span', 'lb-pl-sec', 'Everything in ' + TIER_NAME[LB_TIERS[i - 1]] + ', plus'));
+                            const pl = el('div', 'plus'); for (const x of d) pl.appendChild(el('span', '', x)); box.appendChild(pl);
+                        }
+                        wrap.appendChild(box);
+                    }
+                    return wrap;
+                }
+                function lbPlansSteps() {
+                    const w = el('div', 'lb-pl-steps'); w.id = 'lbPlansSteps';
+                    [['Choose', 'Read the plans and pick the one you want.'], ['Ask', 'Send a request. It carries your name and plan, nothing else.'], ['Meet', 'You get a reply and arrange payment in person. No card details, ever.'], ['Start', 'Your plan is switched on and the page here shows it.']].forEach((s, i) => {
+                        const d = el('div'); d.append(el('b', '', String(i + 1)), el('h4', '', s[0]), el('p', '', s[1])); w.appendChild(d);
+                    });
+                    return w;
+                }
+                // Request states from the gate: open | waiting_cash | approved | declined (+ decidedAt). Animates once per state per session; static under reduced motion.
+                function lbPlansTrack(r) {
+                    const wrap = el('div', 'lb-pl-track'); wrap.id = 'lbPlansTrack'; wrap.setAttribute('aria-label', 'Request progress');
+                    const when = r.decidedAt ? new Date(r.decidedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+                    const idx = { open: 1, waiting_cash: 2, approved: 3, declined: 2 }[r.status]; if (idx === undefined) return null;
+                    const steps = [['Sent', 'your request'], ['Seen', r.status === 'open' ? 'waiting for an answer' : 'by the Director'], ['Waiting for cash', 'meet in person'], ['Active', 'your plan is on']];
+                    if (r.status === 'declined') steps[2] = ['Not accepted', when];
+                    else if (r.status === 'waiting_cash' || r.status === 'approved') steps[idx][1] = steps[idx][1] + (when ? ', ' + when : '');
+                    const fill = el('span', 'fill'); wrap.appendChild(fill);
+                    steps.forEach((s, i) => {
+                        const st = el('div', 'st' + (r.status === 'declined' && i === 2 ? ' no' : i < idx ? ' done' : i === idx ? ' now' : ''));
+                        const lab = el('span', '', s[0]); if (s[1]) lab.appendChild(el('small', '', s[1])); st.append(el('i'), lab); wrap.appendChild(st);
+                    });
+                    const pct = (75 * idx / 3) + '%', key = 'limitless:plantrack:v1:' + r.status;
+                    let seen = false; try { seen = !!sessionStorage.getItem(key); sessionStorage.setItem(key, '1'); } catch (_) {}
+                    if (seen || matchMedia('(prefers-reduced-motion: reduce)').matches) fill.style.width = pct;
+                    else requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = pct; }));
                     return wrap;
                 }
                 function lbPlansAccount(me) {
@@ -4009,6 +4199,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     }
                     const r = p.request;
                     if (r && r.status === 'open') box.appendChild(el('p', '', 'Your request for ' + TIER_NAME[r.tier] + ' is waiting for an answer.'));
+                    if (r) { const tk = lbPlansTrack(r); if (tk) box.appendChild(tk); }
                     if (r && r.status === 'declined' && r.retryAfter && r.retryAfter > Date.now()) box.appendChild(el('p', '', 'Your last request was not accepted. You can ask again after ' + new Date(r.retryAfter).toLocaleString() + '.'));
                     const rc = me.receipts || [];
                     box.appendChild(el('h3', '', 'Receipts'));
@@ -4023,15 +4214,24 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     const higher = ['cardinal', 'prime'].filter((t) => ['ordinal', 'cardinal', 'prime', 'executive'].indexOf(t) > ['ordinal', 'cardinal', 'prime', 'executive'].indexOf(p.tier));
                     if (!p.plansOpen) { form.appendChild(el('p', 'lb-wn-state', 'Plans are not open for requests yet.')); return form; }
                     if (!higher.length) { form.appendChild(el('p', 'lb-wn-state', 'You already have the highest plan you can ask for.')); return form; }
-                    const sel = el('select', 'lb-pl-in'); sel.id = 'lbPlansTier'; sel.setAttribute('aria-label', 'Plan');
-                    for (const t of higher) { const o = el('option', '', TIER_NAME[t] + ' (' + money(p.catalog && p.catalog[t] ? p.catalog[t].priceUsdYear : null) + ')'); o.value = t; sel.appendChild(o); }
+                    const who = el('div', 'lb-pl-ro'); who.append(el('span', '', me.name || 'Member'), el('span', 'lb-pl-lab', (me.number != null ? 'No. ' + String(me.number).padStart(4, '0') + ', ' : '') + (TIER_NAME[p.tier] || 'Ordinal')));
+                    const sel = el('select', 'lb-pl-in lb-pl-vh'); sel.id = 'lbPlansTier'; sel.setAttribute('aria-label', 'Plan'); sel.tabIndex = -1;
+                    const tiles = el('fieldset', 'lb-pl-tiles'); tiles.appendChild(el('legend', 'lb-pl-lab', 'Plan'));
+                    higher.forEach((t, i) => {
+                        const price = money(p.catalog && p.catalog[t] ? p.catalog[t].priceUsdYear : null);
+                        const o = el('option', '', TIER_NAME[t] + ' (' + price + ')'); o.value = t; sel.appendChild(o);
+                        const lab = el('label', 'lb-pl-tile'); lab.dataset.tier = t;
+                        const rd = el('input'); rd.type = 'radio'; rd.name = 'lbPlansTierR'; rd.value = t; rd.checked = i === 0;
+                        rd.addEventListener('change', () => { if (rd.checked) sel.value = t; });
+                        lab.append(rd, el('b', '', TIER_NAME[t]), el('small', '', price)); tiles.appendChild(lab);
+                    });
                     const note = el('textarea', 'lb-pl-in'); note.id = 'lbPlansNote'; note.maxLength = 500; note.rows = 3; note.placeholder = 'Why would you like it? One or two sentences.'; note.setAttribute('aria-label', 'Reason');
                     const lab = el('label', 'lb-pl-row'); const box = el('input'); box.type = 'checkbox'; box.id = 'lbPlansAllowed'; lab.append(box, el('span', '', 'I am allowed to do this'));
-                    const send = el('button', 'lb-pl-btn', 'Send request'); send.type = 'submit';
+                    const send = el('button', 'lb-pl-btn solid', 'Send request'); send.type = 'submit';
                     const msg = el('p', 'lb-pl-msg'); msg.id = 'lbPlansMsg'; msg.setAttribute('role', 'status');
-                    form.append(el('p', '', 'Boss answers every request by hand and arranges payment in person. Nothing is charged here and we never ask for card details. We aim to reply within 3 days.'), sel, note, lab, send, msg);
+                    form.append(el('p', '', 'Boss answers every request by hand and arranges payment in person. Nothing is charged here and we never ask for card details. We aim to reply within 3 days.'), who, sel, tiles, note, lab, send, msg);
                     form.onsubmit = async (e) => {
-                        e.preventDefault(); msg.className = 'lb-pl-msg'; 
+                        e.preventDefault(); msg.className = 'lb-pl-msg';
                         if (!note.value.trim()) { msg.className = 'lb-pl-msg err'; msg.textContent = 'Please say why in a sentence.'; return; }
                         if (!box.checked) { msg.className = 'lb-pl-msg err'; msg.textContent = 'Please tick the box to continue.'; return; }
                         send.disabled = true; msg.textContent = 'Sending';
@@ -4043,6 +4243,28 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     };
                     return form;
                 }
+                // Layout of the plain-words terms table (design: buy-terms). Wording here is the currently approved text only; the design's longer
+                // draft (refunds, extra data, endings) is held for Boss in docs/1.1/TERMS-DRAFT.md.
+                function lbPlansTerms() {
+                    const t = el('div', 'lb-pl-terms'); t.id = 'lbPlansTerms';
+                    [['Limits', 'Typical limits for each plan. They may change with notice.'], ['Replies', 'We aim to reply to every request within 3 days.'], ['Paying', 'Payment is arranged in person. Nothing is charged here and we never ask for card details.'], ['More plans', 'Further plans are granted by invitation.']].forEach((r) => { const d = el('div'); d.append(el('b', '', r[0]), el('span', '', r[1])); t.appendChild(d); });
+                    return t;
+                }
+                function lbPlansRender(root, me) {
+                    const inner = el('div', 'lb-wn-in lb-pl-wide'), open = me.plan && me.plan.plansOpen;
+                    const hero = el('div', 'lb-pl-hero');
+                    hero.append(el('span', 'lb-pl-eb', 'Plans'), el('h1', '', 'Faster loading on our own relay.'), el('p', '', 'Typical limits for each plan. They may change with notice.' + (open ? ' Prices are per year.' : ' Paid plans are not open for sale yet.')));
+                    inner.appendChild(hero);
+                    inner.appendChild(lbPlansCatalog(me));
+                    inner.appendChild(el('h2', 'lb-pl-h', 'Side by side')); inner.appendChild(lbPlansTable(me));
+                    inner.appendChild(el('h2', 'lb-pl-h', 'What each step adds')); inner.appendChild(lbPlansAdds(me));
+                    inner.appendChild(lbPlansAccount(me));
+                    const tr = lbPlansTrial(me, () => lbPlansOpen(root)); if (tr) inner.appendChild(tr);
+                    inner.appendChild(el('h2', 'lb-pl-h', 'How asking works')); inner.appendChild(lbPlansSteps());
+                    inner.appendChild(lbPlansRequestForm(me, () => lbPlansOpen(root)));
+                    inner.appendChild(el('h2', 'lb-pl-h', 'How it works')); inner.appendChild(lbPlansTerms());
+                    root.replaceChildren(inner);
+                }
                 function lbPlansTrial(me, rerender) {
                     const p = me.plan || {};
                     if (!p.plansOpen || !p.trialAvailable) return null;
@@ -4053,17 +4275,6 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     b.onclick = async () => { b.disabled = true; const r = await planPost('/_lb/trial'); if (r.status === 200) rerender(); else { b.disabled = false; msg.className = 'lb-pl-msg err'; msg.textContent = 'The trial could not start right now.'; } };
                     row.append(b, msg);
                     return row;
-                }
-                function lbPlansRender(root, me) {
-                    const inner = el('div', 'lb-wn-in');
-                    inner.appendChild(el('h1', '', 'Plans'));
-                    inner.appendChild(el('p', '', 'Typical limits for each plan. They may change with notice.' + (me.plan && me.plan.plansOpen ? ' Prices are per year.' : ' Paid plans are not open for sale yet.')));
-                    inner.appendChild(lbPlansCatalog(me));
-                    inner.appendChild(el('p', 'lb-wn-state', 'Further plans are granted by invitation.'));
-                    inner.appendChild(lbPlansAccount(me));
-                    const tr = lbPlansTrial(me, () => lbPlansOpen(root)); if (tr) inner.appendChild(tr);
-                    inner.appendChild(lbPlansRequestForm(me, () => lbPlansOpen(root)));
-                    root.replaceChildren(inner);
                 }
                 let plansToken = 0;
                 async function lbPlansOpen(root) {
@@ -11346,7 +11557,7 @@ _VIEWER_DL_JS +
                     const errTab = tabs.find(t => t.id === initiatorTabId);
                     if (errTab) errTab.hasError = true;
                     if (!tabs.find(t => t.id === initiatorTabId)) return; 
-                    renderErrorPage(pageUrl, errorType, errorCode, errorDescription, errorSuggestions);
+                    renderErrorPage(pageUrl, errorType, errorCode, errorDescription, errorSuggestions, { lbCat: e.lbCat, lbDrop: !!e.lbDrop });
                     updateSecurityChip(pageUrl, 'error');
                     renderTabs();
                 } finally {

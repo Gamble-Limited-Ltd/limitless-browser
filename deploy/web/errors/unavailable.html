@@ -1,7 +1,33 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en" data-lb-theme="luxury" data-lb-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Unavailable - Limitless Browser</title>
+<script>
+/* Same theme boot as the app (the key is shared with the gate's pages). */
+(function () { var r = document.documentElement; try { var j = JSON.parse(localStorage.getItem('limitless:theme:v1') || 'null'); if (j && /^[a-z]+$/.test(j.theme || '')) { var D = ['vault', 'ink', 'garnet', 'crplat', 'gilt', 'onyx']; r.setAttribute('data-lb-theme', j.theme); r.setAttribute('data-lb-mode', D.indexOf(j.theme) >= 0 ? 'dark' : j.mode === 'light' || j.mode === 'dark' ? j.mode : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')); } } catch (e) {} })();
+</script>
+<link rel="stylesheet" href="/theme/fonts.css">
 <link rel="stylesheet" href="/theme/themes.css">
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--lb-bg);color:var(--lb-fg);font:300 17px/1.6 system-ui,sans-serif;text-align:center;padding:1rem}
-h1{font:500 1.4rem var(--lb-fd,serif);margin:0 0 .5rem}p{color:var(--lb-mut);margin:.25rem 0}</style></head>
-<body><main><h1>Limitless Browser is unavailable.</h1><p>The sign-in service is not reachable right now. Try again in a moment.</p><p><a href="/legal/" style="color:var(--lb-acc)">Legal</a></p></main></body></html>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;display:grid;place-items:center;background:var(--lb-bg);color:var(--lb-fg);font-family:var(--lb-fb,system-ui,sans-serif);padding:24px}
+.card{width:min(560px,100%);padding:36px 32px;background:var(--lb-surf);border:1px solid var(--lb-line);border-radius:14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:start}
+.big{font:500 64px/.9 'Cormorant Garamond',var(--lb-fd,serif);color:var(--lb-mut)}
+.body{display:grid;gap:12px;justify-items:start}
+h1{font:500 28px/1.2 'Cormorant Garamond',var(--lb-fd,serif)}
+p{color:var(--lb-mut);font-size:15px;line-height:1.55}
+.hops{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:11px/1.4 var(--lb-fm,ui-monospace,monospace);color:var(--lb-mut)}
+.hops span{display:inline-flex;align-items:center;gap:4px}
+.hops i{width:8px;height:8px;border-radius:50%;background:var(--lb-ok,#1d7a43);display:inline-block}.hops i.x{background:var(--lb-bad,#b3261e)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px}
+button{font:inherit;font-size:14px;padding:10px 22px;border-radius:999px;cursor:pointer;border:1px solid var(--lb-acc);background:var(--lb-acc);color:var(--lb-on)}
+a{color:color-mix(in srgb,var(--lb-acc) 50%,var(--lb-fg));font-size:14px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--lb-acc);outline-offset:2px}
+@media (max-width:480px){.card{grid-template-columns:1fr;padding:28px 20px}.big{font-size:44px}}
+</style></head>
+<body><main class="card" role="alert"><span class="big" aria-hidden="true">!</span><div class="body">
+<h1>Limitless Browser is unavailable.</h1>
+<p>The sign-in service is not reachable right now. Try again in a moment.</p>
+<div class="hops" role="group" aria-label="Where it failed: the sign-in service"><span><i aria-hidden="true"></i>You</span>&rarr;<span><i aria-hidden="true"></i>Limitless</span>&rarr;<span><i class="x" aria-hidden="true"></i>Sign-in service<b class="vh"> (failed)</b></span></div>
+<div class="row"><button type="button" onclick="location.reload()">Try again</button><a href="/legal/">Legal</a></div>
+</div></main></body></html>

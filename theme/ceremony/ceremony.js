@@ -13,17 +13,24 @@
         var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 64 64'); s.setAttribute('class', 'mk'); s.setAttribute('aria-hidden', 'true');
         var p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', 'M53.92 30.08A22 22 0 1 1 41.30 12.06'); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '6'); p.setAttribute('stroke-linecap', 'round'); s.appendChild(p);
         var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', '50.02'); c.setAttribute('cy', '19.38'); c.setAttribute('r', '5.5'); c.setAttribute('fill', 'currentColor'); s.appendChild(c);
-        s.style.color = tier === 'executive' ? 'var(--lb-gold, #D4A531)' : tier === 'prime' ? 'var(--lb-crim, #e2526a)' : tier === 'cardinal' ? 'var(--lb-silver, #dfe3e9)' : 'var(--lb-acc)'; return s;
+        return s;
     }
+    var NS = 'http://www.w3.org/2000/svg';
+    function sv(tag, attrs, text) { var e = document.createElementNS(NS, tag); Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); }); if (text != null) e.textContent = text; return e; }
     function paintDots() { dots.textContent = ''; for (var i = 1; i <= 6; i++) { var li = el('li'); if (i <= step) li.setAttribute('data-on', ''); dots.appendChild(li); } dots.setAttribute('aria-label', 'Step ' + step + ' of 6'); }
-    function show(n) { step = n; paintDots(); root.textContent = ''; root.style.animation = 'none'; void root.offsetWidth; root.style.animation = ''; STEPFN[n](); root.focus(); }
+    function show(n) { step = n; document.getElementById('cw').setAttribute('data-tier', (S && S.tier) || 'ordinal'); paintDots(); root.textContent = ''; root.style.animation = 'none'; void root.offsetWidth; root.style.animation = ''; STEPFN[n](); root.focus(); }
     function btn(label, fn, cls) { var b = el('button', cls || '', label); b.type = 'button'; b.addEventListener('click', fn); return b; }
     function pad(n) { return String(n).padStart(4, '0'); }
     function load() { return fetch('/auth/welcome/state', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { if (r.status === 401) return r.json().then(function (j) { if (j.to) location.href = j.to; throw new Error('signin'); }); if (!r.ok) throw new Error('state'); return r.json(); }).then(function (j) { S = j; return j; }); }
 
     var STEPFN = {
         1: function () {
-            root.append(mark(S.tier), el('h1', null, S.kind === 'existing' ? 'Welcome to Limitless 1.0' : 'Welcome'));
+            if (S.kind === 'invited') {
+                var ev = el('div', 'envelope'); ev.setAttribute('aria-hidden', 'true'); var wax = el('div', 'wax'); wax.appendChild(mark(S.tier));
+                ev.append(el('div', 'body'), el('div', 'flap'), wax, el('div', 'letter', (S.name || '').split(' ')[0] || 'You'));
+                root.append(el('span', 'eyebrow', 'By invitation'), ev);
+            } else root.append(mark(S.tier));
+            root.append(el('h1', null, S.kind === 'existing' ? 'Welcome to Limitless 1.0' : 'Welcome'));
             root.append(el('p', null, S.kind === 'invited' ? 'You were invited by the Director of Gamble Limited Ltd. This takes about two minutes: choose your number, sign the Charter, and see your membership.' : S.kind === 'existing' ? 'Limitless now has memberships. This takes about two minutes: sign the Charter and see your membership. Your number is already yours.' : 'You have been approved. This takes about two minutes: choose your number, sign the Charter, and see your membership.'));
             if (S.kind === 'invited') { root.append(el('p', 'note', 'James Thiessen, Director of Gamble Limited Ltd.')); }
             var next = S.number ? 3 : 2;
@@ -73,9 +80,24 @@
             name.focus();
         },
         4: function () {
-            var rv = el('div', 'reveal'); var ns = 'http://www.w3.org/2000/svg', s = document.createElementNS(ns, 'svg'); s.setAttribute('viewBox', '0 0 360 120'); s.setAttribute('role', 'img'); s.setAttribute('aria-label', 'Number ' + pad(S.number));
-            var t = document.createElementNS(ns, 'text'); t.setAttribute('x', '180'); t.setAttribute('y', '92'); t.setAttribute('text-anchor', 'middle'); t.textContent = 'Nº ' + pad(S.number); s.appendChild(t);
-            rv.append(s, el('i'), el('p', null, 'This number is yours for good.')); root.append(rv);
+            var rv = el('div', 'reveal'), no = pad(S.number), word = (NAMES[S.tier] || 'Ordinal').toUpperCase(), seal = /(^|[?&])reveal=seal(&|$)/.test(location.search), s;
+            if (seal) {
+                s = sv('svg', { 'class': 'seal', viewBox: '0 0 220 220', role: 'img', 'aria-label': 'Seal with number ' + no });
+                var ring = sv('g', { 'class': 'ring' }); ring.append(sv('circle', { cx: 110, cy: 110, r: 96, 'stroke-width': 1.2 }), sv('circle', { cx: 110, cy: 110, r: 88, 'stroke-width': .6, 'stroke-dasharray': '2 4' }), sv('path', { d: 'M110 22 A88 88 0 0 1 198 110', 'stroke-width': 3, 'stroke-linecap': 'round' }));
+                var core = sv('g', { 'class': 'core' }); core.append(sv('circle', { 'class': 'disc', cx: 110, cy: 110, r: 70 }), sv('text', { 'class': 'lbl', x: 110, y: 90, 'text-anchor': 'middle' }, word), sv('text', { 'class': 'num', x: 110, y: 138, 'text-anchor': 'middle' }, no));
+                s.append(ring, core);
+            } else {
+                s = sv('svg', { 'class': 'engrave', viewBox: '0 0 400 230', role: 'img', 'aria-label': 'Member number ' + no });
+                var defs = sv('defs'), rg = sv('radialGradient', { id: 'cwGlow' }), gg = sv('linearGradient', { id: 'cwGold', x1: 0, y1: 0, x2: 0, y2: 1 });
+                rg.append(sv('stop', { offset: 0, style: 'stop-color:var(--cw-tc)', 'stop-opacity': .5 }), sv('stop', { offset: 1, style: 'stop-color:var(--cw-tc)', 'stop-opacity': 0 }));
+                gg.append(sv('stop', { offset: 0, style: 'stop-color:var(--lb-gold-hi, #f6d77a)' }), sv('stop', { offset: 1, style: 'stop-color:var(--tc, #D4A531)' }));
+                defs.append(rg, gg);
+                s.append(defs, sv('ellipse', { 'class': 'glow', cx: 200, cy: 135, rx: 160, ry: 62, fill: 'url(#cwGlow)' }),
+                    sv('text', { 'class': 'lbl', x: 200, y: 46, 'text-anchor': 'middle', 'font-size': 17, 'letter-spacing': 9 }, word),
+                    sv('text', { 'class': 'num', x: 200, y: 158, 'text-anchor': 'middle', 'font-size': 108, 'letter-spacing': 10 }, 'Nº ' + no),
+                    sv('line', { 'class': 'rule', x1: 70, y1: 190, x2: 330, y2: 190 }));
+            }
+            rv.append(s, el('p', null, 'This number is yours for good.')); root.append(rv);
             root.append(btn('Continue', function () { show(5); }));
             if (!reduced) chime();
         },
@@ -83,12 +105,14 @@
             var tier = S.tier;
             if (tier === 'ordinal') {
                 root.append(el('h1', null, 'Your member card'));
-                var c = el('div', 'card'); c.appendChild(mark(tier)); var t = el('div'); t.appendChild(el('b', null, S.name || 'Member')); t.appendChild(el('span', 'note', 'No. ' + pad(S.number) + ' · Ordinal')); c.appendChild(t); root.append(c);
+                var c = el('div', 'lb-mc lb-mc-card lb-tier-' + tier), top = el('div', 'lb-mc-top'), nm = el('div', 'lb-mc-nm'), ft = el('div', 'lb-mc-ft');
+                top.append(el('span', 'lb-mc-brand', 'Limitless'), mark(tier)); nm.append(el('span', 'lb-mc-n', S.name || 'Member'), el('small', 'lb-mc-t', NAMES[tier])); ft.append(el('span', 'lb-mc-no', 'No. ' + pad(S.number)));
+                c.append(top, nm, ft); root.append(c);
                 root.append(el('p', null, 'Certificates begin at the Cardinal plan.'));
             } else {
                 root.append(el('h1', null, 'Your certificate'));
                 var ce = el('div', 'cert'); ce.setAttribute('data-tier', tier);
-                ce.append(el('div', 't', 'Limitless ' + NAMES[tier]), el('div', 'n', 'Nº ' + pad(S.number)), el('div', 'nm', S.name || ''), el('div', 'd', 'James Thiessen, Director of Gamble Limited Ltd.'));
+                ce.append(el('div', 'orn', '\u25C6'), el('div', 't', 'Limitless ' + NAMES[tier]), el('div', 'c-title', 'Certificate of Membership'), el('div', 'n', 'Nº ' + pad(S.number)), el('div', 'nm', S.name || ''), el('div', 'd', 'James Thiessen, Director of Gamble Limited Ltd.'));
                 if (S.certificateCode) ce.append(el('div', 'd', 'Verification code ' + S.certificateCode)); root.append(ce);
                 var r = el('div', 'row');
                 [['screen', 'Download PDF (screen)'], ['print', 'Download PDF (print)']].forEach(function (v) { var a = el('a', 'btn g', v[1]); a.href = '/_lb/me/certificate.pdf?variant=' + v[0]; a.download = ''; r.appendChild(a); }); root.append(r);

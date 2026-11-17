@@ -40,10 +40,10 @@ test('six steps for a new Ordinal member: welcome, number, charter and name, rev
   await expect(page.locator('.sig')).toHaveText('Alex Morgan');
   await page.locator('#cwAgree').check();
   await page.getByRole('button', { name: 'Sign' }).click();
-  await expect(page.locator('.reveal svg text')).toHaveText('Nº 0047');
+  await expect(page.locator('.reveal svg text.num')).toHaveText('Nº 0047');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('h1')).toHaveText('Your member card');
-  await expect(page.locator('.card')).toContainText('Alex Morgan');
+  await expect(page.locator('.lb-mc-card')).toContainText('Alex Morgan');
   await expect(page.locator('body')).toContainText('Certificates begin at the Cardinal plan.');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('ul.tour li')).toHaveCount(3);
@@ -55,7 +55,7 @@ test('six steps for a new Ordinal member: welcome, number, charter and name, rev
 test('Cardinal and above see the certificate with the Director and the PDF links', async ({ page }) => {
   await gate(page, { ...NEW, kind: 'invited', number: '0101', signed: true, step: 4, tier: 'prime', name: 'Alex Morgan', certificateCode: 'ABCD-1234' });
   await go(page);
-  await expect(page.locator('.reveal svg text')).toHaveText('Nº 0101');
+  await expect(page.locator('.reveal svg text.num')).toHaveText('Nº 0101');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('h1')).toHaveText('Your certificate');
   await expect(page.locator('.cert')).toHaveAttribute('data-tier', 'prime');
@@ -94,7 +94,7 @@ test('reduced motion: the reveal shows at once', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await gate(page, { ...NEW, number: '0047', signed: true, step: 4 });
   await go(page);
-  expect(await page.locator('.reveal svg text').evaluate((t) => getComputedStyle(t).fillOpacity)).toBe('1');
+  expect(await page.locator('.reveal svg text.num').evaluate((t) => getComputedStyle(t).fillOpacity)).toBe('1');
 });
 
 test('signed out: the state route answers 401 with the sign-in target and the page goes there', async ({ page }) => {
