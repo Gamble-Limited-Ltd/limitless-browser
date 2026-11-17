@@ -40,4 +40,6 @@ Requested by Boss 2026-11-16. Base: `main` at `2f4c181` (1.0.1). Lane: Minor (1.
 - 2026-11-16, Boss: at the 1.1 deploy every member except Boss (0000) redoes the full welcome ceremony and picks a new number.
   Every old number is released (first come, first served); old certificates show "superseded" on the HALL verify page and a new
   certificate follows the ceremony. Plan, tier, paid-until and usage are kept. Gate side: one-time guarded migration (`slice/1.1-reonboard`).
+- 2026-11-16 night, Boss: plain-words terms approved (shipped, `TERMS-DRAFT.md`); the seal reveal is the ceremony default (serif at `?reveal=serif`).
+  1.0.2 hotfix (`cb0f8e0`, live) merged into `release/1.1.0`.
 Last verified: 2026-11-16

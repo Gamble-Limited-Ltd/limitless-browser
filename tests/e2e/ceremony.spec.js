@@ -40,7 +40,7 @@ test('six steps for a new Ordinal member: welcome, number, charter and name, rev
   await expect(page.locator('.sig')).toHaveText('Alex Morgan');
   await page.locator('#cwAgree').check();
   await page.getByRole('button', { name: 'Sign' }).click();
-  await expect(page.locator('.reveal svg text.num')).toHaveText('Nº 0047');
+  await expect(page.locator('.reveal svg text.num')).toHaveText(/0047$/);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('h1')).toHaveText('Your member card');
   await expect(page.locator('.lb-mc-card')).toContainText('Alex Morgan');
@@ -55,7 +55,7 @@ test('six steps for a new Ordinal member: welcome, number, charter and name, rev
 test('Cardinal and above see the certificate with the Director and the PDF links', async ({ page }) => {
   await gate(page, { ...NEW, kind: 'invited', number: '0101', signed: true, step: 4, tier: 'prime', name: 'Alex Morgan', certificateCode: 'ABCD-1234' });
   await go(page);
-  await expect(page.locator('.reveal svg text.num')).toHaveText('Nº 0101');
+  await expect(page.locator('.reveal svg text.num')).toHaveText(/0101$/);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('h1')).toHaveText('Your certificate');
   await expect(page.locator('.cert')).toHaveAttribute('data-tier', 'prime');

@@ -80,7 +80,7 @@
             name.focus();
         },
         4: function () {
-            var rv = el('div', 'reveal'), no = pad(S.number), word = (NAMES[S.tier] || 'Ordinal').toUpperCase(), seal = /(^|[?&])reveal=seal(&|$)/.test(location.search), s;
+            var rv = el('div', 'reveal'), no = pad(S.number), word = (NAMES[S.tier] || 'Ordinal').toUpperCase(), seal = !/(^|[?&])reveal=serif(&|$)/.test(location.search), s;
             if (seal) {
                 s = sv('svg', { 'class': 'seal', viewBox: '0 0 220 220', role: 'img', 'aria-label': 'Seal with number ' + no });
                 var ring = sv('g', { 'class': 'ring' }); ring.append(sv('circle', { cx: 110, cy: 110, r: 96, 'stroke-width': 1.2 }), sv('circle', { cx: 110, cy: 110, r: 88, 'stroke-width': .6, 'stroke-dasharray': '2 4' }), sv('path', { d: 'M110 22 A88 88 0 0 1 198 110', 'stroke-width': 3, 'stroke-linecap': 'round' }));

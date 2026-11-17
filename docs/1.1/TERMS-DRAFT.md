@@ -1,4 +1,4 @@
-# Plain-words terms: draft for Boss (HELD, not shipped)
+# Plain-words terms (APPROVED by Boss 2026-11-16, shipped in 1.1.0)
 
 Source: Design Room III, "Plain-words terms" (the design's wording, verbatim). Boss held this copy on 2026-11-16 (`docs/1.1/PLAN.md`):
 it makes legal-adjacent promises (refunds, endings). The Plans page layout (`#lbPlansTerms`, `lbPlansTerms()` in `app/main.js`) is built and shows only
@@ -18,5 +18,7 @@ in `lbPlansTerms()` and update `tests/e2e/wp4.spec.js`. The prices and the 24 ho
 Related lines in the design that are also held: the line under the plan cards ("One year from the day it is granted", "24 hour trial, then a full
 refund within 3 days", "Cash, in person"), the guardian tick box ("I am under 18 and a parent or guardian agrees"; the app keeps "I am allowed to do
 this"), and the four steps copy "Your year and your 3-day refund window start that day" (the app says "Your plan is switched on and the page here shows it").
+
+Shipped: the six rows in `lbPlansTerms()` (plus the existing Replies and More plans rows) and the four steps "Start" copy. Not shipped: the guardian tick box (the app keeps "I am allowed to do this", per `docs/1.0/PAID-TIERS-PLAN.md` 10c) and a separate line under the plan cards (the terms table carries the same words).
 
 Last verified: 2026-11-16

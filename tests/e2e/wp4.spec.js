@@ -166,14 +166,14 @@ test.describe('ceremony', () => {
     const tc = await page.locator('#cw').evaluate((e) => getComputedStyle(e).getPropertyValue('--tc').trim().toLowerCase());
     expect(tc).toBe('#d4a531');
   });
-  test('serif reveal: tier word above the number, tier hairline, four digits', async ({ page }) => {
-    await cer(page, { tier: 'prime', number: '0101' });
+  test('serif reveal (?reveal=serif): tier word above the number, tier hairline, four digits', async ({ page }) => {
+    await cer(page, { tier: 'prime', number: '0101' }, '/theme/ceremony/?reveal=serif');
     await expect(page.locator('.reveal svg text.lbl')).toHaveText('PRIME');
     await expect(page.locator('.reveal svg text.num')).toHaveText('Nº 0101');
     await expect(page.locator('.reveal .rule')).toHaveCount(1);
   });
-  test('seal variant is selectable with ?reveal=seal', async ({ page }) => {
-    await cer(page, { tier: 'prime', number: '0101' }, '/theme/ceremony/?reveal=seal');
+  test('seal reveal is the default (Boss, 2026-11-16)', async ({ page }) => {
+    await cer(page, { tier: 'prime', number: '0101' });
     await expect(page.locator('.reveal svg.seal')).toHaveCount(1);
     await expect(page.locator('.reveal svg.seal')).toContainText('0101');
     await expect(page.locator('.reveal svg.seal')).toContainText('PRIME');

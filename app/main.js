@@ -4168,7 +4168,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 }
                 function lbPlansSteps() {
                     const w = el('div', 'lb-pl-steps'); w.id = 'lbPlansSteps';
-                    [['Choose', 'Read the plans and pick the one you want.'], ['Ask', 'Send a request. It carries your name and plan, nothing else.'], ['Meet', 'You get a reply and arrange payment in person. No card details, ever.'], ['Start', 'Your plan is switched on and the page here shows it.']].forEach((s, i) => {
+                    [['Choose', 'Read the plans and pick the one you want.'], ['Ask', 'Send a request. It carries your name and plan, nothing else.'], ['Meet', 'You get a reply and arrange payment in person. No card details, ever.'], ['Start', 'Your plan is switched on. Your year and your 3-day refund window start that day.']].forEach((s, i) => {
                         const d = el('div'); d.append(el('b', '', String(i + 1)), el('h4', '', s[0]), el('p', '', s[1])); w.appendChild(d);
                     });
                     return w;
@@ -4262,11 +4262,10 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     };
                     return form;
                 }
-                // Layout of the plain-words terms table (design: buy-terms). Wording here is the currently approved text only; the design's longer
-                // draft (refunds, extra data, endings) is held for Boss in docs/1.1/TERMS-DRAFT.md.
+                // Plain-words terms table (design: buy-terms). Wording approved by Boss 2026-11-16 (docs/1.1/TERMS-DRAFT.md).
                 function lbPlansTerms() {
                     const t = el('div', 'lb-pl-terms'); t.id = 'lbPlansTerms';
-                    [['Limits', 'Typical limits for each plan. They may change with notice.'], ['Replies', 'We aim to reply to every request within 3 days.'], ['Paying', 'Payment is arranged in person. Nothing is charged here and we never ask for card details.'], ['More plans', 'Further plans are granted by invitation.']].forEach((r) => { const d = el('div'); d.append(el('b', '', r[0]), el('span', '', r[1])); t.appendChild(d); });
+                    [['What you get', 'One year of the plan from the day it is granted. After that you drop back to Ordinal and keep your settings.'], ['Refunds', 'Try the plan free for 24 hours. After you pay, ask for a full refund within 3 days. After that there is no refund, unless we shut the service down: then you get back the unused months.'], ['Extra data', 'Not refundable. It lasts to the end of your plan and carries over if you renew.'], ['When a plan can end', 'With no refund: a ban for breaking the rules, sharing or selling your account, or abusing the relay. If it ends by mistake, you get back the unused months.'], ['Changes', 'Limits can change, and you are told first. Under 18: a parent or guardian needs to agree.'], ['Paying', 'Cash, in person. We never ask for card details or a bank account.'], ['Replies', 'We aim to reply to every request within 3 days.'], ['More plans', 'Further plans are granted by invitation.']].forEach((r) => { const d = el('div'); d.append(el('b', '', r[0]), el('span', '', r[1])); t.appendChild(d); });
                     return t;
                 }
                 function lbPlansRender(root, me) {
