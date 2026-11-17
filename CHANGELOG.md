@@ -13,6 +13,7 @@ What changed, in plain language. Newest first.
 - Page files that matter first (styles, scripts, fonts) are no longer stuck behind a long line of images.
 - A site that answers with an empty error page, or a bot check page, now shows a plain card instead of a blank tab.
 - A script the page asks for again during one load is no longer downloaded again.
+- Sites that open a sign-in window (for example "Sign in with Google" buttons on other sites) now get a working second window that can talk back to the page. Google's own login can still refuse an embedded browser.
 
 ## 1.1.0
 
