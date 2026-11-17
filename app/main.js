@@ -338,6 +338,36 @@
                 keepFresh() { if (this.cur && this.left() < 100000) this.get(true); },
             };
             window.LB_relayTok = LB_relayTok;
+            // ── Native image lane (1.2, features.imgLane, docs/1.2/IMGLANE.md) ───────────────────────────
+            // For Cardinal and above who opted in (limitless:imglane:v1): the frame's <img src> becomes
+            // https://<our relay host>/i/<relay token>/<w|s>/<image url>, so the browser loads and decodes it natively. The VPS fetches the
+            // image without cookies, caches it and re-encodes big JPEG/PNG to WebP where the plan allows. Any error falls back to the
+            // normal path (runtime loadMedia). Called by the frame runtime through window.top.LB_imgLane.
+            const LB_imgLane = {
+                fails: 0, offUntil: 0,
+                on() {
+                    const f = window.LB_features;
+                    if (!f || f.imgLane !== true || Date.now() < this.offUntil) return false;
+                    try { if (ls.getItem('limitless:imglane:v1') !== '1') return false; } catch (_) { return false; }
+                    const m = window.LB_member, tier = m && m.membership === 'on' && m.plan && m.plan.tier;
+                    if (tier !== 'cardinal' && tier !== 'prime' && tier !== 'executive') return false;
+                    const st = window.LB_relayStatus && window.LB_relayStatus();
+                    if (!st || !st.ownRelay || st.ours === false) return false;
+                    return !!(LB_relayTok.cur && !LB_relayTok.denied && LB_relayTok.left() > 20000);
+                },
+                url(abs) {
+                    if (!this.on()) return null;
+                    let u; try { u = new URL(abs); } catch (_) { return null; }
+                    if ((u.protocol !== 'https:' && u.protocol !== 'http:') || u.username || u.password || abs.length > 2000) return null;
+                    if (u.port && u.port !== '80' && u.port !== '443') return null;
+                    const h = u.hostname;
+                    if (!h.includes('.') || /^[0-9.]+$/.test(h) || h.includes(':') || /\.(local|localhost|internal)$/i.test(h)) return null;
+                    let host; try { host = new URL(LB_relayTok.cur.url.replace(/^ws/, 'http')).host; } catch (_) { return null; }
+                    return 'https://' + host + '/i/' + LB_relayTok.cur.token + '/' + (lbDataSaver() ? 's' : 'w') + '/' + abs.split('#')[0];
+                },
+                note(ok) { if (ok) this.fails = 0; else if (++this.fails >= 5) { this.fails = 0; this.offUntil = Date.now() + 120000; } },
+            };
+            window.LB_imgLane = LB_imgLane;
             class LBRelaySocket extends EventTarget {
                 constructor(url, d, markDown) {
                     super();
@@ -700,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, imgLane: false, popupBridge: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -740,7 +770,8 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -1056,6 +1087,21 @@
                     dPaint();
                 }
 
+                // Image lane opt-in (1.2, limitless:imglane:v1, off by default): the card only shows when the build has features.imgLane
+                // and the plan is Cardinal or above.
+                const isw = document.getElementById('settingsImgLaneSwitch'), icard = document.getElementById('settingsImgLaneCard');
+                if (isw && icard) {
+                    const iOn = () => { try { return ls.getItem('limitless:imglane:v1') === '1'; } catch { return false; } };
+                    const iPaint = () => {
+                        const m = window.LB_member, t = m && m.membership === 'on' && m.plan && m.plan.tier;
+                        icard.hidden = !(window.LB_features.imgLane === true && (t === 'cardinal' || t === 'prime' || t === 'executive'));
+                        isw.classList.toggle('on', iOn()); isw.setAttribute('aria-checked', iOn() ? 'true' : 'false');
+                    };
+                    isw.addEventListener('click', () => { try { ls.setItem('limitless:imglane:v1', iOn() ? '0' : '1'); } catch (_) {} iPaint(); });
+                    document.addEventListener('lb-member', iPaint);
+                    iPaint();
+                }
+
                 const sw = document.getElementById('settingsMultiRelaySwitch');
                 const mode = document.getElementById('settingsMultiRelayMode');
                 const note = document.getElementById('settingsMultiRelayNote');
@@ -1090,7 +1136,7 @@
             })();
 
             const $ = s => document.getElementById(s);
-            const frame = $('frame');
+            let frame = $('frame');   // 1.2: reassigned while a popup is open (popup bridge keeps the opener frame parked)
             // Self-hosted assets. Documents we generate (blob:/srcdoc:) need absolute URLs.
             const LB_ASSET = p => { try { return new URL(p, document.baseURI).href; } catch (e) { return p; } };
             const LB_FA = LB_ASSET('vendor/fontawesome/6.7.2/css/all.min.css');
@@ -1109,7 +1155,7 @@
             // (e.g. Brave search redirect links that bypass the postMessage
             // click intercept), catch the load event, read the landed URL,
             // and re-route it through the proxy immediately.
-            frame.addEventListener('load', () => {
+            const lbFrameGuard = () => {
                 const _wasBlobLoad = _blobLoadPending;
                 _blobLoadPending = false;
                 try {
@@ -1155,7 +1201,8 @@
                         }
                     } catch (_) {}
                 }
-            }, true);
+            };
+            frame.addEventListener('load', lbFrameGuard, true);
             // ─────────────────────────────────────────────────────────────
 
             const urlInput = $("url");
@@ -2015,6 +2062,10 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             function closeTab(tabId) {
                 const index = tabs.findIndex(t => t.id === tabId);
                 if (index === -1 || tabs.length === 1) return;
+                if (lbPopups.size) {
+                    if (tabs[index].popupPid && lbPopups.has(tabs[index].popupPid)) { lbPopupEnd(tabs[index].popupPid, true); return; }
+                    for (const pe of [...lbPopups.values()]) if (pe.openerTabId === tabId) lbPopupEnd(pe.pid, false);
+                }
                 try { if (typeof LimitlessExt !== 'undefined') LimitlessExt.tabEvent('removed', tabId); } catch (e) {}
 
                 const ctrl = tabAbortControllers.get(tabId);
@@ -2148,6 +2199,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             function switchToTab(tabId) {
                 const tab = tabs.find(t => t.id === tabId);
                 if (!tab) return;
+                if (lbPopups.size && !tab.popupPid) lbPopupEndAll(false);   // leaving the opener/popup pair ends the popup
 
                 // Abort any in-flight load on the tab we're leaving so it doesn't
                 // keep fetching resources in the background after we've moved away.
@@ -5433,6 +5485,78 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             window.LB_ls = ls; // read by app/ui.js (auto Data saver)
             function lbDataSaver() { try { return ls.getItem('limitless:datasaver:v1') === '1'; } catch (_) { return false; } }
             // Read by makeProxyScript (the injected runtime): lazy offscreen images and the data saver media rules.
+            // ── Popup bridge (1.2, features.popupBridge, docs/1.2/POPUP.md) ─────────────────────────────────
+            // window.open in a proxied page opens a second proxied TAB with a working window.opener. There is one live document frame, so
+            // the opener's iframe is PARKED (hidden, still running) and the popup gets a fresh iframe that `frame` points to; ending the
+            // popup puts the parked frame back with its page intact. postMessage is relayed here with the real origins (never the
+            // sender's claim) and the target origin is enforced. One popup at a time; any tab switch away from the pair ends it.
+            const lbPopups = new Map();   // pid -> {pid, openerFrame, openerWin, openerTabId, popupFrame, popupTabId, shown}
+            const LB_PARK_OK = new Set(['q', 'qjs', 'c', 'cookieSet', 'ws', 'stream', 'sse', 'uc', 'rl', 'lsSet', 'lsRemove', 'lsClear', 'proxyframe']);
+            const lbOrigin = (u) => { try { return new URL(u).origin; } catch (_) { return ''; } };
+            function lbInside(win, top) { try { for (let w = win, i = 0; w && i < 8; i++) { if (w === top) return true; if (w === w.parent) break; w = w.parent; } } catch (_) {} return false; }
+            function lbIsParked(win) { for (const e of lbPopups.values()) if (e.openerFrame.contentWindow && lbInside(win, e.openerFrame.contentWindow)) return true; return false; }
+            function lbPopupOpen(src, pid, rawUrl) {
+                const deny = () => { try { lbPostTo(src, { t: 'pclosed', pid }, '*'); } catch (_) {} };
+                const url = normUrl(String(rawUrl || ''));
+                const openerTab = getActiveTab();
+                if (window.LB_features.popupBridge === false || lbPopups.size > 0 || !openerTab || !/^https?:\/\//i.test(url)) return deny();
+                const park = frame, n = tabs.length, shown = park.style.display;
+                const nf = park.cloneNode(false);
+                nf.removeAttribute('src'); nf.removeAttribute('srcdoc');
+                park.id = 'lbFrameParked'; park.style.display = 'none';
+                nf.id = 'frame'; park.after(nf); frame = nf; nf.addEventListener('load', lbFrameGuard, true);
+                openerTab.blobSrc = park.src;
+                createTab(url);
+                if (tabs.length === n) { nf.remove(); frame = park; park.id = 'frame'; park.style.display = shown; return deny(); }   // tab cap refused it
+                const pt = tabs[tabs.length - 1];
+                pt.popupPid = pid;
+                lbPopups.set(pid, { pid, openerFrame: park, openerWin: src, openerTabId: openerTab.id, popupFrame: nf, popupTabId: pt.id, shown });
+            }
+            function lbPopupEnd(pid, restore) {
+                const e = lbPopups.get(pid);
+                if (!e) return;
+                lbPopups.delete(pid);
+                const pt = tabs.find(t => t.id === e.popupTabId);
+                try { e.popupFrame.onload = null; e.popupFrame.src = 'about:blank'; } catch (_) {}
+                e.popupFrame.remove();
+                frame = e.openerFrame; frame.id = 'frame'; frame.style.display = e.shown;
+                if (pt) {
+                    const ctl = tabAbortControllers.get(pt.id);
+                    if (ctl) { ctl.abort(); tabAbortControllers.delete(pt.id); }
+                    for (let i = fetchQueue.length - 1; i >= 0; i--) if (fetchQueue[i].tabId === pt.id) { fetchQueue[i].rej(new DOMException('Aborted', 'AbortError')); fetchQueue.splice(i, 1); pendingRequests = Math.max(0, pendingRequests - 1); }
+                    closedTabIds.add(pt.id); setTimeout(() => closedTabIds.delete(pt.id), 5000);
+                    if (pt.blobSrc && pt.blobSrc.startsWith('blob:')) lbRevoke(pt.blobSrc, 300);
+                    tabs.splice(tabs.indexOf(pt), 1);
+                }
+                activeTabId = e.openerTabId;
+                renderTabs(); saveTabs();
+                if (restore) switchToTab(e.openerTabId);
+                try { lbPostTo(e.openerWin, { t: 'pclosed', pid }, '*'); } catch (_) {}
+            }
+            function lbPopupEndAll(restore) { for (const pid of [...lbPopups.keys()]) lbPopupEnd(pid, restore); }
+            function lbPopupMsg(src, d) {
+                const e = lbPopups.get(d.pid);
+                if (!e) return;
+                const pw = e.popupFrame.contentWindow;
+                if (d.t === 'pclose') { if (src === pw || src === e.openerWin) lbPopupEnd(e.pid, true); return; }
+                const pt = tabs.find(t => t.id === e.popupTabId), ot = tabs.find(t => t.id === e.openerTabId);
+                if (!pt || !ot) return;
+                if (d.t === 'popnav') {
+                    const u = normUrl(String(d.u || ''));
+                    if (src === e.openerWin && /^https?:\/\//i.test(u) && activeTabId === pt.id) go(u);
+                    return;
+                }
+                // pmo: popup -> opener or opener -> popup; the origins come from the tabs' real URLs
+                const o = typeof d.o === 'string' ? d.o : '/';
+                if (src === pw) {
+                    const from = lbOrigin(pt.url), to = e.openerWin === e.openerFrame.contentWindow ? lbOrigin(ot.url) : '*';
+                    if (o === '*' || o === to || (o === '/' && from === to) || (to === '*' && o === '/')) lbPostTo(e.openerWin, { t: 'pmi', pid: e.pid, d: d.d, from: 'popup', origin: from }, '*');
+                } else if (src === e.openerWin) {
+                    const from = lbOrigin(ot.url), to = lbOrigin(pt.url);
+                    if (o === '*' || o === to || (o === '/' && from === to)) lbPostTo(pw, { t: 'pmi', pid: e.pid, d: d.d, from: 'opener', origin: from }, '*');
+                }
+            }
+            function lbPopupConfig() { const t = getActiveTab(); return { on: !(window.LB_features && window.LB_features.popupBridge === false), pid: (t && t.popupPid) || '' }; }
             function lbLazyConfig() {
                 const sv = lbDataSaver();
                 return { on: !(window.LB_features && window.LB_features.lazyImg === false), margin: sv ? 50 : 150, saver: sv };
@@ -6394,6 +6518,7 @@ const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
 const SPELLCHECK = ${JSON.stringify(!!spellcheck)};
 const LB_LAZY = ${JSON.stringify(lbLazyConfig())};
+const LB_POPUP = ${JSON.stringify(lbPopupConfig())};
 ${window.LB_videoRuntime ? '(' + window.LB_videoRuntime + ')(' + JSON.stringify(window.LB_videoConfig(baseUrl)) + ');' : ''}   // video cap and one video at a time (app/ui.js)
 const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
@@ -6659,10 +6784,42 @@ let __extRid = 0;
 const __extMsgListeners = {};
 const geoCbs = new Map();
 
+// 1.2 popup bridge (features.popupBridge): window.open opens a second proxied tab; window.opener and postMessage are relayed by the app.
+const __lbPopups = new Map();
+const __lbSend = (m) => { window.top.postMessage(m, '*'); };
+let __lbOpenerHandle = null;
+if (LB_POPUP.on && LB_POPUP.pid && window.parent === window.top) {
+  __lbOpenerHandle = { closed: false, name: '', postMessage(d, o) { __lbSend({ t: 'pmo', pid: LB_POPUP.pid, d: d, o: typeof o === 'string' ? o : (o && o.targetOrigin) || '/' }); }, focus() {}, blur() {}, close() {} };
+  try { Object.defineProperty(window, 'opener', { get() { return __lbOpenerHandle; }, set() {}, configurable: true }); } catch (e) {}
+  window.close = function() { __lbSend({ t: 'pclose', pid: LB_POPUP.pid }); };
+}
+function __lbPopupOpen(url) {
+  const pid = 'p' + Math.random().toString(36).slice(2, 10);
+  const st = { closed: false, opened: false, href: 'about:blank' };
+  const nav = (u) => { const abs = resolve(u); st.href = abs; __lbSend({ t: st.opened ? 'popnav' : 'popen', pid: pid, u: abs }); st.opened = true; };
+  const h = {
+    get closed() { return st.closed; }, name: '', opener: null,
+    postMessage(d, o) { if (!st.opened || st.closed) return; __lbSend({ t: 'pmo', pid: pid, d: d, o: typeof o === 'string' ? o : (o && o.targetOrigin) || '/' }); },
+    close() { if (st.opened && !st.closed) __lbSend({ t: 'pclose', pid: pid }); st.closed = true; },
+    focus() {}, blur() {}, document: { write() {}, close() {} },
+    location: { get href() { return st.href; }, set href(v) { nav(v); }, assign(v) { nav(v); }, replace(v) { nav(v); }, toString() { return st.href; } },
+  };
+  __lbPopups.set(pid, { h: h, st: st });
+  if (url && url !== 'about:blank') nav(url);
+  return h;
+}
 window.addEventListener('message', e => {
   if (e.source !== parent) return;
   const d = e.data;
   if (!d) return;
+  if (d.t === 'pmi') {
+    const ev = new MessageEvent('message', { data: d.d, origin: d.origin });
+    const from = d.from === 'popup' ? (__lbPopups.get(d.pid) || {}).h : __lbOpenerHandle;
+    try { Object.defineProperty(ev, 'source', { value: from || null }); } catch (x) {}
+    window.dispatchEvent(ev);
+    return;
+  }
+  if (d.t === 'pclosed') { const pp = __lbPopups.get(d.pid); if (pp) pp.st.closed = true; return; }
   if (d.t === 'cookieSync') {
     if (d.origin !== ORIGIN || typeof d.cookie !== 'string') return;
     // Parent jar is authoritative — replace, so server-side deletions propagate.
@@ -7110,6 +7267,19 @@ loadMedia();
 // the first of several identical <img> tags ever got its blob set — every
 // duplicate silently kept its original https src forever.
 async function loadMedia() {
+  // 1.2 native image lane: try the relay's /i/ URL as a plain <img src>; on any error fall through to the normal path below.
+  if (attr === 'src' && el.tagName === 'IMG') {
+    let lu = null; try { lu = window.top.LB_imgLane && window.top.LB_imgLane.url(absUrl); } catch (e) {}
+    if (lu) {
+      const ok = await new Promise(res => {
+        const fin = v => { el.removeEventListener('load', onL); el.removeEventListener('error', onE); try { window.top.LB_imgLane.note(v); } catch (e) {} res(v); };
+        const onL = () => fin(true), onE = () => fin(false);
+        el.addEventListener('load', onL); el.addEventListener('error', onE);
+        if (desc.set) desc.set.call(el, lu); else el.setAttribute('src', lu);
+      });
+      if (ok || state.cancel) return;
+    }
+  }
   await acquireMedia();
   if (state.cancel) { releaseMedia(); return; }
   try {
@@ -7523,6 +7693,7 @@ function processEl(el) {
     }
     return;
   }
+  if (tag === 'META' && /^content-security-policy/i.test(el.getAttribute('http-equiv') || '')) { el.remove(); return; }   // markup-inserted CSP meta (1.2 Trusted Types note)
   if (tag === 'IMG' || tag === 'VIDEO' || tag === 'AUDIO' || tag === 'SOURCE') {
     const src = el.getAttribute('src');
     if (src && !/^(data:|blob:)/i.test(src) && !el.getAttribute('data-real-src')) el.src = src;
@@ -8040,8 +8211,17 @@ if (fakeLoc.hostname === 'chromewebstore.google.com') {
 // proxy-navigate forms the page left to native submission.
 document.addEventListener('submit', e => { const form = e.target; if (!form || form.tagName !== 'FORM') return; if (e.defaultPrevented) return; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); const action = resolve(form.action || BASE); const method = (form.method || 'GET').toUpperCase(); const fd = new FormData(form); if (method === 'GET') { parent.postMessage({ t: 'n', u: action.split('?')[0] + '?' + new URLSearchParams(fd).toString(), form: 1 }, '*'); } else { parent.postMessage({ t: 'n', u: action, m: 'POST', b: new URLSearchParams(fd).toString(), form: 1 }, '*'); } }, false);
 
+// 1.2 Trusted Types: the app never applies the site's CSP (headers do not reach this document, parse-time meta CSPs are stripped), so a CSP
+// meta that the page's own script adds stays inert here; with require-trusted-types-for it made the next innerHTML or script write throw.
+try {
+  const _isCsp = (n, v) => /^http-equiv$/i.test(String(n)) && /^content-security-policy/i.test(String(v));
+  const _saMeta = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(n, v) { if (this.tagName === 'META' && _isCsp(n, v)) n = 'data-lb-http-equiv'; return _saMeta.call(this, n, v); };
+  const _heD = Object.getOwnPropertyDescriptor(HTMLMetaElement.prototype, 'httpEquiv');
+  if (_heD && _heD.set) Object.defineProperty(HTMLMetaElement.prototype, 'httpEquiv', { get: _heD.get, set(v) { if (_isCsp('http-equiv', v)) this.setAttribute('data-lb-http-equiv', v); else _heD.set.call(this, v); }, configurable: true });
+} catch (e) {}
 const _open = window.open;
-window.open = function(url, target, features) { if (!url || url === 'about:blank') return null; const resolved = resolve(url); parent.postMessage({ t: 'n', u: resolved }, '*'); return { closed: false, close: () => {}, focus: () => {}, blur: () => {}, postMessage: () => {}, location: { href: resolved }, document: { write: () => {}, close: () => {} } }; };
+window.open = function(url, target, features) { if (LB_POPUP.on && !/noopener/i.test(String(features || '')) && !/^_(self|parent|top)$/i.test(String(target || ''))) return __lbPopupOpen(url); if (!url || url === 'about:blank') return null; const resolved = resolve(url); parent.postMessage({ t: 'n', u: resolved }, '*'); return { closed: false, close: () => {}, focus: () => {}, blur: () => {}, postMessage: () => {}, location: { href: resolved }, document: { write: () => {}, close: () => {} } }; };
 
 // Intercept the Navigation API (window.navigation) — used by Chromium-based SPAs
 // like Brave Search to navigate without touching location or firing a click event.
@@ -8662,6 +8842,11 @@ parent.postMessage({ t: 'ready' }, '*');
                 // to spoof commands. Request replies go back to ev.source (below) so each
                 // frame receives only its own responses.
                 const _replyTo = ev.source;
+
+                if (d.t === 'popen') { lbPopupOpen(_replyTo, d.pid, d.u); return; }
+                if (d.t === 'popnav' || d.t === 'pmo' || d.t === 'pclose') { lbPopupMsg(_replyTo, d); return; }
+                // A parked opener keeps its page alive but must not steer the active (popup) tab: only fetch and storage traffic passes.
+                if (lbPopups.size && lbIsParked(_replyTo) && !LB_PARK_OK.has(d.t)) return;
 
                 if (d.t === 'hint') {
                     if (d.u && typeof d.u === 'string') _pendingNavHint = d.u;
@@ -10677,7 +10862,7 @@ _VIEWER_DL_JS +
                         [...doc.querySelectorAll('script[src]')].slice(0, _sl).forEach(sc => kick(sc.getAttribute('src'), PRIORITY.js));
                         doc.querySelectorAll('iframe[src]').forEach(f => kick(f.getAttribute('src'), PRIORITY.html));
                         const _il = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch (e) { return null; } })() || (_saver ? '100' : '300'), 10));
-                        const _pre = _saver ? 0 : (window.LB_features.lazyImg === false ? _il : Math.min(_il, 24));
+                        const _pre = (_saver || LB_imgLane.on()) ? 0 : (window.LB_features.lazyImg === false ? _il : Math.min(_il, 24));
                         // features.lazyPrefetch (with lazyImg): only the first LB_PREWARM_TOP images in document order (likely above the fold),
                         // plus eager or fetchpriority=high ones, are pre-warmed; the rest wait until the page runtime scrolls near them.
                         const _topOnly = window.LB_features.lazyImg !== false && window.LB_features.lazyPrefetch !== false;

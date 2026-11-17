@@ -29,6 +29,22 @@ server {
     proxy_request_buffering off;
   }
 
+  # Native image lane (1.2): GET /i/<token>/<w|s>/<url>. Resolved at request time so the tls container starts without the
+  # imglane service (it is a compose profile). No URI in proxy_pass: the request line reaches the lane as the client sent it.
+  location ^~ /i/ {
+    limit_conn perip 32;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $imglane http://imglane:8080;
+    proxy_pass $imglane;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 30s;
+    proxy_buffering on;
+    proxy_request_buffering off;
+  }
+
   # Liveness for deploy-box.sh and the Kuma monitor: no data.
   location = /healthz { proxy_pass http://relaygate; proxy_http_version 1.1; proxy_set_header Connection ""; }
 

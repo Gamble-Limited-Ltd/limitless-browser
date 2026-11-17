@@ -110,6 +110,38 @@ services:
       driver: local
       options: { max-size: "1m", max-file: "2" }
 
+  # ---- native image lane (1.2, docs/1.2/IMGLANE.md). Profile `imglane`: a normal `up` does NOT start it; Boss starts it with
+  # `--profile imglane` after the privacy line is approved. The same gate image in GATE_MODE=img: token check, public-only fetch,
+  # disk LRU, WebP re-encode (sharp). Own CPU limit so it can never slow the relay. No members DB, no destination logging.
+  imglane:
+    profiles: ["imglane"]
+    image: limitless-gate:${GATE_SHA:-dev}
+    restart: unless-stopped
+    env_file: [./imglane.env]
+    environment:
+      GATE_MODE: img
+      PORT: "8080"
+      HOST: 0.0.0.0
+      IMG_CACHE_DIR: /cache
+    networks: [box_front, box_egress]
+    dns: [1.1.1.1, 9.9.9.9]
+    volumes: [imgcache:/cache]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 0.75
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: local
+      options: { max-size: "2m", max-file: "2" }
+
   # ---- load test only (profile `loadtest`, never started by a normal `up`): a second relay-mode gate with its OWN keys plus the
   # runner (scripts/relay-loadtest.ts, in the same gate image) that is its fake home. Real members and the real home are not
   # involved. Boss starts it (S4-HOST-COMMANDS.md section 9). Both sit on the internal network box_lt; the gate also reaches relay.
@@ -195,3 +227,4 @@ networks:
 
 volumes:
   certs:
+  imgcache:
