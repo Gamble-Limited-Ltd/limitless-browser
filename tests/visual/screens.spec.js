@@ -21,7 +21,7 @@ for (const [theme, mode] of COMBOS) for (const [w, h] of SIZES) {
     await bootMember(page, MEMBER);
     const key = `${theme}/${mode}`, tag = `${theme}-${mode}-${w}`;
     await expect(page.locator('#lbMemberCard')).toBeVisible();
-    await page.evaluate(() => document.getElementById('ntTimeText').textContent = '10:30');   // the clock would change every snapshot
+    await page.evaluate(() => { document.getElementById('ntTimeText').textContent = '10:30'; document.getElementById('ntTimeSuffix').textContent = 'AM'; });   // the clock would change every snapshot
     expect(await checkLayout(page), 'start page layout').toEqual([]);
     expect(await checkContrast(page, '.lb-startm'), 'start page contrast').toEqual([]);
     if (SHOT.has(key)) await expect(page).toHaveScreenshot(`start-${tag}.png`, { mask: [page.locator('#ntDate'), page.locator('#ntFavorites')] });
@@ -47,7 +47,7 @@ for (const [theme, mode] of [['luxury', 'dark'], ['soft', 'light'], ['ink', 'dar
     await page.setViewportSize({ width: w, height: h });
     await page.addInitScript(([t, m]) => { localStorage.setItem('limitless:theme:v1', JSON.stringify({ theme: t, mode: m, mark: 'orbit' })); localStorage.setItem('limitless:tablayout:v1', 'side'); }, [theme, mode]);
     await bootMember(page, me({ tier: 'cardinal' }, { tier: 'cardinal', limits: { tabs: 1 } }));
-    await page.evaluate(() => document.getElementById('ntTimeText').textContent = '10:30');
+    await page.evaluate(() => { document.getElementById('ntTimeText').textContent = '10:30'; document.getElementById('ntTimeSuffix').textContent = 'AM'; });
     await page.locator('#newTab').click();
     await expect(page.locator('#lbCapDlg')).toBeVisible();
     expect(await checkLayout(page), 'layout').toEqual([]);
@@ -103,7 +103,7 @@ test('plan granted moment 1366x768', async ({ page }) => {
   ans = me({ tier: 'cardinal' }, { tier: 'cardinal', paidUntil: Date.UTC(2027, 10, 14) });
   await page.evaluate(() => window.LB_meRefresh());
   await expect(page.locator('#lbGranted')).toBeVisible();
-  await page.evaluate(() => document.getElementById('ntTimeText').textContent = '10:30');
+  await page.evaluate(() => { document.getElementById('ntTimeText').textContent = '10:30'; document.getElementById('ntTimeSuffix').textContent = 'AM'; });
   expect(await checkContrast(page, '#lbGranted'), 'granted contrast').toEqual([]);
   await expect(page).toHaveScreenshot('granted-cardinal-1366.png', { mask: [page.locator('#ntDate'), page.locator('#ntFavorites')] });
 });
@@ -115,7 +115,7 @@ async function wp3Boot(page, theme, mode, answer) {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.addInitScript(([t, m]) => localStorage.setItem('limitless:theme:v1', JSON.stringify({ theme: t, mode: m, mark: 'orbit' })), [theme, mode]);
   await bootMember(page, answer);
-  await page.evaluate(() => document.getElementById('ntTimeText').textContent = '10:30');
+  await page.evaluate(() => { document.getElementById('ntTimeText').textContent = '10:30'; document.getElementById('ntTimeSuffix').textContent = 'AM'; });
 }
 for (const [theme, mode] of [['luxury', 'dark'], ['soft', 'light'], ['ink', 'dark']]) {
   test(`${theme}/${mode}: plans line, day finished and the fifteen minute toast`, async ({ page }) => {
