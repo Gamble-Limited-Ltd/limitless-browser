@@ -175,3 +175,39 @@ test('ink/dark: Ordinal staircase, Prime out of tabs, plan ended and the Directo
   expect(await checkContrast(page, '#wpForm'), 'formal notice contrast').toEqual([]);
   await expect(page).toHaveScreenshot('wp3-formal-ink-dark.png', { mask: MASK(page) });
 });
+
+// 1.1 WP5: admin members master-detail, the void side sheet and the plan limits grid (DESIGN-GAPS 13). Mocked owner API, ink/dark, 1366x768.
+test('admin: members master-detail, void sheet and plan limits', async ({ page }) => {
+  const DAY = 86400000, now = Date.now(), J = (b) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
+  const PL = (o) => ({ relay: true, tabs: 15, dailyMinutes: 0, weeklyGb: 20, monthlyGb: 0, speedMbps: 20, downloadMbPerFile: 25, downloadsPerDay: 0, weight: 1.5, priceUsdYear: 15, topupGb: 25, ...o });
+  const M = (sub, number, plan, name, o = {}) => ({ sub, number, tier: plan, plan, standing: 'good', signed: true, loginName: name.toLowerCase(), name, lastSeen: null, paidUntil: null, memberId: 'm_' + sub, ...o });
+  const members = [M('s1', '0001', 'executive', 'Director'), M('s2', '0102', 'cardinal', 'Alex Morgan', { paidUntil: now + 13.5 * DAY }), M('s3', '0103', 'prime', 'Sam Rivera', { paidUntil: now + 200 * DAY }), M('s4', '0104', 'ordinal', 'Jo Park', { standing: 'warned' })];
+  await page.route('**/_lb/admin/api/**', (route) => {
+    const path = new URL(route.request().url()).pathname.replace('/_lb/admin/api/', '');
+    if (path === 'whoami') return route.fulfill(J({ owner: true, version: 'abc1234', stepup: true }));
+    if (path === 'membership/members') return route.fulfill(J({ members }));
+    if (path === 'membership/members/s2') return route.fulfill(J({ member: { ...members[1], admittedAt: now - 40 * DAY, charterVersion: 'v1', signedAt: now - 40 * DAY, standingUntil: null }, name: 'Alex Morgan', loginName: 'alex', events: [], receipts: [{ id: 11, kind: 'plan', tier: 'cardinal', amount: 15, paidOn: now - 100 * DAY, howPaid: 'cash', paidUntil: now + 265 * DAY, voided: false }], certificateCode: 'LMT-0102', sessions: [], usage: { sockets: 0, streams: 0, days: [] } }));
+    if (path === 'membership/plans') return route.fulfill(J({ plansOpen: false, knobs: { slowStageMbps: 5, primeSeats: 40, execReservePct: 20, execBlock: '' }, plans: { ordinal: PL({ relay: false, tabs: 4, priceUsdYear: 0, weight: 0 }), cardinal: PL({}), prime: PL({ tabs: 25, priceUsdYear: 40 }), executive: PL({ tabs: 50, priceUsdYear: null }) } }));
+    if (path === 'membership/transfer') return route.fulfill(J({ stage: 'ok', fraction: 0.42, usedMeterGb: 2100, meterGb: 5000 }));
+    if (path === 'membership/invites') return route.fulfill(J({ invites: [] }));
+    if (path === 'membership/requests') return route.fulfill(J({ requests: [], primeSeatsLeft: 3 }));
+    if (path === 'membership/outbox') return route.fulfill(J({ mail: [] }));
+    return route.fulfill({ status: path.startsWith('membership/') ? 200 : 404, contentType: 'application/json', body: '{}' });
+  });
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.addInitScript(() => localStorage.setItem('limitless:theme:v1', JSON.stringify({ theme: 'ink', mode: 'dark', mark: 'orbit' })));
+  await boot(page);
+  await page.evaluate(() => window.LB_go('limitless://admin'));
+  const m = page.locator('#lbAdmMembers');
+  await m.getByRole('button', { name: 'Alex Morgan' }).click();
+  await expect(page.locator('#lbAdmProfile')).toContainText('LMT-0102');
+  await m.evaluate((e) => e.scrollIntoView());
+  await expect(page).toHaveScreenshot('admin-members-1366.png', { mask: [page.locator('#lbAdmin .lb-adm-toast')] });
+  await m.getByRole('button', { name: 'Void plan' }).click();
+  await expect(page.locator('#lbAdmSheet')).toBeVisible();
+  await expect(page).toHaveScreenshot('admin-void-1366.png', { mask: [page.locator('#lbAdmVoidWhich')] });
+  await page.keyboard.press('Escape');
+  const pl = page.locator('#lbAdmPlans');
+  await pl.evaluate((e) => e.scrollIntoView());
+  await expect(page).toHaveScreenshot('admin-limits-1366.png');
+});

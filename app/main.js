@@ -560,6 +560,8 @@
                     try {
                         const r = await fetch('/_lb/me', { cache: 'no-store', credentials: 'same-origin' });
                         const j = r.ok ? await r.json() : null;
+                        // 1.1: a reset member (403, or no number yet) must not see the old number on the splash next time.
+                        if (r.status === 403 || (j && j.membership === 'on' && (j.number == null || j.number === ''))) { try { localStorage.removeItem('limitless:me:v1'); } catch (_) {} }
                         // Membership reader (S5): the gate's /_lb/me fields for the UI (S6); read-only, display only.
                         if (j && j.membership === 'on') { window.LB_member = j; try { document.dispatchEvent(new CustomEvent('lb-member', { detail: j })); } catch (_) {} }
                         if (j && j.busy === true && !seen()) show();
@@ -702,6 +704,15 @@
                     // Boot access check, fail closed (SPEED.md 3.5): the libcurl session starts only when this fetch answered 200.
                     // 401: sign-in page, 403: invite page (the gate serves both); the page never gets to browsing. A 404 means a plain
                     // static server with no gate (dev, tests): nothing to check. Anything else (5xx, gate down, no network): "Cannot reach".
+                    // 1.1 re-onboarding: the gate resets members to welcome step 0 (403 reason welcome; a page request gets a 302 to /auth/welcome, which fetch
+                    // follows to the ceremony HTML). That is neither ok nor "invite only": go to the ceremony and drop the cached number.
+                    let rp = ''; try { if (r.redirected) rp = new URL(r.url).pathname; } catch (_) {}
+                    if ((r.status === 403 && r.headers.get('X-LB-Reason') === 'welcome') || rp.indexOf('/auth/welcome') === 0) {
+                        window.LB_access = 'welcome';
+                        try { localStorage.removeItem('limitless:me:v1'); } catch (_) {}
+                        location.replace('/auth/welcome');
+                        return new Promise(() => {});
+                    }
                     if (r.status === 401 || r.status === 403) {
                         window.LB_access = r.status === 401 ? 'signin' : 'invite';
                         location.replace(r.status === 401 ? '/auth/signin' : '/auth/invite');
