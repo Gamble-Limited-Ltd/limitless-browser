@@ -700,7 +700,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -740,7 +740,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -1635,7 +1635,8 @@
                 'Page Not Found': ['This page was not found', 'The site answered, but it has nothing at this address.', 'Broken site'],
                 'Access Forbidden': ['This page is not open to you', 'The site said you do not have permission to see it.', 'Broken site'],
                 'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
-                'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check']
+                'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check'],
+                'Site Refused': ['This site sent back an empty page', 'Its protection may reject connections like this one, or the page may be gone.', 'Broken site']
             };
             // Which hop failed (design "Error page": You -> Relay -> site). 'you' offline, 'relay' a dropped relay link (or our relay marked down), else the site.
             // ctx comes from the caught error: { lbCat, lbDrop }. Pure and exposed for tests.
@@ -1645,6 +1646,12 @@
                 try { const s = window.LB_relayStatus && window.LB_relayStatus(); if (s && s.ownRelay && s.ours === false) return 'relay'; } catch (_) {}
                 return errorType === 'Network Error' || errorType === 'Connection Interrupted' ? 'relay' : 'site';
             };
+            // 1.2 M (features.errCard): a 4xx/5xx document with nothing to show: no visible text, no media or form, no script that could draw one
+            function lbBlankError(html) {
+                if (html.length > 4000) return false;
+                if (/<(img|iframe|video|canvas|input|form|svg|object|embed|picture)\b|<script\b[^>]*\bsrc=/i.test(html)) return false;
+                return html.replace(/<(script|style|noscript)[\s\S]*?<\/\1>|<!--[\s\S]*?-->/gi, ' ').replace(/<[^>]+>|&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().length < 20;
+            }
             function renderErrorPage(url, errorType, errorCode, errorDescription, errorSuggestions, ctx) {
                 const _esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
                 const calm = (LB_CALM[errorType] || ['This page could not be loaded', 'Something went wrong while loading it.', 'Broken site']).slice();
@@ -1797,8 +1804,16 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             // recently used first). go(url, false) for a stored entry shows it at once and restores the scroll position
             // instead of fetching and rewriting again. Never stored: POST, error pages, documents sent with no-store.
             // A stored blob is only revoked by eviction (lbRevoke checks lbBF.holds), so the tab code can keep revoking freely.
+            // Memory budget by device (SPEED-AUDIT 7, features.memBudget): navigator.deviceMemory of 4 GB or less (Chromebooks) gets
+            // smaller caches next to the page: response memory 32 MB, Instant Back 24 MB, rewrite memo 8 M chars. Unknown or larger: as before.
+            window.LB_memBudget = () => {
+                let low = false;
+                try { low = window.LB_features.memBudget !== false && navigator.deviceMemory > 0 && navigator.deviceMemory <= 4; } catch (_) {}
+                return low ? { low, memCacheBytes: 32 * 1024 * 1024, bfBytes: 24 * 1024 * 1024, memoChars: 8e6 }
+                           : { low, memCacheBytes: 96 * 1024 * 1024, bfBytes: 64 * 1024 * 1024, memoChars: 24e6 };
+            };
             const lbBF = {
-                map: new Map(), total: 0, seq: 0, MAX_PER_TAB: 3, MAX_BYTES: 64 * 1024 * 1024,
+                map: new Map(), total: 0, seq: 0, MAX_PER_TAB: 3, get MAX_BYTES() { return window.LB_memBudget().bfBytes; },
                 on() { try { return window.LB_features.instantBack !== false; } catch (_) { return true; } },
                 holds(u) { if (!u) return false; for (const l of this.map.values()) if (l.some(e => e.blob === u)) return true; return false; },
                 find(tabId, url) { const l = this.map.get(tabId); return l ? l.find(e => e.url === url) : null; },
@@ -1920,10 +1935,23 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 for (const { u, blob } of blobs) {
                     const bin = new Uint8Array(await blob.arrayBuffer());
                     let b = ''; for (let j = 0; j < bin.length; j += 32768) b += String.fromCharCode.apply(null, bin.subarray(j, j + 32768));
-                    html = html.split(u).join('data:text/javascript;charset=utf-8;base64,' + Base64.encode(b));
+                    const mt = !blob.type || /javascript/.test(blob.type) ? 'text/javascript;charset=utf-8' : blob.type;   // CSS fonts and images are blobs too
+                    html = html.split(u).join('data:' + mt + ';base64,' + Base64.encode(b));
                 }
                 return html;
             }
+            // @font-face unicode-range: fetch a subset only when it covers Basic Latin or Latin-1 (to U+00FF) or the private use area (icon fonts).
+            // Kahoot declared 301 subsets (Cyrillic, Greek, CJK slices...), all fetched and inlined before the page showed.
+            // shortcut: a page in another script loses its web font (system font instead); load subsets on demand (SW lane, item 2e) to fix
+            function lbFontRangeWanted(range) {
+                if (!range) return true;
+                return range.split(',').some(t => {
+                    const m = /u\+([0-9a-f?]+)(?:-([0-9a-f]+))?/i.exec(t.trim()); if (!m) return true;
+                    const a = parseInt(m[1].replace(/\?/g, '0'), 16), b = m[2] ? parseInt(m[2], 16) : parseInt(m[1].replace(/\?/g, 'f'), 16);
+                    return a <= 0xFF || (a <= 0xF8FF && b >= 0xE000);   // Basic Latin + Latin-1 only: latin-ext and Vietnamese subsets fall back per character (Kahoot declares 1345 faces)
+                });
+            }
+            window.LB_fontRangeWanted = lbFontRangeWanted;
             function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
@@ -2974,10 +3002,26 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     }
                 }
                 function setList(arr) { set = new Set(arr); legacy().forEach(d => set.add(d)); }
+                const yieldOn = () => { try { return window.LB_features.blocklistYield !== false; } catch (_) { return true; } };
+                // 224k lines: one split + Set build is a 0.6 to 0.9 s task at 4x CPU. Walk the text in slices of ~4 ms and give the
+                // page the thread between them; the Set only becomes visible (set = ...) when complete, so the fallback list stays until then.
+                async function buildYielding(t) {
+                    const s2 = new Set(); let i = 0; const n = t.length;
+                    while (i < n) {
+                        const t0 = performance.now();
+                        while (i < n && performance.now() - t0 < 4) {
+                            let j = t.indexOf('\n', i); if (j < 0) j = n;
+                            if (j > i && t.charCodeAt(i) !== 35) s2.add(t.slice(i, j));
+                            i = j + 1;
+                        }
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                    legacy().forEach(d => s2.add(d)); set = s2;
+                }
                 function load() {
                     if (set) return Promise.resolve(true);
                     if (!pending) pending = fetch(FILE, { cache: 'force-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
-                        .then(t => { setList(t.split('\n').filter(l => l && l.charCodeAt(0) !== 35)); return true; })
+                        .then(t => { if (!yieldOn()) { setList(t.split('\n').filter(l => l && l.charCodeAt(0) !== 35)); return true; } return buildYielding(t).then(() => true); })
                         .catch(() => { pending = null; return false; });
                     return pending;
                 }
@@ -3005,7 +3049,9 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     const full = url.toLowerCase();
                     if (getCustomFilters().network.some(d => host.includes(d) || full.includes(d))) return true;
                     if (LB_blocklist.loaded()) return LB_blocklist.hostBlocked(host);
-                    return SKIP_DOMAINS.some(d => host.includes(d) || full.includes(d));
+                    // host labels only: 'ads.' against the whole URL dropped Twitch's app chunk and every uploads. host
+                    return SKIP_DOMAINS.some(d => d.endsWith('.') ? host.startsWith(d) || host.includes('.' + d)
+                        : d.includes('.') ? host === d || host.endsWith('.' + d) : host.includes(d));
                 } catch {
                     return false;
                 }
@@ -3469,7 +3515,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     if (super.has(k)) this.bytes -= (super.get(k).buf?.byteLength || 0);
                     super.set(k, v);
                     this.bytes += (v.buf?.byteLength || 0);
-                    while ((this.size > 600 || this.bytes > 96 * 1024 * 1024) && this.size > 1) this.delete(this.keys().next().value);
+                    while ((this.size > 600 || this.bytes > window.LB_memBudget().memCacheBytes) && this.size > 1) this.delete(this.keys().next().value);
                     return this;
                 }
                 delete(k) {
@@ -5410,6 +5456,8 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
 
             const fetchQueue = [];
             let fetching = 0;
+            const lbScriptMemo = { nav: null, map: new Map(), bytes: 0 };
+            let lbCritAt = -1e9;   // last time a non-image request was queued (2c)
             let currentNavId = 0;
             const tabAbortControllers = new Map();
             const closedTabIds = new Set();
@@ -5453,6 +5501,12 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             }
             async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
                 if (priority === PRIORITY.image && !opts.__img) opts = { ...opts, __img: true };
+                // 1.2 2c (features.qPrio): an image known to be near the top of the page sorts before the other images; a request that is not
+                // an image tells runQueue to keep a few slots free for it (lbCritAt), so the document's CSS, scripts and fonts never wait behind a full set of images
+                if (window.LB_features.qPrio !== false) {
+                    if (opts.__vp && priority === PRIORITY.image) priority = PRIORITY.image - 0.5;
+                    else if (priority < PRIORITY.image || priority > PRIORITY.image) lbCritAt = performance.now();
+                }
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
                 // instead of throwing a cryptic TypeError that leaves the iframe white.
@@ -5548,6 +5602,15 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     }
                 }
 
+                // 1.2 M (features.scriptDedup): the same script URL asked for again during one page load is answered from this memo (uncacheable
+                // scripts were fetched up to four times: Gemini 58 MB for 15 MB unique). Per navigation, bounded by bytes, GET 200 without Range.
+                const _sd = window.LB_features.scriptDedup !== false && priority === PRIORITY.js && opts.method !== "POST" && !(opts.headers && (opts.headers.Range || opts.headers.range));
+                if (_sd) {
+                    const nav = window.__lbPerf && window.__lbPerf.cur;
+                    if (lbScriptMemo.nav !== nav) { lbScriptMemo.nav = nav; lbScriptMemo.map.clear(); lbScriptMemo.bytes = 0; }
+                    const hit = lbScriptMemo.map.get(url);
+                    if (hit) return { ...hit, buf: hit.buf.slice(0), fromCache: true };
+                }
                 const myNavId = currentNavId;
                 const sharedController = new AbortController();
                 if (opts.signal) {
@@ -5597,6 +5660,10 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     runQueue();
                 });
 
+                if (_sd) promise.then(r => {
+                    if (r && r.status === 200 && r.buf && r.buf.byteLength && !lbScriptMemo.map.has(url) && lbScriptMemo.nav === (window.__lbPerf && window.__lbPerf.cur)
+                        && lbScriptMemo.bytes + r.buf.byteLength <= window.LB_memBudget().memCacheBytes / 2) { lbScriptMemo.map.set(url, r); lbScriptMemo.bytes += r.buf.byteLength; }
+                }, () => {});
                 if (opts.method !== "POST") {
                     promise._tabId = activeTabId;
                     inFlight.set(url, {
@@ -5619,6 +5686,8 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             async function runQueue() {
                 while (!_queueDispatchPaused && fetching < MAX_CONCURRENT && fetchQueue.length) {
                     let jobIdx = -1;
+                    // 2c: while page-critical requests are being queued (last 1.5 s), images may use all but a few slots (a quarter, at most 4)
+                    const imgHeld = window.LB_features.qPrio !== false && performance.now() - lbCritAt < 1500 && fetching >= MAX_CONCURRENT - Math.min(4, MAX_CONCURRENT >> 2);
                     for (let i = 0; i < fetchQueue.length; i++) {
                         const j = fetchQueue[i];
                         const tabCtrl = j.tabId != null ? tabAbortControllers.get(j.tabId) : null;
@@ -5630,7 +5699,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                             i--;
                             continue;
                         }
-                        if (jobIdx === -1) jobIdx = i;
+                        if (jobIdx === -1 && !(imgHeld && j.priority > PRIORITY.font && j.priority <= PRIORITY.image)) jobIdx = i;
                     }
                     if (jobIdx === -1) break;
 
@@ -6966,7 +7035,8 @@ window.fetch = async function(input, init = {}) {
     ? Promise.race([reqPromise, new Promise((_, rj) => signal.addEventListener('abort', () => rj(new DOMException('Aborted', 'AbortError')), { once: true }))])
     : reqPromise);
   const arr = Base64.decode(r.d || '');
-  return new Response(arr, { status: r.s || 200, headers: new Headers(r.h || {}) });
+  const st = r.s || 200;
+  return new Response([204, 205, 304].includes(st) ? null : arr, { status: st, headers: new Headers(r.h || {}) });   // a null-body status with a body throws
 };
 
 const OrigEventSource = window.EventSource;
@@ -7248,6 +7318,7 @@ function orderedScriptSwap(node, abs) {
       node.addEventListener('load', end, { once: true });
       node.addEventListener('error', end, { once: true });
       setTimeout(end, 8000);
+      if (dataUrl) node.removeAttribute('integrity');   // SRI hash cannot match rewritten bytes (Spotify stayed blank)
       try { _scriptSrcDesc.set.call(node, dataUrl || abs); } catch (e) { end(); }
     });
   })();
@@ -7265,6 +7336,7 @@ if (_scriptSrcDesc && _scriptSrcDesc.set) {
         _scriptSrcDesc.set.call(this, v); return;
       }
       const abs = resolve(v);
+      if (/^https?:/i.test(abs) && shouldSkip(abs) && LB_NODIRECT) { const n = this; setTimeout(() => { try { n.dispatchEvent(new Event('error')); } catch (e) {} }, 0); return; }   // blocked: fail, never a direct load
       if (!/^https?:/i.test(abs) || shouldSkip(abs)) { _scriptSrcDesc.set.call(this, v); return; }
       this.setAttribute('data-original-src', abs);   // .src reads back the real URL from here on
       orderedScriptSwap(this, abs);
@@ -7352,7 +7424,8 @@ function _proxyStylesheetLink(el, absUrl) {
     const blobUrl = URL.createObjectURL(new Blob([css], { type: 'text/css;charset=utf-8' }));
     try { el.removeAttribute('integrity'); } catch (e) {}   // SRI won't match rewritten CSS on a blob: URL
     if (_linkHrefDesc && _linkHrefDesc.set) _linkHrefDesc.set.call(el, blobUrl); else el.setAttribute('href', blobUrl);
-  }).catch(() => { try { if (_linkHrefDesc && _linkHrefDesc.set) _linkHrefDesc.set.call(el, absUrl); else el.setAttribute('href', absUrl); } catch (e) {} });
+  }).catch(() => { if (LB_NODIRECT) { try { el.dispatchEvent(new Event('error')); } catch (e) {} return; }   // never the real URL
+    try { if (_linkHrefDesc && _linkHrefDesc.set) _linkHrefDesc.set.call(el, absUrl); else el.setAttribute('href', absUrl); } catch (e) {} });
 }
 function _isStylesheetLink(el) {
   const rel = (el.rel || el.getAttribute('rel') || '').toLowerCase();
@@ -7363,6 +7436,8 @@ try {
     Object.defineProperty(HTMLLinkElement.prototype, 'href', {
       get() { return this.getAttribute('data-original-href') || _linkHrefDesc.get.call(this); },
       set(val) {
+        // preload/prefetch made at runtime (webpack chunk preloads on Reddit) would load the real URL directly: keep the URL, load nothing
+        if (val && !/^(data:|blob:)/i.test(val) && !_isStylesheetLink(this) && /(^|\\s)(preload|modulepreload|prefetch|prerender)(\\s|$)/i.test(this.rel || this.getAttribute('rel') || '')) { this.setAttribute('data-original-href', resolve(val)); return; }
         if (!val || /^(data:|blob:)/i.test(val) || !_isStylesheetLink(this)) { _linkHrefDesc.set.call(this, val); return; }
         const abs = resolve(val);
         if (shouldSkip(abs)) return;
@@ -7681,6 +7756,21 @@ window.__lbSafe = function (o) {
     get __lbLoc$() { try { return o.location; } catch (e) { return undefined; } },
     set __lbLoc$(v) { try { o.location = v; } catch (e) {} }
   };
+};
+// D2 (features.importHelper): the AST rewriter turns import(x) into __lbImport(x, scriptUrl). The module is fetched, rewritten and made a
+// blob: URL by the parent; a failure rejects like a failed chunk load and never loads the real URL. Bare specifiers and data:/blob: go to
+// the native import() (import map).
+window.__lbImport = function (spec, base) {
+  let s; try { s = String(spec); } catch (e) { return Promise.reject(e); }
+  if (/^(data:|blob:|about:)/i.test(s) || !/^(https?:\\/\\/|\\/|\\.)/i.test(s)) return import(s);
+  let abs; try { abs = new URL(s, base && base !== '__LB_IMU__' ? base : BASE).href; } catch (e) { return import(s); }
+  const bad = (m) => new TypeError('Failed to fetch dynamically imported module: ' + abs + (m ? ' (' + m + ')' : ''));
+  return new Promise((rs, rj) => {
+    const i = ++rid;
+    const tm = setTimeout(() => { pending.delete(i); rj(bad('timeout')); }, 120000);
+    pending.set(i, { rs: (d) => rs(d && d.d), rj: (e) => rj(bad(e && e.message)), tm });
+    parent.postMessage({ t: 'qmod', i, url: abs }, '*');
+  }).then((u) => { if (!u) throw bad(); return import(u); });
 };
 // Fix 3a: Override document.location — this IS configurable on all major browsers.
 try { Object.defineProperty(document, 'location', { get: () => locProxy, set(v) { if (v && typeof v === 'string') parent.postMessage({ t: 'n', u: resolve(v) }, '*'); }, configurable: true }); } catch {}
@@ -8785,6 +8875,18 @@ parent.postMessage({ t: 'ready' }, '*');
                     }
                     return;
                 }
+                if (d.t === "qmod") {
+                    // D2: import(x) from a proxied script. Fetch, rewrite and blob the module through the proxy; a failure is an error reply,
+                    // never the real URL (the frame helper rejects the import()).
+                    const { i, url } = d;
+                    try {
+                        if (!window.__lbEsmDyn) throw new Error('no module loader');
+                        const u = await window.__lbEsmDyn(url);
+                        if (!u || u === url) throw new Error('module not proxied');
+                        lbPostTo(_replyTo, { t: 'r', i, d: u }, '*');
+                    } catch (e) { lbPostTo(_replyTo, { t: 'r', i, e: e.message }, '*'); }
+                    return;
+                }
                 if (d.t === "qjs") {
                     // Dynamically-injected external script: fetch through the proxy, run the
                     // AST location-rewrite (via the iframe-exposed __lbRewriteJs), return a
@@ -8800,7 +8902,7 @@ parent.postMessage({ t: 'ready' }, '*');
                         const r = await (_late || queueFetch(url, { signal: msgSignal }, PRIORITY.js));
                         if (r.skipped || !r.buf || !r.buf.byteLength) { lbPostTo(_replyTo, { t: 'r', i, e: 'empty' }, '*'); return; }
                         let jsText = new TextDecoder('utf-8').decode(new Uint8Array(r.buf));
-                        try { if (window.__lbRewriteJs) jsText = window.__lbRewriteJs(jsText); } catch (e) {}
+                        try { if (window.__lbRewriteJs) jsText = window.__lbRewriteJs(jsText, url); } catch (e) {}
                         const bytes = new TextEncoder().encode(jsText);
                         let bin = ''; const CH = 32768;
                         for (let j = 0; j < bytes.length; j += CH) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + CH));
@@ -9608,8 +9710,10 @@ _VIEWER_DL_JS +
                     // global, so we bail on the whole file rather than rewrite a local —
                     // a file that both shadows AND reads the global keeps the global read
                     // unrewritten; per-scope resolution is the upgrade if that bites.
-                    function rewriteLocationRefs(src) {
-                        if (!src || src.indexOf('location') === -1) return src;
+                    // imp (1.2 D2, features.importHelper): also turn import(x) into __lbImport(x, "__LB_IMU__") (the caller swaps the marker
+                    // for the script's real URL); that part also applies when a local binds `location`.
+                    function rewriteLocationRefs(src, imp) {
+                        if (!src || (src.indexOf('location') === -1 && !(imp && /\bimport\s*\(/.test(src)))) return src;
                         let ast;
                         try {
                             ast = acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true,
@@ -9625,16 +9729,22 @@ _VIEWER_DL_JS +
                             else if (p.type === 'AssignmentPattern') pat(p.left);
                             else if (p.type === 'RestElement') pat(p.argument);
                         };
-                        acorn.walk.full(ast, n => {
-                            if (n.type === 'VariableDeclarator') pat(n.id);
-                            else if (n.type === 'FunctionDeclaration' || n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression') { if (n.id) mark(n.id); n.params.forEach(pat); }
-                            else if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') { if (n.id) mark(n.id); }
-                            else if (n.type === 'CatchClause') pat(n.param);
-                            else if (n.type === 'ImportDefaultSpecifier' || n.type === 'ImportNamespaceSpecifier' || n.type === 'ImportSpecifier') mark(n.local);
-                        });
-                        if (declared) return src;
-                        const edits = [];
+                        const edits = [], imps = [];
+                        // 1.2 (SPEED-AUDIT 4): the declared check rides the same walk (was a separate walk.full); a hit drops the edits below
+                        const fn = n => { if (n.id) mark(n.id); n.params.forEach(pat); };
+                        const cls = n => { if (n.id) mark(n.id); };
+                        const imp2 = n => mark(n.local);
                         acorn.walk.ancestor(ast, {
+                            VariableDeclarator(n) { pat(n.id); },
+                            FunctionDeclaration: fn, FunctionExpression: fn, ArrowFunctionExpression: fn,
+                            ClassDeclaration: cls, ClassExpression: cls,
+                            CatchClause(n) { pat(n.param); },
+                            ImportDefaultSpecifier: imp2, ImportNamespaceSpecifier: imp2, ImportSpecifier: imp2,
+                            ImportExpression(n) {
+                                if (!imp) return;
+                                imps.push({ start: n.start, end: n.source.start, text: '__lbImport(' });
+                                imps.push({ start: n.source.end, end: n.source.end, text: ',"__LB_IMU__"' });
+                            },
                             MemberExpression(n) {
                                 const dot = !n.computed && n.property.type === 'Identifier' && n.property.name === 'location';
                                 const br = n.computed && n.property.type === 'Literal' && n.property.value === 'location';   // obj["location"] — minified/obfuscated form the dot-case missed
@@ -9674,10 +9784,15 @@ _VIEWER_DL_JS +
                                     edits.push({ start: n.start, end: n.end, text: '__lbLoc' });
                             }
                         });
+                        if (declared) edits.length = 0;
+                        for (const e of imps) edits.push(e);
+                        if (!edits.length) return src;
                         edits.sort((a, b) => b.start - a.start || (b.end - b.start) - (a.end - a.start));   // same-start tie: replacement before insertion, else the insert lands inside the replaced span
-                        let out = src;
-                        for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
-                        return out;
+                        // one join, walking the sorted list backwards (ascending): slicing the whole string per edit was quadratic (870 ms on Steam's 1.9 MB bundle)
+                        const parts = []; let pos = 0;
+                        for (let i = edits.length - 1; i >= 0; i--) { const e = edits[i]; parts.push(src.slice(pos, e.start), e.text); pos = e.end; }
+                        parts.push(src.slice(pos));
+                        return parts.join('');
                     }
 
             // ── Worker rewriter (0.2.0) ──────────────────────────────────────────
@@ -9821,7 +9936,7 @@ _VIEWER_DL_JS +
             }
             function lbRwMemoPut(key, out) {
                 lbRw.memo.set(key, out); lbRw.memoChars += out.length;
-                while (lbRw.memoChars > 24e6 || lbRw.memo.size > 200) {
+                while (lbRw.memoChars > window.LB_memBudget().memoChars || lbRw.memo.size > 200) {
                     const k = lbRw.memo.keys().next().value; lbRw.memoChars -= lbRw.memo.get(k).length; lbRw.memo.delete(k);
                 }
             }
@@ -9849,7 +9964,7 @@ _VIEWER_DL_JS +
                 const lib = lbRwLib;
                 if (!lib) throw new Error('acorn source not found');
                 return lib + '\n' + rewriteLocationRefs.toString() + '\n' +
-                    'onmessage = function (e) { var d = e.data; try { postMessage({ id: d.id, out: rewriteLocationRefs(d.src) }); } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
+                    'onmessage = function (e) { var d = e.data; try { postMessage({ id: d.id, out: rewriteLocationRefs(d.src, d.imp) }); } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
             }
             function lbRwSpawn() {
                 const blob = new Blob([lbRwSource()], { type: 'text/javascript' });
@@ -9876,20 +9991,31 @@ _VIEWER_DL_JS +
                     if (!slot) return;
                     const t = lbRw.queue.shift();
                     slot.busy = t;
-                    t.timer = setTimeout(() => { if (slot.busy === t) { slot.busy = null; t.fail(new Error('worker timeout')); } }, lbRw.timeoutMs);
-                    try { slot.w.postMessage({ id: t.id, src: t.src }); } catch (e) { clearTimeout(t.timer); slot.busy = null; t.fail(e); }
+                    // timeout grows with size (8 ms per KB, the measured Chromebook rate); a stuck worker is replaced, the others stay on
+                    t.timer = setTimeout(() => {
+                        if (slot.busy !== t) return;
+                        slot.busy = null; try { slot.w.terminate(); } catch (_) {}
+                        lbRw.pool = lbRw.pool.filter(x => x !== slot);
+                        t.fail(new Error('worker timeout')); lbRwPump();
+                    }, lbRw.timeoutMs + t.src.length / 128);
+                    try { slot.w.postMessage({ id: t.id, src: t.src, imp: t.imp }); } catch (e) { clearTimeout(t.timer); slot.busy = null; t.fail(e); }
                 }
                 if (lbRw.disabled) { const q = lbRw.queue.splice(0); for (const t of q) t.fail(new Error('worker disabled')); }
             }
+            // 1.2 D2 (features.importHelper): import(x) becomes __lbImport(x, base); the marker "__LB_IMU__" is swapped for the script's own URL
+            const lbImpOn = () => window.LB_features.importHelper !== false;
+            const lbRwWants = (src, imp) => src.indexOf('location') !== -1 || (imp && /\bimport\s*\(/.test(src));
+            const lbImu = (out, url) => out.indexOf('__LB_IMU__') === -1 ? out : out.split('"__LB_IMU__"').join(JSON.stringify(url));
             async function rewriteJsAsync(src) {
-                if (!src || src.indexOf('location') === -1) return src;
-                if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return rewriteLocationRefs(src); }
-                const key = lbRwHash(src);
+                const imp = lbImpOn();
+                if (!src || !lbRwWants(src, imp)) return src;
+                if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return rewriteLocationRefs(src, imp); }
+                const key = lbRwHash(src) + (imp ? 'i' : '');
                 const hit = lbRw.memo.get(key);
                 if (hit !== undefined) { lbRw.stats.memoHits++; return hit; }
-                let out, pkey = null;
+                let out, pkey = null, skipped = false;
                 if (lbRwPersistOn()) {
-                    pkey = await lbRwKey(src);
+                    pkey = await lbRwKey(src) + (imp ? 'i' : '');
                     // never wait for the store to be created or opened on the page's critical path: the first visit opens it for the next
                     if (lbRwKV.isOpen) {
                         const got = await lbRwKV.get(pkey);
@@ -9898,17 +10024,21 @@ _VIEWER_DL_JS +
                 }
                 if (!lbRw.disabled && window.LB_features.worker !== false && typeof Worker !== 'undefined') {
                     try {
-                        out = await new Promise((ok, fail) => { lbRw.queue.push({ id: ++_lbRwSeq, src, ok, fail }); lbRwPump(); });
+                        out = await new Promise((ok, fail) => { lbRw.queue.push({ id: ++_lbRwSeq, src, imp, ok, fail }); lbRwPump(); });
                         lbRw.stats.worker++;
                     } catch (e) {
                         lbRw.stats.fallback++;
-                        lbRwDisable();
-                        out = rewriteLocationRefs(src);
+                        if (e.message !== 'worker timeout') lbRwDisable();
+                        // never rewrite a big script on the main thread (Kahoot: one 24 to 29 s task, "Page unresponsive")
+                        // shortcut: it runs unrewritten, so its global location reads see the blob URL; meriyah or a size-aware queue if a site breaks
+                        skipped = src.length > 256 * 1024;
+                        out = skipped ? src : rewriteLocationRefs(src, imp);
                     }
                 } else {
                     lbRw.stats.sync++;
-                    out = rewriteLocationRefs(src);
+                    out = rewriteLocationRefs(src, imp);
                 }
+                if (skipped) { lbRw.stats.skipped = (lbRw.stats.skipped || 0) + 1; return out; }   // not cached: the next visit tries the worker again
                 lbRwMemoPut(key, out);
                 if (pkey) lbRwKV.put(pkey, out, out.length * 2);
                 return out;
@@ -10342,6 +10472,10 @@ _VIEWER_DL_JS +
                         hideOverlay(); setStatus("error", "Error"); setTabTitle("Human check"); currentDoc = null;
                         renderErrorPage(url, 'Human Check', 'bot-check', '', []); tabAbortControllers.delete(initiatorTabId); return;
                     }
+                    if (window.LB_features.errCard !== false && r.status >= 400 && lbBlankError(html)) {   // M: an empty 4xx/5xx page is a card, not a blank tab at "Ready"
+                        hideOverlay(); setStatus("error", "Error"); setTabTitle("Error " + r.status); currentDoc = null;
+                        renderErrorPage(url, 'Site Refused', 'http-' + r.status, 'The site answered ' + r.status + ' with no content.', ['Try again in a little while.', 'Open the address in a normal tab if you need it now.']); tabAbortControllers.delete(initiatorTabId); return;
+                    }
                     if (_pcShown && lbRwHash(html) === _pcShown.docSig && activeTabId === initiatorTabId) {
                         // the page on screen is already built from exactly this document
                         setStatus("idle", "Ready");
@@ -10397,6 +10531,9 @@ _VIEWER_DL_JS +
                     // Also strip modulepreload: Next.js/React/Vite emit these for ES module chunks;
                     // inside a blob iframe they resolve against blob: origin and fail with CORS errors.
                     doc.querySelectorAll('link[rel="preconnect"], link[rel="dns-prefetch"], link[rel="prerender"], link[rel="prefetch"], link[rel="modulepreload"]').forEach(l => l.remove());
+                    // Any other preload is fetched by the browser from the real URL, outside the relay (Coolmath: 23 images, 4 fonts;
+                    // measured with the profile spec's direct-load counter). The loadCSS pattern (preload as=style + onload rel swap) becomes the stylesheet it would be.
+                    if (window.LB_features.noPrefetch !== false) doc.querySelectorAll('link[rel~="preload"]').forEach(l => { if ((l.getAttribute('as') || '').toLowerCase() === 'style' && /stylesheet/.test(l.getAttribute('onload') || '')) { l.setAttribute('rel', 'stylesheet'); l.removeAttribute('onload'); } else l.remove(); });
                     // features.noPrefetch: also drop a preload of another page (as=document) and Speculation Rules (the browser would
                     // prefetch or prerender pages the member never opens). Preloads of css, font, script and image stay.
                     if (window.LB_features.noPrefetch !== false) doc.querySelectorAll('link[rel~="prefetch"], link[rel~="prerender"], link[rel~="preload"][as="document"], script[type="speculationrules"]').forEach(l => l.remove());
@@ -10657,12 +10794,12 @@ _VIEWER_DL_JS +
                     lbPrewarm.clear();
                     const qf = (u, o, p) => _pf.get(u) || queueFetch(u, o, p);
                     if (_pipe) {
-                        const kick = (raw, prio, prewarm) => {
+                        const kick = (raw, prio, prewarm, vp) => {
                             try {
                                 if (!raw || /^(data:|blob:|javascript:|about:|#)/i.test(raw) || shouldSkip(raw)) return;
                                 const u = new URL(raw, url).href;
                                 if (_pf.has(u) || shouldSkip(u)) return;
-                                const pr = lbProg.track(queueFetch(u, prewarm ? { signal: tabCtrl.signal, __prewarm: true } : { signal: tabCtrl.signal }, prio), _progTok);
+                                const pr = lbProg.track(queueFetch(u, prewarm ? { signal: tabCtrl.signal, __prewarm: true, __vp: vp } : { signal: tabCtrl.signal }, prio), _progTok);
                                 pr.catch(() => {});
                                 _pf.set(u, pr);
                                 if (prio === PRIORITY.image) {
@@ -10683,16 +10820,32 @@ _VIEWER_DL_JS +
                         const _topOnly = window.LB_features.lazyImg !== false && window.LB_features.lazyPrefetch !== false;
                         if (_pre > 0) [...doc.querySelectorAll('img[src]')].slice(0, _il).filter(im => !/^(data:|blob:)/i.test(im.getAttribute('src') || ''))
                             .filter((im, i) => !_topOnly || i < LB_PREWARM_TOP || im.getAttribute('loading') === 'eager' || /^high$/i.test(im.getAttribute('fetchpriority') || ''))
-                            .slice(0, _pre).forEach(im => kick(im.getAttribute('src'), PRIORITY.image, true));
+                            .slice(0, _pre).forEach((im, i) => kick(im.getAttribute('src'), PRIORITY.image, true, _topOnly || i < LB_PREWARM_TOP));
                     }
 
                     // url() in CSS: fonts and images become data: URIs, everything else an absolute URL. S3 4.5: the base64 step is
                     // the browser's own FileReader (off the main thread) instead of a String.fromCharCode loop plus Base64.encode, and
                     // the replacements are applied in one pass over the text (the old split/join per url() was quadratic).
                     // DOMParser cannot run in a Worker, so HTML parsing stays where it is.
-                    async function rewriteCssUrls(cssText, baseUrl) {
+                    // Fonts and images become blob: URLs (no base64 text: Discord's inline-style pass built a 1.28 GB heap), revoked
+                    // with the page blob through lbScriptBlobs. shortcut: blobs of a load that is aborted are not revoked until the tab closes.
+                    const _cssBlobs = [], _cssBlobByUrl = new Map();
+                    async function rewriteCssUrls(cssText, baseUrl, fontsOnly) {
                         const re = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi;
                         const todo = new Map();   // original url(...) text -> replacement text
+                        const keepFont = new Set();
+                        for (const ff of cssText.matchAll(/@font-face\s*\{[^}]*\}/gi)) {
+                            const ur = /unicode-range\s*:\s*([^;}]+)/i.exec(ff[0]);
+                            const urls = [...ff[0].matchAll(re)].filter(m => !/^(data:|blob:|#)/i.test(m[2]));
+                            const drop = (m) => { if (!todo.has(m[0])) todo.set(m[0], 'url("data:,")'); };   // empty: never fetched, never a direct load
+                            if (ur && !lbFontRangeWanted(ur[1])) { urls.forEach(drop); continue; }
+                            // one face, one file: a browser fetches only the first format it supports; we fetched every format listed (Kahoot: 1016 font requests)
+                            const rank = u => /\.woff2([?#]|$)/i.test(u) ? 0 : /\.woff([?#]|$)/i.test(u) ? 1 : /\.(ttf|otf)([?#]|$)/i.test(u) ? 2 : 3;
+                            const keep = urls.slice().sort((a, b) => rank(a[2]) - rank(b[2]))[0];
+                            if (keep) keepFont.add(keep[0]);
+                            urls.forEach(m => { if (m !== keep) drop(m); });
+                        }
+                        for (const k of keepFont) if (todo.get(k) === 'url("data:,")') todo.delete(k);   // kept by another face
                         for (const m of cssText.matchAll(re)) {
                             if (/^(data:|blob:|#)/i.test(m[2]) || todo.has(m[0])) continue;
                             todo.set(m[0], null);
@@ -10702,30 +10855,34 @@ _VIEWER_DL_JS +
                                 const ext = absUrl.split('?')[0].split('.').pop().toLowerCase();
                                 const isFont = /woff2?|ttf|otf|eot/.test(ext);
                                 const isImg = /png|jpg|jpeg|gif|svg|webp|ico/.test(ext);
-                                if (isFont || isImg) todo.set(m[0], { abs: absUrl, ext, isFont });
+                                if (isFont || (isImg && !fontsOnly)) todo.set(m[0], { abs: absUrl, ext, isFont });
                             } catch { todo.delete(m[0]); }
                         }
                         await Promise.all([...todo.entries()].map(async ([key, v]) => {
                             if (!v || typeof v === 'string') return;
                             const { abs, ext, isFont } = v;
                             todo.set(key, `url("${abs}")`);
-                            try {
-                                const r = await queueFetch(abs, isFont ? { signal: tabCtrl.signal } : { signal: tabCtrl.signal, __img: true }, PRIORITY.font);
-                                if (r.buf && r.buf.byteLength > 0) {
+                            let p = _cssBlobByUrl.get(abs);   // one fetch and one blob per absolute URL for the whole page
+                            if (!p) _cssBlobByUrl.set(abs, p = (async () => {
+                                try {
+                                    const r = await queueFetch(abs, isFont ? { signal: tabCtrl.signal } : { signal: tabCtrl.signal, __img: true }, PRIORITY.font);
+                                    if (!r.buf || !r.buf.byteLength) return null;
                                     const fontMime = ext === 'woff2' ? 'font/woff2'
                                         : ext === 'woff' ? 'font/woff'
                                             : ext === 'ttf' ? 'font/ttf'
                                                 : ext === 'otf' ? 'font/otf'
                                                     : r.mime || 'font/woff2';
-                                    const mime = isFont ? fontMime : (r.mime || 'image/png');
-                                    const dataUri = await new Promise((res, rej) => {
-                                        const fr = new FileReader();
-                                        fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error);
-                                        fr.readAsDataURL(new Blob([r.buf], { type: mime }));
+                                    const blob = new Blob([r.buf], { type: isFont ? fontMime : (r.mime || 'image/png') });
+                                    if (window.LB_features.cssBlobs === false) return await new Promise((res, rej) => {   // switch off: data: URI as before
+                                        const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob);
                                     });
-                                    todo.set(key, `url("${dataUri}")`);
-                                }
-                            } catch (_fe) { /* keep the absolute URL */ }
+                                    const u = URL.createObjectURL(blob);
+                                    _cssBlobs.push({ u, blob });
+                                    return u;
+                                } catch (_fe) { return null; }   // keep the absolute URL
+                            })());
+                            const u = await p;
+                            if (u) todo.set(key, `url("${u}")`);
                         }));
                         return cssText.replace(re, (m) => { const v = todo.get(m); return typeof v === 'string' ? v : m; });
                     }
@@ -10781,36 +10938,7 @@ _VIEWER_DL_JS +
                     await Promise.all(inlineStyles.map(async styleEl => {
                         const css = styleEl.textContent;
                         if (!css || !css.includes('url(')) return;
-                        try {
-                            const seen = new Set();
-                            let result = css;
-                            const urlMatches = [...css.matchAll(/url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi)];
-                            await Promise.all(urlMatches.map(async m => {
-                                if (/^(data:|blob:|#)/i.test(m[2]) || seen.has(m[0])) return;
-                                seen.add(m[0]);
-                                try {
-                                    const absUrl = new URL(m[2], url).href;
-                                    const ext = absUrl.split('?')[0].split('.').pop().toLowerCase();
-                                    const isFont = /woff2?|ttf|otf|eot/.test(ext);
-                                    if (isFont) {
-                                        const r = await queueFetch(absUrl, { signal: tabCtrl.signal }, PRIORITY.font);
-                                        if (r.buf && r.buf.byteLength > 0) {
-                                            const fontMime = ext === 'woff2' ? 'font/woff2' : ext === 'woff' ? 'font/woff' : ext === 'ttf' ? 'font/ttf' : ext === 'otf' ? 'font/otf' : 'font/woff2';
-                                            const arr = new Uint8Array(r.buf);
-                                            let bin = '';
-                                            const chunk = 32768;
-                                            for (let j = 0; j < arr.length; j += chunk) bin += String.fromCharCode.apply(null, arr.subarray(j, j + chunk));
-                                            result = result.split(m[0]).join(`url("data:${fontMime};base64,${Base64.encode(bin)}")`);
-                                        } else {
-                                            result = result.split(m[0]).join(`url("${absUrl}")`);
-                                        }
-                                    } else {
-                                        result = result.split(m[0]).join(`url("${absUrl}")`);
-                                    }
-                                } catch { }
-                            }));
-                            styleEl.textContent = result;
-                        } catch { }
+                        try { styleEl.textContent = await rewriteCssUrls(css, url, true); } catch { }
                     }));
 
                     };
@@ -10839,7 +10967,8 @@ _VIEWER_DL_JS +
                     // Expose the AST rewriter to the parent-scope message handler so
                     // dynamically-injected <script src> (fetched at runtime, not in the
                     // initial HTML) get the same location rewrite. See the 'qjs' handler.
-                    try { window.__lbRewriteJs = rewriteLocationRefs; } catch (e) {}
+                    try { window.__lbRewriteJs = (s, u) => { const i = lbImpOn(), o = rewriteLocationRefs(s, i); return i && u ? lbImu(o, u) : o; }; } catch (e) {}
+                    window.__lbEsmDyn = (u) => proxyEsmModule(u, true);   // D2: the 'qmod' handler
                     // import / export … from "spec"   |   import "spec"   |   import("spec")
                     const _esmPatterns = [
                         /((?:^|[^.\w$])(?:import|export)\b[^'"()]*?\bfrom\s*)(['"])([^'"\n]+)(\2)/g,
@@ -10850,12 +10979,20 @@ _VIEWER_DL_JS +
                     // compact; charset=utf-8 avoids the Latin-1 mis-decode that turns non-ASCII
                     // bytes in minified bundles into SyntaxErrors.
                     function _toDataModule(text) {
+                        // http(s): a blob: URL (the frame shares our origin). A big data: URL as <script type=module src> blocks the
+                        // parser: Steam's 1.9 MB main.js as a 2.6 MB data: URL = one 24-26 s task at Chromebook speed (measured,
+                        // same bytes from a short URL: 0 s). file:// keeps data: (opaque frame cannot load our blob: URLs).
+                        if (location.protocol !== 'file:' && window.LB_features.blobScripts !== false) {
+                            const blob = new Blob([text], { type: 'text/javascript' }), u = URL.createObjectURL(blob);
+                            _cssBlobs.push({ u, blob });
+                            return u;
+                        }
                         const bytes = new TextEncoder().encode(text);
                         let bin = ''; const chunk = 32768;
                         for (let j = 0; j < bytes.length; j += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + chunk));
                         return 'data:text/javascript;charset=utf-8;base64,' + Base64.encode(bin);
                     }
-                    async function transformModuleSource(src, moduleUrl) {
+                    async function transformModuleSource(src, moduleUrl, embed) {
                         const specs = new Set();
                         for (const re of _esmPatterns) { re.lastIndex = 0; let m; while ((m = re.exec(src))) specs.add(m[3]); }
                         const specMap = new Map();
@@ -10865,7 +11002,7 @@ _VIEWER_DL_JS +
                             if (!/^(https?:\/\/|\/|\.)/i.test(spec)) return;
                             let dep;
                             try { dep = new URL(spec, moduleUrl).href; } catch { return; }
-                            await proxyEsmModule(dep);   // fetch+transform+cache as a data: URL (for the import map)
+                            const got = await proxyEsmModule(dep, embed);   // fetch+transform+cache as a data: URL (for the import map)
                             // Rewrite the specifier to the ABSOLUTE REAL URL, not the module's
                             // data: URL: the import map injected after the graph walk maps real
                             // URL -> data: URL. Name-based resolution keeps every module a single
@@ -10873,9 +11010,10 @@ _VIEWER_DL_JS +
                             // and avoids inlining each dep's full data: URL into its importers —
                             // which would nest exponentially on a deep graph. Only if the fetch
                             // failed does the real URL survive with no map entry (direct load).
-                            specMap.set(spec, dep);
+                            // dynamic import (D2): the import map is closed by then, so a finished dependency goes in by its blob: URL (short, no nesting)
+                            specMap.set(spec, embed && /^blob:/.test(got) ? got : dep);
                         }));
-                        let out = (await rewriteJsAsync(src)).replace(/\bimport\.meta\.url\b/g, JSON.stringify(moduleUrl));
+                        let out = lbImu(await rewriteJsAsync(src), moduleUrl).replace(/\bimport\.meta\.url\b/g, JSON.stringify(moduleUrl));
                         for (const re of _esmPatterns) {
                             out = out.replace(re, (full, pre, q, spec, q2) => {
                                 const rep = specMap.get(spec);
@@ -10884,7 +11022,7 @@ _VIEWER_DL_JS +
                         }
                         return out;
                     }
-                    async function proxyEsmModule(absUrl) {
+                    async function proxyEsmModule(absUrl, embed) {
                         if (_esmBlobCache.has(absUrl)) { const v = _esmBlobCache.get(absUrl); return v === null ? absUrl : v; }
                         if (_esmInflight.has(absUrl)) return _esmInflight.get(absUrl);
                         if (_esmBlobCache.size >= _esmMax) { log(`<i class="fas fa-triangle-exclamation" style="color:var(--warn)"></i> module graph exceeded ${_esmMax} — remaining chunks load direct`, "warn"); return absUrl; }
@@ -10897,12 +11035,13 @@ _VIEWER_DL_JS +
                                     new Promise((_, rj) => setTimeout(() => rj(new Error('module fetch timeout')), 12000))
                                 ]);
                                 if (!r.buf || !r.buf.byteLength) throw new Error('empty');
+                                if (embed && r.status >= 400) throw new Error('http ' + r.status);   // D2: an error page is not a module
                                 src = new TextDecoder('utf-8').decode(new Uint8Array(r.buf));
                             } catch (e) {
                                 _esmBlobCache.delete(absUrl);   // fetch failed → let the browser try the real URL
                                 return absUrl;
                             }
-                            const out = await transformModuleSource(src, absUrl);
+                            const out = await transformModuleSource(src, absUrl, embed);
                             // data: URL, NOT blob:. On a file:// host the proxied page runs in an
                             // opaque-origin (blob:null) iframe; Chrome blocks it from loading any
                             // blob: URL the parent minted ("Not allowed to load local resource"),
@@ -10935,8 +11074,8 @@ _VIEWER_DL_JS +
                         const t = (scr.getAttribute('type') || '').toLowerCase();
                         if (t && t !== 'text/javascript' && t !== 'application/javascript' && t !== 'module') return;
                         const code = scr.textContent;
-                        if (!code || code.indexOf('location') === -1) return;
-                        try { scr.textContent = await rewriteJsAsync(code); } catch {}
+                        if (!code || !lbRwWants(code, lbImpOn())) return;
+                        try { scr.textContent = lbImu(await rewriteJsAsync(code), url); } catch {}
                     }));
 
                     // JS - keep as external scripts to preserve defer/module semantics.
@@ -10981,6 +11120,7 @@ _VIEWER_DL_JS +
                         try {
                             const dataUrl = await proxyEsmModule(jsUrl);
                             if (activeTabId !== initiatorTabId) return;
+                            if (dataUrl === jsUrl) throw new Error('module not proxied');   // never set the real URL (direct load)
                             scr.removeAttribute('integrity');
                             scr.removeAttribute('crossorigin');
                             scr.setAttribute('src', dataUrl);
@@ -11000,7 +11140,7 @@ _VIEWER_DL_JS +
                     if (_esmBlobCache.size) {
                         const _imports = {};
                         for (const [abs, data] of _esmBlobCache) {
-                            if (data && data !== abs && /^data:/.test(data)) _imports[abs] = data;
+                            if (data && data !== abs && /^(data|blob):/.test(data)) _imports[abs] = data;
                         }
                         if (Object.keys(_imports).length) {
                             // Only one import map is allowed per document — if the page ships its
@@ -11039,7 +11179,7 @@ _VIEWER_DL_JS +
                             if (activeTabId !== initiatorTabId) return;
                             if (jsR.buf && jsR.buf.byteLength) {
                                 // Decode → rewrite location refs to __lbLoc → re-encode as UTF-8 bytes.
-                                const jsText = await rewriteJsAsync(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf)));
+                                const jsText = lbImu(await rewriteJsAsync(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf))), jsUrl);
                                 const bytes = new TextEncoder().encode(jsText);
                                 scr.removeAttribute('integrity');   // SRI hash won't match a data: URL; bytes already came via our proxy
                                 if (_blobOn) { scr.removeAttribute('src'); _blobScr.push({ scr, blob: new Blob([bytes], { type: 'text/javascript' }) }); return; }
@@ -11240,7 +11380,7 @@ _VIEWER_DL_JS +
                     const _newBlob = new Blob([finalHtml], { type: "text/html;charset=utf-8" });
                     const _newBytes = _newBlob.size;
                     const newBlobUrl = URL.createObjectURL(_newBlob);
-                    if (_scriptBlobs.length) lbScriptBlobs.set(newBlobUrl, _scriptBlobs.map(b => b.u));
+                    if (_scriptBlobs.length || _cssBlobs.length) lbScriptBlobs.set(newBlobUrl, [..._scriptBlobs, ..._cssBlobs].map(b => b.u));
                     // Finished after the user moved to another tab: hand it to its own
                     // tab (instant on switch), don't repaint the live frame.
                     if (activeTabId !== initiatorTabId) {
@@ -11287,7 +11427,7 @@ _VIEWER_DL_JS +
                         try {
                             let hc = false; try { hc = !!getCookieHeader(url); } catch (_) {}
                             const ev = lbCacheEvaluate(r, { now: lbNow(), hasCookie: hc });
-                            if (ev.store && ev.freshMs > 0 && lbCacheKind(r.mime) === 'html') { const _pcKey = lbPcKey(url), _pcRec = { title: (doc.title || '').trim(), sig: lbPcSig(), exp: lbNow() + ev.freshMs, docSig: lbRwHash(html) }; lbBlobsToData(finalHtml, _scriptBlobs).then(h => lbPageKV.put(_pcKey, { html: h, ..._pcRec }, h.length * 2)).catch(() => {}); }
+                            if (ev.store && ev.freshMs > 0 && lbCacheKind(r.mime) === 'html') { const _pcKey = lbPcKey(url), _pcRec = { title: (doc.title || '').trim(), sig: lbPcSig(), exp: lbNow() + ev.freshMs, docSig: lbRwHash(html) }; lbBlobsToData(finalHtml, [..._scriptBlobs, ..._cssBlobs]).then(h => lbPageKV.put(_pcKey, { html: h, ..._pcRec }, h.length * 2)).catch(() => {}); }
                             else lbPageKV.del(lbPcKey(url));
                         } catch (_) {}
                     }

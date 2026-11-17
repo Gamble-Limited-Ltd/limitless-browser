@@ -71,7 +71,7 @@ test('when Worker cannot be created: same output, worker disabled for the sessio
   expect(r.stats.fallback).toBeGreaterThanOrEqual(1);
 });
 
-test('a worker that never answers times out, falls back, and is disabled', async ({ page }) => {
+test('a worker that never answers times out and falls back; only that worker is replaced (workers stay on)', async ({ page }) => {
   await setup(page);
   const r = await page.evaluate(async () => {
     window.Worker = class { constructor() { this.terminated = false; } postMessage() {} terminate() { window.__terminated = true; } addEventListener() {} };
@@ -87,7 +87,25 @@ test('a worker that never answers times out, falls back, and is disabled', async
   expect(r.same2).toBe(true);
   expect(r.ms).toBeGreaterThanOrEqual(140);
   expect(r.terminated).toBe(true);
-  expect(r.stats.disabled).toBe(true);
+  expect(r.stats.disabled).toBe(false);
+  expect(r.stats.fallback).toBe(2);
+});
+
+test('a big script (over 256 KB) that times out is not rewritten on the main thread and not cached', async ({ page }) => {
+  await setup(page);
+  const r = await page.evaluate(async () => {
+    window.Worker = class { postMessage() {} terminate() {} addEventListener() {} };
+    LB_rewrite.timeoutMs = 50;
+    const big = __big(1300);
+    const o = await LB_rewrite.async(big);
+    const o2 = await LB_rewrite.async(big);
+    return { len: big.length, unchanged: o === big && o2 === big, stats: { ...LB_rewrite.stats() } };
+  });
+  expect(r.len).toBeGreaterThan(256 * 1024);
+  expect(r.unchanged).toBe(true);
+  expect(r.stats.skipped).toBe(2);
+  expect(r.stats.memoHits).toBe(0);
+  expect(r.stats.disabled).toBe(false);
 });
 
 test('a worker that errors falls back to the synchronous rewrite', async ({ page }) => {

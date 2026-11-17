@@ -156,9 +156,10 @@ test.describe('prefetch hints', () => {
       return { prefetch: /rel="prefetch"/.test(f), prerender: /rel="prerender"/.test(f), doc: /as="document"/.test(f), spec: /speculationrules/.test(f), style: /as="style"/.test(f) };
     });
   }
-  test('prefetch, prerender, document preload and speculation rules are removed; style preload stays', async ({ page }) => {
+  // audit 2026-11-17 item D: a preload is fetched by the browser from the real URL (outside the relay), so a plain style preload goes too
+  test('prefetch, prerender, document and style preloads and speculation rules are removed', async ({ page }) => {
     const h = await hints(page);
-    expect(h).toMatchObject({ prefetch: false, prerender: false, doc: false, spec: false, style: true });
+    expect(h).toMatchObject({ prefetch: false, prerender: false, doc: false, spec: false, style: false });
   });
   test('features.noPrefetch=false keeps document preload and speculation rules', async ({ page }) => {
     const h = await hints(page, { noPrefetch: false });

@@ -155,3 +155,41 @@ test('L12: the media limiter hands slots on without polling', async ({ page }) =
   await expect.poll(() => inFrame(page, () => document.querySelectorAll('img[data-blob-src]').length), { timeout: 8000 }).toBe(n);
   expect(await inFrame(page, () => window.__t50)).toBe(0);
 });
+
+test('preload links never load the real URL: static ones are dropped (loadCSS becomes a stylesheet), runtime ones keep only the URL', async ({ page }) => {
+  const { direct } = await setup(page);
+  const html = '<html><head><title>p</title>'
+    + '<link rel="preload" as="image" href="/hero.webp"><link rel="preload" as="font" href="/f.woff2" crossorigin>'
+    + '<link rel="preload" as="style" href="/lazy.css" onload="this.onload=null;this.rel=\'stylesheet\'">'
+    + '</head><body><p id="x">x</p><script>var l = document.createElement("link"); l.rel = "preload"; l.as = "script"; l.href = "/chunk.js"; document.head.appendChild(l); window.__pre = l;</script></body></html>';
+  await page.evaluate(([o, html]) => {
+    __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: html });
+    __respond(o + '/lazy.css', { headers: { 'content-type': 'text/css' }, body: '#x{color:rgb(1, 2, 3)}' });
+  }, [O, html]);
+  await page.evaluate((u) => { window.LB_go(u); }, O + '/');
+  await page.evaluate(() => __waitMark('shown', 15000));
+  const r = await inFrame(page, () => ({
+    preloads: document.querySelectorAll('link[rel~="preload"]').length - (window.__pre && window.__pre.isConnected ? 1 : 0),
+    color: getComputedStyle(document.getElementById('x')).color,
+    rt: window.__pre ? { attr: window.__pre.getAttribute('href'), orig: window.__pre.getAttribute('data-original-href') } : null,
+  }));
+  await page.waitForTimeout(500);
+  expect(r.preloads).toBe(0);
+  expect(r.color).toBe('rgb(1, 2, 3)');
+  expect(r.rt.attr).toBeNull();
+  expect(r.rt.orig).toBe(O + '/chunk.js');
+  expect(direct).toEqual([]);
+});
+
+test('page fetch answered 204 or 304 resolves (null-body status), it does not throw', async ({ page }) => {
+  await setup(page);
+  await page.evaluate((o) => {
+    __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: '<html><head><title>f</title></head><body><p>x</p></body></html>' });
+    __respond(o + '/beacon', { status: 204, headers: {}, body: '' });
+    __respond(o + '/cached', { status: 304, headers: {}, body: '' });
+  }, O);
+  await page.evaluate((u) => { window.LB_go(u); }, O + '/');
+  await page.evaluate(() => __waitMark('shown', 15000));
+  const r = await inFrame(page, async () => Promise.all(['/beacon', '/cached'].map((u) => fetch(u).then((x) => x.status, (e) => 'threw ' + e.name))));
+  expect(r).toEqual([204, 304]);
+});

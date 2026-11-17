@@ -2,6 +2,18 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.0
+
+- Heavy sites stop freezing the tab: Steam no longer shows the "Page unresponsive" dialog, and Kahoot, Discord, YouTube and Spotify load far faster on a Chromebook.
+- Pages use much less memory: styles and fonts are no longer copied into the page as huge text blocks, and only one font file per face is fetched.
+- Ad and tracker blocking no longer drops a site's own files on the first page.
+- The block list is now prepared in small steps, so the page stays responsive right after it loads.
+- On devices with 4 GB of memory or less, the app keeps smaller caches so there is more room for the page.
+- Pages that load code on demand (Steam's lazy chunks) now fetch it through Limitless instead of loading it from the site directly.
+- Page files that matter first (styles, scripts, fonts) are no longer stuck behind a long line of images.
+- A site that answers with an empty error page, or a bot check page, now shows a plain card instead of a blank tab.
+- A script the page asks for again during one load is no longer downloaded again.
+
 ## 1.1.0
 
 - Everyone except the Director goes through the welcome again and picks a new number. Old certificates now show as replaced; a new one comes after the welcome. Your plan and usage stay.
