@@ -700,7 +700,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true, curlWorker: false, swDoc: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -740,7 +740,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'scriptDedup', 'curlWorker', 'swDoc']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -759,7 +759,7 @@
                             const u = (r.active || r.waiting || r.installing || {}).scriptURL || '';
                             if (u.endsWith('/sw.js')) await r.unregister();
                         }
-                        if (window.caches) for (const k of await caches.keys()) if (k.startsWith('lb-shell-')) await caches.delete(k);
+                        if (window.caches) for (const k of await caches.keys()) if (k.startsWith('lb-shell-') || k === 'lb-docs') await caches.delete(k);
                         return;
                     }
                     if (!window.LB_BUILD_SHA || window.LB_BUILD_SHA === 'dev') return;
@@ -997,13 +997,28 @@
             // One place that swaps the libcurl session: points libcurl at `url`, creates the new session, applies the
             // connection limits, and closes the old one once it has no requests in flight (the old code leaked every one).
             window.LB_stats = { swaps: 0, b64: 0 };   // test hooks: session swaps and base64 encodes for the frame
+            // features.curlWorker (docs/1.2/SWCURL-DESIGN.md 2): libcurl in a Worker, only for plain public-relay sockets (our relay's token
+            // sockets and multi-relay need the router, which stays on this thread). null = use the main-thread HTTPSession.
+            async function lbWorkerSession(url) {
+                if (window.LB_features.curlWorker !== true) return null;
+                // app/curlproxy.js loads right after this script (the patcher inlines only the first app/ script, so main.js must stay first)
+                if (!window.LB_CurlWorker && document.readyState === 'loading') await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
+                const W = window.LB_CurlWorker;
+                if (!W || !W.available()) return null;
+                if (LB_OUR_WISP && url.startsWith(LB_OUR_WISP)) return null;
+                try { if (LB_fallbackAllowed && ls.getItem(LB_MULTI_KEY) === '1') return null; } catch (_) {}
+                W.hooks.drop = (b) => LB_router.noteDrop(b);
+                W.hooks.fail = (b, h) => markWispFailed(b, h);
+                try { return await W.session(url, Math.max(1, Math.min(LB_CONN_MAX, Math.max(MAX_CONCURRENT, MAX_CONCURRENT_ACTIVE)))); }
+                catch (e) { log('libcurl worker unavailable, using the main thread: ' + (e && e.message), 'warn'); return null; }
+            }
             async function LB_swapSession(url, opts) {
                 window.LB_stats.swaps++;
                 await libcurl.load_wasm();
                 libcurl.set_websocket(url);
                 LB_router.pinned = opts && opts.pin ? url : null;
                 const old = curl;
-                const next = new libcurl.HTTPSession();
+                const next = (await lbWorkerSession(url)) || new libcurl.HTTPSession();
                 lbApplyConnections(next);
                 curl = next;
                 if (old && old !== next) {
@@ -1952,7 +1967,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 });
             }
             window.LB_fontRangeWanted = lbFontRangeWanted;
-            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
+            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { if (window.LB_swDoc) window.LB_swDoc.drop(u); URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
                 if (!tab) return;
@@ -11379,7 +11394,9 @@ _VIEWER_DL_JS +
                     const prevBlobUrl = frame.src;
                     const _newBlob = new Blob([finalHtml], { type: "text/html;charset=utf-8" });
                     const _newBytes = _newBlob.size;
-                    const newBlobUrl = URL.createObjectURL(_newBlob);
+                    // features.swDoc: the frame document is served by the service worker from /~lb/doc/ so every request of the page reaches the
+                    // proxy (docs/1.2/SWCURL-DESIGN.md); null (lane not ready or switch off) keeps the blob: document.
+                    const newBlobUrl = (window.LB_features.swDoc === true && window.LB_swDoc && await window.LB_swDoc.put(finalHtml)) || URL.createObjectURL(_newBlob);
                     if (_scriptBlobs.length || _cssBlobs.length) lbScriptBlobs.set(newBlobUrl, [..._scriptBlobs, ..._cssBlobs].map(b => b.u));
                     // Finished after the user moved to another tab: hand it to its own
                     // tab (instant on switch), don't repaint the live frame.
@@ -11418,7 +11435,7 @@ _VIEWER_DL_JS +
                         clearTimeout(_opacitySafe);
                         setTimeout(() => { frame.style.transition = ''; }, 220);
                     }, 50);
-                    if (!_pcChip && prevBlobUrl && prevBlobUrl.startsWith('blob:')) {
+                    if (!_pcChip && prevBlobUrl && (prevBlobUrl.startsWith('blob:') || (window.LB_swDoc && window.LB_swDoc.isDoc(prevBlobUrl)))) {
                         lbRevoke(prevBlobUrl, 2000);
                     }
                     if (!_pcChip && method === 'GET' && !/no-store/i.test((r.headers && r.headers['cache-control']) || '')) lbBF.save(initiatorTabId, url, newBlobUrl, _newBytes, (doc.title || '').trim());

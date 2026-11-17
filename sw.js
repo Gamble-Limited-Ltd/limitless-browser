@@ -46,7 +46,11 @@ self.addEventListener('activate', (e) => {
 });
 
 // "Reload" in the update banner asks the waiting worker to take over; it never skips waiting by itself.
-self.addEventListener('message', (e) => { if (e.data && e.data.type === 'skip') self.skipWaiting(); });
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'skip') self.skipWaiting();
+  // capability probe for the document lane: an old worker never answers, so the app keeps using blob: documents
+  if (e.data && e.data.type === 'lane?' && e.ports[0]) e.ports[0].postMessage({ lane: 1 });
+});
 
 async function navigate(req) {
   try {
@@ -69,10 +73,68 @@ async function shell(e, req, url) {
   return (await c.match(key)) || refresh();
 }
 
+// ---- Document lane (features.swDoc, docs/1.2/SWCURL-DESIGN.md 3) ----
+// The app stores the frame document in the Cache API under /~lb/doc/<appKey>.<docId> and points the frame at that path. This worker serves
+// it to an iframe navigation only (never a top-level page), and answers every cross-origin request of such a frame by asking the app page
+// (the one that owns <appKey>) to fetch it through the proxy. No request of a lane frame goes to the network from here: an app page that
+// is gone or an error is a network error for that request. Access stays at nginx: nothing here serves index.html, version.json or any
+// gated path, and a document is only data the signed-in page already holds.
+const DOCS = 'lb-docs';
+const DOC = /^\/~lb\/doc\/([a-z0-9]{8,40})\.([a-z0-9]{8,40})$/;
+const appCache = new Map();   // appKey -> window client id (rebuilt by asking every window when this worker restarted)
+const DROP_RES = /^(content-encoding|content-length|transfer-encoding|set-cookie|set-cookie2|cross-origin-resource-policy|cross-origin-embedder-policy|cross-origin-opener-policy|content-security-policy|content-security-policy-report-only|x-frame-options|strict-transport-security)$/i;
+const DROP_REQ = /^(host|cookie|origin|referer|user-agent|connection|content-length|accept-encoding|sec-.*|upgrade-insecure-requests)$/i;
+const NULL_BODY = new Set([101, 204, 205, 304]);
+
+function ask(client, msg, ms) {
+  return new Promise((ok) => {
+    const ch = new MessageChannel(); const t = setTimeout(() => ok(null), ms);
+    ch.port1.onmessage = (ev) => { clearTimeout(t); ok(ev.data); };
+    try { client.postMessage(msg, [ch.port2]); } catch (_) { clearTimeout(t); ok(null); }
+  });
+}
+async function findApp(key) {
+  const known = appCache.get(key);
+  if (known) { const c = await self.clients.get(known); if (c) return c; appCache.delete(key); }
+  const all = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).filter((c) => c.frameType === 'top-level');
+  const hit = await Promise.all(all.map(async (c) => { const r = await ask(c, { type: 'lbwho', key }, 800); return r && r.mine ? c : null; }));
+  const c = hit.find(Boolean);
+  if (c) appCache.set(key, c.id);
+  return c || null;
+}
+async function serveDoc(path) {
+  const hit = await (await caches.open(DOCS)).match(path);
+  return hit || new Response('document expired', { status: 404 });
+}
+async function lane(e, req, key) {
+  const app = await findApp(key);
+  if (!app) return Response.error();
+  const body = req.method === 'GET' || req.method === 'HEAD' ? null : await req.arrayBuffer();
+  const headers = []; req.headers.forEach((v, k) => { if (!DROP_REQ.test(k)) headers.push([k, v]); });
+  const r = await ask(app, { type: 'lbfetch', url: req.url, method: req.method, headers, body, dest: req.destination }, 130000);
+  if (!r || r.err) return Response.error();
+  const h = new Headers(); for (const [k, v] of r.headers) { if (!DROP_RES.test(k)) try { h.append(k, v); } catch (_) {} }
+  const st = r.status >= 200 && r.status <= 599 ? r.status : 502;
+  return new Response(NULL_BODY.has(st) || req.method === 'HEAD' ? null : r.body, { status: st, headers: h });
+}
+async function laneOrPass(e, req) {
+  const c = await self.clients.get(e.clientId);
+  const m = c && c.url ? DOC.exec(new URL(c.url).pathname) : null;
+  if (!m || new URL(c.url).origin !== self.location.origin) return fetch(req);
+  return lane(e, req, m[1]);
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || req.headers.has('range')) return;
   const url = new URL(req.url);
+  if (url.origin === self.location.origin) {
+    const m = DOC.exec(url.pathname);
+    if (m && req.method === 'GET') { if (req.destination === 'iframe') e.respondWith(serveDoc(url.pathname)); return; }
+  } else if (e.clientId && req.mode !== 'navigate' && url.protocol.startsWith('http')) {
+    e.respondWith(laneOrPass(e, req));
+    return;
+  }
+  if (req.method !== 'GET' || req.headers.has('range')) return;
   if (url.origin !== self.location.origin || NEVER.test(url.pathname)) return;
   if (req.mode === 'navigate') {
     if (url.pathname === '/' || url.pathname === '/index.html') e.respondWith(navigate(req));
