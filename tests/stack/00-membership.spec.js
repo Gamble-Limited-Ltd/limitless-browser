@@ -102,7 +102,7 @@ test('Executive invite, redeem, sign-in, ceremony, certificate, public verify, s
   await expect(bob.page.getByRole('heading', { name: 'Sign the Charter' })).toBeVisible();
   expect((await form(bob.req, '/auth/welcome/sign', { name: 'Robert Example', agree: 'on' })).status()).toBe(303);
   await bob.page.goto('/auth/welcome');
-  await expect(bob.page.locator('.reveal svg text')).toHaveText('Nº 0042');
+  await expect(bob.page.locator('.reveal svg text.num')).toHaveText('Nº 0042');
   expect((await bob.req.get('/_lb/me')).status()).toBe(200);
 
   // Certificate PDF for the member; /_lb/me names the code.
