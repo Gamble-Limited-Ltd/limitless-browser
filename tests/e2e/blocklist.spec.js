@@ -53,6 +53,17 @@ test.describe('blocklist', () => {
     expect(r.ok).toBe(false);
   });
 
+  test('before the list loads, the fallback matches host labels, not words in the URL (Twitch chunk, uploads hosts)', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      LB_blocklist.reset();
+      const s = LB_shouldSkip;
+      return [s('https://static.twitchcdn.net/assets/ads.0f1e2d.js'), s('https://uploads.example.com/a.png'), s('https://www.threads.net/'),
+        s('https://example.com/tracking.js'), s('https://ads.example.com/a.js'), s('https://www.google-analytics.com/a.js'),
+        s('https://connect.facebook.net/sdk.js'), s('https://adservice.google.com/x'), s('https://pagead2.googlesyndication.com/p')];
+    });
+    expect(r).toEqual([false, false, false, false, true, true, true, true, true]);
+  });
+
   test('the shipped list is HaGeZi Normal: a Normal-only domain is blocked', async ({ page }) => {
     const r = await page.evaluate(async () => {
       LB_blocklist.reset();
@@ -87,5 +98,28 @@ test.describe('blocklist', () => {
       return { whileBusy, idleNoPage, after: LB_blocklist.loaded() };
     });
     expect(r).toEqual({ whileBusy: false, idleNoPage: false, after: true });
+  });
+  test('the 224k list is built in slices that yield to the page (features.blocklistYield), the old one-task build stays behind the switch', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const run = async (on) => {
+        LB_features.blocklistYield = on;
+        LB_blocklist.reset();
+        let yields = 0; const st = window.setTimeout;   // slices end with setTimeout(0): count them (timing based checks flake on a busy VM)
+        window.setTimeout = (fn, ms, ...a) => { if (ms === 0) yields++; return st(fn, ms, ...a); };
+        const p = LB_blocklist.load();
+        await new Promise(r => st(r, 0));
+        const early = LB_blocklist.loaded();   // the Set must not be visible before it is complete
+        await p; window.setTimeout = st;
+        return { yields, size: LB_blocklist.size(), ga: LB_shouldSkip('https://ssl.google-analytics.com/ga.js'), early };
+      };
+      const sync = await run(false), yielded = await run(true);
+      LB_features.blocklistYield = true;
+      return { sync, yielded };
+    });
+    expect(r.yielded.size).toBeGreaterThan(50000);
+    expect(r.yielded.size).toBe(r.sync.size);
+    expect(r.yielded.ga).toBe(true);
+    expect(r.yielded.early).toBe(false);
+    expect(r.yielded.yields).toBeGreaterThan(3);
   });
 });

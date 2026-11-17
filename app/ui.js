@@ -450,8 +450,16 @@
     // "Attention Required", Akamai, PerimeterX, DataDome, Imperva) or a captcha widget is nearly all the page has. A login or
     // error page that merely embeds reCAPTCHA is long and has real text, so it is not flagged. features.botCard=false restores the old test.
     window.LB_botCheck = function (status, html, hdrs) {
-        if (status !== 403 && status !== 429 && status !== 503) return false;
+        // 1.2 M (features.errCard): a challenge page can also come as 200 or 202 (AWS WAF: x-amzn-waf-action: challenge) and Tumblr's own
+        // "Checking your browser" page is a small 403; same plain card, still no solving
+        var ec = feat('errCard') && feat('botCard');
+        if (status !== 403 && status !== 429 && status !== 503 && !(ec && (status === 200 || status === 202))) return false;
         var t = String(html || '').slice(0, 60000);
+        if (status < 400) {
+            var h0 = {}; try { Object.keys(hdrs || {}).forEach(function (k) { h0[k.toLowerCase()] = String(hdrs[k]).toLowerCase(); }); } catch (_) {}
+            var m0 = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(t);
+            return /challenge/.test(h0['x-amzn-waf-action'] || '') || (String(html || '').length < 20000 && !!m0 && /^(Checking your browser|Verifying you are human)/i.test(m0[1].replace(/\s+/g, ' ').trim()));
+        }
         if (!feat('botCard')) return /cf-chl|cdn-cgi\/challenge-platform|Just a moment\.\.\.|g-recaptcha|h-captcha|hcaptcha\.com\/1\/api|Attention Required! \| Cloudflare/i.test(t);
         var h = {}; try { Object.keys(hdrs || {}).forEach(function (k) { h[k.toLowerCase()] = String(hdrs[k]).toLowerCase(); }); } catch (_) {}
         if (/challenge/.test(h['cf-mitigated'] || '')) return true;
@@ -461,6 +469,7 @@
         if (cf && small && (/^(Just a moment\.\.\.|Attention Required! \| Cloudflare|Checking your browser)/i.test(title) || /cdn-cgi\/challenge-platform\/h\/[a-z]\/orchestrate|cf-chl-|cf_chl_opt/i.test(t))) return true;
         if (small && (/datadome/.test(h.server || '') || 'x-datadome' in h || /captcha-delivery\.com|geo\.captcha-delivery/i.test(t))) return true;
         if (small && (/px-captcha|_pxCaptcha|Press &(amp;)? Hold|perimeterx\.net/i.test(t) || /Incapsula incident ID|_Incapsula_Resource/i.test(t))) return true;
+        if (ec && small && /^Checking your browser/i.test(title)) return true;
         if (small && /^Access Denied$/i.test(title) && /errors\.edgesuite\.net|Reference #\d+\.[0-9a-f]+/i.test(t)) return true;
         // a captcha widget as the main content: short visible text around it
         if (small && /g-recaptcha|h-captcha|hcaptcha\.com\/1\/api|cf-turnstile|challenges\.cloudflare\.com\/turnstile/i.test(t)) {

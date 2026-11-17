@@ -1,0 +1,213 @@
+[
+ {
+  "name": "yt-home",
+  "cat": "video",
+  "url": "https://www.youtube.com/",
+  "sel": "ytd-app, input[name=search_query]",
+  "slow": true
+ },
+ {
+  "name": "yt-watch",
+  "cat": "video",
+  "video": true,
+  "url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+  "sel": "ytd-watch-flexy, #movie_player, video"
+ },
+ {
+  "name": "yt-shorts",
+  "cat": "video",
+  "video": true,
+  "url": "https://www.youtube.com/shorts/jNQXAC9IVRw",
+  "sel": "ytd-shorts, video"
+ },
+ {
+  "name": "tiktok",
+  "cat": "social",
+  "video": true,
+  "url": "https://www.tiktok.com/@tiktok",
+  "sel": "[data-e2e], main, video",
+  "slow": true
+ },
+ {
+  "name": "instagram",
+  "cat": "social",
+  "url": "https://www.instagram.com/instagram/",
+  "sel": "main, section, header",
+  "slow": true
+ },
+ {
+  "name": "x",
+  "cat": "social",
+  "url": "https://x.com/NASA",
+  "sel": "[data-testid=primaryColumn], main, #react-root",
+  "slow": true
+ },
+ {
+  "name": "twitch",
+  "cat": "video",
+  "video": true,
+  "url": "https://www.twitch.tv/monstercat",
+  "sel": "video, [data-a-target=player-overlay-click-handler], nav",
+  "slow": true
+ },
+ {
+  "name": "spotify",
+  "cat": "media",
+  "url": "https://open.spotify.com/",
+  "sel": "main, nav, [data-testid=root]",
+  "slow": true
+ },
+ {
+  "name": "soundcloud",
+  "cat": "media",
+  "video": true,
+  "url": "https://soundcloud.com/forss/flickermood",
+  "sel": ".soundTitle, #app, .sc-button-play"
+ },
+ {
+  "name": "pinterest",
+  "cat": "social",
+  "url": "https://www.pinterest.com/",
+  "sel": "[data-test-id], main, #__PWS_ROOT__",
+  "slow": true
+ },
+ {
+  "name": "tumblr",
+  "cat": "social",
+  "url": "https://staff.tumblr.com/",
+  "sel": "article, main, #root",
+  "slow": true
+ },
+ {
+  "name": "discord",
+  "cat": "app",
+  "url": "https://discord.com/login",
+  "sel": "input[name=email], #app-mount, form",
+  "slow": true
+ },
+ {
+  "name": "chatgpt",
+  "cat": "app",
+  "url": "https://chatgpt.com/",
+  "sel": "#prompt-textarea, main, textarea",
+  "slow": true
+ },
+ {
+  "name": "gemini",
+  "cat": "app",
+  "url": "https://gemini.google.com/",
+  "sel": "rich-textarea, chat-app, textarea, main",
+  "slow": true
+ },
+ {
+  "name": "canva",
+  "cat": "app",
+  "url": "https://www.canva.com/",
+  "sel": "header, nav, main",
+  "slow": true
+ },
+ {
+  "name": "gdocs",
+  "cat": "app",
+  "url": "https://docs.google.com/document/",
+  "sel": "#docs-editor, [role=main], main, body",
+  "slow": true
+ },
+ {
+  "name": "gdrive",
+  "cat": "app",
+  "url": "https://drive.google.com/",
+  "sel": "header, main, form",
+  "slow": true
+ },
+ {
+  "name": "gmail",
+  "cat": "app",
+  "url": "https://www.google.com/gmail/about/",
+  "sel": "header, main"
+ },
+ {
+  "name": "amazon",
+  "cat": "shop",
+  "url": "https://www.amazon.com/dp/B08N5WRWNW",
+  "sel": "#productTitle, #dp, #nav-logo",
+  "slow": true
+ },
+ {
+  "name": "ebay",
+  "cat": "shop",
+  "url": "https://www.ebay.com/",
+  "sel": "#gh, header, input[name=_nkw]",
+  "slow": true
+ },
+ {
+  "name": "walmart",
+  "cat": "shop",
+  "url": "https://www.walmart.com/",
+  "sel": "header, main, input[type=search]",
+  "slow": true
+ },
+ {
+  "name": "wikipedia",
+  "cat": "reference",
+  "url": "https://en.wikipedia.org/wiki/Cat",
+  "sel": "#firstHeading"
+ },
+ {
+  "name": "espn",
+  "cat": "news",
+  "url": "https://www.espn.com/",
+  "sel": "#fittPageContainer, header, main",
+  "slow": true
+ },
+ {
+  "name": "cnn",
+  "cat": "news",
+  "url": "https://www.cnn.com/",
+  "sel": "header, main, .layout__content",
+  "slow": true
+ },
+ {
+  "name": "bbc",
+  "cat": "news",
+  "url": "https://www.bbc.com/",
+  "sel": "main, header, h1",
+  "slow": true
+ },
+ {
+  "name": "imdb",
+  "cat": "media",
+  "url": "https://www.imdb.com/title/tt0111161/",
+  "sel": "h1, [data-testid=hero__pageTitle]",
+  "slow": true
+ },
+ {
+  "name": "netflix",
+  "cat": "media",
+  "drm": true,
+  "url": "https://www.netflix.com/",
+  "sel": "#appMountPoint, form, header, main",
+  "slow": true
+ },
+ {
+  "name": "duolingo",
+  "cat": "app",
+  "url": "https://www.duolingo.com/",
+  "sel": "#root, [data-test], header",
+  "slow": true
+ },
+ {
+  "name": "characterai",
+  "cat": "app",
+  "url": "https://character.ai/",
+  "sel": "main, #__next, header",
+  "slow": true
+ },
+ {
+  "name": "crunchyroll",
+  "cat": "media",
+  "url": "https://www.crunchyroll.com/",
+  "sel": "header, main, #content",
+  "slow": true
+ }
+]
