@@ -207,3 +207,23 @@ for (const [status, own, head] of [[403, false, 'Browsing now goes through publi
     expect(errors).toEqual([]);
   });
 }
+
+// Our relay is the VPS behind a token; the same-origin /wisp/ answers 410 in prod. The pool benchmark (Settings relay list,
+// ranking when third-party relays are allowed) must probe the VPS with a token, or our relay always shows "unreachable".
+test('pool benchmark probes our relay on the VPS with a token, not the same-origin /wisp/', async ({ page }) => {
+  await page.route('**/_lb/relay-token', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ url: VPS, token: 'tk', exp: 9999999999, ttl: 300 }) }));
+  await page.route('**/version.json', (r) => r.fulfill({ contentType: 'application/json', body: '{"version":"x","sha":"dev","features":{"ownRelay":true,"ownSockets":4}}' }));
+  await setup(page);
+  await expect.poll(() => page.evaluate(() => window.LB_relayStatus().ownRelay)).toBe(true);
+  const r = await page.evaluate(async () => {
+    const made = [];
+    const Real = window.WebSocket;
+    window.WebSocket = class { constructor(u, p) { made.push([u, p]); setTimeout(() => this.onopen && this.onopen(), 0); } close() {} };
+    try {
+      const own = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/wisp/';
+      const h = await window.LB_probePool(own, 2, 1000);
+      return { made, healthy: h.healthy };
+    } finally { window.WebSocket = Real; }
+  });
+  expect(r).toEqual({ made: [[VPS, ['lb.v1', 'lbt.tk']], [VPS, ['lb.v1', 'lbt.tk']]], healthy: true });
+});
