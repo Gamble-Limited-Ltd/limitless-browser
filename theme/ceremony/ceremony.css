@@ -97,7 +97,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, .charter:focus-visib
 .lb-mc-ft { display: flex; justify-content: space-between; gap: 8px; font-size: max(10.5px, 3.3cqw); border-top: 1px solid color-mix(in srgb, var(--tc) 18%, transparent); padding-top: 2.6cqw; }
 /* Certificate panel (step 5, Cardinal and above): dark paper, double frame, serif title, signature in script. Tier colour only through --tc. */
 .cert { --c-ink: #eae6dc; --c-mut: #a3a9b6; position: relative; width: 100%; padding: 36px 28px; text-align: center; display: grid; gap: 8px; justify-items: center; color: var(--c-ink); border-radius: 4px;
-  background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--tc2) 20%, #000), #000 72%); border: 1px solid color-mix(in srgb, var(--tc) 55%, #000); }
+  background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--tc2) 20%, #000), #000 72%); background-color: #000; border: 1px solid color-mix(in srgb, var(--tc) 55%, #000); }
 .cert::before { content: ""; position: absolute; inset: 8px; border: 1px solid color-mix(in srgb, var(--tc) 40%, transparent); pointer-events: none; }
 .cert::after { content: ""; position: absolute; inset: 13px; border: 1px solid color-mix(in srgb, var(--tc) 22%, transparent); pointer-events: none; }
 .cert > * { position: relative; z-index: 1; }

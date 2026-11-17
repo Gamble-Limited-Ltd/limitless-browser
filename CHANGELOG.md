@@ -2,8 +2,14 @@
 
 What changed, in plain language. Newest first.
 
-## 1.1.0 (in progress)
+## 1.1.0
 
+- Everyone except the Director goes through the welcome again and picks a new number. Old certificates now show as replaced; a new one comes after the welcome. Your plan and usage stay.
+- New look for every plan theme, with a new Crimson and platinum theme for Prime. Executive themes use a richer gold.
+- Member cards are new: a foil card on the start page and the Membership page, and a card that turns over when a new plan is granted.
+- Free plan: the fifth tab opens the Plans page, and the app keeps pages to about 3 Mbit/s.
+- Plan limits changed: Cardinal 12 GB a week at up to 15 Mbit/s with 100 MB files; Prime 100 GB a month at up to 30 Mbit/s with 1 GB files; Executive 200 GB a month, then 3 Mbit/s, with 2 GB files.
+- Certificates use the real Limitless fonts and come with a letter from the Director.
 - Free plan: the start page shows a thin bar with your time left today, "Day finished" now appears on the start page itself (search is paused until midnight), and the 15 minute warning is a small note in the corner. Plan notices now take their look from your theme and show a day count.
 - When a plan is ended by the Director, a notice shows what was paid and any refund the gate recorded.
 - The "Human Check" card now appears only for real bot-check pages, not for login or error pages that mention a captcha.
