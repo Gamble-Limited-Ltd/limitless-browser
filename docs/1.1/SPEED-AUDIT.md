@@ -303,3 +303,5 @@ Last verified: 2026-11-17
 
 ## 8. Landed (2026-11-17)
 Branch `slice/1.2-speed-land` (worktree `~/gll-worktrees/Browser-speed-land`, base `release/1.1.0` 9bbe004), uncommitted: items 0, 1, 2, 2b, 2f, D, B (label match and off-thread build), the 204/205/304 frame fetch fix and item 7 (memory budget). Part B (same day, same tree, uncommitted) added D2, 2c, the first half of 4 and the M error card and script memo. Not built: 2e, 3 (host, done), meriyah, 5, 6, 8, 9, M media streaming. New switches (default true): `cssBlobs`, `blocklistYield`, `memBudget`, `importHelper`, `qPrio`, `errCard`, `scriptDedup`. The profile, sites-games and sites-media harness files are ported with it.
+
+**Update 2026-11-17 night:** the slice is merged into `release/1.2.0` with swcurl and imglane-google; gates, re-measured site numbers and the open speed gate rows are in `docs/releases/1.2.0.md`. Re-measured: Steam front page longest task 1.5 to 1.9 s (was 22.6 to 26 s), Kahoot shown 23 to 24 s, Discord 53 to 57 s, Coolmath direct loads 23, Reddit 16, Steam app page text 0 chars.
