@@ -50,7 +50,7 @@ test('off by default: the frame is a blob: document and no lane starts', async (
   const { direct } = await setup(page, context, {});
   expect(await page.evaluate(() => window.LB_features.swDoc)).toBe(false);
   await load(page, PAGE);
-  expect(pageFrame(page).url()).toMatch(/^blob:/);
+  await expect.poll(() => { const f = pageFrame(page); return f ? f.url() : ''; }, { timeout: 10000 }).toMatch(/^blob:/);   // the frame navigates a moment after shown
   expect(await page.evaluate(() => window.LB_swDoc.state)).not.toBe('ready');
   // the control: an inline <style> url() of another origin is fetched by the browser itself today (the leak the lane closes)
   await expect.poll(() => direct, { timeout: 15000 }).toContain(O + '/bg.png');
@@ -88,12 +88,12 @@ test('on: a worker without the lane (older release) is detected and blob: docume
   await setup(page, context, { swDoc: true });
   await expect.poll(() => page.evaluate(() => window.LB_swDoc.state), { timeout: 15000 }).toBe('off');
   await load(page, PAGE);
-  expect(pageFrame(page).url()).toMatch(/^blob:/);
+  await expect.poll(() => { const f = pageFrame(page); return f ? f.url() : ''; }, { timeout: 10000 }).toMatch(/^blob:/);   // the frame navigates a moment after shown
 });
 
 test('on: features.sw = false keeps the lane off (blob: documents)', async ({ page, context }) => {
   await setup(page, context, { swDoc: true, sw: false });
   expect(await page.evaluate(() => window.LB_swDoc.start())).toBe(false);
   await load(page, PAGE);
-  expect(pageFrame(page).url()).toMatch(/^blob:/);
+  await expect.poll(() => { const f = pageFrame(page); return f ? f.url() : ''; }, { timeout: 10000 }).toMatch(/^blob:/);   // the frame navigates a moment after shown
 });
