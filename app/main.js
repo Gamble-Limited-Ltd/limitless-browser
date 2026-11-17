@@ -1175,7 +1175,7 @@
                 _blobLoadPending = false;
                 try {
                     const landed = frame.contentWindow?.location?.href;
-                    if (!landed || landed === 'about:blank' || landed === 'about:srcdoc' || landed.startsWith('blob:')) return;
+                    if (!landed || landed === 'about:blank' || landed === 'about:srcdoc' || landed.startsWith('blob:') || (window.LB_swDoc && window.LB_swDoc.isDoc(landed))) return;   // a swDoc lane document is ours too
                     // iframe landed on a real URL natively — reroute via proxy
                     _pendingNavHint = null;
                     frame.src = 'about:blank';
