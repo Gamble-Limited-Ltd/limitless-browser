@@ -53,6 +53,10 @@ PDF.js 4.2.67, by the Mozilla Foundation (https://github.com/mozilla/pdf.js)
 acorn 8.14.0, by Marijn Haverbeke and contributors (https://github.com/acornjs/acorn)
   License: MIT.
 
+meriyah 7.4.2, by Kenny F. and contributors (https://github.com/meriyah/meriyah)
+  Vendored in vendor/meriyah/7.4.2/ (license text: vendor/meriyah/7.4.2/LICENSE). License: ISC.
+  Used in the rewrite Worker as the first parser; acorn stays as the fallback.
+
 Font Awesome Free 6.7.2, by Fonticons, Inc. (https://fontawesome.com)
   Vendored in vendor/fontawesome/6.7.2/ (license text: vendor/fontawesome/6.7.2/LICENSE.txt).
   Icons: CC BY 4.0. Fonts: SIL Open Font License 1.1. Code: MIT.

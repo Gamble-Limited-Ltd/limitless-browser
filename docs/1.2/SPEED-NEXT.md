@@ -36,6 +36,9 @@ Method: the app's own `rewriteLocationRefs` (extracted from `app/main.js`, `imp`
 - **Verdict for N4:** meriyah is a small, real gain (up to about 30 to 40 percent of rewrite time on large bundles, 1.1 s of 4.6 s on the Kahoot controller at 4x) at the cost of a parser option change and the script-then-module retry; it does not remove the first-visit rewrite. Not swapped. Larger wins are elsewhere (S2 shared cache, skipping the walk).
 - **Not measured:** Reddit's real feed bundle (this VM's address gets the Reddit bot check, so only a 68 KB chunk was fetchable), Discord's 12.7 MB main bundle, the real Chromebook, memory.
 
+### N4 status (BUILT 2026-11-18, branch worktree-agent-a64ab688fea352956)
+Worker parser swap behind `features.meriyah` (build `LB_FEATURE_MERIYAH`, default true): meriyah parseScript, then parseModule, then acorn as last resort (counted in `LB_rewrite.stats().meriyahFallback`); off is exactly the old acorn path and never fetches meriyah. Vendored `vendor/meriyah/7.4.2/` (ISC, verified against the npm tarball integrity). Test `tests/e2e/meriyah.spec.js` (identical output on and off). Not yet measured in the speed gate.
+
 ### N3 status (R3, 2026-11-18): the cheap form already exists
 `rewriteLocationRefs` begins with `if (!src || (src.indexOf('location') === -1 && !(imp && /\bimport\s*\(/.test(src)))) return src;`, so a script with no `location` substring and (with `importHelper`) no `import(` is never parsed. A token-level scan (word-boundary `location` or the string `'location'`) was tried on the 38 fetched bundles of 16 KB or more (28.6 MB): 27 contain the substring and the same 27 contain the token, so a finer scan skips nothing more here. No `rewriteSkip` switch was built.
 
