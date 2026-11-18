@@ -15,6 +15,8 @@ rewrite of multi-MB bundles (Steam, Discord, Kahoot), direct loads while the SW 
 | N2 | **Parser bench**: acorn 8.14 (today, `app/main.js` 9919) vs meriyah (ISC, ESTree, pure JS) vs oxc-parser WASM (MIT, ESTree-conformant) on the real bundles (Steam, Discord, Kahoot, Reddit) inside the rewrite Worker, chromium at 4x CPU. Bench only; do not swap tonight. | The first-visit rewrite of Steam's bundle is the largest single cost left. Old Node numbers put meriyah near 2x acorn; no browser numbers exist, so measure. | small | a table in this file: parse ms and total rewrite ms per bundle, AST compatibility notes (walker uses acorn-walk) |
 | N3 | **Rewrite skip scan**: before parsing, a cheap token scan; if a script contains none of the identifiers the rewriter touches (location, top, parent, eval, import, postMessage, document.domain, ...), skip the AST walk. Check first whether something like it already exists. | Many library chunks need no edit; skipping parse saves the full cost for them. | small | count of scripts skipped on the named sites, rewrite ms saved; zero new failures in `npm test` and sites |
 
+N1 status 2026-11-17 night: BUILT (`features.compactBlocklist`, `scripts/build-blocklist.mjs`, committed `hosts.bin`, e2e `blocklist.spec.js`); speed gate numbers in `docs/releases/1.2.0.md`.
+
 Order: N1 (it is the gate fix), then the existing tier measurement, then N2 and N3 only if time remains before 05:30.
 
 ## B. Next release candidates (ranked by value for effort)
