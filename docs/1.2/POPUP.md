@@ -1,6 +1,6 @@
 # Popup bridge and Trusted Types (1.2, speed audit item 8)
 
-Plan: `docs/1.1/SPEED-AUDIT.md` section 6 and `docs/1.1/audit/BOTCHECK-GOOGLE.md` section 1. Status: built, NOT deployed.
+Plan: `docs/1.1/SPEED-AUDIT.md` section 6 and `docs/1.1/audit/BOTCHECK-GOOGLE.md` section 1. Status: shipped in 1.2.0 (deployed 2026-11-18).
 Switch: `features.popupBridge` (build `LB_FEATURE_POPUPBRIDGE`, default true; the full `npm test` passes with it on). Off restores the old
 `window.open` (navigate the same tab, dummy handle). Tests: `tests/e2e/popup.spec.js`, `tests/e2e/trustedtypes.spec.js`.
 

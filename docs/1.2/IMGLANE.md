@@ -1,6 +1,6 @@
 # Native image lane (1.2, speed audit item 6 / S1)
 
-Plan: `docs/1.1/SPEED-AUDIT.md` sections 1.3, 4 (S1, capacity) and 4b (tiers). Status: built behind two switches, NOT deployed, NOT enabled.
+Plan: `docs/1.1/SPEED-AUDIT.md` sections 1.3, 4 (S1, capacity) and 4b (tiers). Status: built behind two switches, shipped in 1.2.0 (deployed 2026-11-18) with the lane OFF, NOT enabled.
 Gate side: `~/limitless-gate` branch `slice/1.2-imglane` (`src/img/`, `GATE_MODE=img`).
 
 ## What it does
