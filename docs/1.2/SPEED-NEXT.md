@@ -86,6 +86,65 @@ Ideas to cut the multi-hour gate runs, cheapest first:
 - **Sites by need:** `LB_SITES_ONLY` for the sites an item touches; the full list only for the release candidate.
 - **Build PC:** only if Docker is set up there for the rehearsal stack (not today); speed numbers from another machine are not comparable, so pass/fail suites only.
 
+## G to T. Brainstorm decisions (Boss, 2026-11-18 afternoon)
+All items: own small release, switch OFF by default, section E no-break rule applies. Free (Ordinal) traffic stays off our VPS. Relay-side work is paid only, as a ladder: **Cardinal** = shared cache + image shrink; **Prime** = plus server rewrite + prefetch; **Executive** = plus media help. When the VPS is busy, priority lanes: Executive, then Prime, then Cardinal (no hard CPU numbers promised).
+
+### G. Images, shared cache, server rewrite
+VPS today: 2 cores, 2 GB RAM (about 1.4 GB free), 34 GB disk (28 GB free). Data: 5 TB a month counted both ways, so about 2.5 TB of member traffic.
+| id | item | effect | effort | tiers |
+|---|---|---|---|---|
+| G1 | **Visible first images**: images in view load first, below-the-fold later, a tiny blurred placeholder shown at once | grids and feeds show sooner | small | all |
+| G2 | **Image resize on the relay** (= N6): shrink to shown width, WebP/AVIF | 50 to 80 percent fewer image bytes | medium | Cardinal+ |
+| G3 | **Shared cache, public files only**: the VPS fetches and keeps only requests with no cookies or login headers and `Cache-Control` public/max-age (scripts, CSS, fonts, images). Privacy line becomes "the relay never sees your private pages". Cache hits do not count toward member caps | first visits fast for everyone after the first member | medium | Cardinal+ |
+| G4 | **Server rewrite** (build order 1 of the cache): the VPS rewrites public scripts once with the same rewriter code, keyed by URL + content hash + rewriter version; app asks first, falls back to rewriting itself. Steps: lift rewriter into a shared module (1 to 2 d), VPS cache service (2 d), app client + fallback (1 d), tests + 7-rep gate. 3 small releases, about 5 to 6 days. Risk: a bad cached file breaks all who get it (hash check), 2 cores can queue (lanes + fallback) | 1 to 3 s less frozen page on first visits | 5 to 6 d | Prime+ |
+| G5 | Cache order after G4: fonts and CSS, resized images, then **nightly pre-warm** of top sites before school hours | warm cache at 8 am | small each | Cardinal+ |
+| G6 | **Measure first**: before sizing, log hit rate and bytes saved for a week; then pick a disk budget (28 GB free) | right-sized cache | small | n/a |
+| G7 | **Home second-layer cache: PARKED.** Home upload is under 20 Mbit/s, so home is slower than the VPS fetching from the internet. The VM root is a 200 GB HDD (52 GB free; the 55 GB SSD at /mnt/ssd holds databases); a slow cache would go on the HDD. Revisit if the VPS cache is too small or upload improves. Growing the disk is a Proxmox change Boss runs | | | |
+| G8 | **Device cache**: bigger Resource Cache limit, survive closing the tab, evict rarely used files first and keep site shells (scripts, CSS, fonts) longest | repeat visits next day | small to medium | all |
+
+### H. Loading and smoothness
+| id | item | effort |
+|---|---|---|
+| H1 | **Keep connections warm**: open the socket and TLS to likely next hosts early (result targets, the site's image host) | small |
+| H2 | **Early page start**: show the first HTML while the rest streams and rewrites | medium |
+| H3 | **Faster transport test** (= N10) | medium |
+| H4 | **Skip known junk**: ad and tracker blocking, all tiers, ON by default once shipped, per-site off switch; filter list licence must fit AGPL | medium |
+| H5 | **Rewriting off the page thread** (= C1 libcurl worker, N9 worker HTML parse) | large |
+| H6 | **Spread out work**: chunk big rewrite jobs so taps and scrolling stay responsive | small to medium |
+| H7 | **Lighter app shell**: trim start-up code and files | small |
+
+### I. Video
+| id | item |
+|---|---|
+| I1 | **Fetch only what plays** (= M-N5): byte ranges the player asks for, at the shown quality (YouTube fetches 43.7 MB to play 2.9 MB) |
+| I2 | **Thumbnails through the image lane** (G2/G3) |
+| I3 | Later: 480p start default on Chromebooks; Executive relay buffering |
+
+### J. Bot checks (allowed paths only) and Google sign-in
+No CAPTCHA solving, fingerprint spoofing, IP rotation or residential proxies: they defeat a site's security on purpose, get the relay IP blocklisted and risk the brand. Planned, all honest:
+| id | item |
+|---|---|
+| J1 | **Person solves it**: Turnstile, reCAPTCHA and hCaptcha challenges render and work inside Limitless instead of an error card |
+| J2 | **Keep the pass**: challenge cookies (cf_clearance and similar) kept per member, so one pass per site per day |
+| J3 | **Clean relay reputation**: per-member rate limits, abuse blocks, no free traffic on the VPS |
+| J4 | **Honest browser signals**: forward the real browser's headers and client hints unchanged and consistently |
+| J5 | **Google sign-in**: Google blocks sign-in through any in-the-middle proxy on purpose (that is how phishing kits work); we do not work around it. Detect the sign-in page, explain plainly, list what works signed out, and offer "open outside Limitless" when the network allows |
+
+### K. Tiers, prices, caps, promises
+- Today (gate src/membership.ts, placeholders, not public): Ordinal free 3 Mbit/s, 240 min a day; Cardinal $15 a year, 15 Mbit/s, 12 GB a week; Prime $35 a year, 30 Mbit/s, 100 GB a month; Executive per person, 80 Mbit/s, 200 GB a month.
+- **Caps go weekly for all tiers** (e.g. Cardinal 12, Prime 25, Executive 50 GB a week; final numbers from cost).
+- **Prices from cost + margin**: VPS cost per member per tier from measured data and CPU, plus margin, checked against a student budget.
+- **Plan for up to 25 paid members** on the one VPS; adjust when membership changes. At full caps 2.5 TB fits about 48 Cardinal, 25 Prime or 12 Executive; the cache raises that.
+- **Promise = measured examples on our test pages only**, Ordinal against each paid tier, refreshed each release.
+
+### T. Tests
+- **T1 Site tags**: each site in the real-site list gets tags (images, video, chat, bot-check, heavy-js); each plan item names its tags; nightly runs load only those, release candidates the full list.
+- **T2 New sites**: heavy image sites (Steam grid, Reddit feed, galleries), chat apps (Discord as a load and stay-alive benchmark, not for use), bot-check sites, more own fixture pages copying the hard patterns (huge JS, infinite scroll, lazy images).
+- **T3 Bot metric**: challenges per 100 loads and pass rate per site, from the paid relay, in the nightly real-site run.
+
+### Order
+Ship the current small releases first (N8, N7, N4, L1), then G4 server rewrite (design doc first, research job 2026-11-19 01:03), then G2 and G1, then the rest by rank.
+
 ## C. Bot checks (allowed paths only: no CAPTCHA solving, IP rotation, residential proxies or fingerprint spoofing)
 
 | id | idea | gain | notes |
