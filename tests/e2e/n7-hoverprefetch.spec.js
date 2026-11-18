@@ -61,7 +61,7 @@ test('hover prefetch: Data saver, the Ordinal cap and the switch each stop it', 
   expect(await nextCount(page)).toBe(1);
 });
 
-test('hover prefetch: a click while the prefetch still waits in a busy queue is not held behind the tail (the navigation drops the tab's queue)', async ({ page }) => {
+test('hover prefetch: a click while the prefetch still waits in a busy queue is not held behind the tail (the navigation drops the tab queue)', async ({ page }) => {
   await open(page);
   // fill every slot and queue a long tail of ordinary requests ahead of the lowest-priority prefetch
   await page.evaluate(() => {
