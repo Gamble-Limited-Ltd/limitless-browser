@@ -74,3 +74,6 @@ Order: N1 (it is the gate fix), then the existing tier measurement, then N2 and 
 - no head-to-head epoxy-tls vs libcurl.js benchmark was found.
 
 Last verified: 2026-11-18
+
+### N8 status (2026-11-18): BUILT
+6 WISP sockets for paid tiers. Effective sockets = min(setting, features.ownSockets, tier cap); tier cap 6 for cardinal, prime and executive with membership on, 4 otherwise. Caps raised to 6 in app/main.js (feature clamp, router clamp, setting, stepper) and scripts/build-static.sh (0 to 6, default 6). Rollback: build with LB_FEATURE_OWNSOCKETS=4. Checked: the gate (limitless-gate src/wisp.ts, config.ts) refuses a WebSocket upgrade with 429 once a user has 8 open sockets, counted per user across all windows; in-app tabs share one router, so one window peaks at 6 shards + `v/` + `dl/` = 8, exactly the cap (sockets open lazily). Two separate browser windows of one user can exceed 8 (already true at 4: 12), the failed open follows the normal failed-socket path. Tests: tests/e2e/router.spec.js (tier cap, rollback value, 6 shards).
