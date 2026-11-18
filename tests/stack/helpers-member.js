@@ -32,6 +32,7 @@ async function grantRelayPlan(browser, loginName, tier = 'cardinal') {
     await page.locator('input[name=user][value=owner]').check();
     await page.locator('#continue').click();
     await page.waitForLoadState('load');
+    await finishCeremony(context.request); // the owner goes through the ceremony too (1.0.1); the admin API is closed until then
     const api = (p, data) => context.request.post(`/_lb/admin/api${p}`, { data, headers: { origin: BASE, 'content-type': 'application/json' } });
     if ((await api('/step-up', { login: 'owner', password: 'owner-pass-1' })).status() !== 200) throw new Error('step-up failed');
     const users = (await (await context.request.get('/_lb/admin/api/users')).json()).users;
