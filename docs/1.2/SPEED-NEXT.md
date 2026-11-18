@@ -44,6 +44,9 @@ Worker parser swap behind `features.meriyah` (build `LB_FEATURE_MERIYAH`, defaul
 
 Order: N1 (it is the gate fix), then the existing tier measurement, then N2 and N3 only if time remains before 05:30.
 
+## Release pace (Boss, 2026-11-18)
+Speed items ship as each one is ready, in small releases over days and weeks, not saved up into one big release. Each item keeps its feature switch so a rollback is a build flag, and one item per release pins any speed regression to its change. The release rules still apply (24 h hold after a Minor, at most 2 deploys a day, Boss runs every deploy).
+
 ## B. Next release candidates (ranked by value for effort)
 
 | rank | id | idea | gain | effort | tiers | notes |
