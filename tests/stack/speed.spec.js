@@ -22,6 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { applyProfile } = require('../lib/profile');
+const { finishCeremony, grantRelayPlan } = require('./helpers-member');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -32,6 +33,9 @@ const EXTRA = ['rxBytes', 'txBytes', 'longTaskCount', 'longTaskMs'];
 const SITES = JSON.parse(fs.readFileSync(path.join(__dirname, 'speed-sites.json'), 'utf8'));
 const NO_PUBLIC = process.env.LB_SPEED_PUBLIC === '0';
 const ONLY = process.env.LB_SPEED_ONLY ? process.env.LB_SPEED_ONLY.split(',') : null;
+// LB_SPEED_TIER=ordinal|cardinal (run with LB_REHEARSAL_MEMBERSHIP=1): alice finishes the ceremony (Ordinal), or is also granted Cardinal.
+const TIER = process.env.LB_SPEED_TIER || '';
+let TIER_DONE = false;
 const FIXTURE_ORIGIN = 'http://10.89.85.10:8080';
 
 const median = (a) => {
@@ -79,6 +83,12 @@ async function signIn(page) {
     await page.locator('#continue').click();
   }
   await page.waitForLoadState('load');
+  if (TIER && !TIER_DONE) {
+    await finishCeremony(page.request);
+    if (TIER === 'cardinal') await grantRelayPlan(page.context().browser(), 'alice', 'cardinal');
+    TIER_DONE = true;
+    await page.goto('/');
+  }
   await expect(page.locator('#url')).toBeVisible({ timeout: 90000 });
   // First-run overlays would not block navigation, but dismiss them so they cannot add noise.
   const skip = page.locator('#tutorialOverlay button', { hasText: 'Skip tour' });
