@@ -133,7 +133,7 @@ No CAPTCHA solving, fingerprint spoofing, IP rotation or residential proxies: th
 ### K. Tiers, prices, caps, promises
 - Today (gate src/membership.ts, placeholders, not public): Ordinal free 3 Mbit/s, 240 min a day; Cardinal $15 a year, 15 Mbit/s, 12 GB a week; Prime $35 a year, 30 Mbit/s, 100 GB a month; Executive per person, 80 Mbit/s, 200 GB a month.
 - **Caps go weekly for all tiers** (e.g. Cardinal 12, Prime 25, Executive 50 GB a week; final numbers from cost).
-- **Prices from cost + margin**: VPS cost per member per tier from measured data and CPU, plus margin, checked against a student budget.
+- **Prices from cost + margin** (VPS costs $40 a year, Boss 2026-11-18): VPS cost per member per tier from measured data and CPU, plus margin, checked against a student budget.
 - **Plan for up to 25 paid members** on the one VPS; adjust when membership changes. At full caps 2.5 TB fits about 48 Cardinal, 25 Prime or 12 Executive; the cache raises that.
 - **Promise = measured examples on our test pages only**, Ordinal against each paid tier, refreshed each release.
 
