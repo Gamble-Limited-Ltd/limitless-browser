@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false, lazyFrames: false };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false, lazyFrames: false, hoverPrefetch: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -5693,7 +5693,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 // an image tells runQueue to keep a few slots free for it (lbCritAt), so the document's CSS, scripts and fonts never wait behind a full set of images
                 if (window.LB_features.qPrio !== false) {
                     if (opts.__vp && priority === PRIORITY.image) priority = PRIORITY.image - (opts.__vp === 2 ? 0.75 : 0.5);   // 2 = visibleFirst: seen in the viewport, before the guessed top images
-                    else if (priority < PRIORITY.image || priority > PRIORITY.image) lbCritAt = performance.now();
+                    else if (!opts.__pf && (priority < PRIORITY.image || priority > PRIORITY.image)) lbCritAt = performance.now();
                 }
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
                 // Guard: if libcurl hasn't initialized yet (or failed), fail cleanly
@@ -9050,6 +9050,7 @@ parent.postMessage({ t: 'ready' }, '*');
                 // A parked opener keeps its page alive but must not steer the active (popup) tab: only fetch and storage traffic passes.
                 if (lbPopups.size && lbIsParked(_replyTo) && !LB_PARK_OK.has(d.t)) return;
 
+                if (d.t === 'hp') { if (ev.source === frame.contentWindow && typeof d.u === 'string') lbPf.hover(d.u); return; }
                 if (d.t === 'hint') {
                     if (d.u && typeof d.u === 'string') _pendingNavHint = d.u;
                     return;
@@ -10383,6 +10384,48 @@ _VIEWER_DL_JS +
                 get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; },
                 dropMemo() { lbRw.memo.clear(); lbRw.memoChars = 0; }, kv: lbRwKV };
 
+            // 1.2 N7 (features.hoverPrefetch, test hook LB_pf): a link hovered for 100 ms in the page (frame click router) fetches its
+            // document at the lowest queue priority; the click then takes that response instead of fetching again. Same site only
+            // (same host ignoring www.), GET, http(s), never with Data saver or the Ordinal speed cap, never an action-looking URL
+            // (logout, delete, unsubscribe, checkout ... or a query with action/token/nonce style params). At most 3 entries, one use each, 30 s.
+            const lbPf = (function () {
+                const m = new Map(), TTL = 30000, MAX = 3;
+                const PATH = /(^|[\/_.-])(log-?out|sign-?out|sign-?off|delete|remove|unsubscribe|checkout|confirm|activate|verify|approve|revoke|cancel|purchase|buy|pay|download)([\/_.-]|$)/i;
+                const QS = /(^|&)(action|act|do|op|cmd|command|delete|remove|logout|signout|unsubscribe|confirm|token|nonce|_wpnonce|csrf|csrf_token|key|sig|code)(=|&|$)/i;
+                const host = (u) => u.hostname.replace(/^www\./, '').toLowerCase();
+                const ok = (url) => {
+                    if (window.LB_features.hoverPrefetch === false || lbDataSaver() || (window.LB_speedCap && window.LB_speedCap.mbps() > 0)) return null;
+                    let u, cur;
+                    try { u = new URL(url); cur = new URL(pageUrl || ''); } catch (_) { return null; }
+                    if (!/^https?:$/.test(u.protocol) || !/^https?:$/.test(cur.protocol) || host(u) !== host(cur)) return null;
+                    if (u.origin + u.pathname + u.search === cur.origin + cur.pathname + cur.search) return null;
+                    if (PATH.test(u.pathname) || QS.test(u.search.slice(1))) return null;
+                    u.hash = '';
+                    return u.href;
+                };
+                return {
+                    ok,
+                    size: () => m.size,
+                    hover(url) {
+                        const k = ok(url);
+                        if (!k || m.has(k) || typeof curl === 'undefined' || !curl || !activeTabId) return;
+                        const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+                        const p = queueFetch(k, { signal: ctl.signal, __nav: true, __pf: true }, PRIORITY.other + 1);
+                        const e = { p, t: performance.now() };
+                        m.set(k, e);
+                        p.then(() => clearTimeout(to), () => { clearTimeout(to); if (m.get(k) === e) m.delete(k); });
+                        while (m.size > MAX) m.delete(m.keys().next().value);
+                    },
+                    async take(url) {
+                        const e = m.get(url);
+                        if (!e) return null;
+                        m.delete(url);
+                        if (performance.now() - e.t > TTL) return null;
+                        try { return await e.p; } catch (_) { return null; }
+                    },
+                };
+            })();
+            window.LB_pf = lbPf;
             async function go(url, push = true, method = "GET", body = null, _isRetry = false) {
                 const initiatorTabId = activeTabId;
                 if (!_isRetry) lbBF.leave(initiatorTabId, pageUrl);
@@ -10736,7 +10779,7 @@ _VIEWER_DL_JS +
                         _docIn = true; hideOverlay(); setStatus("error", "Error"); setTabTitle("Google sign-in"); currentDoc = null;
                         renderErrorPage(url, 'Google Sign-in', 'google-signin', '', ['Works signed out: Google Search, Google Maps, and viewing shared Docs links.', 'To sign in, open Google in your normal browser.']); tabAbortControllers.delete(initiatorTabId); return;
                     }
-                    const r = await queueFetch(url, opts, PRIORITY.html);
+                    const r = (method === "GET" && !_isRetry && await lbPf.take(url)) || await queueFetch(url, opts, PRIORITY.html);
                     _docIn = true;
                     window.__lbPerf.mark('firstBytes');
                     if (_progTok && _progTok === lbProg.tok) lbProg.done++;
@@ -11073,6 +11116,15 @@ _VIEWER_DL_JS +
     e.stopImmediatePropagation();
     try { parent.postMessage({t:'n',u:dest},'*'); } catch(err) {}
   }, true);
+  // N7: a link under the pointer for 100 ms tells the app, which may prefetch it (features.hoverPrefetch)
+  var hpT = 0;
+  document.addEventListener('mouseover', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a,area') : null;
+    clearTimeout(hpT);
+    var dest = a && a.getAttribute('data-lb-href');
+    if (dest) hpT = setTimeout(function() { try { parent.postMessage({t:'hp',u:dest},'*'); } catch(err) {} }, 100);
+  }, true);
+  document.addEventListener('mouseout', function() { clearTimeout(hpT); }, true);
   // Drag fix: restore real URL so dragging a link into the omnibox
   // delivers the actual destination, not javascript:void(0)
   document.addEventListener('dragstart', function(e) {
