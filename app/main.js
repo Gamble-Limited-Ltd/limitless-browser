@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -6640,6 +6640,7 @@ const LB_LAZY = ${JSON.stringify(lbLazyConfig())};
 const LB_POPUP = ${JSON.stringify(lbPopupConfig())};
 ${window.LB_videoRuntime ? '(' + window.LB_videoRuntime + ')(' + JSON.stringify(window.LB_videoConfig(baseUrl)) + ');' : ''}   // video cap and one video at a time (app/ui.js)
 const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
+${window.LB_features.lockdown === true ? "addEventListener('securitypolicyviolation', e => { try { window.top.postMessage({ t: 'cspblock', u: e.blockedURI }, '*'); } catch (_) {} }, true);" : ''}
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
@@ -8967,7 +8968,7 @@ parent.postMessage({ t: 'ready' }, '*');
                 const idoc = new DOMParser().parseFromString(html, 'text/html');
                 if (!idoc.head) idoc.documentElement.insertBefore(idoc.createElement('head'), idoc.documentElement.firstChild);
                 const ibase = idoc.createElement('base'); ibase.href = iu; idoc.head.prepend(ibase);
-                const icsp = idoc.createElement('meta'); icsp.setAttribute('http-equiv', 'Content-Security-Policy'); icsp.setAttribute('content', 'frame-src blob: data: about:;'); idoc.head.insertBefore(icsp, idoc.head.firstChild);   // recurse the no-direct-frame-load guarantee
+                const icsp = idoc.createElement('meta'); icsp.setAttribute('http-equiv', 'Content-Security-Policy'); icsp.setAttribute('content', lbFrameCsp()); idoc.head.insertBefore(icsp, idoc.head.firstChild);   // recurse the no-direct-frame-load guarantee
                 const iBlock = blockEnabled && !((() => { try { const al = JSON.parse(ls.getItem('limitless:adblock:allowlist:v1') || '[]'); return al.includes(new URL(iu).hostname); } catch (e) { return false; } })());
                 const ips = idoc.createElement('script');
                 ips.textContent = makeProxyScript(iu, iBlock, mediaPref('limitless:webrtc:block:v1'), (() => { try { return ls.getItem('limitless:ua:page:v1') || null; } catch { return null; } })(), (() => { try { return ls.getItem('limitless:spellcheck:v1') === 'true'; } catch { return false; } })());
@@ -8993,6 +8994,7 @@ parent.postMessage({ t: 'ready' }, '*');
                 // frame receives only its own responses.
                 const _replyTo = ev.source;
 
+                if (d.t === 'cspblock') { if (window.LB_features.lockdown === true) lbLockdownNote(d.u); return; }
                 if (d.t === 'popen') { lbPopupOpen(_replyTo, d.pid, d.u); return; }
                 if (d.t === 'popnav' || d.t === 'pmo' || d.t === 'pclose') { lbPopupMsg(_replyTo, d); return; }
                 // A parked opener keeps its page alive but must not steer the active (popup) tab: only fetch and storage traffic passes.
@@ -10175,6 +10177,23 @@ _VIEWER_DL_JS +
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
                 stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0 } };
+            // L1 (1.3, features.lockdown, off by default): a wide CSP on the proxied page so the browser cannot load anything straight from the
+            // internet. Our own origin plus blob:/data: (what the rewriter makes) are the only sources; the frame never opens a socket itself
+            // (WebSocket is relayed to this window), so connect-src needs no relay host. Violations are counted per host in lbRw.stats.cspBlocked.
+            function lbFrameCsp() {
+                if (!(window.LB_features && window.LB_features.lockdown === true)) return 'frame-src blob: data: about:;';
+                if (!window.LB_lockdown) window.LB_lockdown = { recent: [] };
+                const o = /^https?:$/.test(location.protocol) ? location.origin + ' ' : '';
+                return "default-src " + o + "blob: data: 'unsafe-inline' 'unsafe-eval'; connect-src " + o + "blob: data:; frame-src blob: data: about:;";
+            }
+            function lbLockdownNote(u) {
+                let h = String(u || '?');
+                try { h = new URL(h).host || h; } catch (_) {}
+                const c = lbRw.stats.cspBlocked || (lbRw.stats.cspBlocked = {});
+                c[h] = (c[h] || 0) + 1;
+                const r = (window.LB_lockdown || (window.LB_lockdown = { recent: [] })).recent;
+                r.push(String(u).slice(0, 300)); if (r.length > 20) r.shift();
+            }
             function lbRwHash(str) {
                 let h1 = 0x811c9dc5, h2 = 0x01000193;
                 for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 + c, 2246822519) ^ (h2 >>> 13); }
@@ -10822,7 +10841,7 @@ _VIEWER_DL_JS +
                     // Only frame-src is set — scripts/styles/images/fetch are untouched.
                     const cspMeta = doc.createElement('meta');
                     cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
-                    cspMeta.setAttribute('content', 'frame-src blob: data: about:;');
+                    cspMeta.setAttribute('content', lbFrameCsp());
                     doc.head.insertBefore(cspMeta, doc.head.firstChild);
 
                     // ── Preserve <noscript> warnings and remove them only if JS actually runs ──
