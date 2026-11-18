@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, meriyah: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'meriyah']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -9961,10 +9961,19 @@ _VIEWER_DL_JS +
                     function rewriteLocationRefs(src, imp) {
                         if (!src || (src.indexOf('location') === -1 && !(imp && /\bimport\s*\(/.test(src)))) return src;
                         let ast;
-                        try {
-                            ast = acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true,
-                                allowAwaitOutsideFunction: true, allowHashBang: true, allowImportExportEverywhere: true });
-                        } catch (e) { return src; }
+                        // 1.2 N4 (features.meriyah): the Worker source carries meriyah only with the switch on (lbRwLoadLib); parseScript, then
+                        // parseModule (no mixed mode), then acorn as the last resort so nothing acorn handled regresses. mf counts the acorn saves.
+                        if (typeof meriyah !== 'undefined') {
+                            const mo = { ranges: true, next: true, webcompat: true, globalReturn: true };
+                            try { ast = meriyah.parseScript(src, mo); } catch (e) { try { ast = meriyah.parseModule(src, mo); } catch (e2) {} }
+                        }
+                        if (!ast) {
+                            try {
+                                ast = acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true,
+                                    allowAwaitOutsideFunction: true, allowHashBang: true, allowImportExportEverywhere: true });
+                            } catch (e) { return src; }
+                            if (typeof meriyah !== 'undefined') rewriteLocationRefs.mf = (rewriteLocationRefs.mf || 0) + 1;
+                        }
                         let declared = false;
                         const mark = id => { if (id && id.type === 'Identifier' && id.name === 'location') declared = true; };
                         const pat = p => {
@@ -10174,7 +10183,7 @@ _VIEWER_DL_JS +
             const lbRwPersistOn = () => { try { return window.LB_features.rewriteCache !== false && lbCacheOn(); } catch (_) { return false; } };
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
-                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0 } };
+                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0, meriyahFallback: 0 } };
             function lbRwHash(str) {
                 let h1 = 0x811c9dc5, h2 = 0x01000193;
                 for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 + c, 2246822519) ^ (h2 >>> 13); }
@@ -10203,14 +10212,25 @@ _VIEWER_DL_JS +
                 if (lbRwLibP) return;
                 lbRwLibP = fetch(new URL('vendor/acorn/8.14.0/acorn.min.js', document.baseURI).href)
                     .then(r => { if (!r.ok) throw new Error('acorn ' + r.status); return r.text(); })
-                    .then(t => { if (t.indexOf('acorn') < 0) throw new Error('acorn source not found'); lbRwLib = t; lbRwPump(); })
+                    .then(async t => {
+                        if (t.indexOf('acorn') < 0) throw new Error('acorn source not found');
+                        // 1.2 N4: meriyah is fetched only with the switch on; a failed fetch just leaves the Worker on acorn
+                        if (window.LB_features.meriyah !== false) {
+                            try {
+                                const r = await fetch(new URL('vendor/meriyah/7.4.2/meriyah.umd.min.js', document.baseURI).href);
+                                const m = r.ok ? await r.text() : '';
+                                if (m.indexOf('meriyah') >= 0) t += '\n;' + m + '\n';
+                            } catch (_) {}
+                        }
+                        lbRwLib = t; lbRwPump();
+                    })
                     .catch(() => lbRwDisable());
             }
             function lbRwSource() {
                 const lib = lbRwLib;
                 if (!lib) throw new Error('acorn source not found');
                 return lib + '\n' + rewriteLocationRefs.toString() + '\n' +
-                    'onmessage = function (e) { var d = e.data; try { postMessage({ id: d.id, out: rewriteLocationRefs(d.src, d.imp) }); } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
+                    'onmessage = function (e) { var d = e.data; try { postMessage({ id: d.id, out: rewriteLocationRefs(d.src, d.imp), mf: rewriteLocationRefs.mf || 0 }); rewriteLocationRefs.mf = 0; } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
             }
             function lbRwSpawn() {
                 const blob = new Blob([lbRwSource()], { type: 'text/javascript' });
@@ -10221,6 +10241,7 @@ _VIEWER_DL_JS +
                 w.onmessage = (e) => {
                     const t = slot.busy; if (!t || e.data.id !== t.id) return;
                     clearTimeout(t.timer); slot.busy = null;
+                    if (e.data.mf) lbRw.stats.meriyahFallback += e.data.mf;
                     if (e.data.err) { t.fail(new Error(e.data.err)); } else { t.ok(e.data.out); }
                     lbRwPump();
                 };

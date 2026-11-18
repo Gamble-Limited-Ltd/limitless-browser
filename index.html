@@ -4,7 +4,8 @@
 <head>
     <!-- Vendored acorn 8.14.0 + acorn-walk 8.3.4 (MIT), minified. Powers the
          AST-based location rewriter in the page renderer (see rewriteLocationRefs).
-         Exposes window.acorn and window.acorn.walk. -->
+         Exposes window.acorn and window.acorn.walk. The rewrite Worker also loads
+         vendored meriyah 7.4.2 (ISC, vendor/meriyah/7.4.2/) first, acorn as fallback (features.meriyah). -->
     <script src="vendor/acorn/8.14.0/acorn.min.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
