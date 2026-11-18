@@ -137,6 +137,14 @@ No CAPTCHA solving, fingerprint spoofing, IP rotation or residential proxies: th
 - **Plan for up to 25 paid members** on the one VPS; adjust when membership changes. At full caps 2.5 TB fits about 48 Cardinal, 25 Prime or 12 Executive; the cache raises that.
 - **Promise = measured examples on our test pages only**, Ordinal against each paid tier, refreshed each release.
 
+### K2. Capacity plan (Boss, 2026-11-18 evening): 50 users, 4 Executives, no YouTube
+- **Target: about 50 paid members** on the one VPS (was 25). **Executive limited to 4 seats.**
+- **YouTube is not allowed on our relay.** Gate refuses WISP CONNECT to youtube.com, youtu.be, youtube-nocookie.com, googlevideo.com, ytimg.com (gate already sees the hostname per stream: `src/sites.ts` `isVideoHost`, `src/wisp.ts`), and the app shows a plain card instead of a broken page. Free (Ordinal, public relays): open question for Boss. Effect: removes the worst data risk (YouTube fetched 43.7 MB to play 2.9 MB); I1 drops in rank, I2/I3 YouTube parts are dropped; other video sites (Twitch, Vimeo) stay under the gate's video cap.
+- Budget: 2,500 GB member traffic a month (5 TB both ways), planned at 80 percent = 2,000 GB. Reference mix: 23 Cardinal, 23 Prime, 4 Executive. No cache savings counted.
+- Usage scenarios without YouTube (estimates, GB a week C / P / E, then fleet GB a month): worst = everyone at cap (10/20/40: 3,683, over budget; 5/10/20: 1,842, fits); heavy 5/10/25: 1,928; average 2/4/8: 737; light 1/2/4: 368; minimal 0.3/0.6/1.5: 116.
+- **Caps decision needed**: 10/20/40 GB a week only fits 50 members if most are not at cap (top-up and cap pause at 80 percent protects the box); 5/10/20 fits even the worst case. Measure one week of real per-member use (the gate already counts) before choosing.
+- Past the data budget the limits are uplink (`TOTAL_UPLINK_MBPS=300` set on the relay; check the RackNerd port speed) and 2 CPU cores (server rewrite, image shrink); at 50 members with about 25 online at once, about 12 Mbit/s each.
+
 ### T. Tests
 - **T1 Site tags**: each site in the real-site list gets tags (images, video, chat, bot-check, heavy-js); each plan item names its tags; nightly runs load only those, release candidates the full list.
 - **T2 New sites**: heavy image sites (Steam grid, Reddit feed, galleries), chat apps (Discord as a load and stay-alive benchmark, not for use), bot-check sites, more own fixture pages copying the hard patterns (huge JS, infinite scroll, lazy images).
