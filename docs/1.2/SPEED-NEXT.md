@@ -76,6 +76,16 @@ Boss hit direct loads on Steam; any big site that builds URLs in script does the
 | 3 | L3 | **Close the known gaps**: CSS `@import` and `url()` set from script (`style.setProperty`, `cssText`, `insertRule`, `CSSStyleSheet.replace`), `srcset`/`<source>` changed after load, script-added `<link rel=preload/prefetch/modulepreload>`, `Image()`/`Audio()`/media `src` setters, form posts and `location` in frames we do not own | fewer L1 blocks | medium (one item per gap, driven by the L1 counts) | all | each gap gets a failing test first (Steam fixture) |
 | 4 | L4 | **Out of scope, documented**: the browser's own favicon fetch, extensions, DNS prefetch outside the page (L1 stops page-level `dns-prefetch`) | none | none | all | say so on the privacy line |
 
+## F. Faster long runs (Boss, 2026-11-18)
+Ideas to cut the multi-hour gate runs, cheapest first:
+- **Keep baselines:** a prod build's speed and site JSON does not change; store it once per release in `docs/1.0/baseline/` and reuse it instead of rerunning 1.2.0 every night (rerun only when the harness or fixtures change). Saves one full run per night.
+- **Chromebook first:** per-item runs on `--project=chromebook` only; both projects only for the final candidate (used from 2026-11-18 night, job A).
+- **Early stop:** run 3 reps, run the full 7 only for rows within 2x the threshold of failing (`speed-compare.mjs` knows the threshold). Most rows settle at 3.
+- **Skip unchanged builds:** `run.sh` rebuilds the static output every run; reuse it when the commit and `LB_FEATURE_*` set match.
+- **Shared stack for the sites suite:** pass/fail site runs are not timing-sensitive; they could run in a second rehearsal project (own subnet) in parallel with a non-speed job, never alongside a speed run.
+- **Sites by need:** `LB_SITES_ONLY` for the sites an item touches; the full list only for the release candidate.
+- **Build PC:** only if Docker is set up there for the rehearsal stack (not today); speed numbers from another machine are not comparable, so pass/fail suites only.
+
 ## C. Bot checks (allowed paths only: no CAPTCHA solving, IP rotation, residential proxies or fingerprint spoofing)
 
 | id | idea | gain | notes |
