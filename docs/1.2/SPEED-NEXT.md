@@ -17,6 +17,28 @@ rewrite of multi-MB bundles (Steam, Discord, Kahoot), direct loads while the SW 
 
 N1 status 2026-11-17 night: BUILT (`features.compactBlocklist`, `scripts/build-blocklist.mjs`, committed `hosts.bin`, e2e `blocklist.spec.js`); speed gate numbers in `docs/releases/1.2.0.md`.
 
+### N2 result: parser bench (R3, 2026-11-18, Chromium 4x CPU throttle on the page thread, medians of 5, ms)
+Method: the app's own `rewriteLocationRefs` (extracted from `app/main.js`, `imp` on) with only the parse call swapped; parse ms is the parse alone, rewrite ms is parse + the `acorn.walk.ancestor` walk + the edit join. Real bundles fetched on 2026-11-18 from this VM (not committed): Steam `store/main.js`, a Discord web app chunk, Kahoot's controller and one app chunk, one Reddit chunk. Bench deps (acorn 8.14.0, meriyah 7.4.2, `@oxc-parser/wasm` 0.60.0) installed only in a scratch directory, not in `package.json`.
+**Caveat: CDP cannot throttle Workers** ("Operation is only supported for pages, not workers"), so the 4x run is on the page thread with the same code and the Worker run is at 1x. The ratio between parsers is what counts; a real Chromebook Worker sits between the two columns.
+
+| bundle (size) | acorn 8.14 parse / rewrite, 4x | meriyah 7.4.2 parse / rewrite, 4x | oxc WASM 0.60 parse / rewrite, 4x | Worker 1x: acorn / meriyah / oxc rewrite |
+|---|---|---|---|---|
+| Reddit chunk (68 KB) | 139 / 138 | 192 / 237 | 308 / 345 | 29 / 48 / 88 |
+| Discord app chunk (1.2 MB) | 1420 / 1981 | 1189 / 1635 | 6220 / 6718 | 549 / 505 / 1732 |
+| Steam `store/main.js` (1.9 MB) | 1976 / 2445 | 1331 / 1920 | 7323 / 8357 | 514 / 481 / 1835 |
+| Kahoot app chunk (2.0 MB) | 2707 / 3456 | 1361 / 2296 | 9510 / 10794 | 877 / 722 / 2477 |
+| Kahoot controller (5.5 MB) | 3701 / 4628 | 2194 / 3270 | 13161 / 14804 | 1051 / 1053 / 3511 |
+
+- **Output:** all three parsers gave a byte-identical rewritten script on every bundle (the same edits), so the ESTree shapes `rewriteLocationRefs` reads (`MemberExpression`, `Identifier`, `Property`, `ImportExpression`, `VariablePattern` via acorn-walk) are compatible as used. Nothing failed to parse.
+- **Compatibility changes a swap needs:** meriyah: `ranges: true` (for `start`/`end`), `next: true`, `webcompat: true`, `globalReturn: true`; it has no mixed script/module mode, so it needs `parseScript` first and `parseModule` on a SyntaxError (acorn's `allowImportExportEverywhere` does both in one pass); acorn-walk (`acorn.walk.ancestor`) still works on its tree, so the walk stays; no `allowHashBang` / `allowAwaitOutsideFunction` options (webcompat covers hashbang; top-level await only in module mode). oxc: `parseSync(src, {sourceType})` returns the program through serde, `sourceType` must be chosen like meriyah, errors come back in an array, not thrown.
+- **Sizes (raw / gzip):** acorn.min.js 122 KB / 36 KB (includes acorn-walk); meriyah.umd.min.js 118 KB / 33 KB (walker stays, +about 4 KB for the existing walk file is already in acorn.min.js); oxc WASM 737 KB + 15 KB glue / about 260 KB, plus an async WASM init in every Worker.
+- **Reading:** meriyah parse is 1.1x to 2.0x faster than acorn on the big bundles (Kahoot app chunk 2.0x, controller 1.7x, Steam 1.5x, Discord 1.2x) but 1.4x slower on a 68 KB file; total rewrite is 1.1x to 1.5x faster (the walk and join are the same cost and now dominate: walk + join is about 0.5 to 1.4 s of the rewrite). The oxc build tested (0.60, the wasm-bindgen web package; the napi WASI build needs threads and cross-origin isolation) is 3x to 5x SLOWER than acorn, because it turns the AST into JS objects through serde; not a candidate in this form.
+- **Verdict for N4:** meriyah is a small, real gain (up to about 30 to 40 percent of rewrite time on large bundles, 1.1 s of 4.6 s on the Kahoot controller at 4x) at the cost of a parser option change and the script-then-module retry; it does not remove the first-visit rewrite. Not swapped. Larger wins are elsewhere (S2 shared cache, skipping the walk).
+- **Not measured:** Reddit's real feed bundle (this VM's address gets the Reddit bot check, so only a 68 KB chunk was fetchable), Discord's 12.7 MB main bundle, the real Chromebook, memory.
+
+### N3 status (R3, 2026-11-18): the cheap form already exists
+`rewriteLocationRefs` begins with `if (!src || (src.indexOf('location') === -1 && !(imp && /\bimport\s*\(/.test(src)))) return src;`, so a script with no `location` substring and (with `importHelper`) no `import(` is never parsed. A token-level scan (word-boundary `location` or the string `'location'`) was tried on the 38 fetched bundles of 16 KB or more (28.6 MB): 27 contain the substring and the same 27 contain the token, so a finer scan skips nothing more here. No `rewriteSkip` switch was built.
+
 Order: N1 (it is the gate fix), then the existing tier measurement, then N2 and N3 only if time remains before 05:30.
 
 ## B. Next release candidates (ranked by value for effort)
@@ -51,4 +73,4 @@ Order: N1 (it is the gate fix), then the existing tier measurement, then N2 and 
 - SearXNG limiter (4 non-HTML requests per IP per hour): https://docs.searxng.org/admin/searx.limiter.html
 - no head-to-head epoxy-tls vs libcurl.js benchmark was found.
 
-Last verified: 2026-11-17
+Last verified: 2026-11-18
