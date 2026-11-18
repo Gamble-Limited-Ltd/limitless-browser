@@ -102,7 +102,7 @@ test.describe('blocklist', () => {
   test('the 224k list is built in slices that yield to the page (features.blocklistYield), the old one-task build stays behind the switch', async ({ page }) => {
     const r = await page.evaluate(async () => {
       const run = async (on) => {
-        LB_features.blocklistYield = on;
+        LB_features.compactBlocklist = false; LB_features.blocklistYield = on;
         LB_blocklist.reset();
         let yields = 0; const st = window.setTimeout;   // slices end with setTimeout(0): count them (timing based checks flake on a busy VM)
         window.setTimeout = (fn, ms, ...a) => { if (ms === 0) yields++; return st(fn, ms, ...a); };
@@ -113,7 +113,7 @@ test.describe('blocklist', () => {
         return { yields, size: LB_blocklist.size(), ga: LB_shouldSkip('https://ssl.google-analytics.com/ga.js'), early };
       };
       const sync = await run(false), yielded = await run(true);
-      LB_features.blocklistYield = true;
+      LB_features.blocklistYield = true; LB_features.compactBlocklist = true;
       return { sync, yielded };
     });
     expect(r.yielded.size).toBeGreaterThan(50000);
@@ -121,5 +121,43 @@ test.describe('blocklist', () => {
     expect(r.yielded.ga).toBe(true);
     expect(r.yielded.early).toBe(false);
     expect(r.yielded.yields).toBeGreaterThan(3);
+  });
+  // 1.2 N1: prebuilt compact list (sorted 64-bit hashes in vendor/blocklist/<date>/hosts.bin): no 224k Set at runtime.
+  test('compact list: no Set is built, lookups match the text list, bin file in step with hosts.txt', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      LB_features.compactBlocklist = true; LB_blocklist.reset();
+      const RealSet = window.Set; let adds = 0;
+      window.Set = class extends RealSet { add(v) { adds++; return super.add(v); } };
+      await LB_blocklist.load();
+      window.Set = RealSet;
+      const lines = (await (await fetch('vendor/blocklist/2026-11-15/hosts.txt')).text()).split('\n').filter(l => l && l.charCodeAt(0) !== 35);
+      let miss = 0; for (let i = 0; i < lines.length; i += 37) if (!LB_blocklist.hostBlocked(lines[i])) miss++;
+      const sub = lines[5];
+      return { adds, size: LB_blocklist.size(), lines: lines.length, miss, sub: LB_blocklist.hostBlocked('a.b.' + sub), parent: LB_blocklist.hostBlocked('example.com'),
+        ga: LB_shouldSkip('https://ssl.google-analytics.com/ga.js'), ok: LB_shouldSkip('https://example.com/') };
+    });
+    expect(r.adds).toBeLessThan(1000);
+    expect(r.size).toBeGreaterThan(200000); expect(r.size).toBeLessThanOrEqual(r.lines);
+    expect(r.miss).toBe(0);
+    expect(r.sub).toBe(true);
+    expect(r.parent).toBe(false);
+    expect(r.ga).toBe(true);
+    expect(r.ok).toBe(false);
+  });
+
+  test('compact list: a listed host blocks its subdomains, not its parent; custom filters and allowlist unchanged; missing bin or switch off falls back to the Set', async ({ page }) => {
+    await page.route('**/hosts.bin', route => route.fulfill({ status: 404, body: '' }));
+    const r = await page.evaluate(async () => {
+      LB_features.compactBlocklist = true; LB_blocklist.reset();
+      await LB_blocklist.load();
+      const missing = { loaded: LB_blocklist.loaded(), size: LB_blocklist.size() };
+      LB_features.compactBlocklist = false; LB_blocklist.reset();
+      await LB_blocklist.load();
+      return { missing, off: { loaded: LB_blocklist.loaded(), size: LB_blocklist.size(), ga: LB_shouldSkip('https://ssl.google-analytics.com/ga.js') } };
+    });
+    expect(r.missing.loaded).toBe(true);
+    expect(r.missing.size).toBeGreaterThan(200000);
+    expect(r.off.size).toBeGreaterThan(200000);
+    expect(r.off.ga).toBe(true);
   });
 });

@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
@@ -3056,13 +3056,22 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
 
             // SPEED 4.7: host-suffix blocklist (Set, one lookup per label). Until vendor/blocklist loads, SKIP_DOMAINS (substring) is the fallback.
             const LB_blocklist = (() => {
-                const FILE = 'vendor/blocklist/2026-11-15/hosts.txt';
-                let set = null, pending = null;
+                const FILE = 'vendor/blocklist/2026-11-15/hosts.txt', BIN = 'vendor/blocklist/2026-11-15/hosts.bin';
+                let set = null, pending = null, hi = null, lo = null, extra = null;   // compact path: hi/lo sorted 64-bit hashes, extra = domain-like legacy entries
                 const legacy = () => SKIP_DOMAINS.filter(d => /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d));   // domain-like old entries stay blocked after the list loads
+                // N1: hosts.bin = n Uint32 hi then n Uint32 lo, sorted by (hi, lo); hash64 must match scripts/build-blocklist.mjs.
+                function inBin(h) {
+                    let a = 0x811c9dc5, b = 0x9e3779b1;
+                    for (let i = 0; i < h.length; i++) { const c = h.charCodeAt(i); a = Math.imul(a ^ c, 0x01000193) >>> 0; b = Math.imul(b ^ c, 0x5bd1e995) >>> 0; }
+                    b = (b ^ (b >>> 15)) >>> 0;
+                    let l = 0, r = hi.length;
+                    while (l < r) { const m = (l + r) >>> 1; if (hi[m] < a || (hi[m] === a && lo[m] < b)) l = m + 1; else r = m; }
+                    return l < hi.length && hi[l] === a && lo[l] === b;
+                }
                 function hostBlocked(host) {
-                    if (!set) return false;
+                    if (!set && !hi) return false;
                     for (let h = host; ; ) {
-                        if (set.has(h)) return true;
+                        if (set ? set.has(h) : (inBin(h) || extra.has(h))) return true;
                         const i = h.indexOf('.');
                         if (i < 0) return false;
                         h = h.slice(i + 1);
@@ -3085,11 +3094,19 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                     }
                     legacy().forEach(d => s2.add(d)); set = s2;
                 }
-                function load() {
-                    if (set) return Promise.resolve(true);
-                    if (!pending) pending = fetch(FILE, { cache: 'force-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+                const compactOn = () => { try { return window.LB_features.compactBlocklist !== false; } catch (_) { return true; } };
+                function loadText() {
+                    return fetch(FILE, { cache: 'force-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
                         .then(t => { if (!yieldOn()) { setList(t.split('\n').filter(l => l && l.charCodeAt(0) !== 35)); return true; } return buildYielding(t).then(() => true); })
-                        .catch(() => { pending = null; return false; });
+                }
+                function load() {
+                    if (set || hi) return Promise.resolve(true);
+                    if (!pending) {
+                        const text = () => loadText();
+                        pending = (compactOn() ? fetch(BIN, { cache: 'force-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+                            .then(buf => { const n = buf.byteLength / 8; if (!Number.isInteger(n) || !n) throw new Error('bin'); hi = new Uint32Array(buf, 0, n); lo = new Uint32Array(buf, n * 4, n); extra = new Set(legacy()); return true; })
+                            .catch(() => { hi = lo = null; return text(); }) : text()).catch(() => { pending = null; return false; });
+                    }
                     return pending;
                 }
                 // The list is ~570 KB: start it only after a page has finished loading and the fetch queue has been idle for idleMs,
@@ -3103,7 +3120,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                         if (idle >= idleMs) { clearInterval(t); load(); }
                     }, step);
                 }
-                return { hostBlocked, setList, load, loadWhenIdle, loaded: () => !!set, size: () => set ? set.size : 0, reset: () => { set = null; pending = null; } };
+                return { hostBlocked, setList, load, loadWhenIdle, loaded: () => !!(set || hi), size: () => set ? set.size : hi ? hi.length : 0, reset: () => { set = hi = lo = extra = null; pending = null; } };
             })();
             window.LB_blocklist = LB_blocklist;
             if (location.protocol !== 'file:') LB_blocklist.loadWhenIdle();   // cached immutable by the service worker
