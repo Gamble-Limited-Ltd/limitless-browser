@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -763,7 +763,7 @@
                     const j = await r.json();
                     const f = j && j.features;
                     if (f && typeof f === 'object') {
-                        if ('ownSockets' in f) { const n = Math.floor(Number(f.ownSockets)); window.LB_features.ownSockets = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; }
+                        if ('ownSockets' in f) { const n = Math.floor(Number(f.ownSockets)); window.LB_features.ownSockets = Number.isFinite(n) ? Math.max(1, Math.min(6, n)) : 1; }
                         if ('ownRelay' in f) window.LB_features.ownRelay = f.ownRelay === true || f.ownRelay === 1;
                         if ('worker' in f) window.LB_features.worker = f.worker !== false && f.worker !== 0;
                         if ('respCache' in f) window.LB_features.respCache = f.respCache !== false && f.respCache !== 0;
@@ -835,7 +835,7 @@
                         return { base: raw.slice(0, i + 1), hp, host: k < 0 ? hp : hp.slice(0, k), port: k < 0 ? '' : hp.slice(k + 1) };
                     },
                     multiActive() { return !!d.multiOn() && !R.pinned; },
-                    ownCount() { const n = Math.floor(Number(d.ownSockets())); return Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1; },
+                    ownCount() { const n = Math.floor(Number(d.ownSockets())); return Number.isFinite(n) ? Math.max(1, Math.min(6, n)) : 1; },
                     busy(base) {
                         const s = sockets.get(base);
                         if (!s) return 0;
@@ -1004,7 +1004,9 @@
             const LB_OWN_SOCKETS_KEY = 'limitless:ownsockets:v1';
             const LB_MULTI_KEY = 'limitless:multirelay:v1';
             const LB_MULTI_MODE_KEY = 'limitless:multirelay-mode:v1';
-            function lbOwnSocketsSetting() { try { const n = parseInt(ls.getItem(LB_OWN_SOCKETS_KEY), 10); return n >= 1 && n <= 4 ? n : 4; } catch { return 4; } }
+            // N8: paid tiers (membership on) may use 6 sockets to our relay, everyone else 4 (the gate allows 8 per user: 6 + v/ + dl/). Unset = the cap.
+            function lbOwnSocketsCap() { const m = window.LB_member, t = m && m.membership === 'on' && m.plan && m.plan.tier; return t === 'cardinal' || t === 'prime' || t === 'executive' ? 6 : 4; }
+            function lbOwnSocketsSetting() { const cap = lbOwnSocketsCap(); try { const n = parseInt(ls.getItem(LB_OWN_SOCKETS_KEY), 10); return n >= 1 ? Math.min(n, cap) : cap; } catch { return cap; } }
             function lbMultiMode() { try { const m = ls.getItem(LB_MULTI_MODE_KEY); return m === 'spread' || m === 'race' ? m : 'site'; } catch { return 'site'; } }
             const LB_router = LB_makeRouter({
                 ownBase: () => LB_OUR_WISP,
@@ -1087,9 +1089,10 @@
                     const n = lbOwnSocketsSetting();
                     if (val) val.textContent = String(n);
                     if (minus) minus.disabled = n <= 1;
-                    if (plus) plus.disabled = n >= 4;
+                    if (plus) plus.disabled = n >= lbOwnSocketsCap();
                 };
-                const set = (n) => { try { ls.setItem(LB_OWN_SOCKETS_KEY, String(Math.max(1, Math.min(4, n)))); } catch (_) {} render(); };
+                const set = (n) => { try { ls.setItem(LB_OWN_SOCKETS_KEY, String(Math.max(1, Math.min(lbOwnSocketsCap(), n)))); } catch (_) {} render(); };
+                document.addEventListener('lb-member', render);
                 if (minus) minus.addEventListener('click', () => set(lbOwnSocketsSetting() - 1));
                 if (plus) plus.addEventListener('click', () => set(lbOwnSocketsSetting() + 1));
                 render();
