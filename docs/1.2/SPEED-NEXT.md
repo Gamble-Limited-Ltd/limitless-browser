@@ -56,6 +56,8 @@ Order: N1 (it is the gate fix), then the existing tier measurement, then N2 and 
 | 9 | N9 | **Worker HTML parse** (SPEED-AUDIT C3, htmlparser2 MIT) | Steam's 990 KB document off the page thread | medium | all | measure first |
 | 10 | N10 | **Transport bench: epoxy-tls vs libcurl.js 0.7.5** on the same WISP server, and WISP over WebTransport if the relay supports it | unknown; no published comparison exists | small (bench) | all | research only until numbers exist |
 
+**N7 status: BUILT 2026-11-18** (`features.hoverPrefetch`, build `LB_FEATURE_HOVERPREFETCH`, default true). Not measured yet: no navigation-time number (needs a real-site Chromebook run), no hit rate, no extra data cost.
+
 ## C. Bot checks (allowed paths only: no CAPTCHA solving, IP rotation, residential proxies or fingerprint spoofing)
 
 | id | idea | gain | notes |
