@@ -64,6 +64,16 @@ Speed items ship as each one is ready, in small releases over days and weeks, no
 
 **N7 status: BUILT 2026-11-18** (`features.hoverPrefetch`, build `LB_FEATURE_HOVERPREFETCH`, default true). Not measured yet: no navigation-time number (needs a real-site Chromebook run), no hit rate, no extra data cost.
 
+## E. Everything through Limitless (no direct loads) (Boss, 2026-11-18)
+Boss hit direct loads on Steam; any big site that builds URLs in script does the same. Today the proxied page has a CSP of only `frame-src blob: data: about:` (app/main.js about line 10852: "scripts/styles/images/fetch are untouched"), so a URL the rewriter or the runtime patches miss is loaded by the browser straight from the internet: it skips the relay (privacy, Ordinal cap, school filters block it, the page breaks). The runtime already patches fetch, XHR, WebSocket, EventSource, Worker, SharedWorker, RTCPeerConnection and sendBeacon. Ship each item below as its own small release behind a switch, when ready (see Release pace).
+
+| rank | id | idea | gain | effort | tiers | notes |
+|---|---|---|---|---|---|---|
+| 1 | L1 | **Lockdown CSP** on the proxied document: `default-src 'self' blob: data:` plus `connect-src` limited to our origin and the relay hosts in use (`LB_OUR_WISP`, public relays), `'unsafe-inline' 'unsafe-eval'` as the rewriter needs; plus a `securitypolicyviolation` listener that counts blocked URLs (`lbRw.stats`, admin Usage) | nothing leaves outside the relay; leak list for L3 | small | all | fail closed: a miss breaks the item instead of leaking. Switch `features.lockdown`, default off until Steam and the 10-site list pass with it on. Check blob: Workers, srcdoc frames and the popup bridge inherit it |
+| 2 | L2 | **SW document lane on** (= B N5) | misses are fetched through the proxy instead of blocked | see N5 | all | with L1 on: no leaks and fewer broken items |
+| 3 | L3 | **Close the known gaps**: CSS `@import` and `url()` set from script (`style.setProperty`, `cssText`, `insertRule`, `CSSStyleSheet.replace`), `srcset`/`<source>` changed after load, script-added `<link rel=preload/prefetch/modulepreload>`, `Image()`/`Audio()`/media `src` setters, form posts and `location` in frames we do not own | fewer L1 blocks | medium (one item per gap, driven by the L1 counts) | all | each gap gets a failing test first (Steam fixture) |
+| 4 | L4 | **Out of scope, documented**: the browser's own favicon fetch, extensions, DNS prefetch outside the page (L1 stops page-level `dns-prefetch`) | none | none | all | say so on the privacy line |
+
 ## C. Bot checks (allowed paths only: no CAPTCHA solving, IP rotation, residential proxies or fingerprint spoofing)
 
 | id | idea | gain | notes |
