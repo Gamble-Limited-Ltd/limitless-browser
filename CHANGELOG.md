@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.1
+
+- The owner admin member menu is tabbed with quick actions, grant presets and a danger zone.
+- Users and Invites rows use the same chips as the member list.
+
 ## 1.2.0
 
 - Heavy sites stop freezing the tab: Steam no longer shows the "Page unresponsive" dialog, and Kahoot, Discord, YouTube and Spotify load far faster on a Chromebook.
