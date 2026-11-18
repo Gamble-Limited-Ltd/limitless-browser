@@ -75,19 +75,31 @@ if [ "${LB_REHEARSAL_MEMBERSHIP:-0}" = 1 ]; then
 fi
 
 DC=(docker compose -p "$PROJECT" -f "$HERE/docker-compose.rehearsal.yml")
+# `down` can miss containers (a run killed with SIGKILL, profile-only services, a failed interpolation); remove whatever
+# still carries the project label. Safe to call at start: the port check above already stopped us if a KEEP=1 stack is up.
+sweep() {
+  local f="label=com.docker.compose.project=$PROJECT" ids
+  ids=$(docker ps -aq --filter "$f"); [ -n "$ids" ] && { echo "rehearsal: removing leftover containers: $(docker ps -a --filter "$f" --format '{{.Names}}' | tr '\n' ' ')" >&2; docker rm -f $ids >/dev/null; }
+  ids=$(docker network ls -q --filter "$f"); [ -n "$ids" ] && docker network rm $ids >/dev/null 2>&1
+  ids=$(docker volume ls -q --filter "$f"); [ -n "$ids" ] && docker volume rm $ids >/dev/null 2>&1
+  return 0
+}
+sweep
 cleanup() {
   rc=$?
   if [ "${KEEP:-0}" = 1 ] && [ $rc -eq 0 ]; then
     echo "rehearsal: stack left up on 127.0.0.1:$REHEARSAL_WEB_PORT (mock on :$REHEARSAL_MOCK_PORT). Tear down:"
     echo "  REHEARSAL_OWNER_SUB=x REHEARSAL_CLIENT_SECRET=x REHEARSAL_GATE_ENV=$REHEARSAL_GATE_ENV REHEARSAL_VPS_ENV=$REHEARSAL_VPS_ENV ${DC[*]} down -v"
   else
-    "${DC[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+    COMPOSE_PROFILES='*' "${DC[@]}" down -v --remove-orphans >/dev/null 2>&1 || echo "rehearsal: compose down failed, sweeping by label" >&2
+    sweep
     rm -rf "$RUN_DIR"
   fi
   echo "rehearsal: done in $(( $(date +%s) - START )) s (exit $rc)"
   exit $rc
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 echo "rehearsal: building static tree"
 "$REPO/scripts/build-static.sh" "rehearsal-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
