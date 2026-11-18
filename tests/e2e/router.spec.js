@@ -74,7 +74,7 @@ test.describe('own relay shards', () => {
     await setup(page);
     const r = await page.evaluate(() => {
       const out = {};
-      for (const n of [1, 2, 3]) {
+      for (const n of [1, 2, 3, 6]) {
         const { r, st } = window.__mk(); st.ownSockets = n;
         const set = new Set();
         for (let i = 0; i < 12; i++) set.add(r.route('ws://' + location.host + '/wisp/a.test:443').url);
@@ -86,6 +86,8 @@ test.describe('own relay shards', () => {
     expect(r[2].length).toBe(2);
     expect(r[2].every((u) => /\/wisp\/[12]\//.test(u))).toBe(true);
     expect(r[3].every((u) => /\/wisp\/[123]\//.test(u))).toBe(true);
+    expect(r[6].length).toBe(6);
+    expect(r[6].every((u) => /\/wisp\/[1-6]\//.test(u))).toBe(true);
   });
 
   test('the Connection setting stores 1 to 4 and drives the real router', async ({ page }) => {
@@ -96,6 +98,44 @@ test.describe('own relay shards', () => {
     await page.evaluate(() => { for (let i = 0; i < 9; i++) document.getElementById('settingsSocketsPlus').click(); });
     expect(await page.evaluate(() => document.getElementById('settingsSocketsVal').textContent)).toBe('4');
     expect(await page.evaluate(() => localStorage.getItem(window._sessionInstId + ':limitless:ownsockets:v1'))).toBe('4');
+  });
+
+  test('paid tiers (membership on) get up to 6 sockets, everyone else 4; saved 1 to 4 is kept', async ({ page }) => {
+    await setup(page, null, { features: { ownRelay: true, ownSockets: 6 } });
+    const eff = () => page.evaluate(() => { const s = new Set(); for (let i = 0; i < 40; i++) s.add(window.LB_router.route('ws://' + location.host + '/wisp/a.test:443').url); return s.size; });
+    const click = (id, n) => page.evaluate(([i, k]) => { for (let j = 0; j < k; j++) document.getElementById(i).click(); }, [id, n]);
+    const val = () => page.evaluate(() => document.getElementById('settingsSocketsVal').textContent);
+    const setMember = (m) => page.evaluate((x) => { window.LB_member = x; document.dispatchEvent(new CustomEvent('lb-member', { detail: x })); }, m);
+    await page.evaluate(() => window.LB_featuresReady);
+    expect(await eff()).toBe(4);
+    await setMember({ membership: 'off', plan: { tier: 'cardinal' } });
+    expect(await eff()).toBe(4);
+    await setMember({ membership: 'on', plan: { tier: 'ordinal' } });
+    expect(await eff()).toBe(4);
+    await setMember({ membership: 'on', plan: { tier: 'cardinal' } });
+    expect(await eff()).toBe(6);
+    expect(await val()).toBe('6');
+    await click('settingsSocketsPlus', 3);
+    expect(await val()).toBe('6');
+    await click('settingsSocketsMinus', 2);
+    expect(await val()).toBe('4');
+    expect(await eff()).toBe(4);
+    await click('settingsSocketsPlus', 1);
+    expect(await eff()).toBe(5);
+    await page.evaluate(() => localStorage.setItem(window._sessionInstId + ':limitless:ownsockets:v1', '3'));
+    expect(await eff()).toBe(3);
+    await setMember({ membership: 'on', plan: { tier: 'ordinal' } });
+    await page.evaluate(() => localStorage.setItem(window._sessionInstId + ':limitless:ownsockets:v1', '6'));
+    expect(await eff()).toBe(4);
+  });
+
+  test('the ownSockets feature value caps paid tiers too (rollback build with 4)', async ({ page }) => {
+    await page.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: '1.2.1', sha: 'zzzzzzz', features: { ownRelay: true, ownSockets: 4 } }) }));
+    await setup(page);
+    await page.evaluate(() => { window.LB_member = { membership: 'on', plan: { tier: 'prime' } }; });
+    await page.evaluate(() => window.LB_featuresReady);
+    const n = await page.evaluate(() => { const s = new Set(); for (let i = 0; i < 40; i++) s.add(window.LB_router.route('ws://' + location.host + '/wisp/a.test:443').url); return s.size; });
+    expect(n).toBe(4);
   });
 
   test('the ownSockets kill switch from version.json turns sharding off', async ({ page }) => {
@@ -111,7 +151,7 @@ test.describe('own relay shards', () => {
     await page.route('**/version.json*', (r) => r.fulfill({ status: 404, body: 'no' }));
     await setup(page);
     await page.evaluate(() => window.LB_featuresReady);
-    expect(await page.evaluate(() => ({ ...window.LB_features }))).toMatchObject({ ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true });
+    expect(await page.evaluate(() => ({ ...window.LB_features }))).toMatchObject({ ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true });
   });
 });
 
