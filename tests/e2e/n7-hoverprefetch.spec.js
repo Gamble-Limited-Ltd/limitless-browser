@@ -60,3 +60,17 @@ test('hover prefetch: Data saver, the Ordinal cap and the switch each stop it', 
   await hover(page, 'next', 400);
   expect(await nextCount(page)).toBe(1);
 });
+
+test('hover prefetch: a click while the prefetch still waits in a busy queue is not held behind the tail (the navigation drops the tab's queue)', async ({ page }) => {
+  await open(page);
+  // fill every slot and queue a long tail of ordinary requests ahead of the lowest-priority prefetch
+  await page.evaluate(() => {
+    for (let i = 0; i < 120; i++) { const u = 'https://pf.test/busy' + i; __respond(u, { body: 'b', delay: 2500 }); window.LB_queueFetch(u).catch(() => {}); }
+  });
+  await hover(page, 'next', 150);
+  const t0 = Date.now();
+  await fr(page).locator('#next').click();
+  await expect.poll(() => fr(page).locator('h1').textContent(), { timeout: 15000 }).toBe('Next');
+  expect(Date.now() - t0).toBeLessThan(4500);   // one busy round, not the whole tail
+  expect(await nextCount(page)).toBe(1);
+});
