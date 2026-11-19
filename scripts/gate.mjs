@@ -97,6 +97,8 @@ function ensureDist(ref, wt, base = false) {
 // A killed run must still release the prebuild pause and its worktrees.
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { fs.rmSync(PAUSE, { force: true }); fs.rmSync(MARK, { force: true }); } catch {} cleanup(); process.exit(130); });
 
+// e2e serves the source tree on its own port: first free one from 8597 (an orphan from a killed run must not fail the step).
+const freePort = () => { const used = spawnSync('ss', ['-ltn'], { encoding: 'utf8' }).stdout; let p = 8597; while (new RegExp(`[:.]${p}\\s`).test(used)) p++; return String(p); };
 // TS-5: rc tier = whole suite; item tier = core + the item's tags + changed specs (changed paths via tests/tags.json), full when a shared path changed.
 const TAGS = JSON.parse(fs.readFileSync(path.join(TOOLS, 'tests/tags.json'), 'utf8'));
 let e2eNote = 'full suite';
@@ -130,7 +132,7 @@ const STEP = {
     const skip = /SKIPPED[^\n]*/.exec(out);
     return skip && r.code === 0 ? { skipped: skip[0].replace('rw-bench: ', '') } : { r, ok: r.code === 0 };
   },
-  e2e: (wt) => { const cmd = E2E_CMD(wt); const r = sh(cmd, { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0, note: e2eNote }; },
+  e2e: (wt) => { const cmd = E2E_CMD(wt); const r = sh(cmd, { cwd: wt, env: { LB_E2E_PORT: freePort() }, log: 'e2e.log' }); return { r, ok: r.code === 0, note: e2eNote }; },
   speed: (wt) => quiet(() => {
     const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
     const env = rc ? { LB_SPEED: '1' } : { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
@@ -169,7 +171,7 @@ const STEP = {
     if (!sideBySide(fs.readFileSync('/proc/meminfo', 'utf8'))) { const e = STEP.e2e(wt); const s = STEP.sites(wt); return { r: { min: e.r.min + s.r.min }, ok: e.ok && s.ok, note: 'serial (under 4 GB free)' }; }
     const t = Date.now();
     const fd = fs.openSync(path.join(OUT, 'e2e.log'), 'a');
-    const e2e = new Promise((res) => spawn('bash', ['-c', E2E_CMD(wt)], { cwd: wt, env: { ...process.env, LB_E2E_PORT: '8597' }, stdio: ['ignore', fd, fd] }).on('close', (code) => { fs.closeSync(fd); res({ code, min: (Date.now() - t) / 60000 }); }));
+    const e2e = new Promise((res) => spawn('bash', ['-c', E2E_CMD(wt)], { cwd: wt, env: { ...process.env, LB_E2E_PORT: freePort() }, stdio: ['ignore', fd, fd] }).on('close', (code) => { fs.closeSync(fd); res({ code, min: (Date.now() - t) / 60000 }); }));
     const s = STEP.sites(wt);
     const e = await e2e;
     return { r: { min: (Date.now() - t) / 60000 }, ok: e.code === 0 && s.ok, note: `side by side: e2e ${e.min.toFixed(1)}, sites ${s.r.min.toFixed(1)}` };
