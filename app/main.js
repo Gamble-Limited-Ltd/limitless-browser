@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -772,6 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
+                        for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -1697,6 +1698,7 @@
                 'Page Not Found': ['This page was not found', 'The site answered, but it has nothing at this address.', 'Broken site'],
                 'Access Forbidden': ['This page is not open to you', 'The site said you do not have permission to see it.', 'Broken site'],
                 'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
+                'Google Sign-in': ['Google sign-in is not available inside Limitless', 'Google blocks sign-in through any service that sits in the middle of the connection, on purpose, to protect accounts. Limitless is one, so it cannot be used to sign in.', 'Google sign-in'],
                 'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check'],
                 'YouTube Blocked': ['YouTube is not available in Limitless.', 'Videos and pages from YouTube are not allowed on any plan.', 'Not available'],
                 'Site Refused': ['This site sent back an empty page', 'Its protection may reject connections like this one, or the page may be gone.', 'Broken site']
@@ -1708,6 +1710,10 @@
                 if (ctx && ctx.lbDrop) return 'relay';
                 try { const s = window.LB_relayStatus && window.LB_relayStatus(); if (s && s.ownRelay && s.ours === false) return 'relay'; } catch (_) {}
                 return errorType === 'Network Error' || errorType === 'Connection Interrupted' ? 'relay' : 'site';
+            };
+            // 1.2 J5 (features.googleSignin): Google's own sign-in pages (account chooser, ServiceLogin, signin/v2, signin/identifier, OAuth consent)
+            window.LB_isGoogleSignin = function (u) {
+                try { const x = new URL(u); return x.protocol === 'https:' && x.hostname === 'accounts.google.com' && /^\/(servicelogin|signin|v\d\/signin|accountchooser|interactivelogin|o\/oauth2)(\/|$)/i.test(x.pathname); } catch (_) { return false; }
             };
             // 1.2 M (features.errCard): a 4xx/5xx document with nothing to show: no visible text, no media or form, no script that could draw one
             function lbBlankError(html) {
@@ -1729,9 +1735,9 @@
                 const rest = (errorSuggestions || []).slice(0, 4).map(x => `<li>${_esc(x)}</li>`).join('');
                 const rs = (() => { try { const s = window.LB_relayStatus && window.LB_relayStatus(); return s ? (s.ours ? 'own' : 'public') : ''; } catch (_) { return ''; } })();
                 const tech = [['Type', errorType], ['Code', errorCode], ['Address', url], ['Detail', errorDescription], ['Relay', rs]].filter(r => r[1]).map(r => `<dt>${_esc(r[0])}</dt><dd>${_esc(r[1])}</dd>`).join('');
-                const bot = errorType === 'Human Check';
+                const bot = errorType === 'Human Check', gs = errorType === 'Google Sign-in';
                 const dot = (bad) => `<i class="${bad ? 'x' : ''}" aria-hidden="true"></i>`;
-                const hops = hop && !bot ? `<div class="hops" role="group" aria-label="Where it failed: ${hop === 'you' ? 'your device' : hop === 'relay' ? 'the relay' : 'the site'}"><span>${dot(hop === 'you')}You${hop === 'you' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'relay')}Relay${hop === 'relay' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'site')}${_esc(host || 'Site')}${hop === 'site' ? '<b class="vh"> (failed)</b>' : ''}</span></div>` : '';
+                const hops = hop && !bot && !gs ? `<div class="hops" role="group" aria-label="Where it failed: ${hop === 'you' ? 'your device' : hop === 'relay' ? 'the relay' : 'the site'}"><span>${dot(hop === 'you')}You${hop === 'you' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'relay')}Relay${hop === 'relay' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'site')}${_esc(host || 'Site')}${hop === 'site' ? '<b class="vh"> (failed)</b>' : ''}</span></div>` : '';
                 frame.srcdoc = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Error - Limitless Browser</title>
 <style>
@@ -1768,8 +1774,9 @@ dt{color:var(--mut)}dd{word-break:break-all;font-family:var(--fm)}
 ${hops}
 ${bot ? '' : (rest ? '<ul>' + rest + '</ul>' : '')}
 <div class="row">
-${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
-<button class="${bot ? 'p' : ''}" id="report" onclick="window.parent.postMessage({type:'lbReport', cat:'${_esc(calm[2])}'}, '*')">Report a problem</button>
+${gs ? `<button class="p" id="outside" onclick="window.parent.postMessage({type:'lbOpenOutside', url:${_esc(JSON.stringify(url))}}, '*')">Open outside Limitless</button>` : ''}
+${bot || gs ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
+${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.parent.postMessage({type:'lbReport', cat:'${_esc(calm[2])}'}, '*')">Report a problem</button>`}
 <button onclick="window.parent.postMessage({type:'goBack'}, '*')">Go back</button>
 </div>
 <details><summary>Technical details</summary><dl>${tech}</dl></details>
@@ -5669,7 +5676,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 // 1.2 2c (features.qPrio): an image known to be near the top of the page sorts before the other images; a request that is not
                 // an image tells runQueue to keep a few slots free for it (lbCritAt), so the document's CSS, scripts and fonts never wait behind a full set of images
                 if (window.LB_features.qPrio !== false) {
-                    if (opts.__vp && priority === PRIORITY.image) priority = PRIORITY.image - 0.5;
+                    if (opts.__vp && priority === PRIORITY.image) priority = PRIORITY.image - (opts.__vp === 2 ? 0.75 : 0.5);   // 2 = visibleFirst: seen in the viewport, before the guessed top images
                     else if (priority < PRIORITY.image || priority > PRIORITY.image) lbCritAt = performance.now();
                 }
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
@@ -7177,7 +7184,16 @@ function b64FromArray(arr) {
   return Base64.encode(arr);
 }
 
-async function fetchBlob(url, type) {
+// 1.2 G1 (features.visibleFirst, top window): an image that is in the real viewport when its fetch starts is marked, the top window queues it ahead of
+// the images the frame promoted from the lazy margin. Off: false, the request is byte for byte what it was.
+function _lbInView(el) {
+  try {
+    if (el.tagName !== 'IMG' || window.top.LB_features.visibleFirst !== true) return false;
+    const r = el.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth && (r.width > 0 || r.height > 0);
+  } catch (e) { return false; }
+}
+async function fetchBlob(url, type, vp) {
   if (shouldSkip(url)) return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
   if (blobs.has(url)) return blobs.get(url);
   if (blobPromises.has(url)) return blobPromises.get(url);
@@ -7185,7 +7201,7 @@ async function fetchBlob(url, type) {
     // Send the browser's standard image Accept so content-negotiating endpoints
     // (notably Next.js's /_next/image optimizer) return real bytes instead of an
     // empty/error body. The */* fallback keeps it valid for video/audio/other too.
-    const r = await req(url, { headers: { 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' } });
+    const r = await req(url, { headers: { 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' }, ...(vp ? { vp: 1 } : {}) });
     if (!r.d || r.d.byteLength === 0) return '';
     const arr_rd = Base64.decode(r.d);
     const blob = new Blob([arr_rd], { type: r.m || type || 'application/octet-stream' });
@@ -7397,7 +7413,7 @@ async function loadMedia() {
   await acquireMedia();
   if (state.cancel) { releaseMedia(); return; }
   try {
-    const burl = await fetchBlob(absUrl);
+    const burl = await fetchBlob(absUrl, undefined, _lbInView(el));
     if (state.cancel) return;
     // Empty proxy response → don't blank the element (that's what produced a
     // broken-image icon over the alt text). Signal error and leave its src alone.
@@ -9063,7 +9079,8 @@ parent.postMessage({ t: 'ready' }, '*');
                             method: opts?.method,
                             headers: opts?.headers,
                             body: opts?.body,
-                            signal: msgSignal
+                            signal: msgSignal,
+                            ...(opts?.vp && window.LB_features.visibleFirst === true ? { __vp: 2 } : {})
                         }, priority);
                         if (r.skipped) {
                             lbPostTo(_replyTo, {
@@ -10625,6 +10642,10 @@ _VIEWER_DL_JS +
                         }).catch(() => { _pcShown = null; });
                     }
 
+                    if (window.LB_features.googleSignin === true && method === "GET" && window.LB_isGoogleSignin(url)) {   // J5: a plain card, never a way around it
+                        _docIn = true; hideOverlay(); setStatus("error", "Error"); setTabTitle("Google sign-in"); currentDoc = null;
+                        renderErrorPage(url, 'Google Sign-in', 'google-signin', '', ['Works signed out: Google Search, Google Maps, and viewing shared Docs links.', 'To sign in, open Google in your normal browser.']); tabAbortControllers.delete(initiatorTabId); return;
+                    }
                     const r = await queueFetch(url, opts, PRIORITY.html);
                     _docIn = true;
                     window.__lbPerf.mark('firstBytes');
@@ -12098,6 +12119,7 @@ _VIEWER_DL_JS +
                 if (e.data && e.data.type === 'openDevTools') {
                     toggleLogs();
                 }
+                if (e.data && e.data.type === 'lbOpenOutside' && window.LB_features.googleSignin === true) { try { if (window.LB_isGoogleSignin(String(e.data.url))) window.open(String(e.data.url), '_blank', 'noopener'); } catch (_) {} return; }
                 if (e.data && e.data.type === 'lbReport' && window.LBReport) window.LBReport.open(String(e.data.cat || ''), pageUrl && /^https?:/.test(pageUrl) ? new URL(pageUrl).hostname : '');
             });
 
