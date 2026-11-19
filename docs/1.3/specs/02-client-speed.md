@@ -24,6 +24,9 @@ N3, N4, N8, N9, N10, C1, H3, H4, H5, H6, H7, G8; NATIVE-SPEED-PLAN Phase 2 (2.1 
 | CL-5 | Ad and tracker blocking on by default | H4 | blocklist (HaGeZi Multi NORMAL, GPL-3.0) | shipped 1.0; per-site off switch exists (allowlist). Closed |
 
 CL-1 and CL-2 ship as their own small releases (one item per release, Boss 2026-11-18), each after the item gate (spec 08).
+**Gate so far (2026-11-18/19 overnight, one run each against 1.2.0, chromebook, fixtures only):** N8, N8+N7 and N8+N7+N4 all failed. N8's
+rows looked like noise (gone in run 2); N4 added nothing measurable over N7. Both must be rerun alone on a quiet machine (TS-2) before any
+release record; CL-1 ships only if it is not slower (its expected gain is first-visit rewrite time, which the warm fixture rows barely show).
 
 ---
 

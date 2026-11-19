@@ -13,8 +13,8 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 
 | new id | old ids | item | status | spec |
 |---|---|---|---|---|
-| CL-1 | N2, N4, 2.2 | meriyah parser, acorn fallback | built (`speed/1.3-quick`) | 02 |
-| CL-2 | N8, 2.5, R2 | 6 sockets for paid tiers | built (`speed/1.3-quick`) | 02 |
+| CL-1 | N2, N4, 2.2 | meriyah parser, acorn fallback | built (`speed/1.3-quick`); rerun gate alone | 02 |
+| CL-2 | N8, 2.5, R2 | 6 sockets for paid tiers | built (`speed/1.3-quick`); gate fail looked like noise, rerun alone | 02 |
 | CL-3 | N3 | skip scripts with no `location`/`import(` | closed (exists since 1.0) | 02 |
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
@@ -28,7 +28,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
 | LD-1 | G1 | visible-first images | ready in 1.2.2, OFF | 03 |
-| LD-2 | N7, 2.4 | hover prefetch | built (`speed/1.3-quick`) | 03 |
+| LD-2 | N7, 2.4 | hover prefetch | built (`speed/1.3-quick`); gate FAILED (fx-app, fx-frames +15 to +29 percent), fix first | 03 |
 | LD-3 | H2, 4.3 | streamed documents | measure first (LD-3a) | 03 |
 | LD-4 | H1 | warm connections | planned | 03 |
 | LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; measure | 03 |

@@ -50,7 +50,9 @@ Every Minor reports these sites in an "x native" table (spec 01 MS-6).
 - **Prod:** 1.2.1 (`09c6dbf`, admin member menu). **1.2.2 is prepared** (record `docs/releases/1.2.2.md` on `release/1.2.2`: YouTube block,
   Google sign-in card on, G1 visible-first built OFF) and waits on Boss's deploy (app + VPS relaygate).
 - **Built, not released:** meriyah parser (CL-1), 6 sockets for paid (CL-2), hover prefetch (LD-2) on `speed/1.3-quick`; lockdown CSP and
-  three rewriter gaps (TL-1) on `speed/l1-lockdown` (speed gate passed with no regression row, 42-site run 95 of 126 reps against 94).
+  three rewriter gaps (TL-1) on `speed/l1-lockdown` (speed gate passed with no regression row, 42-site run 95 of 126 reps against 94, 28
+  sites lost some images). Overnight gate 2026-11-18/19: N8 noise, **N7 slowed fx-app and fx-frames by 15 to 29 percent**, N4 no gain
+  over N7; each is rerun alone on a quiet machine before a record.
 - **Shipped OFF:** libcurl Worker slice 1 (CL-8), SW document lane (TL-3), image lane (SV-1).
 - **Numbers (1.2.0, chromebook, VPS stand-in on this VM):** Steam front shown about 14.3 to 15.0 s, Kahoot 23.6 to 26.8 s, Discord about 55
   s, Reddit 2.5 to 3.5 s, Coolmath about 5 s (one rep with a 7.9 s task). Native column and real-VPS numbers do not exist yet (spec 01).
@@ -88,7 +90,7 @@ Tooling and measuring are not releases (no deploy); they run alongside. Lanes ar
 | 2 | AD-0, AD-1, AD-2 gate release, then AD-3 Grant tab | gate release + app Patch | 11 | Boss's deploy |
 | 3 | CL-1 meriyah | Patch | 1 + gate | step 1 helps |
 | 4 | CL-2 six sockets | Patch | 1 + gate | |
-| 5 | LD-2 hover prefetch | Patch | 1 + gate | |
+| 5 | LD-2 hover prefetch (fix the fx-app/fx-frames regression first) | Patch | 4 + gate | |
 | 6 | TL-1 release A (lockdown and gaps, switches off) | Patch | 2 | |
 | 7 | MS-1 native column, MS-4 real-VPS lane, MS-5 sampler | tooling | 7 | D1, D2, D7 |
 | 8 | TS-4 interleaved A/B gate, TS-7, TS-8 | tooling | 9 | D3 |

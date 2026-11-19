@@ -15,7 +15,7 @@ section 2.
 | id | item | old ids | switch | status |
 |---|---|---|---|---|
 | LD-1 | Visible-first images: in-view first, below the fold later, placeholder at once | G1 | `visibleFirst` (default false) | in 1.2.2, off; not measured on a real site |
-| LD-2 | Hover prefetch of the next same-site document (100 ms hover) | N7, 2.4 | `hoverPrefetch` (default true) | built on `speed/1.3-quick`, not released, not measured |
+| LD-2 | Hover prefetch of the next same-site document (100 ms hover) | N7, 2.4 | `hoverPrefetch` (default true on the branch) | built on `speed/1.3-quick`, not released; **gate FAILED** 2026-11-18/19 overnight: fx-app and fx-frames +15 to +29 percent (one run) |
 
 ## LD-1 Turn on visible-first images
 - **Likely time:** 1.5 h (measure) + switch release.
@@ -24,9 +24,12 @@ section 2.
   `PerformanceObserver`); `lazyImg` still fills the page on scroll.
 - **On when:** `vpImages` improves by 20 percent or more on 2 of 3 sites and nothing regresses past the gate threshold.
 
-## LD-2 Release hover prefetch, then measure hit rate
-- **Likely time:** 1 h.
-- **Rules:** release as built; add counters `pfHit`, `pfMiss`, `pfBytes` to `lbRw.stats`-style local stats and the MS-7 sample (totals only).
+## LD-2 Fix the hover prefetch regression, then release and measure hit rate
+- **Likely time:** 3 h (find the cause) + 1 h.
+- **First:** rerun alone on a quiet machine; if fx-app and fx-frames still regress, profile why (the fixtures do not hover, so the cost is
+  likely the click-router listener or the queue path, not the prefetch itself), fix with a failing test, and set the build default to
+  **false** until the item gate passes.
+- **Rules:** release once the gate passes; add counters `pfHit`, `pfMiss`, `pfBytes` to `lbRw.stats`-style local stats and the MS-7 sample (totals only).
 - **Keep when:** hit rate over 25 percent in a week of member samples, else turn off (data cost without gain).
 
 ## LD-3 Streamed documents (was 4.3, H2): the page shows while it is still arriving

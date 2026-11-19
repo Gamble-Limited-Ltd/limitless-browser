@@ -16,7 +16,7 @@ Rollback is the build flag.
   document gets `default-src 'self' blob: data:`, `connect-src` limited to our origin and the relay hosts in use, plus a
   `securitypolicyviolation` listener that counts blocked hosts (`cspBlocked`). Measured 2026-11-19 (job C): speed gate passed on both
   projects with no regression row (cold load +0.3 to +5.7 percent on fixtures, inside the gate); 42-site run loaded 95 of 126 reps with it
-  on against 94 base.
+  on against 94 base, and no site broke, but **28 sites lost some images** under lockdown (blocked, not leaked): TL-2 and TL-3 exist for these.
 - **L3 gaps 1 to 3 are built** on the same branch (`features.rwGaps`, default false): `setAttribute('srcset')` and `new Audio(url)`;
   `setAttribute('src')` on a script and `href` on preload, modulepreload and prefetch links; CSS `url()` and `@import` written by script
   (`setProperty`, `<style>.textContent`). Each test was written first and failed first (`tests/e2e/rwgaps.spec.js`).
