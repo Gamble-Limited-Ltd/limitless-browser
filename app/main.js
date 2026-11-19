@@ -1698,6 +1698,7 @@
                 'Page Not Found': ['This page was not found', 'The site answered, but it has nothing at this address.', 'Broken site'],
                 'Access Forbidden': ['This page is not open to you', 'The site said you do not have permission to see it.', 'Broken site'],
                 'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
+                'Google Sign-in': ['Google sign-in is not available inside Limitless', 'Google blocks sign-in through any service that sits in the middle of the connection, on purpose, to protect accounts. Limitless is one, so it cannot be used to sign in.', 'Google sign-in'],
                 'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check'],
                 'Site Refused': ['This site sent back an empty page', 'Its protection may reject connections like this one, or the page may be gone.', 'Broken site']
             };
@@ -1708,6 +1709,10 @@
                 if (ctx && ctx.lbDrop) return 'relay';
                 try { const s = window.LB_relayStatus && window.LB_relayStatus(); if (s && s.ownRelay && s.ours === false) return 'relay'; } catch (_) {}
                 return errorType === 'Network Error' || errorType === 'Connection Interrupted' ? 'relay' : 'site';
+            };
+            // 1.2 J5 (features.googleSignin): Google's own sign-in pages (account chooser, ServiceLogin, signin/v2, signin/identifier, OAuth consent)
+            window.LB_isGoogleSignin = function (u) {
+                try { const x = new URL(u); return x.protocol === 'https:' && x.hostname === 'accounts.google.com' && /^\/(servicelogin|signin|v\d\/signin|accountchooser|interactivelogin|o\/oauth2)(\/|$)/i.test(x.pathname); } catch (_) { return false; }
             };
             // 1.2 M (features.errCard): a 4xx/5xx document with nothing to show: no visible text, no media or form, no script that could draw one
             function lbBlankError(html) {
@@ -1729,9 +1734,9 @@
                 const rest = (errorSuggestions || []).slice(0, 4).map(x => `<li>${_esc(x)}</li>`).join('');
                 const rs = (() => { try { const s = window.LB_relayStatus && window.LB_relayStatus(); return s ? (s.ours ? 'own' : 'public') : ''; } catch (_) { return ''; } })();
                 const tech = [['Type', errorType], ['Code', errorCode], ['Address', url], ['Detail', errorDescription], ['Relay', rs]].filter(r => r[1]).map(r => `<dt>${_esc(r[0])}</dt><dd>${_esc(r[1])}</dd>`).join('');
-                const bot = errorType === 'Human Check';
+                const bot = errorType === 'Human Check', gs = errorType === 'Google Sign-in';
                 const dot = (bad) => `<i class="${bad ? 'x' : ''}" aria-hidden="true"></i>`;
-                const hops = hop && !bot ? `<div class="hops" role="group" aria-label="Where it failed: ${hop === 'you' ? 'your device' : hop === 'relay' ? 'the relay' : 'the site'}"><span>${dot(hop === 'you')}You${hop === 'you' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'relay')}Relay${hop === 'relay' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'site')}${_esc(host || 'Site')}${hop === 'site' ? '<b class="vh"> (failed)</b>' : ''}</span></div>` : '';
+                const hops = hop && !bot && !gs ? `<div class="hops" role="group" aria-label="Where it failed: ${hop === 'you' ? 'your device' : hop === 'relay' ? 'the relay' : 'the site'}"><span>${dot(hop === 'you')}You${hop === 'you' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'relay')}Relay${hop === 'relay' ? '<b class="vh"> (failed)</b>' : ''}</span>&rarr;<span>${dot(hop === 'site')}${_esc(host || 'Site')}${hop === 'site' ? '<b class="vh"> (failed)</b>' : ''}</span></div>` : '';
                 frame.srcdoc = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Error - Limitless Browser</title>
 <style>
@@ -1768,8 +1773,9 @@ dt{color:var(--mut)}dd{word-break:break-all;font-family:var(--fm)}
 ${hops}
 ${bot ? '' : (rest ? '<ul>' + rest + '</ul>' : '')}
 <div class="row">
-${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
-<button class="${bot ? 'p' : ''}" id="report" onclick="window.parent.postMessage({type:'lbReport', cat:'${_esc(calm[2])}'}, '*')">Report a problem</button>
+${gs ? `<button class="p" id="outside" onclick="window.parent.postMessage({type:'lbOpenOutside', url:${_esc(JSON.stringify(url))}}, '*')">Open outside Limitless</button>` : ''}
+${bot || gs ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({type:'reloadPage'}, '*')">Try again</button>`}
+${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.parent.postMessage({type:'lbReport', cat:'${_esc(calm[2])}'}, '*')">Report a problem</button>`}
 <button onclick="window.parent.postMessage({type:'goBack'}, '*')">Go back</button>
 </div>
 <details><summary>Technical details</summary><dl>${tech}</dl></details>
@@ -10620,6 +10626,10 @@ _VIEWER_DL_JS +
                         }).catch(() => { _pcShown = null; });
                     }
 
+                    if (window.LB_features.googleSignin === true && method === "GET" && window.LB_isGoogleSignin(url)) {   // J5: a plain card, never a way around it
+                        _docIn = true; hideOverlay(); setStatus("error", "Error"); setTabTitle("Google sign-in"); currentDoc = null;
+                        renderErrorPage(url, 'Google Sign-in', 'google-signin', '', ['Works signed out: Google Search, Google Maps, and viewing shared Docs links.', 'To sign in, open Google in your normal browser.']); tabAbortControllers.delete(initiatorTabId); return;
+                    }
                     const r = await queueFetch(url, opts, PRIORITY.html);
                     _docIn = true;
                     window.__lbPerf.mark('firstBytes');
@@ -12093,6 +12103,7 @@ _VIEWER_DL_JS +
                 if (e.data && e.data.type === 'openDevTools') {
                     toggleLogs();
                 }
+                if (e.data && e.data.type === 'lbOpenOutside' && window.LB_features.googleSignin === true) { try { if (window.LB_isGoogleSignin(String(e.data.url))) window.open(String(e.data.url), '_blank', 'noopener'); } catch (_) {} return; }
                 if (e.data && e.data.type === 'lbReport' && window.LBReport) window.LBReport.open(String(e.data.cat || ''), pageUrl && /^https?:/.test(pageUrl) ? new URL(pageUrl).hostname : '');
             });
 
