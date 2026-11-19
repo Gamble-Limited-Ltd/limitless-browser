@@ -229,58 +229,63 @@
   ]
  },
  "sources": {
-  "app/main.js": "item",
-  "index.html": "item",
-  "app/swlane.js": [
-   "lane"
-  ],
-  "sw.js": [
-   "lane"
-  ],
+  "CHANGELOG.md": [],
+  "CLAUDE.md": [],
+  "NOTICE": [],
   "app/curlproxy.js": [
    "router",
    "rewrite"
   ],
+  "app/main.js": "item",
+  "app/swlane.js": [
+   "lane"
+  ],
   "app/ui.js": [
    "ui"
   ],
-  "theme/": [
-   "ui"
+  "deploy/": "full",
+  "docs/": [],
+  "favicon.svg": [],
+  "fonts/": [
+   "boot"
   ],
+  "index.html": "item",
+  "legal/": [
+   "core"
+  ],
+  "package.json": [
+   "core"
+  ],
+  "playwright.config.js": "full",
+  "scripts/": [],
+  "scripts/build-static.sh": [],
   "scripts/gen-themes.py": [
    "ui"
   ],
-  "vendor/meriyah/": [
-   "rewrite"
+  "sw.js": [
+   "lane"
+  ],
+  "tests/e2e/helpers": "full",
+  "tests/e2e/s3-helpers.js": "full",
+  "tests/e2e/wispserver.js": "full",
+  "tests/fixtures/": [],
+  "tests/lib/": "full",
+  "tests/stack/": [],
+  "theme/": [
+   "ui"
   ],
   "vendor/acorn/": [
    "rewrite"
   ],
-  "vendor/libcurl/": [
-   "router"
-  ],
   "vendor/blocklist/": [
    "router"
   ],
-  "docs/": [],
-  "CHANGELOG.md": [],
-  "package.json": [
-   "core"
+  "vendor/libcurl/": [
+   "router"
   ],
-  "legal/": [
-   "core"
-  ],
-  "fonts/": [
-   "boot"
-  ],
-  "favicon.svg": [],
-  "tests/lib/": "full",
-  "playwright.config.js": "full",
-  "tests/e2e/helpers": "full",
-  "tests/e2e/s3-helpers.js": "full",
-  "tests/e2e/wispserver.js": "full",
-  "deploy/": "full",
-  "scripts/build-static.sh": "full"
+  "vendor/meriyah/": [
+   "rewrite"
+  ]
  },
  "siteTags": {
   "rewrite": [

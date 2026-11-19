@@ -70,14 +70,15 @@ const noisy = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')).env?.
 
 // TS-3: build each (sha, feature set) once. Key = <sha>-<hash of the effective LB_FEATURE_* pairs>; newest 10 trees kept.
 const CACHE = path.join(HOME, '.cache/limitless-gate');
-const featureEnv = () => {
+// --features apply to the candidate only; the base is built with the rehearsal defaults (what prod runs), so A/B shows the switch.
+const featureEnv = (base = false) => {
   const e = { ...(process.env.LB_REHEARSAL_RELAYOFF === '1' ? {} : { LB_FEATURE_OWNRELAY: 'true', LB_FEATURE_OWNSOCKETS: '4', LB_FEATURE_PAGECACHE: 'true', LB_FEATURE_WARM: 'true' }) };
   for (const [k, v] of Object.entries(process.env)) if (k.startsWith('LB_FEATURE_')) e[k] = v;   // same defaults run.sh applies, then the caller's
-  for (const [k, v] of Object.entries(args.features)) e[`LB_FEATURE_${k.toUpperCase()}`] = v;
+  if (!base) for (const [k, v] of Object.entries(args.features)) e[`LB_FEATURE_${k.toUpperCase()}`] = v;
   return e;
 };
-function ensureDist(ref, wt) {
-  const fe = featureEnv(), key = cacheKey(ref, fe), dir = path.join(CACHE, 'dist', key);
+function ensureDist(ref, wt, base = false) {
+  const fe = featureEnv(base), key = cacheKey(ref, fe), dir = path.join(CACHE, 'dist', key);
   if (fs.existsSync(dir)) { fs.utimesSync(dir, new Date(), new Date()); console.log(`gate: build cache hit ${key}`); return { dir, key, hit: true }; }
   const dirty = git('-C', wt, 'status', '--porcelain', '--', '.', ...OVERLAY.map((p) => `:(exclude)${p}`)).stdout;
   const r = sh(`scripts/build-static.sh rehearsal-${ref}`, { cwd: wt, env: fe, log: 'build.log' });
@@ -180,11 +181,11 @@ try {
   wt = mk(sha, 'cand');
   const needBase = steps.includes('speed');
   const cand = (() => { const t = Date.now(); const d = ensureDist(sha, wt); rows.push({ step: 'build', min: (Date.now() - t) / 60000, verdict: d.hit ? 'cached' : 'built', note: d.key }); return d; })();
-  const base = { key: cacheKey(baseSha, featureEnv()) };
+  const base = { key: cacheKey(baseSha, featureEnv(true)) };
   DIST.cand = cand;
   if (needBase) {
     if (!fs.existsSync(path.join(CACHE, 'dist', base.key))) baseWt = mk(baseSha, 'base');
-    const t = Date.now(); DIST.base = baseWt ? ensureDist(baseSha, baseWt) : ensureDist(baseSha, wt); rows.push({ step: 'build base', min: (Date.now() - t) / 60000, verdict: DIST.base.hit ? 'cached' : 'built', note: DIST.base.key });
+    const t = Date.now(); DIST.base = ensureDist(baseSha, baseWt || wt, true); rows.push({ step: 'build base', min: (Date.now() - t) / 60000, verdict: DIST.base.hit ? 'cached' : 'built', note: DIST.base.key });
   }
   for (const s of steps) {
     const x = await STEP[s]?.(wt);
