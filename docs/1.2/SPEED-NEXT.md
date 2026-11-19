@@ -145,7 +145,8 @@ No CAPTCHA solving, fingerprint spoofing, IP rotation or residential proxies: th
 - **Caps decision (Boss): launch with 10/20/40 GB a week plus the auto pause at 80 percent of the month, measure one week of real per-member use, then lower if needed.** Previous note: : 10/20/40 GB a week only fits 50 members if most are not at cap (top-up and cap pause at 80 percent protects the box); 5/10/20 fits even the worst case. Measure one week of real per-member use (the gate already counts) before choosing.
 - Past the data budget the limits are uplink (`TOTAL_UPLINK_MBPS=300` set on the relay; check the RackNerd port speed) and 2 CPU cores (server rewrite, image shrink); at 50 members with about 25 online at once, about 12 Mbit/s each.
 
-### K3. Pricing proposal (Claude, 2026-11-18; Boss to decide)
+### K3. Pricing (Claude proposal 2026-11-18; APPROVED by Boss 2026-11-19, not open for sale yet)
+- **Status (Boss, 2026-11-19):** the prices below are final. Plans stay closed (`plansOpen` false) until Boss opens them; the gate catalog placeholders ($15 Cardinal, $35 Prime, Executive null) still need changing to $15 / $25 / $50 in its own gate release before opening.
 - Cost: VPS $40 a year, about $1.33 per TB of transfer; a full-cap seat costs $0.83 (Cardinal) to $3.47 (Executive) a year (research job E, PLAN-NOTES K). Price is set by what members will pay, not cost; capacity (K2) is the real limit.
 - Evidence: beta testers said about $12 a year for Cardinal and $20 to $25 for Prime.
 - Proposal, round $5 steps for cash: **Cardinal $15 a year (deal $10), Prime $25 (deal $20), Executive $50 (deal $40), Executive max 4 seats.** Deals $5 each, stackable to a floor ($10 / $15 / $30): early or beta members, bring a friend ($5 off both), pay 2 years at once, seasonal sales.
