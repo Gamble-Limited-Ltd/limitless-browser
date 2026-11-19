@@ -197,7 +197,7 @@ let wt, baseWt;
 const DIST = {};
 try {
   wt = mk(sha, 'cand');
-  const needBase = steps.includes('speed');
+  const needBase = steps.some((x) => /speed|sites/.test(x));
   const cand = (() => { const t = Date.now(); const d = ensureDist(sha, wt); rows.push({ step: 'build', min: (Date.now() - t) / 60000, verdict: d.hit ? 'cached' : 'built', note: d.key }); return d; })();
   const base = { key: cacheKey(baseSha, featureEnv(true)) };
   DIST.cand = cand;
