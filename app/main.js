@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
@@ -1698,6 +1698,7 @@
                 'Access Forbidden': ['This page is not open to you', 'The site said you do not have permission to see it.', 'Broken site'],
                 'Internal Server Error': ['The site had a problem', 'It answered with an error of its own. Try again in a little while.', 'Broken site'],
                 'Human Check': ['This site asked for a human check', 'It may not work through a shared relay.', 'Bot check'],
+                'YouTube Blocked': ['YouTube is not available in Limitless.', 'Videos and pages from YouTube are not allowed on any plan.', 'Not available'],
                 'Site Refused': ['This site sent back an empty page', 'Its protection may reject connections like this one, or the page may be gone.', 'Broken site']
             };
             // Which hop failed (design "Error page": You -> Relay -> site). 'you' offline, 'relay' a dropped relay link (or our relay marked down), else the site.
@@ -3125,7 +3126,15 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
             window.LB_blocklist = LB_blocklist;
             if (location.protocol !== 'file:') LB_blocklist.loadWhenIdle();   // cached immutable by the service worker
 
+            // K2 (features.ytBlock): YouTube is not allowed in Limitless; a fixed list, independent of the ad-block switch and the allowlist
+            const LB_YT = ['youtube.com', 'youtu.be', 'youtube-nocookie.com', 'googlevideo.com', 'ytimg.com'];
+            function lbIsYt(url) {
+                if (window.LB_features.ytBlock === false) return false;
+                try { const h = new URL(url).hostname.toLowerCase(); return LB_YT.some(d => h === d || h.endsWith('.' + d)); } catch { return false; }
+            }
+            window.LB_isYt = lbIsYt;
             function shouldSkip(url) {
+                if (lbIsYt(url)) return true;
                 if (!blockEnabled) return false;
                 try {
                     const urlObj = new URL(url);
@@ -6615,6 +6624,8 @@ const ORIGIN = new URL(BASE).origin;
 const SKIP = ${JSON.stringify(proxySkipList)};
 const SKIP_LEGACY = ${JSON.stringify(SKIP_DOMAINS)};   // used until the top window has loaded vendor/blocklist
 const BLOCK_ENABLED = ${JSON.stringify(!!blockEnabled)};
+const YT_BLOCK = ${JSON.stringify(window.LB_features.ytBlock !== false)};
+const YT_HOSTS = ${JSON.stringify(LB_YT)};
 const WEBRTC_BLOCK = ${JSON.stringify(!!webrtcBlock)};
 const SPOOF_UA = ${JSON.stringify(pageUA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36')};
 const SPELLCHECK = ${JSON.stringify(!!spellcheck)};
@@ -6627,6 +6638,7 @@ const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(base
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
 
 function shouldSkip(url) {
+  if (YT_BLOCK) { try { const y = new URL(url).hostname.toLowerCase(); if (YT_HOSTS.some(d => y === d || y.endsWith('.' + d))) return true; } catch {} }
   if (!BLOCK_ENABLED) return false;
   try {
     const h = new URL(url).hostname.toLowerCase();
@@ -10278,6 +10290,10 @@ _VIEWER_DL_JS +
                 if (!url) {
                     log("Invalid URL", "err");
                     return;
+                }
+                if (lbIsYt(url)) {   // K2: a plain card, nothing is fetched
+                    hideOverlay(); setStatus("error", "Blocked"); setTabTitle("YouTube"); currentDoc = null;
+                    renderErrorPage(url, 'YouTube Blocked', 'yt-blocked', '', []); return;
                 }
                 // chrome-extension:// pages live in Limitless's IndexedDB, never on the
                 // network — routing one to WISP fails with "Unsupported protocol"
