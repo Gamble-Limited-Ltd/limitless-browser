@@ -6,6 +6,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "test": "playwright test",
+    "test:unit": "node --test tests/unit/*.test.mjs",
     "test:legal": "tests/legal-v2/run.sh",
     "test:stack": "deploy/rehearsal/run.sh",
     "test:sites": "LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js; node scripts/sites-merge.mjs",
