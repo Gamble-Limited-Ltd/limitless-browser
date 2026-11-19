@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -771,7 +771,8 @@
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
-                        if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
+                        if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;
+                        for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true   // opt-in: only an explicit true turns the image lane on
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -5660,7 +5661,7 @@ ${bot ? '' : `<button class="p" id="retry" onclick="window.parent.postMessage({t
                 // 1.2 2c (features.qPrio): an image known to be near the top of the page sorts before the other images; a request that is not
                 // an image tells runQueue to keep a few slots free for it (lbCritAt), so the document's CSS, scripts and fonts never wait behind a full set of images
                 if (window.LB_features.qPrio !== false) {
-                    if (opts.__vp && priority === PRIORITY.image) priority = PRIORITY.image - 0.5;
+                    if (opts.__vp && priority === PRIORITY.image) priority = PRIORITY.image - (opts.__vp === 2 ? 0.75 : 0.5);   // 2 = visibleFirst: seen in the viewport, before the guessed top images
                     else if (priority < PRIORITY.image || priority > PRIORITY.image) lbCritAt = performance.now();
                 }
                 if (_netStall) { return Promise.reject(new TypeError('Failed to fetch')); }
@@ -7165,7 +7166,16 @@ function b64FromArray(arr) {
   return Base64.encode(arr);
 }
 
-async function fetchBlob(url, type) {
+// 1.2 G1 (features.visibleFirst, top window): an image that is in the real viewport when its fetch starts is marked, the top window queues it ahead of
+// the images the frame promoted from the lazy margin. Off: false, the request is byte for byte what it was.
+function _lbInView(el) {
+  try {
+    if (el.tagName !== 'IMG' || window.top.LB_features.visibleFirst !== true) return false;
+    const r = el.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth && (r.width > 0 || r.height > 0);
+  } catch (e) { return false; }
+}
+async function fetchBlob(url, type, vp) {
   if (shouldSkip(url)) return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
   if (blobs.has(url)) return blobs.get(url);
   if (blobPromises.has(url)) return blobPromises.get(url);
@@ -7173,7 +7183,7 @@ async function fetchBlob(url, type) {
     // Send the browser's standard image Accept so content-negotiating endpoints
     // (notably Next.js's /_next/image optimizer) return real bytes instead of an
     // empty/error body. The */* fallback keeps it valid for video/audio/other too.
-    const r = await req(url, { headers: { 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' } });
+    const r = await req(url, { headers: { 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' }, ...(vp ? { vp: 1 } : {}) });
     if (!r.d || r.d.byteLength === 0) return '';
     const arr_rd = Base64.decode(r.d);
     const blob = new Blob([arr_rd], { type: r.m || type || 'application/octet-stream' });
@@ -7385,7 +7395,7 @@ async function loadMedia() {
   await acquireMedia();
   if (state.cancel) { releaseMedia(); return; }
   try {
-    const burl = await fetchBlob(absUrl);
+    const burl = await fetchBlob(absUrl, undefined, _lbInView(el));
     if (state.cancel) return;
     // Empty proxy response → don't blank the element (that's what produced a
     // broken-image icon over the alt text). Signal error and leave its src alone.
@@ -9051,7 +9061,8 @@ parent.postMessage({ t: 'ready' }, '*');
                             method: opts?.method,
                             headers: opts?.headers,
                             body: opts?.body,
-                            signal: msgSignal
+                            signal: msgSignal,
+                            ...(opts?.vp && window.LB_features.visibleFirst === true ? { __vp: 2 } : {})
                         }, priority);
                         if (r.skipped) {
                             lbPostTo(_replyTo, {
