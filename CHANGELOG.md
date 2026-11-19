@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.4
+
+- Paid plans can now open six connections to the Limitless relay instead of four. Free plans stay at four.
+
 ## 1.2.2
 
 - YouTube is not available in Limitless on any plan. Opening it shows a short note instead, and YouTube videos and pictures inside other sites are blocked too.
