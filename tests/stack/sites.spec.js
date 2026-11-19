@@ -13,12 +13,17 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { applyProfile } = require('../lib/profile');
+const { selectSites, shardSites, repOrder } = require('../../scripts/lib/gate-sites.mjs');
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
 const REPS = parseInt(process.env.LB_SITES_REPS || '3', 10);
 const SITES = JSON.parse(fs.readFileSync(path.join(__dirname, 'real-sites.json'), 'utf8'));
 const ONLY = process.env.LB_SITES_ONLY ? process.env.LB_SITES_ONLY.split(',') : null;
+// TS-6: LB_SITES_TAGS=images,heavyjs runs sites with those tags plus the official list (unset = every site); LB_SITES_WORKERS (4) = shards,
+// each owning whole sites (run with --workers=N); reps go site by site, so no host sees back-to-back loads.
+const TAGS = process.env.LB_SITES_TAGS ? process.env.LB_SITES_TAGS.split(',') : null;
+const SHARDS = parseInt(process.env.LB_SITES_WORKERS || '4', 10);
 const SMOKE = process.env.LB_SITES_SMOKE === '1';
 const SHOWN_TIMEOUT = 45000;
 const SEL_TIMEOUT = 12000;
@@ -61,6 +66,7 @@ function classifyError(text) {
   if (/ERR_NAME_NOT_RESOLVED|dns/i.test(t)) return 'dns';
   if (/ERR_SSL|tls|certificate/i.test(t)) return 'tls';
   if (/ERR_CONNECTION_REFUSED|ERR_CONNECTION_TIMED_OUT|ERR_NETWORK_CHANGED|ERR_CONNECTION_ABORTED|connect/i.test(t)) return 'connect';
+  if (/HTTP (403|429)/i.test(t)) return 'blocked';   // rate limit or a refusal: a site decision, not a Limitless failure
   if (/HTTP \d{3}/i.test(t)) return 'http';
   if (/ERR_BLOCKED_BY_CLIENT/i.test(t)) return 'blocked';
   return 'error-other';
@@ -112,7 +118,13 @@ async function tryOnceInner(browser, testInfo, site, st) {
       return false;
     }, before, { timeout: SHOWN_TIMEOUT, polling: 100 }).then((h) => h.jsonValue()).catch(() => null);
     if (!outcome) { res.category = 'timeout'; res.detail = 'not shown in 45 s'; return res; }
+    if (outcome.err && site.expect === 'blocked') {   // YouTube: pass = the "not available" card shows (1.2.2)
+      res.loaded = /is not available in Limitless/i.test(outcome.err); res.via = 'blocked-card';
+      if (!res.loaded) { res.category = 'unblocked'; res.detail = outcome.err.slice(0, 160); }
+      return res;
+    }
     if (outcome.err) { res.category = classifyError(outcome.err); res.detail = outcome.err.slice(0, 160); return res; }
+    if (site.expect === 'blocked') { res.category = 'unblocked'; res.detail = 'page loaded, expected the blocked card'; return res; }
     const fh = await page.locator('#frame').elementHandle();
     const frame = await fh.contentFrame();
     let found = false;
@@ -141,36 +153,39 @@ async function tryOnceInner(browser, testInfo, site, st) {
   } finally { clearTimeout(wd); await ctx.close(); }
 }
 
-// One test per site so Playwright can run several at once (--workers=3). Each writes test-results/sites-<sha>/<name>.json;
-// scripts/sites-merge.mjs joins them into test-results/sites-<sha>.json (npm run test:sites does both).
+// One test per shard (TS-6): a worker owns whole sites and walks them rep by rep. Each site writes
+// test-results/sites-<sha>/<name>.json after every rep; scripts/sites-merge.mjs joins them into test-results/sites-<sha>.json.
 test.describe('real sites', () => {
   test.skip(process.env.LB_SITES !== '1', 'set LB_SITES=1 (and run through deploy/rehearsal/run.sh)');
   test.describe.configure({ mode: 'parallel' });
 
-  for (const site of SITES) {
-    if (ONLY && !ONLY.includes(site.name)) continue;
-    if (SMOKE && !site.smoke) continue;
-    test(site.name, async ({ browser }, testInfo) => {
-      test.setTimeout(30 * 60 * 1000);
-      const runs = [];
-      for (let i = 0; i < REPS; i++) {
+  const chosen = selectSites(SITES, TAGS, ONLY).filter((s) => !(SMOKE && !s.smoke));
+  shardSites(chosen, SHARDS).forEach((mine, k) => {
+    if (!mine.length) return;
+    test(`shard ${k + 1} of ${SHARDS}: ${mine.map((s) => s.name).join(' ')}`, async ({ browser }, testInfo) => {
+      test.setTimeout(60 * 60 * 1000);
+      const byName = Object.fromEntries(mine.map((s) => [s.name, { site: s, runs: [] }]));
+      for (const [i, name] of repOrder(mine.map((s) => s.name), REPS)) {
+        const { site, runs } = byName[name];
         const [a, b] = runs.slice(-2);
-        if (i === 2 && a && b && !a.loaded && !b.loaded && a.category === b.category) { runs.push({ ...b, skipped: true }); continue; }
-        runs.push(await tryOnce(browser, testInfo, site));
+        if (i === 2 && a && b && !a.loaded && !b.loaded && a.category === b.category) runs.push({ ...b, skipped: true });
+        else runs.push(await tryOnce(browser, testInfo, site));
+        writeSite(site, runs);
       }
-      const ok = runs.filter((r) => r.loaded);
-      const fails = runs.filter((r) => !r.loaded);
-      const cats = {};
-      for (const f of fails) cats[f.category] = (cats[f.category] || 0) + 1;
-      const rec = {
-        url: site.url, cat: site.cat, sel: site.sel, reps: REPS, loadedCount: ok.length,
-        shownMedian: median(ok.map((r) => r.shown)), loadMedian: median(ok.map((r) => r.load)),
-        failures: cats, detail: fails[0] ? fails[0].detail : null, snippet: fails[0] ? fails[0].snippet : null, runs,
-      };
-      console.log(`sites: ${site.name.padEnd(18)} ${ok.length}/${REPS} shown ${rec.shownMedian} load ${rec.loadMedian} ${JSON.stringify(cats)} ${fails[0] ? String(fails[0].detail).slice(0, 80) : ''}`);
-      const dir = path.join(__dirname, '..', '..', 'test-results', `sites-${sha()}`);
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, `${site.name}.json`), JSON.stringify({ name: site.name, ...rec }, null, 2));
     });
-  }
+  });
 });
+
+function writeSite(site, runs) {
+  const ok = runs.filter((r) => r.loaded), fails = runs.filter((r) => !r.loaded), cats = {};
+  for (const f of fails) cats[f.category] = (cats[f.category] || 0) + 1;
+  const rec = {
+    url: site.url, cat: site.cat, sel: site.sel, tags: site.tags, reps: REPS, loadedCount: ok.length,
+    shownMedian: median(ok.map((r) => r.shown)), loadMedian: median(ok.map((r) => r.load)),
+    failures: cats, detail: fails[0] ? fails[0].detail : null, snippet: fails[0] ? fails[0].snippet : null, runs,
+  };
+  if (runs.length === REPS) console.log(`sites: ${site.name.padEnd(18)} ${ok.length}/${REPS} shown ${rec.shownMedian} load ${rec.loadMedian} ${JSON.stringify(cats)} ${fails[0] ? String(fails[0].detail).slice(0, 80) : ''}`);
+  const dir = path.join(__dirname, '..', '..', 'test-results', `sites-${sha()}`);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `${site.name}.json`), JSON.stringify({ name: site.name, ...rec }, null, 2));
+}

@@ -97,11 +97,21 @@ for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { fs.rmSync
 // TS-5: rc tier = whole suite; item tier = core + the item's tags + changed specs (changed paths via tests/tags.json), full when a shared path changed.
 const TAGS = JSON.parse(fs.readFileSync(path.join(TOOLS, 'tests/tags.json'), 'utf8'));
 let e2eNote = 'full suite';
+let SEL;
+const selection = () => (SEL ||= tagsFromDiff(TAGS, git('diff', '--name-only', `${baseSha}...${sha}`).stdout.split('\n').filter(Boolean), args.tags));
+// TS-6: item tier = sites tagged like the item (via siteTags) plus the official list, 1 rep; rc = every site, 3 reps. 4 workers, each owns whole sites.
+const siteEnv = () => {
+  if (args.tier === 'rc') return { LB_SITES_REPS: '3' };
+  const sel = selection();
+  if (sel.full) return { LB_SITES_REPS: '1' };
+  const t = [...new Set(sel.tags.flatMap((x) => TAGS.siteTags[x] || []))];
+  return { LB_SITES_REPS: '1', LB_SITES_TAGS: t.length ? t.join(',') : 'none' };
+};
 const E2E_CMD = (wt) => {
   const w = process.env.LB_E2E_WORKERS ? ` --workers=${process.env.LB_E2E_WORKERS}` : '';
   const base = `npx playwright test --reporter=line${w}`;
   if (args.tier === 'rc') return base;
-  const sel = tagsFromDiff(TAGS, git('diff', '--name-only', `${baseSha}...${sha}`).stdout.split('\n').filter(Boolean), args.tags);
+  const sel = selection();
   if (sel.full) { e2eNote = 'full suite (shared path changed or no --tags for app/main.js)'; return base; }
   const all = fs.readdirSync(path.join(wt, 'tests/e2e')).filter((f) => f.endsWith('.spec.js'));
   const files = [...new Set([...selectSpecs(TAGS, all, sel.tags), ...sel.specs.filter((f) => all.includes(f))])];
@@ -133,7 +143,16 @@ const STEP = {
     }
     return { r: { min: c.min + b.min + cmpMin }, ok, note: `cand ${c.min.toFixed(1)} + base ${reuse ? 'reused' : b.min.toFixed(1)}; noisy reps ${noisyN}` };
   }),
-  sites: (wt) => { const r = sh('LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'sites.log' }); return { r, ok: r.code === 0 }; },
+  sites: (wt) => {
+    const env = siteEnv(), w = process.env.LB_SITES_WORKERS || '4';
+    const r = sh(`LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=${w} tests/stack/sites.spec.js`, { cwd: wt, env: { ...env, LB_SITES_WORKERS: w, LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'sites.log' });
+    sh(`node scripts/sites-merge.mjs ${sha} > ${OUT}/sites-summary.txt`, { cwd: wt, log: 'sites-merge.log' });
+    for (const f of [`test-results/sites-${sha}.json`]) try { fs.cpSync(path.join(wt, f), path.join(OUT, path.basename(f))); } catch {}
+    // Pass/fail only (timing is reported, never gated): the suite must run to the end and the YouTube blocked card must show. Pass rate is in the note.
+    let ok = r.code === 0, rate = '?';
+    try { const j = JSON.parse(fs.readFileSync(path.join(OUT, `sites-${sha}.json`), 'utf8')); rate = `${j.summary.loaded}/${j.summary.reps} loads over ${j.summary.sites} sites`; const y = j.sites.youtube; if (y && y.loadedCount < y.reps) ok = false; } catch { ok = false; }
+    return { r, ok, note: `${rate}; ${env.LB_SITES_REPS} rep, ${env.LB_SITES_TAGS || 'all sites'}, ${w} workers` };
+  },
   profile: (wt) => { const r = sh('LB_PROFILE=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/profile.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'profile.log' }); return { r, ok: r.code === 0 }; },
   bootsize: (wt) => { const r = sh('LB_BOOT=1 deploy/rehearsal/run.sh tests/stack/boot-size.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'bootsize.log' }); return { r, ok: r.code === 0 }; },
   // TS-12: full e2e (no stack, own port) beside the site suite, only with 4 GB or more free; else one after the other.
