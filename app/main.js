@@ -7732,6 +7732,14 @@ cssPropList.forEach(prop => { const desc = Object.getOwnPropertyDescriptor(style
 const cssTextDesc = Object.getOwnPropertyDescriptor(styleProto, 'cssText');
 if (cssTextDesc?.set) { Object.defineProperty(styleProto, 'cssText', { get: cssTextDesc.get, set(val) { if (val && val.includes('url(')) rewriteCss(val, BASE).then(r => cssTextDesc.set.call(this, r)).catch(() => cssTextDesc.set.call(this, val)); else cssTextDesc.set.call(this, val); }, configurable: true }); }
 
+// L3 (features.rwGaps): CSS written by script after load. setProperty and <style> text with url()/@import went straight to the browser (fonts, backgrounds).
+if (LB_RWGAPS) {
+  const _spOrig = styleProto.setProperty;
+  styleProto.setProperty = function(n, v, pr) { if (typeof v === 'string' && v.includes('url(')) { rewriteCss(v, BASE).then(r => _spOrig.call(this, n, r, pr)).catch(() => _spOrig.call(this, n, v, pr)); return; } return _spOrig.call(this, n, v, pr); };
+  const _tcOrig = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+  if (_tcOrig && _tcOrig.set) Object.defineProperty(Node.prototype, 'textContent', { get: _tcOrig.get, set(v) { if (this.tagName === 'STYLE' && typeof v === 'string' && (v.includes('url(') || v.includes('@import'))) { rewriteCss(v, BASE).then(r => _tcOrig.set.call(this, r)).catch(() => _tcOrig.set.call(this, v)); return; } _tcOrig.set.call(this, v); }, configurable: true });
+}
+
 const origAppend = Node.prototype.appendChild;
 const origInsert = Node.prototype.insertBefore;
 

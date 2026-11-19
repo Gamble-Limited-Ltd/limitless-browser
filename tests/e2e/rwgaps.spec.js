@@ -40,6 +40,16 @@ test('rwGaps: setAttribute src on a script and href on a preload link go through
   expect(await blocked(page)).toBe(0);
 });
 
+test('rwGaps: CSS url() from script (setProperty, style element text) goes through the proxy', async ({ page }) => {
+  const fr = await run(page, 'document.getElementById("d").style.setProperty("background-image","url(https://cdn.gap.test/bg.png)");' +
+    'var st=document.createElement("style");st.textContent="@font-face{font-family:F;src:url(https://cdn.gap.test/f.woff2)} #ok{background:url(https://cdn.gap.test/a.jpg)}";document.head.appendChild(st);', { rwGaps: true });
+  await fr.evaluate(() => getComputedStyle(document.getElementById('d')).backgroundImage);
+  for (const f of ['bg.png', 'f.woff2', 'a.jpg']) await expect.poll(() => page.evaluate((f) => window.__count(new RegExp(f)), f)).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  expect(await blocked(page)).toBe(0);
+  expect(await fr.locator('#ok').textContent()).toBe('hello');
+});
+
 test('switch off: the same runtime loads still go direct (and are blocked under lockdown)', async ({ page }) => {
   await run(page, 'var i=new Image();i.setAttribute("srcset","https://cdn.gap.test/a.jpg 1x");document.body.appendChild(i);', {});
   expect(await page.evaluate(() => window.LB_features.rwGaps)).toBe(false);
