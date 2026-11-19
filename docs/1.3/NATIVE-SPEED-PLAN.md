@@ -102,7 +102,7 @@ Tooling and measuring are not releases (no deploy); they run alongside. Lanes ar
 | 9 | CL-7 Worker pool, CL-6 step A blob reuse, LD-1 on, LD-5 on, LD-8 Lite view, LD-9 discard restore, BC-9 site hints, MS-9 | one release each | 20 | |
 | 10 | TL-5 direct-load table, TL-2 gaps, TL-1 release B (lockdown on) | Minor for B | 10 to 14 | |
 | 11 | CL-10 long tasks, VD-1 media streaming | releases per item | 15 to 25 | |
-| 12 | SV-0 budget, SV-2 image lane on with SV-8 stable URLs, SV-3 resize, SV-7 native fetch lane | Minors | 22 to 24 | D6 privacy lines, HALL legal |
+| 12 | SV-0 budget, SV-2 image lane on with SV-8 stable URLs, SV-3 resize, SV-7 native fetch lane | Minors | 22 to 24 | HALL legal change (privacy lines pre-approved) |
 | 13 | CL-8 libcurl Worker slices 2 to 5 and on | 4 to 5 releases | 18 | MS-2 device run before slice 3 |
 | 14 | BC-4 experiment and cards, BC-5, BC-6, BC-7 | releases per item | 12 to 15 | D4, D5 |
 | 15 | TL-7 service worker guard, then TL-3 SW lane gaps and lane on | Minors | 13 to 17 | |
@@ -144,7 +144,7 @@ Each Minor ends with the rc tier of spec 08 (full e2e, A/B speed on both project
 | D3 | Speed gate verdict by interleaved A/B with a confidence interval and early stop; thresholds unchanged (10 percent and 100 ms); inconclusive = fail for a release | **yes** (replaces the "fails twice" idea) | 08 TS-4 |
 | D4 | TLS mismatch: keep the member's real UA with libcurl's TLS and say some sites may still check | **keep the real UA** | 06 BC-D1 |
 | D5 | Reverse DNS for the VPS address and an abuse page on HALL (text) | **reverse DNS only** (Boss sets it in the RackNerd panel); no abuse page | 06 BC-D2, BC-D3 |
-| D6 | Server help: Cardinal reads rewrite-cache hits; 3 GB rewrite cache; privacy lines for the image lane, the public file lane (SV-7), the rewrite cache and "nothing loads outside Limitless" | **yes to all four**; privacy lines are drafted for Boss's review before any HALL legal change | 04 SV-D1 to SV-D3, 05 TL-4 |
+| D6 | Server help: Cardinal reads rewrite-cache hits; 3 GB rewrite cache; privacy lines for the image lane, the public file lane (SV-7), the rewrite cache and "nothing loads outside Limitless" | **yes to all four**; privacy lines are **approved as drafted** (Boss, 2026-11-19: no separate review round), the HALL legal change still goes before the feature turns on | 04 SV-D1 to SV-D3, 05 TL-4 |
 | D7 | RackNerd ticket: does the 5 TB count both directions | **skip**: plan with both directions (about 2.5 TB for members) | 01 MS-5 |
 | D8 | Lite view (LD-8): a new member-facing button and an offer on slow article pages | **yes, button and offer** | 03 LD-8 |
 | D9 | "DuckDuckGo Lite (fastest)" as an extra search engine choice (default unchanged) | **yes, as an option** | 03 LD-11 |
