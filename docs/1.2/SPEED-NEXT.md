@@ -65,7 +65,8 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | planned | 01 |
 | MS-6 | Phase 0 exit | "x native" table per Minor | planned | 01 |
 | MS-7 | S9b samples | field numbers per release | exists | 01 |
-| TS-1 to TS-8 | F, T1, T3 | gate runner, quiet machine, build cache, A/B early stop, tags, baselines | planned | 08 |
+| TS-1, TS-2, TS-3, TS-5, TS-6 | F, T1 | gate runner, quiet machine, build cache, tagged e2e, tagged sites | built 2026-11-19 on `tools/1.3-test-speed`; first item run (CL-1) 37.5 min, was about 2 to 2.5 h (e2e 25.2 to 3.9 min, sites about 60 to 9.1 min measured) | 08 |
+| TS-4, TS-7, TS-8 | F, T3 | A/B early stop, bot-check metric, baselines | planned. TS-4 is now the blocker for releases: the 3-rep and 7-rep gate runs on CL-1 failed on different rows each time (noise and base/candidate drift) | 08 |
 | AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | planned (Boss, 2026-11-19) | 09 |
 
 New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
@@ -94,9 +95,9 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | MS-8 | field breakdown samples | planned (Boss yes) | 01 |
 | MS-9 | "this page was slow" report | planned | 01 |
 | TS-9 | real-site recordings as fixtures | planned | 08 |
-| TS-10 | rewriter micro-bench per commit | planned | 08 |
+| TS-10 | rewriter micro-bench per commit | built 2026-11-19, skips until bundles exist | 08 |
 | TS-11 | automatic bisect | planned | 08 |
-| TS-12 | non-timing suites side by side | planned | 08 |
+| TS-12 | non-timing suites side by side | partial 2026-11-19: built, rc tier not run yet | 08 |
 | AD-4 | admin speed card | planned (after MS-8) | 09 |
 
 ## Release pace (Boss, 2026-11-18)

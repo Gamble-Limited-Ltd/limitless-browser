@@ -30,7 +30,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 ---
 
 ## TS-1 One gate runner script (new; replaces hand-assembled night jobs)
-- **Status:** planned. **Likely time:** 2 h.
+- **Status:** built 2026-11-19 (branch `tools/1.3-test-speed`). First item-tier run, CL-1 (`release/1.2.3`, `--tags rewrite`): 37.5 min in all (build cached 0.0, e2e 3.9, speed 24.6 with 3 reps chromebook for the candidate and the base, sites 9.1) against about 2 to 2.5 h by hand (2026-11-18 report); the plan target is about 40. Deviations: the harness comes from the checkout that holds `gate.sh` and is overlaid on the source of `<ref>` (so `release/*` branches cut from `main` need no tooling commits); refs are committed trees, so the dirty-worktree refusal is not needed; a kill (Ctrl-C) stops the process group, sweeps the rehearsal project by label, removes the prebuild pause and the worktrees. `--steps` and `--speed-reps` added. **Likely time:** 2 h.
 - **Why:** night jobs are assembled by hand per agent (A-speed, B-sites, C-l3 folders), and `speed-nightly.sh` runs a stale branch.
 - **Rules:**
   1. `scripts/gate.sh <ref> [--base <ref>] [--tier item|rc] [--tags a,b] [--features K=V,...]` is the only entry point for gate runs.
@@ -50,7 +50,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Measured by:** the `SUMMARY.md` table, minutes per step. **Rollback:** delete the script; old commands still work.
 
 ## TS-2 Quiet machine during speed steps
-- **Status:** planned. **Likely time:** 1 h.
+- **Status:** built 2026-11-19. Pause with marker and trap, window warning, `env.load1` and `env.noisy` in the speed JSON. Deviation: the first run used the spec's "load1 above 2.0 waits up to 60 s" and every rep waited the full 60 s (load1 lags and holds the previous rep's own work, about 20 min lost per side), so the wait now keys on CPU busy over 35 percent in a 1 s sample (load1 is still recorded). Noisy reps in the two item runs: 0. The gate still fails on different rows from run to run (see TS-4): quiet alone does not cure it. **Likely time:** 1 h.
 - **Why:** the gate fails on different rows each run (1.2.0 record); background CPU on this VM is one known cause. Fewer false fails save
   a whole rerun (about 39 min) each time.
 - **Rules:**
@@ -66,7 +66,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Measured by:** count of `noisy` reps per run; rerun rate over two weeks. **Rollback:** remove the two calls.
 
 ## TS-3 Build once per sha and feature set
-- **Status:** planned. **Likely time:** 1.5 h.
+- **Status:** built 2026-11-19. `LB_DIST` in `run.sh`, cache `~/.cache/limitless-gate/dist/<sha>-<featurehash>/` (newest 10 kept, dirty never cached), base speed and site results reused for 12 h (key: base tree, tier, reps, `LB_SPEED_TIER`). A cache hit costs 0.0 min; the uncached build time was not timed (the run that would have shown it was killed). `--features` apply to the candidate only (the base is built as prod is). **Likely time:** 1.5 h.
 - **Rules:**
   1. `run.sh` accepts `LB_DIST=<dir>`; when set it skips `build-static.sh` and serves that tree.
   2. The cache key is `<sha>-<sha256 of sorted LB_FEATURE_* pairs, 8 chars>`; a dirty tree is never cached.
@@ -104,7 +104,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Rollback:** run the old mode (no `LB_SPEED_AB`); `speed-compare.mjs` unchanged.
 
 ## TS-5 e2e by tags for items, full suite for release candidates
-- **Status:** planned. **Likely time:** 3 h.
+- **Status:** built 2026-11-19, deviation: tags live in `tests/tags.json` (spec file to tags, changed path to tags) instead of in `describe` titles, because release branches cut from `main` carry no tags and most specs use plain `test()`. Every spec must have an entry (unit test). Measured: full `npm test` on this VM 25.2 min (1511 s, 465 passed, 1 failed: `chromebook.spec.js` CPU-throttle ratio, as in the 1.2.2 record); CL-1 item tier (core + rewrite, 20 of 67 files) 3.9 min. The `--workers=6` trial is not done. **Likely time:** 3 h.
 - **Rules:**
   1. Each spec file in `tests/e2e/` carries Playwright tags in its `describe` titles (`@boot @rewrite @router @lane @images @admin @botcheck
      @media @ui`); a test without a tag gets `@core`.
@@ -118,7 +118,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Saving [est]:** 25 min to about 10 min per item. **Rollback:** run without `--grep`.
 
 ## TS-6 Real-site suite: tags, 4 workers, reps across sites
-- **Status:** planned. Merges SPEED-NEXT T1 (site tags). **Likely time:** 3 h.
+- **Status:** built 2026-11-19. Tags and `official` (10 sites; steam, gimkit and coolmath were not in the list and were added with generic selectors, they loaded 1/1), YouTube `expect: blocked`, 4 shards that own whole sites and walk rep by rep, 403 and 429 count as `blocked`. The item tier also runs the base on the same sites (cached 12 h) and fails only on a site that loaded on the base and not on the candidate after one retry. Measured: CL-1, 27 sites, 1 rep, 4 workers: 9.1 min, 21 of 27 loaded (discord and kahoot timed out at 45 s under 4 workers, google-docs, khanacademy, twitch render, tumblr script) against about 1 h for the old 42 x 3 x 1 worker. The YouTube blocked-card check and the rc tier (all sites, 3 reps) have not been run yet. **Likely time:** 3 h.
 - **Rules:**
   1. Each entry in `real-sites.json` gets `tags` (`images video chat botcheck heavyjs school game google`) and `official: true` for the
      10-site list (master plan section 1).
@@ -158,7 +158,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Tests:** a recording of a local fixture page round-trips (served page loads with zero requests outside the fixture hosts).
 
 ## TS-10 Rewriter micro-bench per commit (new, brainstorm H2)
-- **Status:** planned. **Likely time:** 2 h.
+- **Status:** built 2026-11-19 (`scripts/rw-bench.mjs`, extraction of `rewriteLocationRefs` from `app/main.js`, 5 reps, 10 percent rule with one retry because a single pass flaked on a loaded VM). The bundles do not exist yet (`~/.cache/limitless-fixtures/bundles/` is empty, TS-9 or Boss provides them), so the gate step prints SKIPPED; tested on synthetic bundles only. **Likely time:** 2 h.
 - **Rules:** `node scripts/rw-bench.mjs` runs the rewriter (the `app/rewriter.js` module once SV-4's G4-1 exists, before that the
   extraction harness) on the bundles in `~/.cache/limitless-fixtures/bundles/`, 5 reps, median ms per bundle, and compares with
   `~/.cache/limitless-fixtures/rw-bench-base.json`; more than 10 percent slower on any bundle fails. Runs in `gate.sh` before the stack
@@ -171,7 +171,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
   `SUMMARY.md`.
 
 ## TS-12 Non-timing suites side by side (new, brainstorm H4)
-- **Status:** planned. **Likely time:** 1 h.
+- **Status:** partial 2026-11-19: built and unit tested (4 GB guard, e2e on its own free port beside the sites suite in the rc tier), but the rc tier has not been run, so no measured saving. **Likely time:** 1 h.
 - **Rules:** in the rc tier, `npm test` (static server on its own port, `LB_E2E_PORT`) runs at the same time as the sites suite; neither
   ever runs during a speed step (`gate.sh` holds the speed step alone). Memory guard: start the second suite only with 4 GB or more free.
 
