@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.2
+
+- YouTube is not available in Limitless on any plan. Opening it shows a short note instead, and YouTube videos and pictures inside other sites are blocked too.
+- Google sign-in pages now show a plain explanation instead of a broken page: Google blocks sign-in through any service in the middle, on purpose. Search, Maps and shared Docs links still work signed out, and an "Open outside Limitless" button opens the sign-in in a normal tab. This includes "Sign in with Google" buttons on other sites.
+
 ## 1.2.1
 
 - The owner admin member menu is tabbed with quick actions, grant presets and a danger zone.
