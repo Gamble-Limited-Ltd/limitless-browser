@@ -26,7 +26,7 @@ quick grant from 1.2.1 stays as it is.
 ---
 
 ## AD-0 Gate catalog: approved prices, deals and weekly caps
-- **Status:** planned (was the open line in SPEED-NEXT K3). **Likely time:** 2 h. Gate release only; `plansOpen` stays false.
+- **Status:** built 2026-11-19 (gate `slice/1.3-grant`, `5570789` + `720a240`, not merged, not deployed; `GET membership/plans` also answers `execSeats {used, cap}` for AD-3). Seat count leaves out the owner and removed members. **Likely time:** 2 h. Gate release only; `plansOpen` stays false.
 - **Rules:**
   1. Catalog fields per paid tier: `priceUsdYear` (15, 25, 50), new `dealUsdYear` (10, 20, 40), `weeklyGb` (10, 20, 40), `monthlyGb` 0.
   2. The `migratePlanNumbers` pattern is reused: a stored value moves only while it still equals the old default (admin edits stay); a
@@ -38,7 +38,7 @@ quick grant from 1.2.1 stays as it is.
 - **Rollback:** previous gate image; the marker keeps the migration from running twice.
 
 ## AD-1 Gate: receipt number and receipt text
-- **Status:** planned. **Likely time:** 3 h.
+- **Status:** built 2026-11-19 (gate `slice/1.3-grant`, `src/receipt.ts`, not deployed). Limit lines: speed, weekly (else monthly) data, file size, tabs, Load Now for Executive. **Likely time:** 3 h.
 - **Rules:**
   1. `grant` returns the new purchase row id; the route answers `{member, certificateCode, purchaseId, receipt: {number, text}}`.
   2. Receipt number = `LB-<year of paid_on>-<purchase id, 5 digits, zero padded>`, for example `LB-2026-00042`. Pure function
@@ -76,13 +76,13 @@ quick grant from 1.2.1 stays as it is.
 - **Rollback:** the fields are additive; an old app ignores them.
 
 ## AD-2 Gate: number suggestion for Prime and Executive
-- **Status:** planned. **Likely time:** 1 h.
+- **Status:** built 2026-11-19 (gate `slice/1.3-grant`, not deployed); a reserved number also counts as fitting. **Likely time:** 1 h.
 - **Rules:** `GET membership/number-suggest?tier=prime|executive&sub=` returns `{fits: boolean, current, suggested}`: `fits` when the
   member's current number already fits the tier (then no number is needed), else `suggested` = `nextFree(tier, rules)`. Read only.
 - **Tests:** a Cardinal with number 0100 asked for Prime gets a free prime; a Prime with a prime number gets `fits: true`.
 
 ## AD-3 App: the Grant plan tab
-- **Status:** planned. **Likely time:** 4 to 5 h. Needs AD-1 (works without AD-0 and AD-2, with the old catalog and a typed number).
+- **Status:** built 2026-11-19 (app `slice/1.3-grant-tab`, `14bf5b8`, from `main` 1.2.5, not deployed; 20 new e2e tests in `admin.spec.js` "Grant tab", whole admin spec 78 of 78). Deviations: "1 year" sends no `paidUntil` for every kind (the gate gives a year from today, no end for Executive, or stacks a renewal); the write uses `write()` with inline errors instead of `xdo()` toasts. **Likely time:** 4 to 5 h. Needs AD-1 (works without AD-0 and AD-2, with the old catalog and a typed number).
 - **Where:** a two-tab bar at the top of `limitless://admin` (`#lbAdmTabs`, `role=tablist`): **Grant plan** and **Everything else** (all
   existing cards, unchanged). The last tab used is kept in `limitless:admtab:v1` (default "Everything else", so nothing moves for a first
   open). Card id `lbAdmGrantTab`. Same `.lb-adm-*` styles and tokens; no new colours.

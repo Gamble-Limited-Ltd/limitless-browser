@@ -44,7 +44,7 @@ published number is dated, names the device profile and the median and n (SPEED-
 - Moved to spec 08 TS-2 and TS-4.
 
 ## MS-4 Real-VPS test lane (was 0.4, 1.1, B2)
-- **Status:** planned. **Likely time:** 3 h + Boss 15 min. **Decision:** MS-D2.
+- **Status:** accounts made 2026-11-19 by Claude on Boss's request (direct prod writes, no email or Terms step: bot accounts). GLL ID `lbtest` and `lbtest-free` (verified, legal version current, `@lbtest.invalid` addresses); gate members No. 0111 (Cardinal, $0, note "test account", paid a year) and No. 0112 (Ordinal), both signed and past the ceremony. Credentials `~/.config/gll-cloud/lbtest.env` (mode 600). Gate DB copy taken first (`/data/gate-before-lbtest-*.sqlite` in the lbgate volume). Lane itself still planned. **Likely time:** 3 h. **Decision:** MS-D2.
 - **Rules:**
   1. Boss creates a prod GLL ID account `lbtest` and grants it Cardinal with amount 0 and the note "test account" (with the new Grant tab,
      spec 09). Its credentials live in `~/.config/gll-cloud/lbtest.env` (gitignored, never printed, never on the build PC).

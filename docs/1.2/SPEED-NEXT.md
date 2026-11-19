@@ -39,7 +39,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | SV-4 | S2, G3, G4, 5.4 | shared rewrite cache, server rewrite | planned (design done) | 04 |
 | SV-5 | G5, 5.5 | URL mode and overnight prewarm | planned | 04 |
 | SV-6 | G7 | home second-layer cache | later (parked) | 04 |
-| TL-1 | L1, L3 | lockdown CSP and 3 rewriter gaps | built (`speed/l1-lockdown`) | 05 |
+| TL-1 | L1, L3 | lockdown CSP and 3 rewriter gaps | release A shipped in 1.2.5 (`cec4d6f`, 2026-11-19 14:28, switches OFF); release B (on) planned | 05 |
 | TL-2 | L3 rest | remaining rewriter gaps | planned | 05 |
 | TL-3 | L2, N5, 4.1, 4.2 | SW lane gaps, then lane on | lane shipped 1.2.0 OFF; gaps planned | 05 |
 | TL-4 | L4 | out of scope, documented | planned (docs) | 05 |
@@ -61,12 +61,12 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | MS-1 | 0.1 | native column | planned | 01 |
 | MS-2 | 0.2 | in-app bench for the school Chromebook | planned | 01 |
 | MS-3 | 0.3 | steadier gate | moved to TS-2, TS-4 | 08 |
-| MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | planned (Boss creates accounts) | 01 |
+| MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | accounts made 2026-11-19 (lbtest No. 0111 Cardinal $0, lbtest-free No. 0112 Ordinal; credentials `~/.config/gll-cloud/lbtest.env`); lane planned | 01 |
 | MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | planned | 01 |
 | MS-6 | Phase 0 exit | "x native" table per Minor | planned | 01 |
 | MS-7 | S9b samples | field numbers per release | exists | 01 |
 | TS-1 to TS-8 | F, T1, T3 | gate runner, quiet machine, build cache, A/B early stop, tags, baselines | planned | 08 |
-| AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | planned (Boss, 2026-11-19) | 09 |
+| AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | built 2026-11-19 (gate `slice/1.3-grant`, app `slice/1.3-grant-tab`); not released | 09 |
 
 New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 

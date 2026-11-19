@@ -48,8 +48,9 @@ Every Minor reports these sites in an "x native" table (spec 01 MS-6).
 | Executive | 1.3x, faster than native on Steam, Discord, Kahoot | under 100 ms | plus favourites prewarmed, Load Now, highest weight |
 
 ## 3. Where we are (2026-11-19)
-- **Prod:** 1.2.2 (`5615cb6`, deployed 2026-11-19 07:35: YouTube block, Google sign-in card on, G1 visible-first built OFF; VPS
-  relaygate `f9f7040`). Record `docs/releases/1.2.2.md` on `main`.
+- **Prod:** 1.2.5 (`cec4d6f`, deployed 2026-11-19 14:28: TL-1 release A, lockdown CSP and three rewriter gaps, switches OFF), on top of
+  1.2.2 (`5615cb6`, 07:35: YouTube block, Google sign-in card on, G1 visible-first built OFF; VPS relaygate `f9f7040`). 1.2.3 (CL-1) and
+  1.2.4 (CL-2) are held for the gate verdict (TS-4).
 - **Built, not released:** meriyah parser (CL-1), 6 sockets for paid (CL-2), hover prefetch (LD-2) on `speed/1.3-quick`; lockdown CSP and
   three rewriter gaps (TL-1) on `speed/l1-lockdown` (speed gate passed with no regression row, 42-site run 95 of 126 reps against 94, 28
   sites lost some images). Overnight gate 2026-11-18/19: N8 noise, **N7 slowed fx-app and fx-frames by 15 to 29 percent**, N4 no gain
