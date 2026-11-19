@@ -77,21 +77,21 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
 | LD-6 | connect to the search engine at boot | planned | 03 |
 | LD-7 | connect while typing | planned | 03 |
-| LD-8 | Lite view (Readability) | planned (D8) | 03 |
+| LD-8 | Lite view (Readability) | planned (Boss yes) | 03 |
 | LD-9 | fast restore after tab discard | planned | 03 |
 | LD-10 | prerender on strong intent | later | 03 |
-| LD-11 | fast search option | Boss decides (D9) | 03 |
+| LD-11 | fast search option | planned (Boss yes, option only) | 03 |
 | LD-12 | idle prefetch of likely next pages | later (after LD-2) | 03 |
 | LD-13 | text before fonts (`font-display: swap`) | planned | 03 |
 | LD-14 | lazy embeds | planned | 03 |
 | SV-7 | native fetch lane for public files | planned (privacy line) | 04 |
 | SV-8 | stable lane URLs with a relay cookie | planned | 04 |
 | SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
-| SV-11 | Cloudflare free edge for lanes | Boss decides (D10), later | 04 |
+| SV-11 | Cloudflare free edge for lanes | spec written; go and DNS open (Boss) | 04 |
 | TL-6 | leak zoo fixture | planned | 05 |
 | TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
 | BC-9 | site status hints | planned | 06 |
-| MS-8 | field breakdown samples | planned (D11) | 01 |
+| MS-8 | field breakdown samples | planned (Boss yes) | 01 |
 | MS-9 | "this page was slow" report | planned | 01 |
 | TS-9 | real-site recordings as fixtures | planned | 08 |
 | TS-10 | rewriter micro-bench per commit | planned | 08 |

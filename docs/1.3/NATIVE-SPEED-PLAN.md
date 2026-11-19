@@ -32,8 +32,8 @@ runs are most of the wall time today (about 2 to 2.5 h per item); spec 08 aims a
 ## 1. The official site list
 | Group | Sites |
 |---|---|
-| General | Steam (front page), Reddit, Discord, **YouTube replaced (decision D1)** |
-| School tools | Google Classroom, Quizlet, Desmos |
+| General | Steam (front page), Reddit, Discord |
+| School tools | Google Classroom, Quizlet, Desmos, Khan Academy (replaces YouTube, Boss 2026-11-19) |
 | Web games | Kahoot, Gimkit, Coolmath Games |
 
 YouTube has been blocked on every tier since 1.2.2, so it cannot be a speed row. It stays in the site suite as "blocked card shows" (TS-6).
@@ -136,19 +136,19 @@ Each Minor ends with the rc tier of spec 08 (full e2e, A/B speed on both project
 - The SW lane, streamed documents and the Worker router are the riskiest changes; each ships behind a switch with the old path kept.
 - A shorter gate (TS-4) must not let a real regression through: inconclusive counts as a fail for release candidates.
 
-## 8. Decisions for Boss
-| id | Decision | Recommendation | Spec |
+## 8. Decisions (answered by Boss on 2026-11-19 unless marked open)
+| id | Decision | Boss's answer | Spec |
 |---|---|---|---|
-| D1 | What replaces YouTube in the official list | Khan Academy | 01 MS-D1 |
-| D2 | Create prod test accounts `lbtest` (Cardinal, $0) and `lbtest-free` | yes (50 GB a month already approved) | 01 MS-D2 |
-| D3 | Speed gate verdict by interleaved A/B with a confidence interval and early stop; thresholds unchanged (10 percent and 100 ms); inconclusive = fail for a release | yes (replaces the "fails twice" idea) | 08 TS-4 |
-| D4 | TLS mismatch: keep the member's real UA with libcurl's TLS and say some sites may still check | keep as is | 06 BC-D1 |
-| D5 | Reverse DNS for the VPS address and an abuse page on HALL (text) | yes, both | 06 BC-D2, BC-D3 |
-| D6 | Server help: Cardinal reads rewrite-cache hits; 3 GB rewrite cache; privacy lines for the image lane, the public file lane (SV-7), the rewrite cache and "nothing loads outside Limitless" | yes, then the HALL legal change | 04 SV-D1 to SV-D3, 05 TL-4 |
-| D7 | RackNerd ticket: does the 5 TB count both directions | Boss sends it | 01 MS-5 |
-| D8 | Lite view (LD-8): a new member-facing button and an offer on slow article pages | yes | 03 LD-8 |
-| D9 | "DuckDuckGo Lite (fastest)" as an extra search engine choice (default unchanged) | yes | 03 LD-11 |
-| D10 | Cloudflare free edge in front of the lanes | no for now | 04 SV-11 |
-| D11 | Field breakdown samples (MS-8): more numbers in the existing anonymous 1-in-5 sample, still no URL or member id | yes | 01 MS-8 |
+| D1 | What replaces YouTube in the official list | **Khan Academy** | 01 MS-D1 |
+| D2 | Create prod test accounts `lbtest` (Cardinal, $0) and `lbtest-free` | **yes, both**; Boss creates them in prod (50 GB a month) | 01 MS-D2 |
+| D3 | Speed gate verdict by interleaved A/B with a confidence interval and early stop; thresholds unchanged (10 percent and 100 ms); inconclusive = fail for a release | **yes** (replaces the "fails twice" idea) | 08 TS-4 |
+| D4 | TLS mismatch: keep the member's real UA with libcurl's TLS and say some sites may still check | **keep the real UA** | 06 BC-D1 |
+| D5 | Reverse DNS for the VPS address and an abuse page on HALL (text) | **reverse DNS only** (Boss sets it in the RackNerd panel); no abuse page | 06 BC-D2, BC-D3 |
+| D6 | Server help: Cardinal reads rewrite-cache hits; 3 GB rewrite cache; privacy lines for the image lane, the public file lane (SV-7), the rewrite cache and "nothing loads outside Limitless" | **yes to all four**; privacy lines are drafted for Boss's review before any HALL legal change | 04 SV-D1 to SV-D3, 05 TL-4 |
+| D7 | RackNerd ticket: does the 5 TB count both directions | **skip**: plan with both directions (about 2.5 TB for members) | 01 MS-5 |
+| D8 | Lite view (LD-8): a new member-facing button and an offer on slow article pages | **yes, button and offer** | 03 LD-8 |
+| D9 | "DuckDuckGo Lite (fastest)" as an extra search engine choice (default unchanged) | **yes, as an option** | 03 LD-11 |
+| D10 | Cloudflare free edge in front of the lanes | **spec it** (written; the go and the DNS change stay open, Boss's) | 04 SV-11 |
+| D11 | Field breakdown samples (MS-8): more numbers in the existing anonymous 1-in-5 sample, still no URL or member id | **yes** | 01 MS-8 |
 
 Last verified: 2026-11-19

@@ -75,7 +75,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Saving [est]:** 1 to 3 min per run, more on the rc tier (several runs per build). **Rollback:** unset `LB_DIST`.
 
 ## TS-4 Interleaved A/B speed step with early stop (replaces "base run + candidate run")
-- **Status:** planned. **Likely time:** 6 to 8 h (harness change plus the stack change). Needs Boss's OK on the verdict rule (master plan
+- **Status:** planned. **Likely time:** 6 to 8 h (harness change plus the stack change). Verdict rule approved by Boss on 2026-11-19 (master plan
   decision D3); thresholds stay 10 percent and 100 ms.
 - **Why:** today the base and the candidate run at different times (or the base comes from an older night), so machine drift lands on one
   side only. Interleaving A and B rep by rep in one stack cancels drift (the method Tachometer and Chromium Pinpoint use; sources in the

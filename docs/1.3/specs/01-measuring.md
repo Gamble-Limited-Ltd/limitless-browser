@@ -64,8 +64,8 @@ published number is dated, names the device profile and the median and n (SPEED-
 - **Rules:**
   1. A sampler on the VPS (`deploy/relay-vps/sample.sh`, cron every minute for one week) writes CPU per container, RAM, disk and uplink
      to a local file; no hostnames, no member ids.
-  2. Kuma alerts at 70 and 90 percent of the month's transfer (needs RackNerd's answer on whether 5 TB counts both directions:
-     **Boss sends the ticket**, text drafted in the release record).
+  2. Kuma alerts at 70 and 90 percent of the month's transfer, counted as both directions (Boss, 2026-11-19: no RackNerd ticket; plan
+     with the safe reading, about 2.5 TB a month for members).
   3. Output feeds spec 04 SV-0 (the CPU budget).
 
 ## MS-6 The "x native" table per Minor (was Phase 0 exit)
@@ -99,9 +99,9 @@ published number is dated, names the device profile and the median and n (SPEED-
 - **Tests:** e2e: nothing is sent without the click; the body holds the domain, not the URL.
 
 ## Decisions for Boss (also in the master plan)
-- **MS-D1 Official list without YouTube:** YouTube is blocked on every tier since 1.2.2, so it cannot be a speed row. Recommended: replace
+- **MS-D1 (answered 2026-11-19: Khan Academy) Official list without YouTube:** YouTube is blocked on every tier since 1.2.2, so it cannot be a speed row. Recommended: replace
   it with **Khan Academy** (school tool, heavy script, fails today with page script errors, so it shows real progress). Other options:
   Wikipedia (light, easy), Twitch (video, allowed), Canvas.
-- **MS-D2 Test accounts:** create `lbtest` (Cardinal, $0) and `lbtest-free` (no plan) in prod; 50 GB a month already approved.
+- **MS-D2 (answered 2026-11-19: yes, both) Test accounts:** create `lbtest` (Cardinal, $0) and `lbtest-free` (no plan) in prod; 50 GB a month already approved.
 
 Last verified: 2026-11-19

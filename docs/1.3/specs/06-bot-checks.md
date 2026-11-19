@@ -85,8 +85,7 @@ Research: `docs/1.3/research/botcheck-2026-11-19.md` (Sonnet, sources inside), a
 - **Rules and steps:**
   1. Reverse DNS of the VPS address set to `relay.taps-holdings.org` with a matching forward record (**Boss step** in the RackNerd panel;
      already proposed in 1.1, still not done; rollback = set it back).
-  2. An abuse contact: a short page on HALL ("Report abuse from our relay address" with the support email), linked from the relay
-     hostname's root (`https://relay.taps-holdings.org/` answers a plain page). **Boss approves the text** (HALL text is Boss's).
+  2. No abuse page (Boss, 2026-11-19: reverse DNS only).
   3. Per-member limits already exist (gate token buckets, socket cap 8, data caps, abuse throttle); add one counter: requests per minute
      per member over 600 sustained for 5 minutes raises the existing abuse alert (no automatic block beyond today's throttle).
   4. Free (Ordinal) traffic never uses the VPS (already true: no relay token for Ordinal).
@@ -119,10 +118,10 @@ Research: `docs/1.3/research/botcheck-2026-11-19.md` (Sonnet, sources inside), a
 - **Tests:** e2e: typing a listed host shows the hint; an unlisted host shows nothing; the card shows the reason.
 
 ## Decisions for Boss (also in the master plan)
-- **BC-D1 TLS mismatch:** keep sending the member's real User-Agent with libcurl's TLS (today, recommended) and say in the privacy and
+- **BC-D1 (answered 2026-11-19: keep the real UA) TLS mismatch:** keep sending the member's real User-Agent with libcurl's TLS (today, recommended) and say in the privacy and
   help text that some sites may still check; or add a truthful " Limitless" suffix to the UA (honest, but likely more checks). Matching
   Chrome's TLS is spoofing and is not an option.
-- **BC-D2 Abuse page text** for HALL (BC-6 step 2).
-- **BC-D3 Reverse DNS** step in the RackNerd panel (BC-6 step 1).
+- **BC-D2 (answered 2026-11-19: no abuse page).**
+- **BC-D3 (answered 2026-11-19: yes) Reverse DNS** step in the RackNerd panel (BC-6 step 1), Boss does it.
 
 Last verified: 2026-11-19

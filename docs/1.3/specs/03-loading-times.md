@@ -118,8 +118,8 @@ section 2.
 ## LD-10 Prerender on strong intent (later, brainstorm B4)
 Only for Executive on devices with 8 GB or more, and only if LD-12 shows a hit rate over 40 percent. Not specified further until then.
 
-## LD-11 Fast search option (Boss decides, D9)
-If Boss says yes: add "DuckDuckGo Lite (fastest)" to the start page engine list, pointing at its HTML endpoint; the default engine does
+## LD-11 Fast search option (Boss, 2026-11-19: yes, as an option)
+Planned: add "DuckDuckGo Lite (fastest)" to the start page engine list, pointing at its HTML endpoint; the default engine does
 not change unless Boss says so. 1 h, e2e for the engine list.
 
 ## LD-12 Idle prefetch of likely next pages (later, brainstorm B3)

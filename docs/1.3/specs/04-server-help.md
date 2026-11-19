@@ -159,18 +159,51 @@ small or the upload improves.
   --system`, revert the unbound lines.
 - **Tests:** `deploy/relay-vps/check.sh` prints the active values (added to the VPS check step).
 
-## SV-11 Cloudflare free edge for the lanes (Boss decides, D10; later)
-An orange-clouded lane hostname would cache public lane answers near the school at no cost. Against it: Cloudflare would serve cached
-hits without our cookie check (public files some member fetched), it adds a third party that sees file URLs, and it is a DNS change
-(Boss's). Spec only if Boss says yes.
+## SV-11 Cloudflare free edge in front of the lanes (Boss, 2026-11-19: spec it; the go and the DNS change stay open)
+- **Status:** specified, not approved to build. **Likely time:** 3 to 4 h + Boss's DNS step. **Tiers:** paid (the lanes are paid only).
+  **Needs first:** SV-7 and SV-8 (stable lane URLs; a token in the path would make every URL unique and nothing would cache).
+- **Why:** Cloudflare's free plan caches at an edge near the school. A hit never reaches the VPS: no Buffalo round trip, and no bytes on the
+  5 TB meter. It costs nothing (no-spending rule holds).
+- **How it would work:**
+  1. A new hostname `lane.taps-holdings.org`, proxied (orange cloud), pointing at the VPS. The relay hostname stays DNS-only (grey):
+     WISP is never put behind Cloudflare. **DNS change = Boss** (an explicit record is needed because `*.taps-holdings.org` is a proxied
+     wildcard).
+  2. VPS nginx serves only the lane paths (`/i/`, `/p/`, `/rw/u/`) on that host, with a Cloudflare Origin certificate (SSL mode "Full
+     (strict)"), and accepts connections for that host only from Cloudflare's published IP ranges (refreshed by a weekly script).
+  3. Edge cache only for public answers: lane answers for public files get `Cache-Control: private, max-age=<lifetime>` for the browser
+     and `CDN-Cache-Control: public, max-age=<lifetime capped at 1 day>` for Cloudflare. Answers that are not public (409, errors, any
+     `Set-Cookie`) carry `CDN-Cache-Control: no-store`.
+  4. The cache key is the URL path only (Cloudflare ignores cookies in the key by default); the path already holds mode, bucket and UA
+     class (SV-3, SV-4), so members with different UA classes never share a script.
+  5. One Cache Rule on the free plan: "Eligible for cache" on `lane.taps-holdings.org` paths `/i/*`, `/p/*`, `/rw/u/*`; everything else
+     bypass.
+  6. App: `features.laneEdge` (default false) switches the lane base from the relay host to the lane host; off means today's direct VPS lane.
+- **What changes for safety and privacy (read before saying go):**
+  - **No member check on edge hits.** Cloudflare answers a cached file to anyone who asks for that exact URL, without our cookie. Only
+    public files that some member already fetched can be served this way, and anyone could fetch them from the original site anyway. A
+    miss still reaches the VPS, which checks the cookie, so non-members cannot use the lane to fetch anything new.
+  - **Cloudflare sees** the member's IP address and the addresses and contents of the public files on that hostname (it terminates TLS for
+    the lane host). It never sees relay (WISP) traffic or private pages. The privacy line for the lanes (D6) gets one more sentence naming
+    Cloudflare as the network provider for public files; Boss approves it with the others.
+  - **Cloudflare terms:** the free plan is fine for scripts, CSS, fonts and images; it is not for serving video, which the lanes never
+    carry (`/p/` refuses media types, SV-7 rule 3). Files over 512 MB are not cached on the free plan (lane files are at most 8 MB).
+- **Edge cases:** a site changes a file at the same URL (edge lifetime capped at 1 day, the origin's validators still apply on the VPS);
+  Cloudflare outage (the app's lane breaker falls back to the libcurl path after 5 failures, the same as a VPS lane outage); purge
+  (Cloudflare dashboard "Purge everything", Boss or an approved session with the API token on the hub; no token on this VM).
+- **Tests:** gate unit: `CDN-Cache-Control` header rules per answer kind; nginx test: the lane host refuses a non-Cloudflare source
+  address; app e2e: `laneEdge` changes only the base host; rehearsal cannot include Cloudflare, so a short real check through `lbtest`
+  (MS-4): the second request for a file shows `cf-cache-status: HIT`.
+- **Measure:** Cloudflare's free analytics (cached bytes share), the VPS meter before and after for one week, `firstBytes` for lane files
+  on the school Chromebook (MS-2).
+- **Rollback:** `features.laneEdge=false` (instant, app build), or grey-cloud the record (DNS, Boss).
 
 ## Decisions for Boss (also in the master plan)
-- **SV-D1** May Cardinal members **read** server-rewritten hits (a disk read, almost free), while only Prime and Executive trigger new
+- **SV-D1 (answered 2026-11-19: yes)** May Cardinal members **read** server-rewritten hits (a disk read, almost free), while only Prime and Executive trigger new
   rewrites? Recommended yes: Cardinal gets prewarmed top sites at no CPU cost; the ladder stays (Prime gets its own sites rewritten).
-- **SV-D2** Disk budget: 3 GB for the rewrite cache next to the image lane's 1 GB (28 GB free). Recommended yes.
-- **SV-D3** Privacy lines for the image lane, the public file lane (SV-7: same family as the image line, "public files" instead of
+- **SV-D2 (answered 2026-11-19: yes)** Disk budget: 3 GB for the rewrite cache next to the image lane's 1 GB (28 GB free). Recommended yes.
+- **SV-D3 (answered 2026-11-19: draft them for review)** Privacy lines for the image lane, the public file lane (SV-7: same family as the image line, "public files" instead of
   "pictures") and the rewrite cache (drafts in IMGLANE and the design file, section 3.8).
-- **SV-D4 (D10)** Cloudflare free edge in front of the lanes (SV-11): recommended no for now.
+- **SV-D4 (D10, answered 2026-11-19: spec it)** Cloudflare free edge in front of the lanes: SV-11 is written; the go and the DNS change stay open.
 
 ## Order
 SV-9 (any time, small), SV-0, SV-2 (after the legal step) with SV-8, SV-3, SV-7, SV-4 (G4-1, G4-2, G4-3 as three releases; re-weigh after
