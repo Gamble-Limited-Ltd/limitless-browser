@@ -25,7 +25,7 @@ Rollback is the build flag.
 ---
 
 ## TL-1 Ship L1 + L3 (switches off), then turn on (was L1, L3)
-- **Status:** built, not released. **Likely time:** 2 h to merge onto the release line and run the item gate; turning on is a separate
+- **Status:** release A READY 2026-11-19: `release/1.2.5` (record `docs/releases/1.2.5.md`), item gate passed (e2e 9.1 min, speed 7 reps no regression row, sites 19/27 against 19/27 on the base). Not deployed. **Likely time:** 2 h to merge onto the release line and run the item gate; turning on is a separate
   release after TL-5's table says so. **Tiers:** all.
 - **Rules:**
   1. Release A (Patch): merge `speed/l1-lockdown` with both switches OFF. Nothing changes for members.

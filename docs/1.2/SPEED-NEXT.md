@@ -13,8 +13,8 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 
 | new id | old ids | item | status | spec |
 |---|---|---|---|---|
-| CL-1 | N2, N4, 2.2 | meriyah parser, acorn fallback | built (`speed/1.3-quick`); rerun gate alone | 02 |
-| CL-2 | N8, 2.5, R2 | 6 sockets for paid tiers | built (`speed/1.3-quick`); gate fail looked like noise, rerun alone | 02 |
+| CL-1 | N2, N4, 2.2 | meriyah parser, acorn fallback | HELD 2026-11-19 (`release/1.2.3`): gate failed twice on different noise rows (spec 02); needs TS-4 or Boss's override | 02 |
+| CL-2 | N8, 2.5, R2 | 6 sockets for paid tiers | HELD 2026-11-19 (`release/1.2.4`): one row 2 ms over the floor (spec 02); needs TS-4 or Boss's override | 02 |
 | CL-3 | N3 | skip scripts with no `location`/`import(` | closed (exists since 1.0) | 02 |
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
@@ -39,7 +39,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | SV-4 | S2, G3, G4, 5.4 | shared rewrite cache, server rewrite | planned (design done) | 04 |
 | SV-5 | G5, 5.5 | URL mode and overnight prewarm | planned | 04 |
 | SV-6 | G7 | home second-layer cache | later (parked) | 04 |
-| TL-1 | L1, L3 | lockdown CSP and 3 rewriter gaps | built (`speed/l1-lockdown`) | 05 |
+| TL-1 | L1, L3 | lockdown CSP and 3 rewriter gaps | release A ready 2026-11-19 (`release/1.2.5`, record 1.2.5, gate passed, not deployed) | 05 |
 | TL-2 | L3 rest | remaining rewriter gaps | planned | 05 |
 | TL-3 | L2, N5, 4.1, 4.2 | SW lane gaps, then lane on | lane shipped 1.2.0 OFF; gaps planned | 05 |
 | TL-4 | L4 | out of scope, documented | planned (docs) | 05 |
