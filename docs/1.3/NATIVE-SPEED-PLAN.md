@@ -48,8 +48,8 @@ Every Minor reports these sites in an "x native" table (spec 01 MS-6).
 | Executive | 1.3x, faster than native on Steam, Discord, Kahoot | under 100 ms | plus favourites prewarmed, Load Now, highest weight |
 
 ## 3. Where we are (2026-11-19)
-- **Prod:** 1.2.1 (`09c6dbf`, admin member menu). **1.2.2 is prepared** (record `docs/releases/1.2.2.md` on `release/1.2.2`: YouTube block,
-  Google sign-in card on, G1 visible-first built OFF) and waits on Boss's deploy (app + VPS relaygate).
+- **Prod:** 1.2.2 (`5615cb6`, deployed 2026-11-19 07:35: YouTube block, Google sign-in card on, G1 visible-first built OFF; VPS
+  relaygate `f9f7040`). Record `docs/releases/1.2.2.md` on `main`.
 - **Built, not released:** meriyah parser (CL-1), 6 sockets for paid (CL-2), hover prefetch (LD-2) on `speed/1.3-quick`; lockdown CSP and
   three rewriter gaps (TL-1) on `speed/l1-lockdown` (speed gate passed with no regression row, 42-site run 95 of 126 reps against 94, 28
   sites lost some images). Overnight gate 2026-11-18/19: N8 noise, **N7 slowed fx-app and fx-frames by 15 to 29 percent**, N4 no gain
@@ -88,7 +88,7 @@ Tooling and measuring are not releases (no deploy); they run alongside. Lanes ar
 
 | Step | What | Kind | Likely hours | Waits on |
 |---|---|---|---|---|
-| 0 | 1.2.2 (YouTube block, Google card) | Patch, ready | 0 | Boss's deploy |
+| 0 | 1.2.2 (YouTube block, Google card) | Patch, **live 2026-11-19** | 0 | done |
 | 1 | TS-1, TS-2, TS-3, TS-12, TS-5, TS-6, TS-10 (gate runner, quiet machine, build cache, suites side by side, tagged e2e and sites, rewriter micro-bench) | tooling | 13 | nothing |
 | 2 | AD-0, AD-1, AD-2 gate release, then AD-3 Grant tab | gate release + app Patch | 11 | Boss's deploy |
 | 3 | CL-1 meriyah | Patch | 1 + gate | step 1 helps |
