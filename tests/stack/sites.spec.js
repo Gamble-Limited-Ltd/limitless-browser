@@ -135,6 +135,10 @@ async function tryOnceInner(browser, testInfo, site, st) {
       else { res.category = 'render'; res.detail = 'selector not found'; }
     }
     if (perr.length) res.pageErrors = perr.length;
+    // L1: what the lockdown CSP blocked (top window; only present when lockdown is on)
+    const ld = await page.evaluate(() => { const o = {}; try { if (window.LB_rewrite && LB_rewrite.stats && LB_rewrite.stats().cspBlocked != null) o.cspBlocked = LB_rewrite.stats().cspBlocked; } catch (_) {} try { if (window.LB_lockdown && LB_lockdown.recent) o.lockdownRecent = LB_lockdown.recent; } catch (_) {} return o; }).catch(() => ({}));
+    if (ld.cspBlocked != null) res.cspBlocked = ld.cspBlocked;
+    if (ld.lockdownRecent != null) res.lockdownRecent = ld.lockdownRecent;
     return res;
   } catch (e) {
     res.category = 'harness'; res.detail = String(e).slice(0, 160); return res;
