@@ -13,7 +13,7 @@ import { pauseAction, inQuietWindow, sideBySide } from './lib/gate-quiet.mjs';
 
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
-const OVERLAY = ['deploy/rehearsal', 'tests/stack', 'tests/lib', 'tests/fixtures', 'playwright.stack.config.js', 'scripts/speed-compare.mjs', 'scripts/sites-merge.mjs', 'scripts/sites-table.mjs'];
+const OVERLAY = ['deploy/rehearsal', 'tests/stack', 'tests/lib', 'tests/fixtures', 'playwright.stack.config.js', 'scripts/speed-compare.mjs', 'scripts/rw-bench.mjs', 'scripts/lib', 'scripts/sites-merge.mjs', 'scripts/sites-table.mjs'];
 
 let args;
 try { args = parseArgs(process.argv.slice(2)); } catch (e) { console.error(`gate: ${e.message}`); process.exit(2); }
@@ -120,7 +120,13 @@ const E2E_CMD = (wt) => {
 };
 
 const STEP = {
-  rwbench: () => ({ skipped: 'not built yet' }),
+  // TS-10: seconds, before any stack starts. No bundles or no base file: skipped with a note.
+  rwbench: (wt) => {
+    const r = sh('node scripts/rw-bench.mjs', { cwd: wt, log: 'rwbench.log' });
+    const out = fs.readFileSync(path.join(OUT, 'rwbench.log'), 'utf8');
+    const skip = /SKIPPED[^\n]*/.exec(out);
+    return skip && r.code === 0 ? { skipped: skip[0].replace('rw-bench: ', '') } : { r, ok: r.code === 0 };
+  },
   e2e: (wt) => { const cmd = E2E_CMD(wt); const r = sh(cmd, { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0, note: e2eNote }; },
   speed: (wt) => quiet(() => {
     const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
