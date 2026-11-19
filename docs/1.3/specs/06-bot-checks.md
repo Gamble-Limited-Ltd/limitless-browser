@@ -107,6 +107,17 @@ Research: `docs/1.3/research/botcheck-2026-11-19.md` (Sonnet, sources inside), a
 - **Risks:** upstream engines can challenge the VPS too; 2 GB RAM box; the VPS sees queries (privacy line).
 - **Exit to start:** SV-0 says at least 0.25 vCPU and 256 MB are free at the evening peak.
 
+## BC-9 Site status hints (new, brainstorm F1)
+- **Status:** planned. **Likely time:** 3 h. **Tiers:** all.
+- **Rules:**
+  1. At release time `scripts/build-site-status.mjs` writes `sites-status.json` into the build from the latest BC-7 table and the sites
+     suite: `{site, status: works|slow|human-check|cannot-work-here, reason}` for listed sites only (registrable domain).
+  2. When the address bar's host matches, a quiet line under the suggestions says, for example, "Google sign-in does not work in
+     Limitless" or "This site usually asks you to prove you are a person". The error and Human Check cards reuse the same reason line.
+  3. Wording is plain and never suggests a workaround. No hint for `works`.
+  4. The file is static and gated like the rest of the app; no lookup is sent anywhere.
+- **Tests:** e2e: typing a listed host shows the hint; an unlisted host shows nothing; the card shows the reason.
+
 ## Decisions for Boss (also in the master plan)
 - **BC-D1 TLS mismatch:** keep sending the member's real User-Agent with libcurl's TLS (today, recommended) and say in the privacy and
   help text that some sites may still check; or add a truthful " Limitless" suffix to the UA (honest, but likely more checks). Matching

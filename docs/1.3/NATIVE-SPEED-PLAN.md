@@ -7,7 +7,8 @@ human checks are handled honestly, and the gate runs that slow the work down get
 
 **Overhaul (Boss, 2026-11-19):** this file is now the master plan. The detail lives in build-ready specs in `docs/1.3/specs/` (one per area,
 fixed item template, section 4). `docs/1.2/SPEED-NEXT.md` is the status ledger (one line per item, old id to new id). Research behind the
-specs: `docs/1.3/research/`. Nothing in the specs is built unless its status says so.
+specs: `docs/1.3/research/`. New ideas from the 2026-11-19 brainstorm (reasoning, scores and rejected ideas):
+`docs/1.3/BRAINSTORM-2026-11-19.md`; the accepted ones are items in the specs. Nothing in the specs is built unless its status says so.
 
 **Hard limits (Boss):**
 - No additional spending: no new subscriptions, servers, GPU rentals or bigger VPS. The home VM, the RackNerd VPS ($35.99 a year, 2 vCPU,
@@ -66,18 +67,20 @@ than Meridian's platform specs on purpose: no data model or catalog sections, be
 
 | File | Area | Items | Likely agent hours |
 |---|---|---|---|
-| `specs/01-measuring.md` | MS: native column, in-app bench, real-VPS lane, VPS capacity, "x native" table, field numbers | MS-1 to MS-7 | about 14 |
-| `specs/02-client-speed.md` | CL: parser, sockets, stable script URLs (code cache), Worker pool, libcurl Worker, long tasks, site fixes, device cache | CL-1 to CL-14 | 50 to 65 |
-| `specs/03-loading-times.md` | LD: visible-first images, hover prefetch, streamed documents, warm connections, instant repeat visits | LD-1 to LD-5 | 23 to 28 |
-| `specs/04-server-help.md` | SV: CPU budget, image lane on, resize, server rewrite cache, prewarm | SV-0 to SV-6 | 25 to 35 |
-| `specs/05-through-limitless.md` | TL: lockdown CSP, rewriter gaps, SW lane gaps, direct-load table | TL-1 to TL-5 | 20 to 28 |
-| `specs/06-bot-checks.md` | BC: challenge experiment and cards, keep the pass, relay reputation, measurement, private search | BC-1 to BC-8 | 15 to 20 |
+| `specs/01-measuring.md` | MS: native column, in-app bench, real-VPS lane, VPS capacity, "x native" table, field numbers | MS-1 to MS-9 | about 19 |
+| `specs/02-client-speed.md` | CL: parser, sockets, stable script URLs (code cache), Worker pool, libcurl Worker, long tasks, site fixes, device cache | CL-1 to CL-17 | 75 to 95 |
+| `specs/03-loading-times.md` | LD: visible-first images, hover prefetch, streamed documents, warm connections, instant repeat visits | LD-1 to LD-14 | 40 to 47 |
+| `specs/04-server-help.md` | SV: CPU budget, image lane on, resize, server rewrite cache, prewarm | SV-0 to SV-11 | 37 to 49 |
+| `specs/05-through-limitless.md` | TL: lockdown CSP, rewriter gaps, SW lane gaps, direct-load table | TL-1 to TL-7 | 26 to 34 |
+| `specs/06-bot-checks.md` | BC: challenge experiment and cards, keep the pass, relay reputation, measurement, private search | BC-1 to BC-9 | 18 to 23 |
 | `specs/07-video.md` | VD: stream media bodies, quality at shown size (YouTube work dropped) | VD-1 to VD-3 | 14 to 22 |
-| `specs/08-test-speed.md` | TS: gate runner, quiet machine, build cache, interleaved A/B with early stop, tagged e2e and sites | TS-1 to TS-8 | 18 to 21 |
-| `specs/09-admin-grant-tab.md` | AD: Grant plan tab with autocomplete and copyable receipt (Boss, 2026-11-19), catalog prices | AD-0 to AD-3 | about 11 |
+| `specs/08-test-speed.md` | TS: gate runner, quiet machine, build cache, interleaved A/B with early stop, tagged e2e and sites | TS-1 to TS-12 | 30 to 33 |
+| `specs/09-admin-grant-tab.md` | AD: Grant plan tab with autocomplete and copyable receipt (Boss, 2026-11-19), catalog prices | AD-0 to AD-4 | about 14 |
 
-Total about 190 to 245 agent hours. With overnight gate runs and at most 2 slices in flight that is roughly 6 to 9 weeks; spec 08 is what
-makes the lower end possible, so it goes first.
+Total about 270 to 340 agent hours after the brainstorm (was 190 to 245). With overnight gate runs and at most 2 slices in flight that is
+roughly 8 to 12 weeks; spec 08 is what makes the lower end possible, so it goes first. The biggest new levers: CL-15 (token-level
+rewriter, all tiers), SV-7 and SV-8 (native fetch lane with stable URLs, paid), LD-8 (Lite view, all tiers, faster than native on
+articles), MS-8 (field data from real Chromebooks).
 
 ## 5. Release and work order
 Tooling and measuring are not releases (no deploy); they run alongside. Lanes are proposals: the release record decides (skill
@@ -86,24 +89,26 @@ Tooling and measuring are not releases (no deploy); they run alongside. Lanes ar
 | Step | What | Kind | Likely hours | Waits on |
 |---|---|---|---|---|
 | 0 | 1.2.2 (YouTube block, Google card) | Patch, ready | 0 | Boss's deploy |
-| 1 | TS-1, TS-2, TS-3, TS-5, TS-6 (gate runner, quiet machine, build cache, tagged e2e and sites) | tooling | 10 | nothing |
+| 1 | TS-1, TS-2, TS-3, TS-12, TS-5, TS-6, TS-10 (gate runner, quiet machine, build cache, suites side by side, tagged e2e and sites, rewriter micro-bench) | tooling | 13 | nothing |
 | 2 | AD-0, AD-1, AD-2 gate release, then AD-3 Grant tab | gate release + app Patch | 11 | Boss's deploy |
 | 3 | CL-1 meriyah | Patch | 1 + gate | step 1 helps |
 | 4 | CL-2 six sockets | Patch | 1 + gate | |
 | 5 | LD-2 hover prefetch (fix the fx-app/fx-frames regression first) | Patch | 4 + gate | |
 | 6 | TL-1 release A (lockdown and gaps, switches off) | Patch | 2 | |
+| 6a | Small new wins, one release each: LD-13 text before fonts, LD-6 boot connect, LD-7 connect while typing, LD-14 lazy embeds, SV-9 VPS tuning (no app release) | Patches | 8.5 | |
+| 6b | MS-8 field breakdown (app + gate), CL-15 prototype (no release), TL-6 leak zoo (tooling) | mixed | 17 to 21 | |
 | 7 | MS-1 native column, MS-4 real-VPS lane, MS-5 sampler | tooling | 7 | D1, D2, D7 |
-| 8 | TS-4 interleaved A/B gate, TS-7, TS-8 | tooling | 9 | D3 |
-| 9 | CL-7 Worker pool, CL-6 step A blob reuse, LD-1 on, LD-5 on | one Patch or Minor each | 7 | |
+| 8 | TS-4 interleaved A/B gate, TS-9 recordings, TS-11 bisect, TS-7, TS-8 | tooling | 18 | D3 |
+| 9 | CL-7 Worker pool, CL-6 step A blob reuse, LD-1 on, LD-5 on, LD-8 Lite view, LD-9 discard restore, BC-9 site hints, MS-9 | one release each | 20 | |
 | 10 | TL-5 direct-load table, TL-2 gaps, TL-1 release B (lockdown on) | Minor for B | 10 to 14 | |
 | 11 | CL-10 long tasks, VD-1 media streaming | releases per item | 15 to 25 | |
-| 12 | SV-0 budget, SV-2 image lane on, SV-3 resize | Minors | 12 | D6 privacy line, HALL legal |
+| 12 | SV-0 budget, SV-2 image lane on with SV-8 stable URLs, SV-3 resize, SV-7 native fetch lane | Minors | 22 to 24 | D6 privacy lines, HALL legal |
 | 13 | CL-8 libcurl Worker slices 2 to 5 and on | 4 to 5 releases | 18 | MS-2 device run before slice 3 |
 | 14 | BC-4 experiment and cards, BC-5, BC-6, BC-7 | releases per item | 12 to 15 | D4, D5 |
-| 15 | TL-3 SW lane gaps and lane on | Minor | 10 to 14 | |
-| 16 | SV-4 server rewrite (3 releases), SV-5 prewarm | Minors | 15 to 20 | D6 |
+| 15 | TL-7 service worker guard, then TL-3 SW lane gaps and lane on | Minors | 13 to 17 | |
+| 16 | CL-15 token rewriter (if the prototype passed), then SV-4 server rewrite (3 releases, re-weighed after CL-15), SV-5 prewarm | Minors | 21 to 26 | D6 |
 | 17 | LD-3 streamed documents, CL-6 step B code cache | Minors | 16 to 22 | TL-3 |
-| 18 | CL-11 site fixes, CL-12, LD-4, VD-2, CL-14 bench, CL-9 and CL-13 measure-first, BC-8 | as ready | 25 to 35 | |
+| 18 | CL-11 site fixes, CL-12, LD-4, VD-2, CL-14 bench, CL-9, CL-13 and CL-17 measure-first, CL-16, AD-4, BC-8, LD-12, LD-10 | as ready | 35 to 45 | |
 
 Each Minor ends with the rc tier of spec 08 (full e2e, A/B speed on both projects, full sites, profile harness), one real-VPS run (inside
 50 GB) and, before Minors that move work into Workers or the lane, a school-Chromebook run (MS-2).
@@ -119,6 +124,8 @@ Each Minor ends with the rc tier of spec 08 (full e2e, A/B speed on both project
 - **AVIF on the VPS:** 5 to 15x the CPU of WebP and a RAM risk on a 2 GB box (spec 04 SV-3).
 - **YouTube work** (video, thumbnails, Executive video buffering): YouTube is blocked on every tier.
 - **Home second-layer cache:** parked, home upload is slower than the VPS fetching itself.
+- **Relay-side TLS termination, peer-to-peer cache between members, picking another relay per site to dodge a check, overnight prewarm
+  on the member's device:** rejected in the brainstorm (reasons in `BRAINSTORM-2026-11-19.md`).
 
 ## 7. Risks
 - The emulated profile cannot slow down Workers; the school-Chromebook bench is the only real check for Worker and lane changes.
@@ -137,7 +144,11 @@ Each Minor ends with the rc tier of spec 08 (full e2e, A/B speed on both project
 | D3 | Speed gate verdict by interleaved A/B with a confidence interval and early stop; thresholds unchanged (10 percent and 100 ms); inconclusive = fail for a release | yes (replaces the "fails twice" idea) | 08 TS-4 |
 | D4 | TLS mismatch: keep the member's real UA with libcurl's TLS and say some sites may still check | keep as is | 06 BC-D1 |
 | D5 | Reverse DNS for the VPS address and an abuse page on HALL (text) | yes, both | 06 BC-D2, BC-D3 |
-| D6 | Server help: Cardinal reads rewrite-cache hits; 3 GB rewrite cache; privacy lines for the image lane, the rewrite cache and "nothing loads outside Limitless" | yes, then the HALL legal change | 04 SV-D1 to SV-D3, 05 TL-4 |
+| D6 | Server help: Cardinal reads rewrite-cache hits; 3 GB rewrite cache; privacy lines for the image lane, the public file lane (SV-7), the rewrite cache and "nothing loads outside Limitless" | yes, then the HALL legal change | 04 SV-D1 to SV-D3, 05 TL-4 |
 | D7 | RackNerd ticket: does the 5 TB count both directions | Boss sends it | 01 MS-5 |
+| D8 | Lite view (LD-8): a new member-facing button and an offer on slow article pages | yes | 03 LD-8 |
+| D9 | "DuckDuckGo Lite (fastest)" as an extra search engine choice (default unchanged) | yes | 03 LD-11 |
+| D10 | Cloudflare free edge in front of the lanes | no for now | 04 SV-11 |
+| D11 | Field breakdown samples (MS-8): more numbers in the existing anonymous 1-in-5 sample, still no URL or member id | yes | 01 MS-8 |
 
 Last verified: 2026-11-19

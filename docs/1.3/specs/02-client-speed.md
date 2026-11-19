@@ -112,8 +112,48 @@ release record; CL-1 ships only if it is not slower (its expected gain is first-
   handshakes per second; check whether either sends data right after CONNECT (WISP v1 allows it, saves a round trip per stream). Licences
   must fit AGPL. Output: a table in this file. Nothing changes in the app from this item.
 
+## CL-15 Token-level rewriter with AST fallback (new, brainstorm A1)
+- **Status:** measure first (prototype on `proto/tokrw`). **Likely time:** 8 to 12 h prototype, 6 h build. **Tiers:** all.
+- **Why:** the rewriter builds a full AST to find a handful of `location` and `import(` uses; parse is most of the 3 to 4.6 s first-visit
+  cost of a 5 MB bundle at 4x CPU. A scanner needs positions and a little context, not a tree.
+- **Rules:**
+  1. One pass over the source with a JS tokenizer that handles strings, template literals (with nesting), comments, regex literals vs
+     division (decided by the previous significant token), and hashbangs.
+  2. Edits, all using the guards the runtime already has (`__lbSafe`, the `location` member guard, `__lbImport`): a `location` identifier
+     token after `.` or `?.` in an expression; a bare `location` identifier not after `.`, not a property key (`location:` in an object
+     literal or a class body), not a declaration name; `location =` / `location +=` assignments; `import(`. The guards pass through any
+     value that is not the real `Location`, so a local variable named `location` needs no scope analysis.
+  3. Bail out to today's AST path for the whole script on: `with`, a tokenizer error, a `location` token whose role is not one of rule 2's
+     cases, or any script that `rewriteLocationRefs` today rewrites differently on the corpus (rule 4). Count bail-outs in
+     `LB_rewrite.stats().tokFallback`.
+  4. Parity before shipping: on the golden corpus (the 38 real bundles of 16 KB or more from N2/N3 plus the repo's own scripts), every edit
+     position the AST rewriter makes must also be made by the scanner; extra edits are allowed only where the guard is a no-op. A fuzz test
+     (fast-check style generator of small programs using `location` in every role) compares the runtime result of both outputs.
+  5. `rwVer` (SV-4) includes the scanner's version, so cached rewrites from the AST path are not mixed silently.
+- **Switch:** `features.tokRewrite` (default false until the parity and speed gates pass).
+- **Measure:** rewrite ms per bundle at 4x CPU on the page thread and 1x in the Worker, the N2 table format; ship only if the median over
+  the 5 big bundles is at least 3x faster with zero parity failures.
+- **Tests:** `tests/unit/tokrw.test.mjs` (corpus parity from `~/.cache/limitless-fixtures/bundles/`, skipped when absent), fuzz test,
+  e2e `worker.spec.js` and `meriyah.spec.js` keep passing with the switch on.
+- **Rollback:** `LB_FEATURE_TOKREWRITE=false`.
+
+## CL-16 Adaptive defaults per device (new, brainstorm G3)
+- **Status:** planned after MS-8 has two weeks of data. **Likely time:** 2 h. **Tiers:** all.
+- **Rules:** a table in `app/main.js` keyed by device class (`lbPerfDevice()`): rewrite Worker pool size, image pre-warm count
+  (`LB_PREWARM_TOP`), and whether the Settings page suggests Data saver ("This device is slow on heavy pages"). Only defaults: a value the
+  member set is never changed. The table's numbers come from MS-8 and are written down here with their date.
+- **Tests:** e2e with a stubbed device class: defaults applied, saved settings untouched.
+
+## CL-17 WASM compile on the device (new, brainstorm G4)
+- **Status:** measure first. **Likely time:** 1.5 h.
+- **What:** on the school Chromebook (MS-2 bench extended with a boot row) and the profile harness, read the `libcurl.wasm` compile time
+  on a warm boot (Performance trace or `performance.measure` around `load_wasm`). If it is over 150 ms warm, make sure the module is
+  fetched with `instantiateStreaming` from a same-origin http(s) response that Chrome can code-cache (the service worker serves it from
+  Cache Storage today; check that the cached response keeps `Content-Type: application/wasm`). Else close the item.
+
 ## Order
 CL-1, CL-2 (built, small releases), CL-7, CL-6 step A, CL-10, CL-8 slices 2 to 5, CL-12, CL-11 by site, CL-6 step B after TL-3, CL-9 and
-CL-13 measure-first, CL-14 any free evening. Total about 50 to 65 agent hours.
+CL-13 measure-first, CL-14 any free evening. New (brainstorm 2026-11-19): the CL-15 prototype early, because it decides how much SV-4 is
+worth; CL-16 after two weeks of MS-8 data; CL-17 any evening. Total about 75 to 95 agent hours.
 
 Last verified: 2026-11-19

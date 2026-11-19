@@ -143,8 +143,40 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Rules:** after each release, `gate.sh <release sha> --tier rc` writes `docs/1.3/baseline/<version>.md` (one table, medians, date,
   harness hash). It is the reference for the "x native" table and for ads (SPEED-AUDIT 4b). TS-4 makes it unnecessary for item gates.
 
+## TS-9 Real-site recordings as fixtures (new, brainstorm H1)
+- **Status:** planned. **Likely time:** 6 h.
+- **Rules:**
+  1. `scripts/record-site.mjs <name> <url>` loads the page once in Chromium (native, no proxy) with `recordHar`, keeps every response
+     body, and writes `~/.cache/limitless-fixtures/<name>/<date>/` (third-party content: **never committed**, never copied to the build
+     PC or any other machine).
+  2. The fixtures container serves a recording under `fx-<name>.fixture` with every recorded host remapped to
+     `<host-hash>.fx-<name>.fixture` (URLs inside HTML, CSS and JS rewritten by plain string replace at record time), so payload sizes and
+     script complexity stay real.
+  3. Rows `fx-steam`, `fx-kahoot`, `fx-discord`, `fx-reddit` join the speed gate when their recording exists, else they are skipped with a
+     note (a fresh clone still runs the gate).
+  4. Re-record monthly or when a site row changes shape; the record date goes into the gate JSON.
+- **Tests:** a recording of a local fixture page round-trips (served page loads with zero requests outside the fixture hosts).
+
+## TS-10 Rewriter micro-bench per commit (new, brainstorm H2)
+- **Status:** planned. **Likely time:** 2 h.
+- **Rules:** `node scripts/rw-bench.mjs` runs the rewriter (the `app/rewriter.js` module once SV-4's G4-1 exists, before that the
+  extraction harness) on the bundles in `~/.cache/limitless-fixtures/bundles/`, 5 reps, median ms per bundle, and compares with
+  `~/.cache/limitless-fixtures/rw-bench-base.json`; more than 10 percent slower on any bundle fails. Runs in `gate.sh` before the stack
+  starts (seconds). Skipped with a note when the bundles are absent.
+
+## TS-11 Automatic bisect (new, brainstorm H3)
+- **Status:** planned. **Likely time:** 3 h.
+- **Rules:** `gate.sh <combined ref> --bisect <item refs in merge order>` reruns only the failing speed rows (`LB_SPEED_ONLY`) with A/B
+  (TS-4) on each item's tip against the base, stops at the first item that reproduces the failure, and writes the culprit into
+  `SUMMARY.md`.
+
+## TS-12 Non-timing suites side by side (new, brainstorm H4)
+- **Status:** planned. **Likely time:** 1 h.
+- **Rules:** in the rc tier, `npm test` (static server on its own port, `LB_E2E_PORT`) runs at the same time as the sites suite; neither
+  ever runs during a speed step (`gate.sh` holds the speed step alone). Memory guard: start the second suite only with 4 GB or more free.
+
 ## Order
-TS-1, TS-2, TS-3 first (one evening, small), then TS-5 and TS-6 (one night), then TS-4 (largest; needs Boss's OK on D3), then TS-7, TS-8.
-Total about 18 to 21 agent hours.
+TS-1, TS-2, TS-3, TS-12 first (one evening, small), then TS-5 and TS-6 (one night), TS-10, then TS-4 (largest; needs Boss's OK on D3),
+TS-9 recordings, TS-11 bisect, then TS-7, TS-8. Total about 30 to 33 agent hours.
 
 Last verified: 2026-11-19

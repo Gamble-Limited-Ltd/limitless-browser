@@ -132,8 +132,17 @@ quick grant from 1.2.1 stays as it is.
   10. every theme at 1366x768 and 390 wide (existing admin theme loop), no horizontal scroll.
 - **Rollback:** previous app build; the gate fields are additive.
 
+## AD-4 Speed card (new, brainstorm I1)
+- **Status:** planned after MS-8. **Likely time:** 3 h.
+- **What:** one admin card "Speed" (`#lbAdmSpeed`) in "Everything else": field p50/p90 `page_shown` and the MS-8 breakdown as a stacked
+  bar per device class for the last 7 days against the 7 before; lane and cache hit rates (image, public files, rewrite cache) from the
+  VPS counters; VPS CPU p95 (MS-5); challenge rate per 100 loads (BC-7); the last release's "x native" table (MS-6, pasted at release).
+  Totals only; nothing per member or per site. Uses `barChart` and the existing card styles.
+- **Tests:** admin e2e with mocked routes, every theme at 1366.
+
 ## Order and release
-AD-0 and AD-1 and AD-2 in one gate release (about 6 h with tests), then AD-3 as an app Patch (about 5 h). The gate goes first; the app
+AD-0 and AD-1 and AD-2 in one gate release (about 6 h with tests), then AD-3 as an app Patch (about 5 h). AD-4 (speed card) later, after
+MS-8 has data. The gate goes first; the app
 handles an old gate (rule above). Prices on the buttons come from the catalog, so they are right only after AD-0.
 
 Last verified: 2026-11-19

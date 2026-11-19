@@ -97,13 +97,83 @@ NATIVE-SPEED-PLAN Phase 5, `docs/1.2/IMGLANE.md`. Design detail for the server r
 Home upload is under 20 Mbit/s, so a home cache is slower than the VPS fetching from the internet. Revisit only if the VPS disk is too
 small or the upload improves.
 
+## SV-7 Native fetch lane for public files (new, brainstorm A2)
+- **Status:** planned. **Likely time:** 6 to 8 h. **Tiers:** Cardinal and up. **Needs:** privacy line (D6) and the HALL legal change before
+  it is switched on.
+- **Why:** every script, stylesheet and font today goes through libcurl.js (TLS, HTTP/2 and brotli in WASM, then a copy). The browser's
+  own `fetch()` does all of that natively; the image lane already proves the server side.
+- **Rules:**
+  1. Gate image, mode `img` grows a second path `/p/` (or a sibling mode `GATE_MODE=pub` with its own compose profile; pick the one that
+     keeps the image lane's limits separate). The VPS fetches the URL with no cookies, no Referer, no credentials, the member's UA class
+     (SV-4 rule), the SSRF guard from `src/img/net.ts`, redirects re-checked, 3 at most.
+  2. It answers with the body only when the response is shared-cacheable (status 200, GET, no `Set-Cookie`, not `private`/`no-store`,
+     `Vary` only `Accept-Encoding`, a freshness lifetime; the SV-4 public rule); otherwise `409 {reason}` and no body.
+  3. Content types allowed: JavaScript, CSS, fonts (woff2, woff, ttf, otf), JSON, plain text, WASM; 8 MB per file. Everything else 415.
+  4. Answers carry `Access-Control-Allow-Origin: <app origin>`, `Access-Control-Allow-Credentials: true` (for SV-8),
+     `Cross-Origin-Resource-Policy: same-site`, `Cache-Control: private, max-age=<origin lifetime capped at 1 day>`, `nosniff`.
+  5. Shared disk cache (LRU, 2 GB start, from SV-0's budget) keyed by URL + UA class; hits do not count toward member caps (G3
+     decision, 2026-11-18) and cost the meter one direction only.
+  6. App (`features.pubLane`, default false): in `queueFetch`, a GET with no `Cookie` the jar would send, no `Authorization`, no custom
+     auth headers, for a script, style, font or fetch/XHR of those types, goes to `fetch(<lane url>, {credentials: 'include'})`; a 409 or
+     415 marks the host + first path segment as "own path" for the session and retries through libcurl at once; any network error, 429 or
+     503 does the same and 5 in a row open a 2-minute breaker (the image lane's rule). The response then follows the normal pipeline
+     (rewrite, blob, cache).
+  7. Never for Ordinal (no relay token, no cookie), never with our relay down, never for `POST` or any request with a body.
+- **Edge cases:** a site that serves a different bundle to cookie-less requests (the 409 rule does not see this; the per-host "own path"
+  list can be pre-seeded from the sites suite when a site breaks with the lane on); CORS-mode fetches from the page (`fetch` with
+  `mode: cors` from the frame): the app replies with the lane body and the site's own `access-control-*` headers copied from the origin
+  answer (the VPS forwards them as `x-lb-origin-acao` etc.); `Range` requests stay on libcurl.
+- **Tests:** gate unit (public rule table, 409, 415, size, SSRF, headers, cache hit not counted); app e2e with a mocked `/p/` route (hit,
+  409 fallback and memory, breaker, cookie request never goes to the lane, Ordinal never uses it); rehearsal with the real service; item
+  gate A/B on fixtures (expect lower page-thread busy time) and the real-VPS lane.
+- **Measure:** page-thread busy time during load (profile harness), `shown` on Steam and Discord through MS-4, lane hit rate.
+- **Rollback:** `LB_FEATURE_PUBLANE=false` or stop the profile.
+
+## SV-8 Stable lane URLs with a relay cookie (new, brainstorm A3)
+- **Status:** planned. **Likely time:** 4 h. **Tiers:** paid.
+- **Why:** lane URLs carry the 5-minute token in the path, so the browser HTTP cache and V8's code cache never see the same URL twice.
+- **Rules:**
+  1. `POST /_lb/relay-token` (app origin) also returns a short one-time code; the app calls `https://<relay host>/lane/session` with
+     `credentials: 'include'` and that code; the VPS answers `Set-Cookie: lbr=<token>; (host-only: no Domain attribute);
+     Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=300` and refreshes it with each token renewal.
+  2. Lane paths drop the token: `/i/<mode>/<bucket>/<url>`, `/p/<url>`, `/rw/u/<url>`. The token in the path stays accepted for one
+     release (old app builds).
+  3. The cookie is host-only on the relay host, so it is never sent to any site and never to the app host.
+  4. Lane answers are `Cache-Control: private` (no shared cache in between stores them) with the origin's lifetime (SV-7 rule 4), so the
+     browser's HTTP cache reuses them across tokens; the relay checks the cookie on every request.
+  5. Server-rewritten scripts in URL mode (`/rw/u/`) are loaded by the frame with `<script src="https://<relay host>/rw/u/...">` (not a
+     `blob:`), so Chrome can code-cache them (research section 3). The `import.meta.url` and `__LB_IMU__` post-steps move to the server
+     for this mode (the server knows the URL), or this mode is limited to classic scripts until they do.
+- **Edge cases:** third-party cookie settings on managed Chromebooks (same-site requests are not third-party, but test it on the school
+  device in MS-2); a revoked member (the relay refuses the cookie's token within its 5 minutes, same as the path token today).
+- **Tests:** gate unit (cookie set, host-only, expiry, path without token accepted); e2e: second load of the same image within 10 minutes
+  makes no network request (browser cache), across a token renewal.
+- **Rollback:** the app sends the token in the path again (`features.laneCookie=false`).
+
+## SV-9 VPS network tuning (new, brainstorm D1)
+- **Status:** planned. **Likely time:** 1.5 h. VPS host change (standing-approved VPS work), logged in the release record.
+- **Rules:** check `sysctl net.ipv4.tcp_available_congestion_control`; if `bbr` exists, set `net.core.default_qdisc=fq` and
+  `net.ipv4.tcp_congestion_control=bbr` in `/etc/sysctl.d/90-limitless.conf`; TCP buffers `net.ipv4.tcp_rmem`/`tcp_wmem` max 8 MB
+  (300 Mbit/s at about 60 ms RTT needs about 2.3 MB, doubled); unbound `prefetch: yes`, `serve-expired: yes`, `serve-expired-ttl: 3600`.
+  Before and after: MS-4 run (3 reps on the official sites) and a 100 MB download through the relay. Rollback: delete the file, `sysctl
+  --system`, revert the unbound lines.
+- **Tests:** `deploy/relay-vps/check.sh` prints the active values (added to the VPS check step).
+
+## SV-11 Cloudflare free edge for the lanes (Boss decides, D10; later)
+An orange-clouded lane hostname would cache public lane answers near the school at no cost. Against it: Cloudflare would serve cached
+hits without our cookie check (public files some member fetched), it adds a third party that sees file URLs, and it is a DNS change
+(Boss's). Spec only if Boss says yes.
+
 ## Decisions for Boss (also in the master plan)
 - **SV-D1** May Cardinal members **read** server-rewritten hits (a disk read, almost free), while only Prime and Executive trigger new
   rewrites? Recommended yes: Cardinal gets prewarmed top sites at no CPU cost; the ladder stays (Prime gets its own sites rewritten).
 - **SV-D2** Disk budget: 3 GB for the rewrite cache next to the image lane's 1 GB (28 GB free). Recommended yes.
-- **SV-D3** Privacy lines for the image lane and the rewrite cache (drafts in IMGLANE and the design file, section 3.8).
+- **SV-D3** Privacy lines for the image lane, the public file lane (SV-7: same family as the image line, "public files" instead of
+  "pictures") and the rewrite cache (drafts in IMGLANE and the design file, section 3.8).
+- **SV-D4 (D10)** Cloudflare free edge in front of the lanes (SV-11): recommended no for now.
 
 ## Order
-SV-0, SV-2 (after the legal step), SV-3, SV-4 (G4-1, G4-2, G4-3 as three releases), SV-5. Total about 25 to 35 agent hours.
+SV-9 (any time, small), SV-0, SV-2 (after the legal step) with SV-8, SV-3, SV-7, SV-4 (G4-1, G4-2, G4-3 as three releases; re-weigh after
+CL-15 is measured), SV-5. SV-11 only on Boss's yes. Total about 37 to 49 agent hours.
 
 Last verified: 2026-11-19

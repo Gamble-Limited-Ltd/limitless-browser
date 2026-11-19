@@ -68,6 +68,37 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | TS-1 to TS-8 | F, T1, T3 | gate runner, quiet machine, build cache, A/B early stop, tags, baselines | planned | 08 |
 | AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | planned (Boss, 2026-11-19) | 09 |
 
+New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
+
+| new id | item | status | spec |
+|---|---|---|---|
+| CL-15 | token-level rewriter with AST fallback | measure first (prototype) | 02 |
+| CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
+| CL-17 | libcurl WASM compile check on the device | measure first | 02 |
+| LD-6 | connect to the search engine at boot | planned | 03 |
+| LD-7 | connect while typing | planned | 03 |
+| LD-8 | Lite view (Readability) | planned (D8) | 03 |
+| LD-9 | fast restore after tab discard | planned | 03 |
+| LD-10 | prerender on strong intent | later | 03 |
+| LD-11 | fast search option | Boss decides (D9) | 03 |
+| LD-12 | idle prefetch of likely next pages | later (after LD-2) | 03 |
+| LD-13 | text before fonts (`font-display: swap`) | planned | 03 |
+| LD-14 | lazy embeds | planned | 03 |
+| SV-7 | native fetch lane for public files | planned (privacy line) | 04 |
+| SV-8 | stable lane URLs with a relay cookie | planned | 04 |
+| SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
+| SV-11 | Cloudflare free edge for lanes | Boss decides (D10), later | 04 |
+| TL-6 | leak zoo fixture | planned | 05 |
+| TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
+| BC-9 | site status hints | planned | 06 |
+| MS-8 | field breakdown samples | planned (D11) | 01 |
+| MS-9 | "this page was slow" report | planned | 01 |
+| TS-9 | real-site recordings as fixtures | planned | 08 |
+| TS-10 | rewriter micro-bench per commit | planned | 08 |
+| TS-11 | automatic bisect | planned | 08 |
+| TS-12 | non-timing suites side by side | planned | 08 |
+| AD-4 | admin speed card | planned (after MS-8) | 09 |
+
 ## Release pace (Boss, 2026-11-18)
 Speed items ship as each one is ready, in small releases over days and weeks, not saved up into one big release. Each item keeps its feature switch so a rollback is a build flag, and one item per release pins any speed regression to its change. The release rules still apply (24 h hold after a Minor, at most 2 deploys a day, Boss runs every deploy).
 

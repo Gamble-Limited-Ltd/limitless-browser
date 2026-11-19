@@ -80,6 +80,24 @@ published number is dated, names the device profile and the median and n (SPEED-
 - **Rules:** each release record adds the admin chart's p50 and p90 `page_shown` per device class for the 7 days before and after the
   release. Only aggregate numbers; no change to what is collected.
 
+## MS-8 Field breakdown samples (new, brainstorm G1)
+- **Status:** planned. **Likely time:** 3 h (app + gate). **Tiers:** members (same rules as S9b samples).
+- **Rules:**
+  1. The existing sample (`lbPerfSample`, 1 in 5, at most one per 10 s, members only, off with Data saver or `features.perf=false`) adds:
+     `docMs` (document fetch to last byte), `rwMs` (total rewrite wait), `rwN` (scripts rewritten), `scriptMs` (script stage), `longMs`
+     (longest task during the load), `kb` (bytes received), `relay` (`ours|public|lane-share` in tenths), `hit` (response cache hit
+     share in tenths). Numbers only, rounded.
+  2. Never a URL, host, site, member id or time of day (the gate stores day only, as today).
+  3. Gate `POST /_lb/perf` accepts the new fields (validated, bounded) and `GET perf` returns daily p50 and p90 per field and device class.
+- **Tests:** e2e: the body has exactly the allowed keys; gate unit: bounds, unknown keys dropped.
+
+## MS-9 "This page was slow" report (new, brainstorm G2)
+- **Status:** planned. **Likely time:** 2 h.
+- **Rules:** a menu item after any load that took over 5 s to show: "Tell us this page was slow". It sends that load's MS-8 breakdown plus
+  the site's registrable domain, only on the member's click, through the existing report path (`POST /_lb/report`, category `slow`).
+  The admin Reports card shows it like other reports.
+- **Tests:** e2e: nothing is sent without the click; the body holds the domain, not the URL.
+
 ## Decisions for Boss (also in the master plan)
 - **MS-D1 Official list without YouTube:** YouTube is blocked on every tier since 1.2.2, so it cannot be a speed row. Recommended: replace
   it with **Khan Academy** (school tool, heavy script, fails today with page script errors, so it shows real progress). Other options:

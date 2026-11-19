@@ -88,8 +88,37 @@ Rollback is the build flag.
   to `docs/1.3/DIRECT-LOADS.md` (site, blocked needed, blocked junk, direct, fallback, date). "Needed" = the host is not on the blocklist.
 - **Exit:** the table exists for the current release candidate.
 
+## TL-6 Leak zoo fixture (new, brainstorm E1)
+- **Status:** planned. **Likely time:** 3 h.
+- **Rules:** `tests/fixtures/sites/leakzoo/` holds one page per family (about 50 cases in total): runtime `Image`/`Audio`/`Video`,
+  `srcset` and `<source>` changes, CSS from script (`setProperty`, `cssText`, `insertRule`, `replaceSync`, style text nodes), preload,
+  modulepreload and prefetch links, `navigator.sendBeacon`, `EventSource`, `WebSocket`, `Worker`/`SharedWorker` with `importScripts`,
+  `FontFace`, `import()`, `document.write`, `<meta http-equiv=refresh>`, form posts, `window.open`, SVG `<image href>`, `<object>`,
+  `<embed>`, video `poster`, script-set favicons. Every URL points at a second fixture host (`leak.fixture`). The stack test fails if
+  `leak.fixture` receives any request that did not come through the relay (the fixture server logs the client address: the relay's vs
+  the browser's). Each case is tagged with the TL item that closes it; open cases are `test.fail()` with the item id, so closing one
+  turns the test green and the expected-fail must be removed.
+- **Exit:** every case passes or is marked out of scope in TL-4.
+
+## TL-7 No real service worker from proxied code (new, security, brainstorm E2)
+- **Status:** planned. **Must land before** TL-3's lane goes on and before CL-6 step B. **Likely time:** 3 h.
+- **Why:** proxied pages get a fake `navigator.serviceWorker` (`app/main.js` line 8916). Lane documents (TL-3) and stable script URLs
+  (CL-6 step B) put site content on our own origin at real paths; a page could reach the real API through a fresh `about:blank` or
+  `srcdoc` child frame and register a worker on our origin that outlives the page.
+- **Rules:**
+  1. The runtime installs the fake `navigator.serviceWorker` on every same-origin child window it can reach: on `iframe` insertion
+     (MutationObserver it already has for `processEl`), on `contentWindow` access, and on `window.open` results that are same-origin.
+  2. `sw.js` never answers `/~lb/*` to a request whose `destination` is `serviceworker`, `sharedworker` or `worker` (404), and nginx serves
+     no file under `/~lb/` at all (the lane lives only in the service worker).
+  3. The app's own registration keeps its exact URL check: only `/sw.js` with scope `/`.
+  4. At boot the app lists registrations (`getRegistrations`) and unregisters any registration that is not `/sw.js`, and counts it
+     (`LB_swGuard.stats`), so a worker planted by an older build's gap is removed.
+- **Tests:** e2e: a page tries `iframe.contentWindow.navigator.serviceWorker.register('/~lb/js/x.js')` in four ways (about:blank,
+  srcdoc, `window.open('')`, a nested frame): each gets the fake container; the boot sweep removes a planted registration.
+- **Rollback:** none needed for rules 2 to 4 (pure safety); rule 1 has no switch on purpose.
+
 ## Order
-TL-1 release A, TL-5, then TL-2 items as the table ranks them, then TL-1 release B, then TL-3 gaps and the lane on.
-Total about 20 to 28 agent hours.
+TL-1 release A, TL-6 leak zoo and TL-5, then TL-2 items as the table ranks them, then TL-1 release B, then TL-7 (security, before any
+site content lives on our origin), then TL-3 gaps and the lane on. Total about 26 to 34 agent hours.
 
 Last verified: 2026-11-19
