@@ -180,18 +180,29 @@ const summarize = (list, keys) => {
   return o;
 };
 
+// TS-2: record the 1-minute load average before every rep; above 2.0 wait up to 60 s, then run and flag the rep noisy.
+async function quietRep(env) {
+  const { repNoise } = await import('../../scripts/lib/gate-quiet.mjs');
+  const os = require('os');
+  let waited = 0, n = repNoise(os.loadavg()[0], waited);
+  while (n.wait) { await new Promise((r) => setTimeout(r, 5000)); waited += 5; n = repNoise(os.loadavg()[0], waited); }
+  env.load1.push(Math.round(os.loadavg()[0] * 100) / 100);
+  if (n.noisy) env.noisy++;
+}
+
 test.describe('speed', () => {
   test.skip(process.env.LB_SPEED !== '1', 'set LB_SPEED=1 (and run through deploy/rehearsal/run.sh)');
 
   test('boot, cold and warm page loads', async ({ browser }, testInfo) => {
     test.setTimeout(6 * 60 * 60 * 1000);
     const project = testInfo.project.name;
-    const out = { sha: sha(), project, date: new Date().toISOString(), reps: REPS, publicReps: PUBLIC_REPS, base: BASE, boot: {}, sites: {} };
+    const out = { sha: sha(), project, date: new Date().toISOString(), reps: REPS, publicReps: PUBLIC_REPS, base: BASE, boot: {}, sites: {}, env: { load1: [], noisy: 0 } };
 
     // Boot: cold = sign-in landing in a fresh context, repeat = reload.
     if (!ONLY) {
       const cold = [], repeat = [];
       for (let i = 0; i < REPS; i++) {
+        await quietRep(out.env);
         const { ctx, page } = await openPage(browser, testInfo);
         try {
           await signIn(page);
@@ -213,6 +224,7 @@ test.describe('speed', () => {
       const runs = { cold: [], warm: [] };
       let micro = null;
       for (let i = 0; i < reps; i++) {
+        await quietRep(out.env);
         const { ctx, page, bytes } = await openPage(browser, testInfo);
         try {
           await signIn(page);
@@ -228,6 +240,7 @@ test.describe('speed', () => {
       out.sites[site.name] = { url: site.url, fixture: !!site.fixture, reps, cold: summarize(runs.cold, keys), warm: summarize(runs.warm, keys), ...(micro ? { micro } : {}) };
       console.log(`speed[${project}]: ${site.name.padEnd(14)} cold shown ${out.sites[site.name].cold.shown.median} load ${out.sites[site.name].cold.load.median} ms (${Math.round((out.sites[site.name].cold.rxBytes.median || 0) / 1024)} KB), warm shown ${out.sites[site.name].warm.shown.median} load ${out.sites[site.name].warm.load.median} ms`);
     }
+    console.log(`speed[${project}]: noisy reps ${out.env.noisy} of ${out.env.load1.length}`);
     const dir = path.join(__dirname, '..', '..', 'test-results');
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `speed-${out.sha}-${project}.json`);

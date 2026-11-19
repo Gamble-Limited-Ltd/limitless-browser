@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, stepsFor } from './lib/gate-args.mjs';
+import { pauseAction, inQuietWindow } from './lib/gate-quiet.mjs';
 
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
@@ -53,17 +54,29 @@ const wts = [];
 const mk = (ref, name) => { const w = worktree(ref, name); wts.push(w); return w; };
 const cleanup = () => { for (const w of wts) git('worktree', 'remove', '--force', w); git('worktree', 'prune'); };
 
+// TS-2: pause the 10-minute image prebuild while a speed step runs; the marker says the pause is ours. Removed in finally, also on failure.
+const PAUSE = path.join(HOME, '.gll-prebuild.pause'), MARK = path.join(HOME, '.cache/limitless-gate/paused-by-gate');
+const ageH = (f) => (Date.now() - fs.statSync(f).mtimeMs) / 3600000;
+function quiet(fn) {
+  const act = pauseAction({ pauseExists: fs.existsSync(PAUSE), ours: fs.existsSync(MARK), ageH: fs.existsSync(PAUSE) ? ageH(PAUSE) : 0 });
+  if (act === 'refuse') { console.error(`gate: ${PAUSE} was set by an earlier gate run more than 6 h ago and never removed. Check it, remove it by hand, and start again.`); process.exit(3); }
+  if (!inQuietWindow()) console.warn('gate: warning, outside 01:00 to 05:00 Chicago; other jobs may add noise to the speed rows');
+  if (act === 'take') { fs.mkdirSync(path.dirname(MARK), { recursive: true }); fs.writeFileSync(PAUSE, 'paused by gate.mjs\n'); fs.writeFileSync(MARK, String(process.pid)); }
+  try { return fn(); } finally { if (act === 'take') { fs.rmSync(PAUSE, { force: true }); fs.rmSync(MARK, { force: true }); } }
+}
+const noisy = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')).env?.noisy ?? '?'; } catch { return '?'; } };
+
 const STEP = {
   rwbench: () => ({ skipped: 'not built yet' }),
   e2e: (wt) => { const r = sh('npx playwright test --reporter=line', { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0 }; },
-  speed: (wt, baseWt) => {
+  speed: (wt, baseWt) => quiet(() => {
     const env = { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
     const c = sh('deploy/rehearsal/run.sh --project=chromebook tests/stack/speed.spec.js', { cwd: wt, env: { ...env, LB_SPEED_SHA: sha }, log: 'speed-cand.log' });
     const b = sh('deploy/rehearsal/run.sh --project=chromebook tests/stack/speed.spec.js', { cwd: baseWt, env: { ...env, LB_SPEED_SHA: baseSha }, log: 'speed-base.log' });
     for (const [d, s] of [[wt, sha], [baseWt, baseSha]]) fs.cpSync(path.join(d, `test-results/speed-${s}-chromebook.json`), path.join(OUT, `speed-${s}-chromebook.json`), { force: true });
     const cmp = sh(`node scripts/speed-compare.mjs ${OUT}/speed-${baseSha}-chromebook.json ${OUT}/speed-${sha}-chromebook.json > ${OUT}/speed-compare.txt`, { cwd: wt, log: 'speed-compare.log' });
-    return { r: { min: c.min + b.min + cmp.min }, ok: c.code === 0 && b.code === 0 && cmp.code === 0, note: `cand ${c.min.toFixed(1)} + base ${b.min.toFixed(1)}` };
-  },
+    return { r: { min: c.min + b.min + cmp.min }, ok: c.code === 0 && b.code === 0 && cmp.code === 0, note: `cand ${c.min.toFixed(1)} + base ${b.min.toFixed(1)}; noisy reps cand ${noisy(`${OUT}/speed-${sha}-chromebook.json`)} base ${noisy(`${OUT}/speed-${baseSha}-chromebook.json`)}` };
+  }),
   sites: (wt) => { const r = sh('LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js', { cwd: wt, env: { LB_SPEED_SHA: sha }, log: 'sites.log' }); return { r, ok: r.code === 0 }; },
 };
 
