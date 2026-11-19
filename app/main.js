@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -6641,6 +6641,7 @@ const LB_POPUP = ${JSON.stringify(lbPopupConfig())};
 ${window.LB_videoRuntime ? '(' + window.LB_videoRuntime + ')(' + JSON.stringify(window.LB_videoConfig(baseUrl)) + ');' : ''}   // video cap and one video at a time (app/ui.js)
 const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
 ${window.LB_features.lockdown === true ? "addEventListener('securitypolicyviolation', e => { try { window.top.postMessage({ t: 'cspblock', u: e.blockedURI }, '*'); } catch (_) {} }, true);" : ''}
+const LB_RWGAPS = ${JSON.stringify(window.LB_features.rwGaps === true)};   // L3 (1.3, off by default): route runtime loads the older hooks missed (setAttribute srcset/src/preload, new Audio, CSS url())
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
@@ -7438,6 +7439,8 @@ async function loadMedia() {
 }
 }, configurable: true }); }); });
 
+// L3 (features.rwGaps): new Audio(url) sets the src attribute natively and starts a direct load; build it empty and go through the src setter above
+if (LB_RWGAPS && window.Audio) { const _Aud = window.Audio; const LbAudio = function Audio(src) { const a = document.createElement('audio'); a.preload = 'auto'; if (src !== undefined) a.src = String(src); return a; }; LbAudio.prototype = _Aud.prototype; window.Audio = LbAudio; }
 [HTMLImageElement.prototype, HTMLSourceElement.prototype].forEach(p => { const desc = Object.getOwnPropertyDescriptor(p, 'srcset'); if (!desc) return; Object.defineProperty(p, 'srcset', { get() { return this.getAttribute('srcset') || ''; }, async set(val) { if (!val) { this.setAttribute('srcset', ''); return; } if (this.getAttribute('data-srcset-loading') === val) return; this.setAttribute('data-srcset-loading', val); const parts = val.split(',').map(s => s.trim()); 
 const rewritten = await Promise.all(parts.map(async part => {
   const m = part.match(/^(\\S+)(.*)?$/);
@@ -7733,7 +7736,7 @@ const origAppend = Node.prototype.appendChild;
 const origInsert = Node.prototype.insertBefore;
 
 const origSetAttr = Element.prototype.setAttribute;
-Element.prototype.setAttribute = function(name, value) { const tag = this.tagName; if (tag === 'LINK' && name === 'href' && (this.rel || '').includes('stylesheet')) { if (value && !/^(data:|blob:)/i.test(value)) { this.href = value; return; } } if ((tag === 'IMG' || tag === 'VIDEO' || tag === 'AUDIO' || tag === 'SOURCE') && (name === 'src' || name === 'poster')) { if (value && !/^(data:|blob:)/i.test(value)) { this[name] = value; return; } } if (tag === 'IFRAME' && name === 'src' && value && !/^(data:|blob:|about:|javascript:)/i.test(value)) { if (proxyIframe(this, value)) return; try { _iframeSrcDesc.set.call(this, 'about:blank'); } catch (e) {} return; } return origSetAttr.call(this, name, value); };
+Element.prototype.setAttribute = function(name, value) { const tag = this.tagName; if (LB_RWGAPS && value && !/^(data:|blob:)/i.test(value)) { if ((tag === 'IMG' || tag === 'SOURCE') && name === 'srcset') { this.srcset = value; return; } /*GAP-SCRIPT*/ } if (tag === 'LINK' && name === 'href' && (this.rel || '').includes('stylesheet')) { if (value && !/^(data:|blob:)/i.test(value)) { this.href = value; return; } } if ((tag === 'IMG' || tag === 'VIDEO' || tag === 'AUDIO' || tag === 'SOURCE') && (name === 'src' || name === 'poster')) { if (value && !/^(data:|blob:)/i.test(value)) { this[name] = value; return; } } if (tag === 'IFRAME' && name === 'src' && value && !/^(data:|blob:|about:|javascript:)/i.test(value)) { if (proxyIframe(this, value)) return; try { _iframeSrcDesc.set.call(this, 'about:blank'); } catch (e) {} return; } return origSetAttr.call(this, name, value); };
 
 const processedEls = new WeakMap(); // url -> true, so we re-process if src changed
 // SVG sprite <use> proxying. Sites render <use href="/assets/sprite.svg#icon">;
