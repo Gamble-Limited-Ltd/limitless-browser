@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.3
+
+- Large page scripts are now read with a faster parser. The old parser stays as a fallback, so pages that worked before keep working.
+
 ## 1.2.2
 
 - YouTube is not available in Limitless on any plan. Opening it shows a short note instead, and YouTube videos and pictures inside other sites are blocked too.
