@@ -18,7 +18,9 @@ export function parseArgs(argv) {
         if (k < 1) throw new Error(`bad feature pair "${p}" (K=V)`);
         a.features[p.slice(0, k)] = p.slice(k + 1);
       }
-    } else if (x === '--dry-run') a.dryRun = true;
+    } else if (x === '--steps') { a.steps = v(i++, x).split(',').filter(Boolean); for (const t of a.steps) if (!ALL.includes(t)) throw new Error(`unknown step ${t} (${ALL.join(', ')})`); }
+    else if (x === '--speed-reps') a.speedReps = Number(v(i++, x));
+    else if (x === '--dry-run') a.dryRun = true;
     else if (x.startsWith('--')) throw new Error(`unknown option ${x}`);
     else if (!a.ref) a.ref = x;
     else throw new Error(`unexpected argument ${x}`);
