@@ -1,0 +1,311 @@
+{
+ "_doc": "TS-5. specs: tags per tests/e2e spec file (tags: core boot rewrite router lane images admin botcheck media ui). A spec not listed counts as core. Item tier = core + the item's tags; rc tier = everything. sources: changed path prefix to tags; 'full' forces the whole suite. app/main.js and index.html need the item's own --tags. siteTags: e2e tag to real-sites.json tags (TS-6).",
+ "tags": [
+  "core",
+  "boot",
+  "rewrite",
+  "router",
+  "lane",
+  "images",
+  "admin",
+  "botcheck",
+  "media",
+  "ui"
+ ],
+ "specs": {
+  "admin.spec.js": [
+   "admin"
+  ],
+  "appscript.spec.js": [
+   "rewrite"
+  ],
+  "blocklist.spec.js": [
+   "router"
+  ],
+  "boot.spec.js": [
+   "core",
+   "boot"
+  ],
+  "botcheck.spec.js": [
+   "botcheck"
+  ],
+  "busy.spec.js": [
+   "lane"
+  ],
+  "cache.spec.js": [
+   "lane"
+  ],
+  "ceremony.spec.js": [
+   "admin"
+  ],
+  "chromebook.spec.js": [
+   "boot"
+  ],
+  "compat.spec.js": [
+   "rewrite"
+  ],
+  "connections.spec.js": [
+   "router"
+  ],
+  "curlworker.spec.js": [
+   "router",
+   "rewrite"
+  ],
+  "dlsavings.spec.js": [
+   "media",
+   "images"
+  ],
+  "downloads.spec.js": [
+   "media"
+  ],
+  "errcard.spec.js": [
+   "core"
+  ],
+  "esm.spec.js": [
+   "rewrite"
+  ],
+  "fetchcore.spec.js": [
+   "router"
+  ],
+  "fontpreload.spec.js": [
+   "boot"
+  ],
+  "googlesignin.spec.js": [
+   "botcheck"
+  ],
+  "idb-upgrade.spec.js": [
+   "core"
+  ],
+  "imglane.spec.js": [
+   "images"
+  ],
+  "import.spec.js": [
+   "ui"
+  ],
+  "limits.spec.js": [
+   "router"
+  ],
+  "membership.spec.js": [
+   "admin"
+  ],
+  "membudget.spec.js": [
+   "lane"
+  ],
+  "meriyah.spec.js": [
+   "rewrite"
+  ],
+  "migration.spec.js": [
+   "core"
+  ],
+  "n7-hoverprefetch.spec.js": [
+   "lane"
+  ],
+  "perf.spec.js": [
+   "boot"
+  ],
+  "persistence.spec.js": [
+   "core"
+  ],
+  "pipeline.spec.js": [
+   "rewrite",
+   "lane"
+  ],
+  "plans.spec.js": [
+   "admin"
+  ],
+  "popup.spec.js": [
+   "ui"
+  ],
+  "qprio.spec.js": [
+   "router",
+   "lane"
+  ],
+  "relay-config.spec.js": [
+   "core"
+  ],
+  "relayoff.spec.js": [
+   "router"
+  ],
+  "relaytoken.spec.js": [
+   "router"
+  ],
+  "reonboard.spec.js": [
+   "admin"
+  ],
+  "reqhygiene.spec.js": [
+   "core"
+  ],
+  "router.spec.js": [
+   "router"
+  ],
+  "s3-back.spec.js": [
+   "lane"
+  ],
+  "s3-css.spec.js": [
+   "lane",
+   "rewrite"
+  ],
+  "s3-pagecache.spec.js": [
+   "lane"
+  ],
+  "s3-sites.spec.js": [
+   "rewrite"
+  ],
+  "s3-sleep.spec.js": [
+   "lane"
+  ],
+  "s3-warm.spec.js": [
+   "lane"
+  ],
+  "s3.spec.js": [
+   "lane",
+   "rewrite"
+  ],
+  "savings.spec.js": [
+   "images"
+  ],
+  "skins.spec.js": [
+   "ui"
+  ],
+  "smoke.spec.js": [
+   "core"
+  ],
+  "speedcap.spec.js": [
+   "router",
+   "admin"
+  ],
+  "startpage.spec.js": [
+   "ui"
+  ],
+  "sw.spec.js": [
+   "lane"
+  ],
+  "swdoc.spec.js": [
+   "lane"
+  ],
+  "themes.spec.js": [
+   "ui"
+  ],
+  "trustedtypes.spec.js": [
+   "rewrite"
+  ],
+  "ui-granted.spec.js": [
+   "ui"
+  ],
+  "ui-menu.spec.js": [
+   "ui"
+  ],
+  "ui-settings.spec.js": [
+   "ui"
+  ],
+  "ui-start.spec.js": [
+   "ui"
+  ],
+  "ui-tabs.spec.js": [
+   "ui"
+  ],
+  "ui-themes.spec.js": [
+   "ui"
+  ],
+  "ui-video.spec.js": [
+   "media",
+   "ui"
+  ],
+  "update.spec.js": [
+   "core"
+  ],
+  "visiblefirst.spec.js": [
+   "images"
+  ],
+  "worker.spec.js": [
+   "rewrite"
+  ],
+  "wp4.spec.js": [
+   "ui",
+   "admin"
+  ],
+  "ytblock.spec.js": [
+   "router"
+  ]
+ },
+ "sources": {
+  "app/main.js": "item",
+  "index.html": "item",
+  "app/swlane.js": [
+   "lane"
+  ],
+  "sw.js": [
+   "lane"
+  ],
+  "app/curlproxy.js": [
+   "router",
+   "rewrite"
+  ],
+  "app/ui.js": [
+   "ui"
+  ],
+  "theme/": [
+   "ui"
+  ],
+  "scripts/gen-themes.py": [
+   "ui"
+  ],
+  "vendor/meriyah/": [
+   "rewrite"
+  ],
+  "vendor/acorn/": [
+   "rewrite"
+  ],
+  "vendor/libcurl/": [
+   "router"
+  ],
+  "vendor/blocklist/": [
+   "router"
+  ],
+  "docs/": [],
+  "CHANGELOG.md": [],
+  "package.json": [
+   "core"
+  ],
+  "legal/": [
+   "core"
+  ],
+  "fonts/": [
+   "boot"
+  ],
+  "favicon.svg": [],
+  "tests/lib/": "full",
+  "playwright.config.js": "full",
+  "tests/e2e/helpers": "full",
+  "tests/e2e/s3-helpers.js": "full",
+  "tests/e2e/wispserver.js": "full",
+  "deploy/": "full",
+  "scripts/build-static.sh": "full"
+ },
+ "siteTags": {
+  "rewrite": [
+   "heavyjs",
+   "game"
+  ],
+  "router": [
+   "heavyjs"
+  ],
+  "lane": [
+   "heavyjs"
+  ],
+  "images": [
+   "images"
+  ],
+  "media": [
+   "video"
+  ],
+  "botcheck": [
+   "botcheck",
+   "google"
+  ],
+  "ui": [],
+  "admin": [],
+  "boot": [],
+  "core": []
+ }
+}

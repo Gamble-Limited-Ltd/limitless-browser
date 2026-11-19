@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, stepsFor, cacheKey } from './lib/gate-args.mjs';
 import { prune, cacheable } from './lib/gate-cache.mjs';
+import { selectSpecs, tagsFromDiff } from './lib/gate-tags.mjs';
 import { pauseAction, inQuietWindow, sideBySide } from './lib/gate-quiet.mjs';
 
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -93,11 +94,24 @@ function ensureDist(ref, wt) {
 // A killed run must still release the prebuild pause and its worktrees.
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { fs.rmSync(PAUSE, { force: true }); fs.rmSync(MARK, { force: true }); } catch {} cleanup(); process.exit(130); });
 
-const E2E_CMD = () => 'npx playwright test --reporter=line';
+// TS-5: rc tier = whole suite; item tier = core + the item's tags + changed specs (changed paths via tests/tags.json), full when a shared path changed.
+const TAGS = JSON.parse(fs.readFileSync(path.join(TOOLS, 'tests/tags.json'), 'utf8'));
+let e2eNote = 'full suite';
+const E2E_CMD = (wt) => {
+  const w = process.env.LB_E2E_WORKERS ? ` --workers=${process.env.LB_E2E_WORKERS}` : '';
+  const base = `npx playwright test --reporter=line${w}`;
+  if (args.tier === 'rc') return base;
+  const sel = tagsFromDiff(TAGS, git('diff', '--name-only', `${baseSha}...${sha}`).stdout.split('\n').filter(Boolean), args.tags);
+  if (sel.full) { e2eNote = 'full suite (shared path changed or no --tags for app/main.js)'; return base; }
+  const all = fs.readdirSync(path.join(wt, 'tests/e2e')).filter((f) => f.endsWith('.spec.js'));
+  const files = [...new Set([...selectSpecs(TAGS, all, sel.tags), ...sel.specs.filter((f) => all.includes(f))])];
+  e2eNote = `${files.length} of ${all.length} spec files, tags core+${sel.tags.join('+') || 'none'}`;
+  return `${base} ${files.map((f) => `tests/e2e/${f}`).join(' ')}`;
+};
 
 const STEP = {
   rwbench: () => ({ skipped: 'not built yet' }),
-  e2e: (wt) => { const r = sh(E2E_CMD(wt), { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0 }; },
+  e2e: (wt) => { const cmd = E2E_CMD(wt); const r = sh(cmd, { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0, note: e2eNote }; },
   speed: (wt) => quiet(() => {
     const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
     const env = rc ? { LB_SPEED: '1' } : { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
