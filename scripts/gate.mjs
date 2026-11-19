@@ -21,7 +21,7 @@ try { args = parseArgs(process.argv.slice(2)); } catch (e) { console.error(`gate
 const git = (...a) => spawnSync('git', ['-C', TOOLS, ...a], { encoding: 'utf8' });
 const rev = (r) => { const x = git('rev-parse', '--short=7', `${r}^{commit}`); if (x.status) { console.error(`gate: unknown ref ${r}`); process.exit(2); } return x.stdout.trim(); };
 const sha = rev(args.ref), baseSha = rev(args.base);
-const steps = stepsFor(args.tier);
+const steps = stepsFor(args.tier, args.steps);
 const stamp = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' }).format(new Date()).replace(' ', '_').replace(':', '');
 const OUT = path.join(HOME, 'gll-planning/reports/limitless-speed', `${stamp}-${args.ref.replace(/[^\w.-]/g, '_')}`);
 
@@ -136,6 +136,7 @@ const STEP = {
   speed: (wt) => quiet(() => {
     const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
     const env = rc ? { LB_SPEED: '1' } : { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
+    if (args.speedReps) env.LB_SPEED_REPS = String(args.speedReps);
     const proj = rc ? '' : '--project=chromebook ';
     const run = (dist, s, log) => sh(`deploy/rehearsal/run.sh ${proj}tests/stack/speed.spec.js`, { cwd: wt, env: { ...env, LB_DIST: dist, LB_SPEED_SHA: s }, log });
     const c = run(DIST.cand.dir, sha, 'speed-cand.log');

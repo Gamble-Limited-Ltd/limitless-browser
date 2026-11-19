@@ -32,3 +32,12 @@ test('feature hash is stable for any order, 8 chars, differs on change', () => {
   assert.notEqual(h1, featureHash({ A: '1', B: '3' }));
   assert.equal(cacheKey('deadbee', { B: '2', A: '1' }), `deadbee-${h1}`);
 });
+
+test('--steps filters the tier list; --speed-reps sets reps; unknown step throws', () => {
+  const a = parseArgs(['r', '--tier', 'rc', '--steps', 'speed,sites', '--speed-reps', '7']);
+  assert.deepEqual(a.steps, ['speed', 'sites']); assert.equal(a.speedReps, 7);
+  assert.deepEqual(stepsFor('rc', ['speed', 'sites']), ['speed', 'sites']);
+  assert.deepEqual(stepsFor('rc', ['e2e']), ['e2e']);
+  assert.deepEqual(stepsFor('rc', ['e2e', 'sites']), ['e2e+sites']);
+  assert.throws(() => parseArgs(['r', '--steps', 'bogus']), /step/);
+});

@@ -5,7 +5,7 @@ const TIERS = ['item', 'rc'];
 const STEPS = { item: ['rwbench', 'e2e', 'speed', 'sites'], rc: ['rwbench', 'speed', 'e2e+sites', 'profile', 'bootsize'] };
 
 export function parseArgs(argv) {
-  const a = { ref: null, base: 'main', tier: 'item', tags: [], features: {}, dryRun: false };
+  const a = { ref: null, base: 'main', tier: 'item', tags: [], features: {}, dryRun: false, steps: null, speedReps: null };
   const v = (i, n) => { if (i + 1 >= argv.length) throw new Error(`${n} needs a value`); return argv[i + 1]; };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
@@ -27,7 +27,9 @@ export function parseArgs(argv) {
   return a;
 }
 
-export const stepsFor = (tier) => STEPS[tier];
+const ALL = ['rwbench', 'e2e', 'speed', 'sites', 'profile', 'bootsize'];
+// only = optional filter; a combined step (e2e+sites) keeps just the halves that were asked for
+export const stepsFor = (tier, only = null) => STEPS[tier].map((s) => (only ? s.split('+').filter((p) => only.includes(p)).join('+') : s)).filter(Boolean);
 
 export const featureHash = (pairs) =>
   createHash('sha256').update(Object.keys(pairs).sort().map((k) => `${k}=${pairs[k]}`).join('\n')).digest('hex').slice(0, 8);
