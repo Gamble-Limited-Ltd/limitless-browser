@@ -157,13 +157,26 @@ const STEP = {
   }),
   sites: (wt) => {
     const env = siteEnv(), w = process.env.LB_SITES_WORKERS || '4';
-    const r = sh(`LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=${w} tests/stack/sites.spec.js`, { cwd: wt, env: { ...env, LB_SITES_WORKERS: w, LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'sites.log' });
-    sh(`node scripts/sites-merge.mjs ${sha} > ${OUT}/sites-summary.txt`, { cwd: wt, log: 'sites-merge.log' });
-    for (const f of [`test-results/sites-${sha}.json`]) try { fs.cpSync(path.join(wt, f), path.join(OUT, path.basename(f))); } catch {}
-    // Pass/fail only (timing is reported, never gated): the suite must run to the end and the YouTube blocked card must show. Pass rate is in the note.
-    let ok = r.code === 0, rate = '?';
-    try { const j = JSON.parse(fs.readFileSync(path.join(OUT, `sites-${sha}.json`), 'utf8')); rate = `${j.summary.loaded}/${j.summary.reps} loads over ${j.summary.sites} sites`; const y = j.sites.youtube; if (y && y.loadedCount < y.reps) ok = false; } catch { ok = false; }
-    return { r, ok, note: `${rate}; ${env.LB_SITES_REPS} rep, ${env.LB_SITES_TAGS || 'all sites'}, ${w} workers` };
+    const run = (dist, s, extra, log) => sh(`LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=${w} tests/stack/sites.spec.js`, { cwd: wt, env: { ...env, ...extra, LB_SITES_WORKERS: w, LB_DIST: dist, LB_SPEED_SHA: s }, log });
+    const merge = (s) => { sh(`node scripts/sites-merge.mjs ${s} > ${OUT}/sites-summary-${s}.txt`, { cwd: wt, log: 'sites-merge.log' }); try { return JSON.parse(fs.readFileSync(path.join(wt, `test-results/sites-${s}.json`), 'utf8')); } catch { return null; } };
+    let min = 0;
+    const c = run(DIST.cand.dir, sha, {}, 'sites.log'); min += c.min;
+    let cj = merge(sha);
+    // Base results (same site selection), reused for 12 h. A site that loaded on the base but not on the candidate is a regression;
+    // each is retried once on the candidate alone (never more than once) before it counts.
+    const key = path.join(CACHE, 'sites', `${DIST.base.key}-${env.LB_SITES_REPS}-${env.LB_SITES_TAGS || 'all'}.json`);
+    let bj = null;
+    if (fs.existsSync(key) && Date.now() - fs.statSync(key).mtimeMs < 12 * 3600000) bj = JSON.parse(fs.readFileSync(key, 'utf8'));
+    else { const b = run(DIST.base.dir, baseSha, {}, 'sites-base.log'); min += b.min; bj = merge(baseSha); if (bj) { fs.mkdirSync(path.dirname(key), { recursive: true }); fs.writeFileSync(key, JSON.stringify(bj)); } }
+    const bad = () => Object.keys(cj?.sites || {}).filter((n) => bj?.sites?.[n] && bj.sites[n].loadedCount === bj.sites[n].reps && cj.sites[n].loadedCount < cj.sites[n].reps);
+    let reg = bad();
+    if (reg.length) { const r2 = run(DIST.cand.dir, sha, { LB_SITES_ONLY: reg.join(',') }, 'sites-retry.log'); min += r2.min; cj = merge(sha) || cj; reg = bad(); }
+    if (cj) fs.writeFileSync(path.join(OUT, `sites-${sha}.json`), JSON.stringify(cj));
+    if (bj) fs.writeFileSync(path.join(OUT, `sites-${baseSha}.json`), JSON.stringify(bj));
+    // Pass/fail only (timing is reported, never gated): the suite ran, no site regressed against the base, the YouTube blocked card shows.
+    let ok = c.code === 0 && !!cj && !!bj && reg.length === 0, rate = '?';
+    if (cj) { rate = `cand ${cj.summary.loaded}/${cj.summary.reps}${bj ? `, base ${bj.summary.loaded}/${bj.summary.reps}` : ''} loads over ${cj.summary.sites} sites`; const y = cj.sites.youtube; if (y && y.loadedCount < y.reps) ok = false; }
+    return { r: { min }, ok, note: `${rate}${reg.length ? `; regressed vs base: ${reg.join(' ')}` : ''}; ${env.LB_SITES_REPS} rep, ${env.LB_SITES_TAGS || 'all sites'}, ${w} workers` };
   },
   profile: (wt) => { const r = sh('LB_PROFILE=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/profile.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'profile.log' }); return { r, ok: r.code === 0 }; },
   bootsize: (wt) => { const r = sh('LB_BOOT=1 deploy/rehearsal/run.sh tests/stack/boot-size.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'bootsize.log' }); return { r, ok: r.code === 0 }; },
