@@ -89,8 +89,16 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "rehearsal: building static tree"
-"$REPO/scripts/build-static.sh" "rehearsal-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
+# LB_DIST=<dir> (TS-3): serve a tree scripts/gate.mjs already built (<dir>/dist and <dir>/dist-br) instead of building again.
+if [ -n "${LB_DIST:-}" ]; then
+  [ -d "$LB_DIST/dist" ] && [ -d "$LB_DIST/dist-br" ] || { echo "rehearsal: LB_DIST $LB_DIST has no dist/ and dist-br/" >&2; exit 1; }
+  echo "rehearsal: using prebuilt tree $LB_DIST"
+  rm -rf "$REPO/deploy/web/dist" "$REPO/deploy/web/dist-br"
+  cp -a "$LB_DIST/dist" "$REPO/deploy/web/dist"; cp -a "$LB_DIST/dist-br" "$REPO/deploy/web/dist-br"
+else
+  echo "rehearsal: building static tree"
+  "$REPO/scripts/build-static.sh" "rehearsal-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
+fi
 
 echo "rehearsal: building images (gate from $GATE_CONTEXT)"
 "${DC[@]}" build
