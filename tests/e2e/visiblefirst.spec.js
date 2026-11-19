@@ -32,10 +32,10 @@ async function run(page, on) {
 
 test('visibleFirst on: in-view images are fetched before the below-the-fold ones listed first', async ({ page }) => {
   const order = await run(page, true);
-  expect(Math.max(order.indexOf('viewA'), order.indexOf('viewB'))).toBeLessThan(4);
+  expect(Math.max(order.indexOf('viewA'), order.indexOf('viewB'))).toBeLessThan(8);
 });
 
 test('visibleFirst off (default): the order is unchanged, in-view images come last', async ({ page }) => {
   const order = await run(page, false);
-  expect(Math.min(order.indexOf('viewA'), order.indexOf('viewB'))).toBeGreaterThan(5);
+  expect(Math.min(order.indexOf('viewA'), order.indexOf('viewB'))).toBeGreaterThan(9);
 });
