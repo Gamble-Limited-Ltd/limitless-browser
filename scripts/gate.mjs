@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // TS-1 gate runner (called by gate.sh, which holds the rehearsal lock). Source = <ref> in a throwaway worktree; harness (the
 // rehearsal stack, speed and site suites, fixtures) = this checkout, overlaid on it, so base and candidate always run the same harness.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, stepsFor, cacheKey } from './lib/gate-args.mjs';
 import { prune, cacheable } from './lib/gate-cache.mjs';
-import { pauseAction, inQuietWindow } from './lib/gate-quiet.mjs';
+import { pauseAction, inQuietWindow, sideBySide } from './lib/gate-quiet.mjs';
 
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
@@ -93,24 +93,45 @@ function ensureDist(ref, wt) {
 // A killed run must still release the prebuild pause and its worktrees.
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { fs.rmSync(PAUSE, { force: true }); fs.rmSync(MARK, { force: true }); } catch {} cleanup(); process.exit(130); });
 
+const E2E_CMD = () => 'npx playwright test --reporter=line';
+
 const STEP = {
   rwbench: () => ({ skipped: 'not built yet' }),
-  e2e: (wt) => { const r = sh('npx playwright test --reporter=line', { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0 }; },
-  speed: (wt, baseWt) => quiet(() => {
-    const env = { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
-    const run = (dist, s, log) => sh('deploy/rehearsal/run.sh --project=chromebook tests/stack/speed.spec.js', { cwd: wt, env: { ...env, LB_DIST: dist, LB_SPEED_SHA: s }, log });
+  e2e: (wt) => { const r = sh(E2E_CMD(wt), { cwd: wt, env: { LB_E2E_PORT: '8597' }, log: 'e2e.log' }); return { r, ok: r.code === 0 }; },
+  speed: (wt) => quiet(() => {
+    const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
+    const env = rc ? { LB_SPEED: '1' } : { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
+    const proj = rc ? '' : '--project=chromebook ';
+    const run = (dist, s, log) => sh(`deploy/rehearsal/run.sh ${proj}tests/stack/speed.spec.js`, { cwd: wt, env: { ...env, LB_DIST: dist, LB_SPEED_SHA: s }, log });
     const c = run(DIST.cand.dir, sha, 'speed-cand.log');
-    // Base result reused when a run of the same base build and feature set is under 12 h old (no drift across a night).
-    const cached = path.join(CACHE, 'speed', `${DIST.base.key}-chromebook.json`);
-    const reuse = fs.existsSync(cached) && Date.now() - fs.statSync(cached).mtimeMs < 12 * 3600000;
+    // Base result reused when a run of the same base build, feature set and tier is under 12 h old (no drift across a night).
+    const cached = (p) => path.join(CACHE, 'speed', `${DIST.base.key}-${args.tier}-${p}.json`);
+    const reuse = projects.every((p) => fs.existsSync(cached(p)) && Date.now() - fs.statSync(cached(p)).mtimeMs < 12 * 3600000);
     const b = reuse ? { code: 0, min: 0 } : run(DIST.base.dir, baseSha, 'speed-base.log');
-    if (reuse) fs.copyFileSync(cached, path.join(OUT, `speed-${baseSha}-chromebook.json`));
-    else { fs.copyFileSync(path.join(wt, `test-results/speed-${baseSha}-chromebook.json`), path.join(OUT, `speed-${baseSha}-chromebook.json`)); fs.mkdirSync(path.dirname(cached), { recursive: true }); fs.copyFileSync(path.join(OUT, `speed-${baseSha}-chromebook.json`), cached); }
-    fs.cpSync(path.join(wt, `test-results/speed-${sha}-chromebook.json`), path.join(OUT, `speed-${sha}-chromebook.json`), { force: true });
-    const cmp = sh(`node scripts/speed-compare.mjs ${OUT}/speed-${baseSha}-chromebook.json ${OUT}/speed-${sha}-chromebook.json > ${OUT}/speed-compare.txt`, { cwd: wt, log: 'speed-compare.log' });
-    return { r: { min: c.min + b.min + cmp.min }, ok: c.code === 0 && b.code === 0 && cmp.code === 0, note: `cand ${c.min.toFixed(1)} + base ${reuse ? 'reused' : b.min.toFixed(1)}; noisy reps cand ${noisy(`${OUT}/speed-${sha}-chromebook.json`)} base ${noisy(`${OUT}/speed-${baseSha}-chromebook.json`)}` };
+    let ok = c.code === 0 && b.code === 0, noisyN = 0, cmpMin = 0;
+    for (const p of projects) {
+      const bf = path.join(OUT, `speed-${baseSha}-${p}.json`), cf = path.join(OUT, `speed-${sha}-${p}.json`);
+      if (reuse) fs.copyFileSync(cached(p), bf);
+      else if (b.code === 0) { fs.copyFileSync(path.join(wt, `test-results/speed-${baseSha}-${p}.json`), bf); fs.mkdirSync(path.dirname(cached(p)), { recursive: true }); fs.copyFileSync(bf, cached(p)); }
+      if (c.code === 0) fs.copyFileSync(path.join(wt, `test-results/speed-${sha}-${p}.json`), cf);
+      if (c.code === 0 && b.code === 0) { const cmp = sh(`node scripts/speed-compare.mjs ${bf} ${cf} > ${OUT}/speed-compare-${p}.txt`, { cwd: wt, log: 'speed-compare.log' }); cmpMin += cmp.min; ok = ok && cmp.code === 0; }
+      noisyN += Number(noisy(cf)) || 0;
+    }
+    return { r: { min: c.min + b.min + cmpMin }, ok, note: `cand ${c.min.toFixed(1)} + base ${reuse ? 'reused' : b.min.toFixed(1)}; noisy reps ${noisyN}` };
   }),
   sites: (wt) => { const r = sh('LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'sites.log' }); return { r, ok: r.code === 0 }; },
+  profile: (wt) => { const r = sh('LB_PROFILE=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/profile.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'profile.log' }); return { r, ok: r.code === 0 }; },
+  bootsize: (wt) => { const r = sh('LB_BOOT=1 deploy/rehearsal/run.sh tests/stack/boot-size.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'bootsize.log' }); return { r, ok: r.code === 0 }; },
+  // TS-12: full e2e (no stack, own port) beside the site suite, only with 4 GB or more free; else one after the other.
+  'e2e+sites': async (wt) => {
+    if (!sideBySide(fs.readFileSync('/proc/meminfo', 'utf8'))) { const e = STEP.e2e(wt); const s = STEP.sites(wt); return { r: { min: e.r.min + s.r.min }, ok: e.ok && s.ok, note: 'serial (under 4 GB free)' }; }
+    const t = Date.now();
+    const fd = fs.openSync(path.join(OUT, 'e2e.log'), 'a');
+    const e2e = new Promise((res) => spawn('bash', ['-c', E2E_CMD(wt)], { cwd: wt, env: { ...process.env, LB_E2E_PORT: '8597' }, stdio: ['ignore', fd, fd] }).on('close', (code) => { fs.closeSync(fd); res({ code, min: (Date.now() - t) / 60000 }); }));
+    const s = STEP.sites(wt);
+    const e = await e2e;
+    return { r: { min: (Date.now() - t) / 60000 }, ok: e.code === 0 && s.ok, note: `side by side: e2e ${e.min.toFixed(1)}, sites ${s.r.min.toFixed(1)}` };
+  },
 };
 
 const T0 = Date.now();
@@ -126,8 +147,8 @@ try {
     if (!fs.existsSync(path.join(CACHE, 'dist', base.key))) baseWt = mk(baseSha, 'base');
     const t = Date.now(); DIST.base = baseWt ? ensureDist(baseSha, baseWt) : ensureDist(baseSha, wt); rows.push({ step: 'build base', min: (Date.now() - t) / 60000, verdict: DIST.base.hit ? 'cached' : 'built', note: DIST.base.key });
   }
-  for (const s of steps.flatMap((x) => x.split('+'))) {
-    const x = STEP[s]?.(wt, baseWt);
+  for (const s of steps) {
+    const x = await STEP[s]?.(wt);
     if (!x) { rows.push({ step: s, min: 0, verdict: 'not built', note: '' }); continue; }
     if (x.skipped) { rows.push({ step: s, min: 0, verdict: 'skipped', note: x.skipped }); continue; }
     record(s, x.r, x.ok, x.note);

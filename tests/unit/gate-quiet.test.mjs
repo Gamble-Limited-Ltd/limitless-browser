@@ -21,3 +21,13 @@ test('rep noise: load above 2.0 waits up to 60 s then runs flagged noisy', () =>
   assert.deepEqual(repNoise(2.5, 10), { wait: true, noisy: false });
   assert.deepEqual(repNoise(2.5, 60), { wait: false, noisy: true });
 });
+
+// TS-12: the second suite starts only with 4 GB or more available.
+import { memAvailableGb, sideBySide } from '../../scripts/lib/gate-quiet.mjs';
+test('memAvailableGb reads /proc/meminfo, sideBySide needs 4 GB', () => {
+  const t = 'MemTotal:       19900000 kB\nMemFree:          100000 kB\nMemAvailable:    4300000 kB\n';
+  assert.ok(Math.abs(memAvailableGb(t) - 4.10) < 0.05);
+  assert.equal(sideBySide(t), true);
+  assert.equal(sideBySide('MemAvailable:    3000000 kB\n'), false);
+  assert.equal(sideBySide('garbage'), false);
+});

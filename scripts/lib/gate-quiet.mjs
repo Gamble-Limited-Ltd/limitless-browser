@@ -14,3 +14,7 @@ export function inQuietWindow(d = new Date()) {
 
 // A rep that starts with load1 above 2.0 waits up to 60 s, then runs flagged noisy.
 export const repNoise = (load1, waitedS) => (load1 <= 2.0 ? { wait: false, noisy: false } : waitedS < 60 ? { wait: true, noisy: false } : { wait: false, noisy: true });
+
+// TS-12: run e2e beside the site suite only when 4 GB or more is available (/proc/meminfo text).
+export const memAvailableGb = (meminfo) => { const m = /MemAvailable:\s+(\d+)\s*kB/.exec(meminfo); return m ? Number(m[1]) / 1048576 : 0; };
+export const sideBySide = (meminfo) => memAvailableGb(meminfo) >= 4;
