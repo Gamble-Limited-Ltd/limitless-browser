@@ -10,6 +10,7 @@ import { parseArgs, stepsFor, cacheKey } from './lib/gate-args.mjs';
 import { prune, cacheable } from './lib/gate-cache.mjs';
 import { selectSpecs, tagsFromDiff } from './lib/gate-tags.mjs';
 import { pauseAction, inQuietWindow, sideBySide } from './lib/gate-quiet.mjs';
+import { abVerdict } from './lib/abstat.mjs';
 
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
@@ -26,7 +27,7 @@ const stamp = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Chicago', da
 const OUT = path.join(HOME, 'gll-planning/reports/limitless-speed', `${stamp}-${args.ref.replace(/[^\w.-]/g, '_')}`);
 
 console.log(`gate: ref ${args.ref} (${sha}) base ${args.base} (${baseSha}) tier ${args.tier}${args.tags.length ? ` tags ${args.tags}` : ''}`);
-console.log(`gate: steps ${steps.join(', ')}`);
+console.log(`gate: steps ${steps.join(', ')}${steps.includes('speed') ? (args.ab ? ' (speed: interleaved A/B, TS-4)' : ' (speed: base then candidate, --no-ab)') : ''}`);
 if (args.dryRun) { console.log('gate: dry run, nothing started'); process.exit(0); }
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -133,6 +134,19 @@ const STEP = {
     return skip && r.code === 0 ? { skipped: skip[0].replace('rw-bench: ', '') } : { r, ok: r.code === 0 };
   },
   e2e: (wt) => { const cmd = E2E_CMD(wt); const r = sh(cmd, { cwd: wt, env: { LB_E2E_PORT: freePort() }, log: 'e2e.log' }); return { r, ok: r.code === 0, note: e2eNote }; },
+  // TS-4 (default): base (A) and candidate (B) interleaved in one stack, verdict per row from scripts/lib/abstat.mjs. Never reuses an old base run.
+  speedab: (wt) => quiet(() => {
+    const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
+    const env = { LB_SPEED: '1', LB_SPEED_AB: '1', LB_DIST: DIST.base.dir, LB_DIST_B: DIST.cand.dir, LB_SPEED_SHA_A: baseSha, LB_SPEED_SHA_B: sha, ...(rc ? {} : { LB_SPEED_PUBLIC: '0' }) };
+    const r = sh(`deploy/rehearsal/run.sh ${rc ? '' : '--project=chromebook '}tests/stack/speed.spec.js`, { cwd: wt, env, log: 'speed-ab.log' });
+    const sums = projects.map((p) => {
+      const f = path.join(wt, `test-results/abtest-${baseSha}-${sha}-${p}.json`);
+      try { fs.copyFileSync(f, path.join(OUT, path.basename(f))); for (const s of [baseSha, sha]) fs.copyFileSync(path.join(wt, `test-results/speed-${s}-${p}.json`), path.join(OUT, `speed-${s}-${p}.json`)); return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+    });
+    const v = abVerdict(sums.map((x) => x?.summary), args.tier);
+    const noisyN = sums.reduce((a, x) => a + (x?.env?.noisy || 0), 0);
+    return { r, ok: r.code === 0 && v.ok, note: `${v.note}; noisy reps ${noisyN}` };
+  }),
   speed: (wt) => quiet(() => {
     const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
     const env = rc ? { LB_SPEED: '1' } : { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
@@ -206,7 +220,7 @@ try {
     const t = Date.now(); DIST.base = ensureDist(baseSha, baseWt || wt, true); rows.push({ step: 'build base', min: (Date.now() - t) / 60000, verdict: DIST.base.hit ? 'cached' : 'built', note: DIST.base.key });
   }
   for (const s of steps) {
-    const x = await STEP[s]?.(wt);
+    const x = await STEP[s === 'speed' && args.ab ? 'speedab' : s]?.(wt);
     if (!x) { rows.push({ step: s, min: 0, verdict: 'not built', note: '' }); continue; }
     if (x.skipped) { rows.push({ step: s, min: 0, verdict: 'skipped', note: x.skipped }); continue; }
     record(s, x.r, x.ok, x.note);

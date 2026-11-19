@@ -5,7 +5,7 @@ const TIERS = ['item', 'rc'];
 const STEPS = { item: ['rwbench', 'e2e', 'speed', 'sites'], rc: ['rwbench', 'speed', 'e2e+sites', 'profile', 'bootsize'] };
 
 export function parseArgs(argv) {
-  const a = { ref: null, base: 'main', tier: 'item', tags: [], features: {}, dryRun: false, steps: null, speedReps: null };
+  const a = { ref: null, base: 'main', tier: 'item', tags: [], features: {}, dryRun: false, steps: null, speedReps: null, ab: true };
   const v = (i, n) => { if (i + 1 >= argv.length) throw new Error(`${n} needs a value`); return argv[i + 1]; };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
@@ -20,12 +20,13 @@ export function parseArgs(argv) {
       }
     } else if (x === '--steps') { a.steps = v(i++, x).split(',').filter(Boolean); for (const t of a.steps) if (!ALL.includes(t)) throw new Error(`unknown step ${t} (${ALL.join(', ')})`); }
     else if (x === '--speed-reps') a.speedReps = Number(v(i++, x));
+    else if (x === '--no-ab') a.ab = false;   // TS-4 rollback: base run then candidate run, speed-compare.mjs verdict
     else if (x === '--dry-run') a.dryRun = true;
     else if (x.startsWith('--')) throw new Error(`unknown option ${x}`);
     else if (!a.ref) a.ref = x;
     else throw new Error(`unexpected argument ${x}`);
   }
-  if (!a.ref) throw new Error('usage: gate.sh <ref> [--base <ref>] [--tier item|rc] [--tags a,b] [--features K=V,...] [--dry-run] (ref missing)');
+  if (!a.ref) throw new Error('usage: gate.sh <ref> [--base <ref>] [--tier item|rc] [--tags a,b] [--features K=V,...] [--no-ab] [--dry-run] (ref missing)');
   return a;
 }
 

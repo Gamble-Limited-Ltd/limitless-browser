@@ -192,10 +192,44 @@ async function quietRep(env) {
   if (waited) env.waitedS = (env.waitedS || 0) + waited;
 }
 
+/** One boot rep: cold = sign-in landing in a fresh context, repeat = reload. Throws on failure. */
+async function bootRep(browser, testInfo) {
+  const { ctx, page } = await openPage(browser, testInfo);
+  try {
+    await signIn(page);
+    const cold = await readBoot(page);
+    await page.reload();
+    await page.waitForFunction(() => window.__lbm !== undefined);
+    return { cold, repeat: await readBoot(page) };
+  } finally { await ctx.close(); }
+}
+
+/** One site rep in a fresh context: cold load, then the same URL warm. Throws on failure. */
+async function siteRep(browser, testInfo, site, micro) {
+  const { ctx, page, bytes } = await openPage(browser, testInfo);
+  try {
+    await signIn(page);
+    const cold = await navigate(page, bytes, site.url);
+    const warm = await navigate(page, bytes, site.url);
+    return { cold, warm, micro: micro ? await microBench(page) : null };
+  } finally { await ctx.close(); }
+}
+
+const BOOT_KEYS = ['splash', 'interactive'];
+const SITE_KEYS = [...MARKS, ...EXTRA];
+const writeJson = (name, obj) => {
+  const dir = path.join(__dirname, '..', '..', 'test-results');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, name);
+  fs.writeFileSync(file, JSON.stringify(obj, null, 2));
+  console.log(`speed: wrote ${file}`);
+};
+
 test.describe('speed', () => {
   test.skip(process.env.LB_SPEED !== '1', 'set LB_SPEED=1 (and run through deploy/rehearsal/run.sh)');
 
   test('boot, cold and warm page loads', async ({ browser }, testInfo) => {
+    test.skip(process.env.LB_SPEED_AB === '1', 'A/B mode runs the interleaved test');
     test.setTimeout(6 * 60 * 60 * 1000);
     const project = testInfo.project.name;
     const out = { sha: sha(), project, date: new Date().toISOString(), reps: REPS, publicReps: PUBLIC_REPS, base: BASE, boot: {}, sites: {}, env: { load1: [], noisy: 0 } };
@@ -205,17 +239,10 @@ test.describe('speed', () => {
       const cold = [], repeat = [];
       for (let i = 0; i < REPS; i++) {
         await quietRep(out.env);
-        const { ctx, page } = await openPage(browser, testInfo);
-        try {
-          await signIn(page);
-          cold.push(await readBoot(page));
-          await page.reload();
-          await page.waitForFunction(() => window.__lbm !== undefined);
-          repeat.push(await readBoot(page));
-        } catch (e) { console.log(`speed[${project}]: boot rep ${i + 1} failed: ${String(e).slice(0, 120)}`); }
-        await ctx.close();
+        try { const r = await bootRep(browser, testInfo); cold.push(r.cold); repeat.push(r.repeat); }
+        catch (e) { console.log(`speed[${project}]: boot rep ${i + 1} failed: ${String(e).slice(0, 120)}`); }
       }
-      out.boot = { cold: summarize(cold, ['splash', 'interactive']), repeat: summarize(repeat, ['splash', 'interactive']) };
+      out.boot = { cold: summarize(cold, BOOT_KEYS), repeat: summarize(repeat, BOOT_KEYS) };
       console.log(`speed[${project}]: boot cold splash ${out.boot.cold.splash.median} ms, interactive ${out.boot.cold.interactive.median} ms; repeat splash ${out.boot.repeat.splash.median} ms, interactive ${out.boot.repeat.interactive.median} ms`);
     }
 
@@ -227,27 +254,102 @@ test.describe('speed', () => {
       let micro = null;
       for (let i = 0; i < reps; i++) {
         await quietRep(out.env);
-        const { ctx, page, bytes } = await openPage(browser, testInfo);
         try {
-          await signIn(page);
-          runs.cold.push(await navigate(page, bytes, site.url));
-          runs.warm.push(await navigate(page, bytes, site.url));
-          if (site.micro && i === reps - 1) micro = await microBench(page);
+          const r = await siteRep(browser, testInfo, site, site.micro && i === reps - 1);
+          runs.cold.push(r.cold); runs.warm.push(r.warm); if (r.micro) micro = r.micro;
         } catch (e) {
           console.log(`speed[${project}]: ${site.name} rep ${i + 1} failed: ${String(e).slice(0, 120)}`);
         }
-        await ctx.close();
       }
-      const keys = [...MARKS, ...EXTRA];
+      const keys = SITE_KEYS;
       out.sites[site.name] = { url: site.url, fixture: !!site.fixture, reps, cold: summarize(runs.cold, keys), warm: summarize(runs.warm, keys), ...(micro ? { micro } : {}) };
       console.log(`speed[${project}]: ${site.name.padEnd(14)} cold shown ${out.sites[site.name].cold.shown.median} load ${out.sites[site.name].cold.load.median} ms (${Math.round((out.sites[site.name].cold.rxBytes.median || 0) / 1024)} KB), warm shown ${out.sites[site.name].warm.shown.median} load ${out.sites[site.name].warm.load.median} ms`);
     }
     console.log(`speed[${project}]: noisy reps ${out.env.noisy} of ${out.env.load1.length}`);
-    const dir = path.join(__dirname, '..', '..', 'test-results');
-    fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, `speed-${out.sha}-${project}.json`);
-    fs.writeFileSync(file, JSON.stringify(out, null, 2));
-    console.log(`speed: wrote ${file}`);
+    writeJson(`speed-${out.sha}-${project}.json`, out);
     expect(Object.keys(out.sites).length).toBeGreaterThan(0);
+  });
+
+  // TS-4 (docs/1.3/specs/08-test-speed.md): A and B interleaved in one stack, A then B on even pairs, B then A on odd, each rep in a
+  // fresh context. From pair 4 every gated row (boot splash/interactive, fixture shown/load, cold and warm) gets a verdict from
+  // scripts/lib/abstat.mjs; an item stops when all its rows are decided, at most 9 pairs. Public sites: PUBLIC_REPS pairs, report only.
+  // Env (set by run.sh and gate.mjs): LB_SPEED_AB=1, REHEARSAL_AB_DIR, LB_SPEED_SHA_A, LB_SPEED_SHA_B.
+  test('interleaved A/B', async ({ browser }, testInfo) => {
+    test.skip(process.env.LB_SPEED_AB !== '1', 'set LB_SPEED_AB=1 with LB_DIST and LB_DIST_B');
+    test.setTimeout(8 * 60 * 60 * 1000);
+    const AB = process.env.REHEARSAL_AB_DIR;
+    expect(AB, 'run.sh sets REHEARSAL_AB_DIR when LB_DIST_B is given').toBeTruthy();
+    const { decide, MIN_PAIRS, MAX_PAIRS } = await import('../../scripts/lib/abstat.mjs');
+    const project = testInfo.project.name;
+    const SHA = { a: process.env.LB_SPEED_SHA_A || 'a', b: process.env.LB_SPEED_SHA_B || 'b' };
+    const env = { load1: [], noisy: 0 };
+    const flip = (side) => { const tmp = path.join(AB, `cur.${side}.tmp`); fs.rmSync(tmp, { force: true }); fs.symlinkSync(side, tmp); fs.renameSync(tmp, path.join(AB, 'cur')); };
+    const check = async (page) => page.evaluate(() => fetch('/version.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => j.sha).catch(() => null));
+
+    // Self-check: each side really serves its own tree before any timing.
+    for (const side of ['a', 'b']) {
+      flip(side);
+      const { ctx, page } = await openPage(browser, testInfo);
+      try { await signIn(page); const s = await check(page); expect(String(s)).toContain(SHA[side]); } finally { await ctx.close(); }
+    }
+
+    const items = [];
+    if (!ONLY) items.push({ name: 'boot', gated: true, rows: ['cold splash', 'cold interactive', 'repeat splash', 'repeat interactive'], run: () => bootRep(browser, testInfo) });
+    for (const site of SITES) {
+      if (ONLY && !ONLY.includes(site.name)) continue;
+      if (NO_PUBLIC && !site.fixture) continue;
+      items.push({ name: site.name, site, gated: !!site.fixture, rows: ['cold shown', 'cold load', 'warm shown', 'warm load'], run: (micro) => siteRep(browser, testInfo, site, micro) });
+    }
+    const reps = new Map(items.map((it) => [it.name, { a: [], b: [] }]));
+    const verdicts = {};
+    const val = (rep, row) => { if (!rep) return null; const [ph, m] = row.split(' '); const v = rep[ph]?.[m]; return typeof v === 'number' ? v : null; };
+    const decideItem = (it) => {
+      const r = reps.get(it.name);
+      let done = true;
+      for (const row of it.rows) {
+        const pairs = r.a.map((x, i) => [val(x, row), val(r.b[i], row)]);
+        const d = decide(pairs);
+        verdicts[`${it.name} ${row}`] = { ...d, gated: it.gated, pairs };
+        if (d.verdict === 'continue') done = false;
+      }
+      return done;
+    };
+    const open = new Set(items.map((it) => it.name));
+    for (let p = 0; p < MAX_PAIRS && open.size; p++) {
+      for (const it of items) {
+        if (!open.has(it.name)) continue;
+        const r = reps.get(it.name);
+        for (const side of p % 2 ? ['b', 'a'] : ['a', 'b']) {
+          await quietRep(env);
+          flip(side);
+          try { r[side].push(await it.run(it.site?.micro && p === 0)); }
+          catch (e) { r[side].push(null); console.log(`speed-ab[${project}]: ${it.name} pair ${p + 1} side ${side} failed: ${String(e).slice(0, 120)}`); }
+        }
+        const n = p + 1;
+        if (!it.gated) { if (n >= PUBLIC_REPS) open.delete(it.name); continue; }
+        if (n >= MIN_PAIRS && decideItem(it)) open.delete(it.name);
+      }
+    }
+    for (const it of items) if (it.gated) decideItem(it);
+    flip('a');
+
+    // Per-side files in the old shape, so speed-compare.mjs and the reports keep working.
+    for (const side of ['a', 'b']) {
+      const out = { sha: SHA[side], project, date: new Date().toISOString(), mode: 'ab', reps: REPS, publicReps: PUBLIC_REPS, base: BASE, boot: {}, sites: {}, env };
+      for (const it of items) {
+        const list = reps.get(it.name)[side].filter(Boolean);
+        if (it.name === 'boot') { out.boot = { cold: summarize(list.map((x) => x.cold), BOOT_KEYS), repeat: summarize(list.map((x) => x.repeat), BOOT_KEYS) }; continue; }
+        const micro = list.find((x) => x.micro)?.micro;
+        out.sites[it.name] = { url: it.site.url, fixture: it.gated, reps: list.length, cold: summarize(list.map((x) => x.cold), SITE_KEYS), warm: summarize(list.map((x) => x.warm), SITE_KEYS), ...(micro ? { micro } : {}) };
+      }
+      writeJson(`speed-${SHA[side]}-${project}.json`, out);
+    }
+    const gated = Object.entries(verdicts).filter(([, v]) => v.gated);
+    const count = (k) => gated.filter(([, v]) => v.verdict === k).length;
+    const summary = { pass: count('pass'), fail: count('fail'), inconclusive: count('inconclusive'), rows: gated.length };
+    for (const [row, v] of gated) console.log(`speed-ab[${project}]: ${row.padEnd(28)} ${v.verdict.padEnd(12)} n ${v.n} A ${v.medianA ?? '-'} B ${v.medianB ?? '-'} 90% [${v.lo ?? '-'}, ${v.hi ?? '-'}] bound ${v.bound ?? '-'}${v.reason ? ` (${v.reason})` : ''}`);
+    console.log(`speed-ab[${project}]: ${summary.pass} pass, ${summary.fail} fail, ${summary.inconclusive} inconclusive of ${summary.rows} gated rows; noisy reps ${env.noisy} of ${env.load1.length}`);
+    writeJson(`abtest-${SHA.a}-${SHA.b}-${project}.json`, { shaA: SHA.a, shaB: SHA.b, project, date: new Date().toISOString(), summary, rows: verdicts, env });
+    expect(gated.length).toBeGreaterThan(0);
   });
 });

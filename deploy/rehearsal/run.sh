@@ -100,6 +100,24 @@ else
   "$REPO/scripts/build-static.sh" "rehearsal-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
 fi
 
+# TS-4: LB_DIST_B=<dir> (with LB_DIST) serves both prebuilt trees from the ONE web container, so A and B share the origin, cookies,
+# gate, relay and fixtures. nginx reads /usr/share/nginx/ab/cur/{dist,dist-br}; `cur` is a symlink the speed spec flips (a or b)
+# between reps (REHEARSAL_AB_DIR). A second web service on another port was rejected: the gate's Origin checks and PUBLIC_ORIGIN
+# would refuse it.
+if [ -n "${LB_DIST_B:-}" ]; then
+  [ -n "${LB_DIST:-}" ] && [ -d "$LB_DIST_B/dist" ] && [ -d "$LB_DIST_B/dist-br" ] || { echo "rehearsal: LB_DIST_B needs LB_DIST and its own dist/ and dist-br/" >&2; exit 1; }
+  AB="$RUN_DIR/ab"; mkdir -p "$AB/a" "$AB/b"; chmod 755 "$AB" "$AB/a" "$AB/b"
+  cp -a "$LB_DIST/dist" "$LB_DIST/dist-br" "$AB/a/"; cp -a "$LB_DIST_B/dist" "$LB_DIST_B/dist-br" "$AB/b/"
+  ln -s a "$AB/cur"
+  sed -e 's#/usr/share/nginx/html#/usr/share/nginx/ab/cur/dist#g' -e 's#/usr/share/nginx/br#/usr/share/nginx/ab/cur/dist-br#g' \
+    "$REPO/deploy/web/nginx.conf" > "$RUN_DIR/nginx-ab.conf"
+  printf 'services:\n  web:\n    volumes:\n      - %s:/usr/share/nginx/ab:ro\n      - %s:/etc/nginx/conf.d/default.conf:ro\n' "$AB" "$RUN_DIR/nginx-ab.conf" > "$RUN_DIR/ab.yml"
+  chmod 644 "$RUN_DIR/nginx-ab.conf" "$RUN_DIR/ab.yml"
+  DC+=(-f "$RUN_DIR/ab.yml")
+  export REHEARSAL_AB_DIR="$AB"
+  echo "rehearsal: A/B trees served from $AB (cur -> a)"
+fi
+
 echo "rehearsal: building images (gate from $GATE_CONTEXT)"
 "${DC[@]}" build
 
@@ -117,5 +135,5 @@ done
 echo "rehearsal: running stack tests"
 cd "$REPO"
 REHEARSAL_VPS_PORT="$REHEARSAL_VPS_PORT" REHEARSAL_BASE="http://127.0.0.1:$REHEARSAL_WEB_PORT" REHEARSAL_MOCK="http://127.0.0.1:$REHEARSAL_MOCK_PORT" \
-  REHEARSAL_PROJECT="$PROJECT" REHEARSAL_COMPOSE_FILE="$HERE/docker-compose.rehearsal.yml" \
+  REHEARSAL_PROJECT="$PROJECT" REHEARSAL_COMPOSE_FILE="$HERE/docker-compose.rehearsal.yml" REHEARSAL_AB_DIR="${REHEARSAL_AB_DIR:-}" \
   npx playwright test -c playwright.stack.config.js "$@" || { "${DC[@]}" logs --tail 60 lbgate web >&2; exit 1; }

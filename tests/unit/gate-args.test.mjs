@@ -41,3 +41,8 @@ test('--steps filters the tier list; --speed-reps sets reps; unknown step throws
   assert.deepEqual(stepsFor('rc', ['e2e', 'sites']), ['e2e+sites']);
   assert.throws(() => parseArgs(['r', '--steps', 'bogus']), /step/);
 });
+
+test('A/B speed step is the default; --no-ab turns it off', () => {
+  assert.equal(parseArgs(['r']).ab, true);
+  assert.equal(parseArgs(['r', '--no-ab']).ab, false);
+});
