@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.5
+
+- Behind-the-scenes groundwork for keeping all page traffic inside Limitless. Nothing changes for you yet: the new protections ship switched off.
+
 ## 1.2.2
 
 - YouTube is not available in Limitless on any plan. Opening it shows a short note instead, and YouTube videos and pictures inside other sites are blocked too.
