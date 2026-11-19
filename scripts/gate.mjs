@@ -141,7 +141,7 @@ const STEP = {
     const run = (dist, s, log) => sh(`deploy/rehearsal/run.sh ${proj}tests/stack/speed.spec.js`, { cwd: wt, env: { ...env, LB_DIST: dist, LB_SPEED_SHA: s }, log });
     const c = run(DIST.cand.dir, sha, 'speed-cand.log');
     // Base result reused when a run of the same base build, feature set and tier is under 12 h old (no drift across a night).
-    const cached = (p) => path.join(CACHE, 'speed', `${DIST.base.key}-${args.tier}-r${env.LB_SPEED_REPS || 'full'}-${p}.json`);
+    const cached = (p) => path.join(CACHE, 'speed', `${DIST.base.key}-${args.tier}-r${env.LB_SPEED_REPS || 'full'}-${process.env.LB_SPEED_TIER || 'plain'}-${p}.json`);
     const reuse = projects.every((p) => fs.existsSync(cached(p)) && Date.now() - fs.statSync(cached(p)).mtimeMs < 12 * 3600000);
     const b = reuse ? { code: 0, min: 0 } : run(DIST.base.dir, baseSha, 'speed-base.log');
     let ok = c.code === 0 && b.code === 0, noisyN = 0, cmpMin = 0;
