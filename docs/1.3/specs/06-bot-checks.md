@@ -84,7 +84,8 @@ Research: `docs/1.3/research/botcheck-2026-11-19.md` (Sonnet, sources inside), a
 - **Status:** partly existing. **Likely time:** 1 h of docs plus Boss steps.
 - **Rules and steps:**
   1. Reverse DNS of the VPS address set to `relay.taps-holdings.org` with a matching forward record (**Boss step** in the RackNerd panel;
-     already proposed in 1.1, still not done; rollback = set it back).
+     rollback = set it back). **Done 2026-11-19:** Boss set it; checked the same day, 1.1.1.1 and 8.8.8.8 answer `relay.taps-holdings.org`
+     for `107.173.50.59` and the forward record points back (forward-confirmed).
   2. No abuse page (Boss, 2026-11-19: reverse DNS only).
   3. Per-member limits already exist (gate token buckets, socket cap 8, data caps, abuse throttle); add one counter: requests per minute
      per member over 600 sustained for 5 minutes raises the existing abuse alert (no automatic block beyond today's throttle).

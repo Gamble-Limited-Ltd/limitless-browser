@@ -50,7 +50,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | BC-3b | K2 | YouTube blocked card | ready in 1.2.2 | 06 |
 | BC-4 | J1, B1, 7.1 | challenge experiment, then cards per kind | planned | 06 |
 | BC-5 | J2 | keep the member's own pass | planned (check first) | 06 |
-| BC-6 | J3 | relay reputation (rDNS, abuse page, counter) | planned | 06 |
+| BC-6 | J3 | relay reputation (rDNS, abuse page, counter) | rDNS done 2026-11-19 (forward-confirmed); no abuse page (Boss); request counter planned | 06 |
 | BC-7 | B2, T3 | challenges per site and vantage | planned | 06 |
 | BC-8 | B3, 7.3 | private search page | later (CPU budget) | 06 |
 | (none) | B4, 7.4 | home egress | dropped (Boss, 2026-11-19) | 06 |
