@@ -36,6 +36,8 @@ const sh = (cmd, { cwd, env = {}, log }) => {
   const t = Date.now();
   const r = spawnSync('bash', ['-c', cmd], { cwd, env: { ...process.env, ...env }, stdio: ['ignore', fd, fd] });
   fs.closeSync(fd);
+  // A step killed by TERM or INT (gate.sh forwards them to the process group): stop at once, release the pause, drop the worktrees.
+  if (r.signal || r.status === 130 || r.status === 143) { try { fs.rmSync(PAUSE, { force: true }); fs.rmSync(MARK, { force: true }); } catch {} cleanup(); console.error('gate: interrupted'); process.exit(130); }
   return { code: r.status ?? 1, min: (Date.now() - t) / 60000 };
 };
 const record = (step, r, ok, note = '') => { rows.push({ step, min: r.min, verdict: ok ? 'pass' : 'FAIL', note }); console.log(`gate: ${step.padEnd(10)} ${r.min.toFixed(1)} min ${ok ? 'pass' : 'FAIL'} ${note}`); };
@@ -116,7 +118,7 @@ const E2E_CMD = (wt) => {
   if (sel.full) { e2eNote = 'full suite (shared path changed or no --tags for app/main.js)'; return base; }
   const all = fs.readdirSync(path.join(wt, 'tests/e2e')).filter((f) => f.endsWith('.spec.js'));
   const files = [...new Set([...selectSpecs(TAGS, all, sel.tags), ...sel.specs.filter((f) => all.includes(f))])];
-  e2eNote = `${files.length} of ${all.length} spec files, tags core+${sel.tags.join('+') || 'none'}`;
+  e2eNote = `${files.length} of ${all.length} spec files, tags core+${sel.tags.filter((t) => t !== 'core').join('+') || 'none'}`;
   return `${base} ${files.map((f) => `tests/e2e/${f}`).join(' ')}`;
 };
 

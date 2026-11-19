@@ -180,14 +180,16 @@ const summarize = (list, keys) => {
   return o;
 };
 
-// TS-2: record the 1-minute load average before every rep; above 2.0 wait up to 60 s, then run and flag the rep noisy.
+// TS-2: record load1 before every rep; while other jobs keep the CPU over 35 percent busy wait up to 60 s, then run and flag the rep noisy.
 async function quietRep(env) {
-  const { repNoise } = await import('../../scripts/lib/gate-quiet.mjs');
-  const os = require('os');
-  let waited = 0, n = repNoise(os.loadavg()[0], waited);
-  while (n.wait) { await new Promise((r) => setTimeout(r, 5000)); waited += 5; n = repNoise(os.loadavg()[0], waited); }
+  const { repNoise, cpuBusy } = await import('../../scripts/lib/gate-quiet.mjs');
+  const os = require('os'), fs = require('fs');
+  const sample = async () => { const a = fs.readFileSync('/proc/stat', 'utf8'); await new Promise((r) => setTimeout(r, 1000)); return cpuBusy(a, fs.readFileSync('/proc/stat', 'utf8')); };
+  let waited = 0, n = repNoise(await sample(), waited);
+  while (n.wait) { await new Promise((r) => setTimeout(r, 4000)); waited += 5; n = repNoise(await sample(), waited); }
   env.load1.push(Math.round(os.loadavg()[0] * 100) / 100);
   if (n.noisy) env.noisy++;
+  if (waited) env.waitedS = (env.waitedS || 0) + waited;
 }
 
 test.describe('speed', () => {

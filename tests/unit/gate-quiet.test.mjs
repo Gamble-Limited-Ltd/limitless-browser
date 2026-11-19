@@ -1,7 +1,7 @@
 // TS-2: prebuild pause decisions, quiet window, noisy-rep rule.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pauseAction, inQuietWindow, repNoise } from '../../scripts/lib/gate-quiet.mjs';
+import { pauseAction, inQuietWindow, repNoise, cpuBusy } from '../../scripts/lib/gate-quiet.mjs';
 
 test('pause: take when absent, leave when someone else made it, refuse when ours is stale', () => {
   assert.equal(pauseAction({ pauseExists: false, ours: false, ageH: 0 }), 'take');
@@ -16,10 +16,17 @@ test('quiet window is 01:00 to 05:00 Chicago', () => {
   assert.equal(inQuietWindow(new Date('2026-11-19T06:30:00Z')), false); // 00:30 CST
 });
 
-test('rep noise: load above 2.0 waits up to 60 s then runs flagged noisy', () => {
-  assert.deepEqual(repNoise(0.5, 0), { wait: false, noisy: false });
-  assert.deepEqual(repNoise(2.5, 10), { wait: true, noisy: false });
-  assert.deepEqual(repNoise(2.5, 60), { wait: false, noisy: true });
+test('rep noise: CPU busy above 35 percent waits up to 60 s, then runs flagged noisy', () => {
+  assert.deepEqual(repNoise(0.1, 0), { wait: false, noisy: false });
+  assert.deepEqual(repNoise(0.5, 10), { wait: true, noisy: false });
+  assert.deepEqual(repNoise(0.5, 60), { wait: false, noisy: true });
+});
+
+test('cpuBusy from two /proc/stat samples (idle + iowait count as idle)', () => {
+  const a = 'cpu  100 0 100 800 0 0 0 0 0 0\ncpu0 1 1 1 1 0 0 0 0 0 0\n';
+  const b = 'cpu  200 0 200 1000 0 0 0 0 0 0\n';
+  assert.equal(cpuBusy(a, b), 0.5);
+  assert.equal(cpuBusy(a, a), 0);
 });
 
 // TS-12: the second suite starts only with 4 GB or more available.
