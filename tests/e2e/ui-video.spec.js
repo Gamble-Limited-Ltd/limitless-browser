@@ -14,6 +14,7 @@ const cardinal = (limits, plan) => me({ tier: 'cardinal' }, { tier: 'cardinal', 
 async function setup(page, member) {
   const errors = await bootMember(page, member);
   await page.evaluate(SETUP);
+  await page.evaluate(() => { window.LB_features.ytBlock = false; });   // K2 blocks YouTube; these tests exercise the dormant YouTube player cap, which a ytBlock=false build still runs
   return errors;
 }
 async function load(page, url, html) {
