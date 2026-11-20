@@ -28,7 +28,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
 | LD-1 | G1 | visible-first images | ready in 1.2.2, OFF | 03 |
-| LD-2 | N7, 2.4 | hover prefetch | built (`speed/1.3-quick`); gate FAILED (fx-app, fx-frames +15 to +29 percent), fix first | 03 |
+| LD-2 | N7, 2.4 | hover prefetch | built (`speed/1.3-quick`); gate FAILED (fx-app, fx-frames +15 to +29 percent); 2026-11-20 code review: N7 is inert on those fixtures (no links, no hover), quiet 11-19 reruns are inside baseline; rerun fx-app and fx-frames alone on a quiet machine, on vs off, 7 reps; treat as noise unless that shows a delta | 03 |
 | LD-3 | H2, 4.3 | streamed documents | measure first (LD-3a) | 03 |
 | LD-4 | H1 | warm connections | planned | 03 |
 | LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; measure | 03 |
@@ -72,7 +72,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 
 | new id | item | status | spec |
 |---|---|---|---|
-| CL-15 | token-level rewriter with AST fallback | measure first (prototype) | 02 |
+| CL-15 | token-level rewriter with AST fallback | prototype done on `proto/cl15` (`45a500c`, docs/1.3/CL15-PROTOTYPE.md): 148 of 148 byte-identical on 74 real bundles, about 18x faster than acorn/meriyah on the 5 biggest (node, 1x); golden 38-bundle corpus still to run, then build | 02 |
 | CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
 | LD-6 | connect to the search engine at boot | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |
