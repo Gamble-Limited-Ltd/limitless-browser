@@ -52,6 +52,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
   loads, no uncaught page errors, title set, address bar accepts input). It does not replace manual checks: also load
   the page, check the console, and exercise the touched feature.
 - Full-stack rehearsal: `npm run test:stack` (`deploy/rehearsal/run.sh`). Anything that starts it: `flock /tmp/limitless-rehearsal.lock ...`.
+- Leak zoo (TL-6, `tests/e2e/leakzoo.spec.js`, `docs/1.3/LEAKZOO.md`): 65 ways a page loads outside the proxy; known leaks are `test.fail()` in `KNOWN_LEAKS`, a new leak fails `npm test`. Use `LB_E2E_PORT=` and filter by file path, not by the word leakzoo (the worktree path matches).
 - Test tiers (docs/1.0/TESTING.md section 6): `npm test` (e2e, `fullyParallel`), `npm run test:speed:quick` (chromebook, fixtures, 3 reps), `npm run test:sites:smoke` (12 sites), release gate `npm run test:speed` + `npm run test:sites`; `scripts/speed-nightly.sh` runs the gate set unattended.
 - Static tree: `scripts/build-static.sh <sha>` (index.html, patcher.html, sw.js, vendor/, fonts/, theme/, legal/, app/ when present,
   favicon.svg, CHANGELOG.md, version.json; gzip + brotli). It also stamps `<sha>` into the dist copy of `index.html` and `sw.js` (and the service worker precache list).
