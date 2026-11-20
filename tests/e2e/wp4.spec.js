@@ -41,11 +41,10 @@ test.describe('plans page', () => {
     expect(errors).toEqual([]);
   });
 
-  test('no prices anywhere while plans are closed; paid buttons say so and are disabled', async ({ page }) => {
+  test('plans closed: paid buttons say "Not open yet" and are disabled (prices now show, see plans.spec.js)', async ({ page }) => {
     await plans(page, baseMe({ plansOpen: false }));
-    await expect(page.locator('#lbPlans')).not.toContainText('$');
     await expect(page.locator('.lb-pl-card[data-tier="cardinal"] .lb-pl-go')).toBeDisabled();
-    await expect(page.locator('.lb-pl-card[data-tier="cardinal"]')).toContainText('Not open for sale yet');
+    await expect(page.locator('.lb-pl-card[data-tier="cardinal"] .lb-pl-go')).toHaveText('Not open yet');
   });
 
   test('prices show when plans are open', async ({ page }) => {

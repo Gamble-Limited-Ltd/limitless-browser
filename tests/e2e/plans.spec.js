@@ -90,6 +90,53 @@ test('plans not open: the page still informs, but there is no form and no trial 
   await expect(page.locator('#lbPlansTrial')).toHaveCount(0);
 });
 
+const NOTE = 'Plans are not on sale yet. Prices, data amounts and benefits can still change before they open. Estimated speeds will be added when they are ready.';
+
+test('plans closed with catalog prices: cards and table show prices and amounts, note on top, buttons stay closed', async ({ page }) => {
+  const posts = await mock(page, () => baseMe({ plansOpen: false, catalog: { ...catalog, cardinal: { ...catalog.cardinal, priceUsdYear: 15, weeklyGb: 10 }, prime: { ...catalog.prime, priceUsdYear: 25, weeklyGb: 20, monthlyGb: 0 } } }));
+  await boot(page);
+  await openPlans(page);
+  await expect(page.locator('#lbPlansNotice')).toHaveText(NOTE);
+  const c = page.locator('.lb-pl-card[data-tier="cardinal"]'), p = page.locator('.lb-pl-card[data-tier="prime"]');
+  await expect(c).toContainText('$15 per year');
+  await expect(c).toContainText('10 GB per week');
+  await expect(p).toContainText('$25 per year');
+  await expect(p).toContainText('20 GB per week');
+  await expect(page.locator('#lbPlans')).not.toContainText('Not open for sale yet');
+  for (const card of [c, p]) { await expect(card.locator('.lb-pl-go')).toHaveText('Not open yet'); await expect(card.locator('.lb-pl-go')).toBeDisabled(); }
+  const row = page.locator('#lbPlansTable tr', { has: page.locator('th[scope=row]', { hasText: 'Price' }) });
+  await expect(row).toContainText('Free');
+  await expect(row).toContainText('$15 per year');
+  await expect(row).toContainText('$25 per year');
+  await expect(page.locator('#lbPlansRequest')).toContainText('not open for requests yet');
+  await expect(page.locator('#lbPlansNote')).toHaveCount(0);
+  await expect(page.locator('#lbPlans')).not.toContainText(/estimate(?!d speeds will)/i);
+  expect(posts).toEqual([]);
+});
+
+test('plans closed and the catalog has no price for a tier: nothing is shown for it', async ({ page }) => {
+  await mock(page, () => baseMe({ plansOpen: false, catalog: { ...catalog, cardinal: { ...catalog.cardinal, priceUsdYear: null }, prime: { ...catalog.prime, priceUsdYear: undefined } } }));
+  await boot(page);
+  await openPlans(page);
+  await expect(page.locator('#lbPlansNotice')).toHaveText(NOTE);
+  for (const t of ['cardinal', 'prime']) {
+    await expect(page.locator('.lb-pl-card[data-tier="' + t + '"] .lb-pl-pr')).toHaveText('');
+    await expect(page.locator('.lb-pl-card[data-tier="' + t + '"]')).not.toContainText('$');
+  }
+  await expect(page.locator('#lbPlans')).not.toContainText('Not open for sale yet');
+  await expect(page.locator('#lbPlansTable')).not.toContainText('$');
+});
+
+test('plans open: no closed-state note, no extra price row, prices on the cards as before', async ({ page }) => {
+  await mock(page, () => baseMe());
+  await boot(page);
+  await openPlans(page);
+  await expect(page.locator('#lbPlansNotice')).toHaveCount(0);
+  await expect(page.locator('#lbPlansTable th[scope=row]', { hasText: /^Price$/ })).toHaveCount(0);
+  await expect(page.locator('.lb-pl-card[data-tier="cardinal"]')).toContainText('$15 per year');
+  await expect(page.locator('.lb-pl-card[data-tier="cardinal"] .lb-pl-go')).toHaveText('Ask for Cardinal');
+});
+
 test('account panel: tier, paid-until, usage, top-up, fallback line, receipts, decline wait', async ({ page }) => {
   const until = Date.now() + 100 * DAY;
   await mock(page, () => baseMe(

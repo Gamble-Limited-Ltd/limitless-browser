@@ -4,6 +4,7 @@ What changed, in plain language. Newest first.
 
 ## 1.2.6
 
+- The Plans page now shows prices and what each plan includes. Plans are not on sale yet.
 - Big scripts on a page are read faster, so heavy sites start sooner.
 - Paid plans now use up to six parallel connections per page (other plans stay at four), so pages with many files load faster.
 

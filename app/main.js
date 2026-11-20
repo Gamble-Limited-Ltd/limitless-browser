@@ -4224,7 +4224,8 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 const hoursOf = (m) => (m >= 60 ? m / 60 + ' hours' : m + ' minutes');
                 const fileOf = (c) => (c.downloadMbPerFile >= 1024 ? c.downloadMbPerFile / 1024 + ' GB' : c.downloadMbPerFile + ' MB');
                 const dataOf = (c) => (c.weeklyGb ? c.weeklyGb + ' GB per week' : c.monthlyGb ? c.monthlyGb + ' GB per month' : null);
-                const plPrice = (me, t) => { const p = me.plan || {}, c = (p.catalog || {})[t]; return t !== 'ordinal' && !p.plansOpen ? 'Not open for sale yet' : money(c ? c.priceUsdYear : null); };
+                // Closed: a paid tier shows its catalog price only when the catalog has one (no price, nothing shown). Open: unchanged.
+                const plPrice = (me, t) => { const p = me.plan || {}, c = (p.catalog || {})[t]; return t !== 'ordinal' && !p.plansOpen ? (c && c.priceUsdYear > 0 ? money(c.priceUsdYear) : '') : money(c ? c.priceUsdYear : null); };
 
                 function lbPlansCatalog(me) {
                     const p = me.plan || {}, cat = p.catalog || {};
@@ -4259,6 +4260,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                     const cat = (me.plan || {}).catalog || {}, V = 'Varies, not promised';
                     const T = LB_TIERS.filter((t) => cat[t]);
                     const rows = [
+                        ...((me.plan || {}).plansOpen ? [] : [['Price', (t, c) => plPrice(me, t)]]),
                         ['Loading'],
                         ['Relay', (t) => (t === 'ordinal' ? 'Public relays' : 'Our own relay')],
                         ['Speed', (t, c) => (c.speedMbps ? (t === 'ordinal' ? c.speedMbps + ' Mbit/s in the app' : 'Up to about ' + c.speedMbps + ' Mbit/s') : V)],
@@ -4422,6 +4424,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                     const hero = el('div', 'lb-pl-hero');
                     hero.append(el('span', 'lb-pl-eb', 'Plans'), el('h1', '', 'Faster loading on our own relay.'), el('p', '', 'Typical limits for each plan. They may change with notice.' + (open ? ' Prices are per year.' : ' Paid plans are not open for sale yet.')));
                     inner.appendChild(hero);
+                    if (!open) { const nt = el('p', 'lb-wn-state', 'Plans are not on sale yet. Prices, data amounts and benefits can still change before they open. Estimated speeds will be added when they are ready.'); nt.id = 'lbPlansNotice'; inner.appendChild(nt); }
                     inner.appendChild(lbPlansCatalog(me));
                     inner.appendChild(el('h2', 'lb-pl-h', 'Side by side')); inner.appendChild(lbPlansTable(me));
                     inner.appendChild(el('h2', 'lb-pl-h', 'What each step adds')); inner.appendChild(lbPlansAdds(me));
