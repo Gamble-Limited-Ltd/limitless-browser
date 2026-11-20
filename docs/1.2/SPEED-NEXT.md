@@ -61,7 +61,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | MS-1 | 0.1 | native column | planned | 01 |
 | MS-2 | 0.2 | in-app bench for the school Chromebook | planned | 01 |
 | MS-3 | 0.3 | steadier gate | moved to TS-2, TS-4 | 08 |
-| MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | accounts made 2026-11-19 (lbtest No. 0111 Cardinal $0, lbtest-free No. 0112 Ordinal; credentials `~/.config/gll-cloud/lbtest.env`); lane planned | 01 |
+| MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | accounts made 2026-11-19 (lbtest No. 0111 Cardinal $0, lbtest-free No. 0112 Ordinal; credentials `~/.config/gll-cloud/lbtest.env`); lane planned; 2026-11-20 Boss OK: the school-email rule is lifted for the two addresses `lbtest@lbtest.invalid` and `lbtest-free@lbtest.invalid` (GATE `email-exceptions`), unblocked | 01 |
 | MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | planned | 01 |
 | MS-6 | Phase 0 exit | "x native" table per Minor | planned | 01 |
 | MS-7 | S9b samples | field numbers per release | exists | 01 |
@@ -86,7 +86,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | LD-14 | lazy embeds | planned | 03 |
 | SV-7 | native fetch lane for public files | planned (privacy line) | 04 |
 | SV-8 | stable lane URLs with a relay cookie | planned | 04 |
-| SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
+| SV-9 | VPS network tuning (BBR, buffers, unbound) | done 2026-11-20 (BBR/fq/buffers already live since 11-16; unbound serve-expired added; before/after MS-4 pending) | 04 |
 | SV-11 | Cloudflare free edge for lanes | spec written; go and DNS open (Boss) | 04 |
 | TL-6 | leak zoo fixture | planned | 05 |
 | TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
