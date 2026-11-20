@@ -42,7 +42,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | TL-1 | L1, L3 | lockdown CSP and 3 rewriter gaps | release A shipped in 1.2.5 (`cec4d6f`, 2026-11-19 14:28, switches OFF); release B (on) planned | 05 |
 | TL-2 | L3 rest | remaining rewriter gaps | planned | 05 |
 | TL-3 | L2, N5, 4.1, 4.2 | SW lane gaps, then lane on | lane shipped 1.2.0 OFF; gaps planned | 05 |
-| TL-4 | L4 | out of scope, documented | planned (docs) | 05 |
+| TL-4 | L4 | out of scope, documented | documented (`docs/1.3/OUT-OF-SCOPE.md`), wording for Boss | 05 |
 | TL-5 | (new) | direct-load table | planned | 05 |
 | BC-1 | 1.1 Part A | human-check detector | shipped 1.1.0 | 06 |
 | BC-2 | 1.1 Part B, J4 | request hygiene | shipped 1.1.0 | 06 |
@@ -88,7 +88,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | SV-8 | stable lane URLs with a relay cookie | planned | 04 |
 | SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
 | SV-11 | Cloudflare free edge for lanes | spec written; go and DNS open (Boss) | 04 |
-| TL-6 | leak zoo fixture | planned | 05 |
+| TL-6 | leak zoo fixture | built on `tools/1.3-leakzoo` (`31bad31`, 65 cases, 34 known leaks), not merged | 05 |
 | TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
 | BC-9 | site status hints | planned | 06 |
 | MS-8 | field breakdown samples | planned (Boss yes) | 01 |

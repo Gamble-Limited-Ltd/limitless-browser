@@ -77,6 +77,7 @@ Rollback is the build flag.
 - **Rollback:** `LB_FEATURE_SWDOC=false`.
 
 ## TL-4 Out of scope, documented (was L4)
+- **Status:** documented 2026-11-20 in `docs/1.3/OUT-OF-SCOPE.md` (help-text line proposed there, Boss approves the wording before it ships).
 - The browser's own requests that no page code makes: the tab favicon of the Limitless app itself, extensions installed in the member's
   Chrome, DNS prefetch outside the page (lockdown stops page-level `dns-prefetch`). Say so in the help text and the privacy line.
 - The privacy line "nothing loads outside Limitless" may be used only when TL-1 release B and TL-3 are on (Boss approves the wording).
@@ -89,7 +90,10 @@ Rollback is the build flag.
 - **Exit:** the table exists for the current release candidate.
 
 ## TL-6 Leak zoo fixture (new, brainstorm E1)
-- **Status:** planned. **Likely time:** 3 h.
+- **Status:** built 2026-11-20 (branch `tools/1.3-leakzoo`): `tests/e2e/leakzoo.spec.js` + `leakzoo-cases.js`, 65 cases, results in
+  `docs/1.3/LEAKZOO.md`. Built as an e2e test (stub curl plus `context.route`, like `swdoc.spec.js`), not as the `tests/fixtures/sites/leakzoo/`
+  stack pages: the e2e form runs in 100 s with no stack. 34 cases leak today and are `test.fail()` with their closing item. The stack variant
+  with a real `leak.fixture` host and the relay-address check stays open (low value until TL-3 lane is on). **Likely time:** 3 h.
 - **Rules:** `tests/fixtures/sites/leakzoo/` holds one page per family (about 50 cases in total): runtime `Image`/`Audio`/`Video`,
   `srcset` and `<source>` changes, CSS from script (`setProperty`, `cssText`, `insertRule`, `replaceSync`, style text nodes), preload,
   modulepreload and prefetch links, `navigator.sendBeacon`, `EventSource`, `WebSocket`, `Worker`/`SharedWorker` with `importScripts`,
