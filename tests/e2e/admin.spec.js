@@ -101,7 +101,7 @@ function s7(path, method, req, st, over) {
   }
   if (path === 'membership/invites' && method === 'GET') return json({ invites: [{ id: 1, loginName: 'carol', email: null, createdAt: Date.now() - 86400000, expiresAt: Date.now() + 86400000 * 5, redeemedAt: null, revokedAt: null, number: null }, { id: 2, loginName: 'dan', email: null, createdAt: Date.now() - 86400000 * 3, expiresAt: Date.now() + 1, redeemedAt: Date.now() - 86400000, revokedAt: null, number: '0042' }] });
   if (path === 'membership/invites') return json({ id: 3, link: 'https://limitless.test/auth/invite/tok', expiresAt: Date.now() + 86400000 });
-  if (path === 'membership/plans' && method === 'GET' && over.plans13) return json({ plans: { ordinal: PLAN({ relay: false, tabs: 4, priceUsdYear: 0, dealUsdYear: 0 }), cardinal: PLAN({ priceUsdYear: 15, dealUsdYear: 10 }), prime: PLAN({ tabs: 25, priceUsdYear: 25, dealUsdYear: 20 }), executive: PLAN({ priceUsdYear: 50, dealUsdYear: 40 }) }, limitsVersion: 4, plansOpen: false, execBlock: '0010-0099', knobs: {}, reserved: [], execSeats: { used: over.seatsUsed ?? 1, cap: 4 } });
+  if (path === 'membership/plans' && method === 'GET' && over.plans13) { const A = (w) => (over.plansApproved ? { weeklyGb: w, monthlyGb: 0, topupGb: 50 } : {}); return json({ plans: { ordinal: PLAN({ relay: false, tabs: 4, priceUsdYear: 0, dealUsdYear: 0 }), cardinal: PLAN({ priceUsdYear: 15, dealUsdYear: 10, ...A(10) }), prime: PLAN({ tabs: 25, priceUsdYear: 25, dealUsdYear: 20, ...A(20) }), executive: PLAN({ priceUsdYear: 50, dealUsdYear: 40, ...A(40) }) }, limitsVersion: 4, plansOpen: false, execBlock: '0010-0099', knobs: {}, reserved: [], execSeats: { used: over.seatsUsed ?? 1, cap: 4 } }); }
   if (path === 'membership/number-suggest') {
     if (over.noSuggest) return json({ error: 'nope' }, 404);
     const t = u.searchParams.get('tier'), m = (over.members || MEMBERS).find((x) => x.sub === u.searchParams.get('sub'));
@@ -667,6 +667,19 @@ test.describe('admin panel 1.1 WP5', () => {
     await m.getByRole('button', { name: 'Make Executive' }).click();
     await m.getByRole('button', { name: 'Confirm Executive' }).click();
     await expect.poll(() => st.bodies.some((b) => b.tier === 'executive')).toBe(true);
+  });
+
+  test('Plans and knobs card shows the approved 1.3 prices, deals, weekly caps and top-up size (K2, K3)', async ({ page }) => {
+    mockApi(page, { plans13: true, plansApproved: true });
+    await boot(page); await openAdmin(page);
+    const v = async (name) => sec(page, 'Plans').locator('#lbAdmPlanForm input[name="' + name + '"]').inputValue();
+    const got = {};
+    for (const t of ['cardinal', 'prime', 'executive']) for (const k of ['priceUsdYear', 'dealUsdYear', 'weeklyGb', 'monthlyGb', 'topupGb']) got[t + '.' + k] = await v(t + '.' + k);
+    expect(got).toEqual({
+      'cardinal.priceUsdYear': '15', 'cardinal.dealUsdYear': '10', 'cardinal.weeklyGb': '10', 'cardinal.monthlyGb': '0', 'cardinal.topupGb': '50',
+      'prime.priceUsdYear': '25', 'prime.dealUsdYear': '20', 'prime.weeklyGb': '20', 'prime.monthlyGb': '0', 'prime.topupGb': '50',
+      'executive.priceUsdYear': '50', 'executive.dealUsdYear': '40', 'executive.weeklyGb': '40', 'executive.monthlyGb': '0', 'executive.topupGb': '50',
+    });
   });
 
   test('plan limits turn amber until saved; transfer board shows ticks and the active brake; hop bar renders', async ({ page }) => {

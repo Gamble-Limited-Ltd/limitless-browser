@@ -9125,7 +9125,7 @@ window._libcurlReady = true;
         }
 
         // ---- plans and knobs ----
-        var PLAN_LABELS = { relay: 'Our relay', tabs: 'Open tabs', dailyMinutes: 'Minutes a day', weeklyGb: 'GB a week', monthlyGb: 'GB a month', speedMbps: 'Speed (Mbit/s)', downloadMbPerFile: 'Download MB per file', downloadsPerDay: 'Downloads a day', weight: 'Fair-share weight', priceUsdYear: 'Price USD a year', topupGb: 'Top-up GB' };
+        var PLAN_LABELS = { relay: 'Our relay', tabs: 'Open tabs', dailyMinutes: 'Minutes a day', weeklyGb: 'GB a week', monthlyGb: 'GB a month', speedMbps: 'Speed (Mbit/s)', downloadMbPerFile: 'Download MB per file', downloadsPerDay: 'Downloads a day', weight: 'Fair-share weight', priceUsdYear: 'Price USD a year', dealUsdYear: 'Deal price USD a year', topupGb: 'Top-up GB' };
         async function loadPlans() { var r = await xload('membership/plans'); if (r.status === 200) X.plans = r.json; renderPlans(); }
         function renderPlans() {
             head(secPlans, 'Plans and knobs', 'All numbers are placeholders until measured. 0 means no cap. Changes apply within a minute. Amber means not saved yet.');
