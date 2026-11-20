@@ -75,8 +75,8 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | CL-15 | token-level rewriter with AST fallback | measure first (prototype) | 02 |
 | CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
-| LD-6 | connect to the search engine at boot | needs Boss: libcurl.js 0.7.5 has no connect-only call; HEAD like `warm`, a libcurl change, or drop | 03 |
-| LD-7 | connect while typing | needs Boss: libcurl.js 0.7.5 has no connect-only call; HEAD like `warm`, a libcurl change, or drop | 03 |
+| LD-6 | connect to the search engine at boot | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |
+| LD-7 | connect while typing | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |
 | LD-8 | Lite view (Readability) | planned (Boss yes) | 03 |
 | LD-9 | fast restore after tab discard | planned | 03 |
 | LD-10 | prerender on strong intent | later | 03 |

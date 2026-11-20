@@ -75,7 +75,7 @@ section 2.
   signature includes the build sha and settings, not the plan; plan does not change page text).
 
 ## LD-6 Connect to the search engine at boot (new, brainstorm B1)
-- **Status:** blocked 2026-11-20: libcurl.js 0.7.5 has no connect-only call (no HTTP request); Boss to choose HEAD as `warm` does, a libcurl change, or drop. **Likely time:** 1 h. **Tiers:** all; skipped with Data saver and under the Ordinal cap.
+- **Status:** parked until LD-4 (Boss, 2026-11-20): libcurl.js 0.7.5 has no connect-only call (no HTTP request), and LD-4 needs the same helper. **Likely time:** 1 h. **Tiers:** all; skipped with Data saver and under the Ordinal cap.
 - **Rules:** after the boot access check is `ok` and the libcurl session exists, open a connection (WISP stream + TLS handshake, no HTTP
   request) to the host of the selected start-page search engine. Use the same "connect only" helper as LD-4 and LD-7
   (`lbPreconnect(host)`: opens and keeps the connection in libcurl's pool, closes after 60 s unused). Never more than one boot preconnect.
@@ -83,7 +83,7 @@ section 2.
 - **Measure:** `firstBytes` of the first search from the start page, on vs off (A/B, spec 08).
 
 ## LD-7 Connect while typing (new, brainstorm B2)
-- **Status:** blocked with LD-6 (same reason). **Likely time:** 2 h. **Tiers:** all; same skips as LD-6.
+- **Status:** parked with LD-6 (Boss, 2026-11-20, same reason). **Likely time:** 2 h. **Tiers:** all; same skips as LD-6.
 - **Rules:** when the address bar text resolves to a host (a typed domain, or the top suggestion from history or favourites) and typing
   pauses for 150 ms, call `lbPreconnect(host)`. At most one pending preconnect; a new host cancels the old one if it has not connected.
   Never a request, never for IP literals or `limitless://` pages.
