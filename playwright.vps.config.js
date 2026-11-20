@@ -8,6 +8,6 @@ module.exports = defineConfig({
   timeout: 6 * 60 * 60 * 1000,
   workers: 1,
   reporter: 'list',
-  outputDir: 'test-results-vps',
+  outputDir: 'test-results-stack',
   projects: [{ name: 'chromebook', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' } }],
 });
