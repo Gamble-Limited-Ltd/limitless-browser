@@ -44,7 +44,7 @@ published number is dated, names the device profile and the median and n (SPEED-
 - Moved to spec 08 TS-2 and TS-4.
 
 ## MS-4 Real-VPS test lane (was 0.4, 1.1, B2)
-- **Status:** planned. **Likely time:** 3 h + Boss 15 min. **Decision:** MS-D2.
+- **Status:** built (2026-11-19, `tools/1.3-vps`), not yet run. **Likely time:** 3 h + Boss 15 min. **Decision:** MS-D2.
 - **Rules:**
   1. Boss creates a prod GLL ID account `lbtest` and grants it Cardinal with amount 0 and the note "test account" (with the new Grant tab,
      spec 09). Its credentials live in `~/.config/gll-cloud/lbtest.env` (gitignored, never printed, never on the build PC).
@@ -57,6 +57,7 @@ published number is dated, names the device profile and the median and n (SPEED-
      write each time). Ordinal traffic uses public relays, so it does not count toward the 50 GB VPS meter.
 - **Edge cases:** the gate's abuse throttle (sustained top speed) must not fire on test runs: runs are short; if it fires, the run stops
   and says so.
+- **Built as:** `tests/stack/vps.spec.js` + `playwright.vps.config.js` (`npm run test:vps`, Cardinal, 3 reps; `LB_VPS_TIER=ordinal LB_VPS_REPS=1 npm run test:vps` for `lbtest-free`, unmetered), logic in `scripts/lib/vpslane.mjs` (`tests/unit/vpslane.test.mjs`). Bytes per rep = growth of the signed-in member's `/_lb/me` `plan.used.todayBytes`; the meter is written after every rep. Stops on `plan.fallback` or `plan.cap.over`. No time-guard override exists (the unit tests pass a date instead). Results: `test-results/vps-<tier>-<date>.json`.
 - **Exit:** a dated "x native" table for the official sites with native, Ordinal and Cardinal through the real VPS.
 
 ## MS-5 VPS capacity checks (was 1.3, 1.4)
