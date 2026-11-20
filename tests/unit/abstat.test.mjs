@@ -70,3 +70,11 @@ test('gate verdict: fail always fails, inconclusive fails only the rc tier', asy
   assert.equal(abVerdict([s(0, 2)], 'rc').ok, false);
   assert.equal(abVerdict([s(0, 0), null], 'rc').ok, false);
 });
+
+test('undecided after MAX_PAIRS pairs run is inconclusive even when pairs were dropped', () => {
+  const a = noisy(MAX_PAIRS, 2000, 400, 7), b = noisy(MAX_PAIRS, 2150, 400, 8);
+  const p = pairs(a, b); p[2][1] = null; p[5][0] = null; // 7 usable of 9 run
+  const v = decide(p);
+  assert.equal(v.n, 7);
+  assert.notEqual(v.verdict, 'continue');
+});

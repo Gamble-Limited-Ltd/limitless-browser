@@ -2,7 +2,7 @@
 // Paired bootstrap of median(B) - median(A): resampling whole pairs keeps the drift both sides shared out of the interval.
 //   pass         90 percent interval entirely below the bound (no regression)
 //   fail         interval's lower end above the bound
-//   continue     fewer than MIN_PAIRS usable pairs, or undecided below MAX_PAIRS
+//   continue     fewer than MIN_PAIRS usable pairs, or undecided below MAX_PAIRS pairs run (dropped pairs count)
 //   inconclusive undecided at MAX_PAIRS, or 3 dropped pairs (counts as a fail for a release, a warning for an item)
 export const MIN_PAIRS = 4, MAX_PAIRS = 9, RESAMPLES = 2000, MAX_DROPPED = 3;
 
@@ -49,7 +49,7 @@ export function decide(pairs, { seed = 1, pct = 10, floor = 100 } = {}) {
   const out = { ...base, medianA, medianB, diff: medianB - medianA, lo, hi, bound: lim };
   if (hi < lim) return { ...out, verdict: 'pass' };
   if (lo > lim) return { ...out, verdict: 'fail' };
-  return { ...out, verdict: n >= MAX_PAIRS ? 'inconclusive' : 'continue', ...(n >= MAX_PAIRS ? { reason: `undecided at ${n} pairs` } : {}) };
+  return { ...out, verdict: pairs.length >= MAX_PAIRS ? 'inconclusive' : 'continue', ...(pairs.length >= MAX_PAIRS ? { reason: `undecided at ${n} usable of ${pairs.length} pairs` } : {}) };
 }
 
 /** Gate step verdict from the abtest summaries of each project: a fail row fails; inconclusive fails an rc run, warns an item run. */
