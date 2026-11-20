@@ -11,6 +11,7 @@
     "test:stack": "deploy/rehearsal/run.sh",
     "test:sites": "LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js; node scripts/sites-merge.mjs",
     "test:sites:smoke": "LB_SITES=1 LB_SITES_SMOKE=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/sites.spec.js; node scripts/sites-merge.mjs",
+    "test:native": "playwright test -c playwright.native.config.js",
     "test:vps": "playwright test -c playwright.vps.config.js",
     "test:speed:quick": "LB_SPEED=1 LB_SPEED_REPS=3 LB_SPEED_PUBLIC=0 deploy/rehearsal/run.sh --project=chromebook tests/stack/speed.spec.js",
     "test:speed": "LB_SPEED=1 deploy/rehearsal/run.sh tests/stack/speed.spec.js",

@@ -16,7 +16,7 @@ published number is dated, names the device profile and the median and n (SPEED-
 ---
 
 ## MS-1 Native column in the harness (was 0.1)
-- **Status:** planned. **Likely time:** 1.5 h.
+- **Status:** built 2026-11-20 on `tools/1.3-measure` (smoke: example, wikipedia, 1 rep). Deviation: its own `tests/stack/native.spec.js` (`npm run test:native`, no stack) instead of an `LB_NATIVE` switch in profile.spec and speed.spec; `scripts/x-native.mjs` as specified. Khan Academy added to speed-sites.json (MS-D1). **Likely time:** 1.5 h.
 - **Rules:**
   1. `profile.spec.js` and `speed.spec.js` accept `LB_NATIVE=1`: the same Chromium, profile and throttle load the site directly (no app,
      no relay), same marks where they exist (`shown` = first contentful paint after navigation start, `load` = load event).
@@ -61,7 +61,7 @@ published number is dated, names the device profile and the median and n (SPEED-
 - **Exit:** a dated "x native" table for the official sites with native, Ordinal and Cardinal through the real VPS.
 
 ## MS-5 VPS capacity checks (was 1.3, 1.4)
-- **Status:** planned. **Likely time:** 2.5 h.
+- **Status:** built 2026-11-20 on `tools/1.3-measure`: `deploy/relay-vps/sample.sh` installed on the VPS (cron every minute, `SAMPLER.md` has the removal), meter counts both directions against 5 TB; `scripts/vps-meter-alert.mjs` pushes to Kuma but stays disabled until a push monitor url exists (Boss). **Likely time:** 2.5 h.
 - **Rules:**
   1. A sampler on the VPS (`deploy/relay-vps/sample.sh`, cron every minute for one week) writes CPU per container, RAM, disk and uplink
      to a local file; no hostnames, no member ids.

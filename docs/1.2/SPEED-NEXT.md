@@ -58,11 +58,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | VD-2 | I3 (non-YouTube) | quality at shown size, 480p start on small devices | planned | 07 |
 | VD-3 | I2 (non-YouTube) | posters through the image lane | planned (in SV-2) | 07 |
 | (none) | I3 Executive buffering, YouTube parts of I1 to I3 | | dropped | 07 |
-| MS-1 | 0.1 | native column | planned | 01 |
+| MS-1 | 0.1 | native column | built 2026-11-20 (`tools/1.3-measure`, `npm run test:native`) | 01 |
 | MS-2 | 0.2 | in-app bench for the school Chromebook | planned | 01 |
 | MS-3 | 0.3 | steadier gate | moved to TS-2, TS-4 | 08 |
 | MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | planned (Boss creates accounts) | 01 |
-| MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | planned | 01 |
+| MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | built 2026-11-20, sampler live on VPS, Kuma push disabled (needs monitor url) | 01 |
 | MS-6 | Phase 0 exit | "x native" table per Minor | planned | 01 |
 | MS-7 | S9b samples | field numbers per release | exists | 01 |
 | TS-1, TS-2, TS-3, TS-5, TS-6 | F, T1 | gate runner, quiet machine, build cache, tagged e2e, tagged sites | built 2026-11-19 on `tools/1.3-test-speed`; first item run (CL-1) 37.5 min, was about 2 to 2.5 h (e2e 25.2 to 3.9 min, sites about 60 to 9.1 min measured) | 08 |
