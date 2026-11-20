@@ -65,6 +65,7 @@ function mockApi(page, over = {}) {
       return route.fulfill(json(st.flags));
     }
     const x = s7(path, method, req, st, over);
+    if (x && x.delay) { await new Promise((r) => setTimeout(r, x.delay)); delete x.delay; }
     if (x) return route.fulfill(x);
     return route.fulfill(json({ error: 'nope' }, 404));
   });
@@ -86,7 +87,8 @@ function s7(path, method, req, st, over) {
   const u = new URL(req.url());
   if (path === 'membership/members') {
     const q = (u.searchParams.get('q') || '').toLowerCase(), f = u.searchParams.get('filter') || 'all';
-    let list = MEMBERS.filter((m) => !q || [m.number, m.name, m.loginName].some((v) => v && v.toLowerCase().includes(q)));
+    if (over.members && q === 'zz') return { delay: 900, ...json({ members: [over.members[1]] }) };
+    let list = (over.members || MEMBERS).filter((m) => !q || [m.number, m.name, m.loginName].some((v) => v && v.toLowerCase().includes(q)));
     if (f === 'warned') list = list.filter((m) => m.standing === 'warned');
     if (f === 'ceremony') list = list.filter((m) => !m.signed);
     if (f === 'cardinal') list = list.filter((m) => m.plan === 'cardinal');
@@ -99,6 +101,19 @@ function s7(path, method, req, st, over) {
   }
   if (path === 'membership/invites' && method === 'GET') return json({ invites: [{ id: 1, loginName: 'carol', email: null, createdAt: Date.now() - 86400000, expiresAt: Date.now() + 86400000 * 5, redeemedAt: null, revokedAt: null, number: null }, { id: 2, loginName: 'dan', email: null, createdAt: Date.now() - 86400000 * 3, expiresAt: Date.now() + 1, redeemedAt: Date.now() - 86400000, revokedAt: null, number: '0042' }] });
   if (path === 'membership/invites') return json({ id: 3, link: 'https://limitless.test/auth/invite/tok', expiresAt: Date.now() + 86400000 });
+  if (path === 'membership/plans' && method === 'GET' && over.plans13) return json({ plans: { ordinal: PLAN({ relay: false, tabs: 4, priceUsdYear: 0, dealUsdYear: 0 }), cardinal: PLAN({ priceUsdYear: 15, dealUsdYear: 10 }), prime: PLAN({ tabs: 25, priceUsdYear: 25, dealUsdYear: 20 }), executive: PLAN({ priceUsdYear: 50, dealUsdYear: 40 }) }, limitsVersion: 4, plansOpen: false, execBlock: '0010-0099', knobs: {}, reserved: [], execSeats: { used: over.seatsUsed ?? 1, cap: 4 } });
+  if (path === 'membership/number-suggest') {
+    if (over.noSuggest) return json({ error: 'nope' }, 404);
+    const t = u.searchParams.get('tier'), m = (over.members || MEMBERS).find((x) => x.sub === u.searchParams.get('sub'));
+    const fits = !!m && ((t === 'prime' && m.number === '0103') || (t === 'executive' && m.tier === 'executive'));
+    return json({ fits, current: m ? m.number : null, suggested: fits ? null : t === 'prime' ? '0107' : '0031' });
+  }
+  if (path === 'membership/grant') {
+    if (over.grantNumberRequired && !body.number) return json({ error: 'number_required' }, 409);
+    if (over.grantError) return json({ error: over.grantError }, 409);
+    if (over.oldGate) return json({ member: {}, certificateCode: 'LMT-0102-ABCD' });
+    return json({ member: {}, certificateCode: 'LMT-0102-ABCD', purchaseId: 42, receipt: { number: 'LB-2026-00042', text: 'Limitless receipt LB-2026-00042\nPlan: Limitless ' + body.tier + '\nPaid: $' + body.amount + '\n' } });
+  }
   if (path === 'membership/plans' && method === 'GET') return json({ plans: { ordinal: PLAN({ relay: false, tabs: 4, priceUsdYear: 0, weight: 0 }), cardinal: PLAN({}), prime: PLAN({ tabs: 25, priceUsdYear: 35 }), executive: PLAN({ priceUsdYear: null }) }, limitsVersion: 3, plansOpen: !!st.plansOpen, execBlock: '0010-0099', knobs: { slowStageMbps: 2, primeSeats: 10, execReservePct: 20 }, reserved: [] });
   if (path === 'membership/settings') { if (body.plansOpen !== undefined) st.plansOpen = body.plansOpen; return json({ ok: true }); }
   if (path === 'membership/requests' && method === 'GET') return json({ primeSeatsLeft: 3, requests: [{ id: 7, tier: 'prime', number: '0102', note: 'Paid <b>cash</b>', createdAt: Date.now() - 3600000 }] });
@@ -308,12 +323,12 @@ test.describe('admin page', () => {
         await boot(page);
         await page.evaluate(([t, m]) => window.LBTheme.set({ theme: t, mode: m }), [theme, mode]);
         await openAdmin(page);
-        const card = page.locator('#lbAdmin .lb-adm-card').first();
+        const card = page.locator('#lbAdmin .lb-adm-card:not([hidden])').first(); // the Grant tab card is hidden on the default tab
         await expect(card.locator('h2')).toBeVisible();
         const ok = await page.evaluate(() => {
           const rgb = (s) => (s.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
           const lum = (c) => { const f = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; };
-          const card = document.querySelector('#lbAdmin .lb-adm-card');
+          const card = document.querySelector('#lbAdmin .lb-adm-card:not([hidden])');
           const bg = rgb(getComputedStyle(card).backgroundColor);
           const fg = rgb(getComputedStyle(card.querySelector('h2')).color);
           const [a, b] = [lum(bg), lum(fg)].sort((x, y) => y - x);
@@ -770,4 +785,256 @@ test('1.2.1 quick grant: a preset sends tier and paidUntil; trial toggle; danger
   expect(st.calls.filter((c) => c === 'POST membership/standing').length).toBe(n);
   await p.locator('.lb-adm-danger').getByRole('button', { name: 'Confirm remove' }).click();
   await expect.poll(() => st.bodies.some((b) => b.action === 'remove')).toBe(true);
+});
+
+
+// ---- AD-3 Grant plan tab (docs/1.3/specs/09-admin-grant-tab.md) ----
+const DAY = 86400000;
+const PAT = '33333333-3333-4333-8333-333333333333', RUE = '44444444-4444-4444-8444-444444444444', SAM = '55555555-5555-4555-8555-555555555555';
+const GM = [
+  { sub: OWNER, number: '0000', tier: 'executive', plan: 'executive', standing: 'good', signed: true, loginName: 'boss', name: 'The Boss', paidUntil: null },
+  { sub: ALICE, number: '0102', tier: 'cardinal', plan: 'cardinal', standing: 'good', signed: true, loginName: 'alice', name: 'Alice Archer', paidUntil: Date.now() + 100 * DAY },
+  { sub: PAT, number: '0103', tier: 'prime', plan: 'prime', standing: 'good', signed: true, loginName: 'pat', name: 'Pat Prime', paidUntil: Date.now() + 200 * DAY },
+  { sub: RUE, number: null, tier: 'ordinal', plan: 'ordinal', standing: 'removed', signed: true, loginName: 'rue', name: 'Rue Removed', paidUntil: null },
+  { sub: SAM, number: '0104', tier: 'ordinal', plan: 'ordinal', standing: 'suspended', signed: true, loginName: 'sam', name: 'Sam Stop', paidUntil: null },
+  ...Array.from({ length: 10 }, (_, i) => ({ sub: `66666666-6666-4666-8666-00000000000${i}`, number: `02${10 + i}`, tier: 'ordinal', plan: 'ordinal', standing: 'good', signed: true, loginName: `dee${i}`, name: `Dee ${i}`, paidUntil: null })),
+];
+async function grantTab(page, over = {}) {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const errors = await boot(page);
+  const st = mockApi(page, { members: GM, plans13: true, ...over });
+  st.stepup = true;
+  await openAdmin(page);
+  await page.locator('#lbAdmTabGrant').click();
+  await expect(page.locator('#lbAdmGrantTab')).toBeVisible();
+  return { st, errors };
+}
+async function pick(page, q, name) {
+  await page.locator('#lbGrWho').fill(q);
+  const opt = page.locator('#lbGrList [role=option]', { hasText: name });
+  await expect(opt).toBeVisible();
+  await opt.dispatchEvent('mousedown');
+  await expect(page.locator('#lbGrMember')).toContainText(name);
+}
+const grantBodies = (st) => st.bodies.filter((b) => b.tier && b.sub && 'kind' in b);
+
+test.describe('Grant tab', () => {
+  test('tab bar: default is Everything else, the choice survives a reload', async ({ page }) => {
+    await boot(page);
+    mockApi(page, { members: GM, plans13: true });
+    await openAdmin(page);
+    await expect(page.locator('#lbAdmTabs [role=tab]')).toHaveCount(2);
+    await expect(page.locator('#lbAdmTabRest')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#lbAdmMembers')).toBeVisible();
+    await expect(page.locator('#lbAdmGrantTab')).toBeHidden();
+    await page.locator('#lbAdmTabGrant').click();
+    await expect(page.locator('#lbAdmGrantTab')).toBeVisible();
+    await expect(page.locator('#lbAdmMembers')).toBeHidden();
+    await page.reload();
+    await expect(page.locator('#url')).toBeVisible({ timeout: 30000 });
+    mockApi(page, { members: GM, plans13: true });
+    await openAdmin(page);
+    await expect(page.locator('#lbAdmTabGrant')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#lbAdmGrantTab')).toBeVisible();
+  });
+
+  test('autocomplete: login name and name, keyboard pick, at most 8 rows, stale answers dropped', async ({ page }) => {
+    await grantTab(page);
+    await page.locator('#lbGrWho').fill('dee');
+    await expect(page.locator('#lbGrList [role=option]')).toHaveCount(8);
+    await page.locator('#lbGrWho').fill('Pat Pr');
+    await expect(page.locator('#lbGrList [role=option]')).toHaveCount(1);
+    await page.locator('#lbGrWho').press('ArrowDown');
+    await expect(page.locator('#lbGrWho')).toHaveAttribute('aria-activedescendant', 'lbGrOpt-0');
+    await page.locator('#lbGrWho').press('Enter');
+    await expect(page.locator('#lbGrMember')).toContainText('Pat Prime');
+    // 'zz' answers late with Alice; the newer 'zzq' (no match) must win
+    await page.locator('#lbGrWho').fill('zz');
+    await page.waitForTimeout(300);
+    await page.locator('#lbGrWho').fill('zzq');
+    await expect(page.locator('#lbGrList')).toContainText('No member matches.');
+    await page.waitForTimeout(1200);
+    await expect(page.locator('#lbGrList')).not.toContainText('Alice');
+    await page.locator('#lbGrWho').press('Escape');
+    await expect(page.locator('#lbGrList')).toBeHidden();
+  });
+
+  test('a removed member cannot be picked; a suspended one shows a warning', async ({ page }) => {
+    await grantTab(page);
+    await page.locator('#lbGrWho').fill('rue');
+    const r = page.locator('#lbGrList [role=option]', { hasText: 'Rue Removed' });
+    await expect(r).toHaveAttribute('aria-disabled', 'true');
+    await expect(r).toContainText('Removed: restore first');
+    await r.dispatchEvent('mousedown');
+    await expect(page.locator('#lbGrMember')).toHaveCount(0);
+    await pick(page, 'sam', 'Sam Stop');
+    await expect(page.locator('#lbGrSuspended')).toBeVisible();
+  });
+
+  test('renewal, upgrade with a prorated price, and a downgrade that needs two clicks', async ({ page }) => {
+    const { st } = await grantTab(page);
+    await pick(page, 'pat', 'Pat Prime');
+    await page.locator('#lbGrPlan [data-tier=prime]').click();
+    await expect(page.locator('#lbGrWhat')).toContainText('Renewal: adds a year.');
+    await expect(page.locator('#lbGrNum')).toHaveCount(0); // 0103 is prime: fits
+    await page.locator('#lbGrAmt button', { hasText: '$25 list' }).click();
+    await expect(page.locator('#lbGrGo')).toHaveText('Grant Prime for $25');
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    const b = grantBodies(st).pop();
+    expect(b).toMatchObject({ sub: PAT, tier: 'prime', kind: 'renewal', amount: 25, howPaid: 'cash' });
+    expect(b.paidUntil).toBeUndefined();
+
+    await page.locator('#lbGrAgain').click();
+    await pick(page, 'alice', 'Alice Archer');
+    await page.locator('#lbGrPlan [data-tier=prime]').click();
+    await expect(page.locator('#lbGrWhat')).toContainText('Upgrade from Cardinal');
+    // 25 - 15 x 100/365, rounded: 21 (the day boundary can make it 100 or 99 days)
+    await expect(page.locator('#lbGrProrated')).toHaveText(/Prorated \$2[01]/);
+    await expect(page.locator('#lbGrNum input')).toHaveValue('0107'); // 0102 is not prime: suggested
+    await page.locator('#lbGrProrated').click();
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop()).toMatchObject({ tier: 'prime', kind: 'upgrade', number: '0107' });
+
+    await page.locator('#lbGrAgain').click();
+    await pick(page, 'pat', 'Pat Prime');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await expect(page.locator('#lbGrWhat')).toContainText('This lowers their plan.');
+    await page.locator('#lbGrAmt button', { hasText: '$10 deal' }).click();
+    const n = grantBodies(st).length;
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrGo')).toHaveText('Lower the plan? Click again');
+    expect(grantBodies(st).length).toBe(n);
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop()).toMatchObject({ tier: 'cardinal', kind: 'plan', amount: 10 });
+  });
+
+  test('price buttons fill the amount, $0 needs a second click, Other sends its text', async ({ page }) => {
+    const { st } = await grantTab(page);
+    await pick(page, 'dee1', 'Dee 1');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await expect(page.locator('#lbGrWhat')).toContainText('New plan, a year from today.');
+    await page.locator('#lbGrAmt button', { hasText: '$15 list' }).click();
+    await expect(page.locator('#lbGrAmtIn')).toHaveValue('15');
+    await page.locator('#lbGrAmt button', { hasText: '$0' }).click();
+    await expect(page.locator('#lbGrAmtIn')).toHaveValue('0');
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrGo')).toHaveText('No charge? Click again');
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop()).toMatchObject({ amount: 0, howPaid: 'no charge' });
+    await page.locator('#lbGrAgain').click();
+    await pick(page, 'dee2', 'Dee 2');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await page.locator('#lbGrAmtIn').fill('12.50');
+    await page.locator('#lbGrHow button', { hasText: 'Other' }).click();
+    await expect(page.locator('#lbGrGo')).toBeDisabled();
+    await page.locator('#lbGrHowOther input').fill('Venmo');
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop()).toMatchObject({ amount: 12.5, howPaid: 'Venmo' });
+  });
+
+  test('a custom date sends paidUntil at 23:59:59 UTC of that day', async ({ page }) => {
+    const { st } = await grantTab(page);
+    await pick(page, 'dee3', 'Dee 3');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await page.locator('#lbGrTerm button', { hasText: 'Custom date' }).click();
+    await page.locator('#lbGrDate input').fill('2027-03-03');
+    await page.locator('#lbGrAmt button', { hasText: '$15 list' }).click();
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop().paidUntil).toBe(Date.UTC(2027, 2, 3, 23, 59, 59));
+  });
+
+  test('number_required reveals the number field and a retry sends it; Executive seats show', async ({ page }) => {
+    const { st } = await grantTab(page, { noSuggest: true, grantNumberRequired: true, seatsUsed: 2 });
+    await pick(page, 'dee4', 'Dee 4');
+    await expect(page.locator('#lbGrPlan [data-tier=executive]')).toContainText('Seats used: 2 of 4');
+    await page.locator('#lbGrPlan [data-tier=executive]').click();
+    await expect(page.locator('#lbGrNum')).toHaveCount(0);
+    await page.locator('#lbGrAmt button', { hasText: '$50 list' }).click();
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrNum')).toBeVisible();
+    await expect(page.locator('#lbGrErr')).toContainText('needs a member number');
+    await page.locator('#lbGrNum input').fill('0031');
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop()).toMatchObject({ tier: 'executive', number: '0031' });
+  });
+
+  test('Executive is disabled when all seats are taken; exec_seats_full is explained', async ({ page }) => {
+    await grantTab(page, { seatsUsed: 4 });
+    await pick(page, 'dee5', 'Dee 5');
+    await expect(page.locator('#lbGrPlan [data-tier=executive]')).toBeDisabled();
+  });
+
+  test('exec_seats_full from the gate is explained inline', async ({ page }) => {
+    await grantTab(page, { seatsUsed: 3, grantError: 'exec_seats_full' });
+    await pick(page, 'dee8', 'Dee 8');
+    await page.locator('#lbGrPlan [data-tier=executive]').click();
+    await page.locator('#lbGrNum input').fill('0031');
+    await page.locator('#lbGrAmt button', { hasText: '$40 deal' }).click();
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrErr')).toHaveText('All 4 Executive seats are taken.');
+    await expect(page.locator('#lbGrReceipt')).toHaveCount(0);
+  });
+
+  test('receipt: Copy puts exactly the text on the clipboard; notes are sent and never shown', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const { st } = await grantTab(page);
+    await pick(page, 'dee6', 'Dee 6');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await page.locator('#lbGrAmt button', { hasText: '$15 list' }).click();
+    await page.locator('#lbGrNotes').fill('met at lunch, secret note');
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toBeVisible();
+    expect(grantBodies(st).pop().receiptNote).toBe('met at lunch, secret note');
+    await expect(page.locator('#lbAdmGrantTab')).not.toContainText('secret note');
+    const text = await page.locator('#lbGrReceiptText').inputValue();
+    expect(text).toContain('LB-2026-00042');
+    await page.locator('#lbGrCopy').click();
+    await expect(page.locator('#lbGrCopy')).toHaveText('Copied');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text);
+    await page.locator('#lbGrCopySubj').click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Your Limitless receipt LB-2026-00042');
+    await expect(page.locator('#lbGrReceipt')).toContainText('LMT-0102-ABCD');
+  });
+
+  test('an old gate without a receipt says so', async ({ page }) => {
+    await grantTab(page, { oldGate: true });
+    await pick(page, 'dee7', 'Dee 7');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await page.locator('#lbGrAmt button', { hasText: '$15 list' }).click();
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrReceipt')).toContainText('Receipt needs the newer gate.');
+    await expect(page.locator('#lbGrCopy')).toHaveCount(0);
+  });
+
+  test('a network failure says nothing changed', async ({ page }) => {
+    await grantTab(page);
+    await pick(page, 'dee9', 'Dee 9');
+    await page.locator('#lbGrPlan [data-tier=cardinal]').click();
+    await page.locator('#lbGrAmt button', { hasText: '$15 list' }).click();
+    await page.route('**/_lb/admin/api/membership/grant', (r) => r.abort());
+    await page.locator('#lbGrGo').click();
+    await expect(page.locator('#lbGrErr')).toHaveText('Not sent. Nothing changed. Try again.');
+  });
+
+  for (const theme of THEMES) {
+    test(`grant tab fits at 1366 and 390 wide: ${theme}`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('limitless:theme:v1', JSON.stringify({ theme: t, mode: 'auto', mark: 'orbit' })), theme);
+      const { errors } = await grantTab(page);
+      await pick(page, 'alice', 'Alice Archer');
+      await page.locator('#lbGrPlan [data-tier=prime]').click();
+      for (const w of [1366, 390]) {
+        await page.setViewportSize({ width: w, height: 800 });
+        const over = await page.evaluate(() => { const s = document.getElementById('lbAdmGrantTab'); return s.scrollWidth - s.clientWidth; });
+        expect(over, `${theme} at ${w}`).toBeLessThanOrEqual(1);
+      }
+      expect(errors).toEqual([]);
+    });
+  }
 });

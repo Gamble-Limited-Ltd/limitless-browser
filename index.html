@@ -9318,9 +9318,295 @@ window._libcurlReady = true;
             });
             secTransfer.appendChild(cards);
         }
+        // ================= AD-3 (docs/1.3/specs/09-admin-grant-tab.md): Grant plan tab =================
+        // One form: who, plan, what happens, term, amount, number, private notes, confirm; then a receipt to copy into Boss's own email.
+        // Nothing is emailed from here. Notes go to the gate (receiptNote) and never into the receipt panel.
+        var TAB_KEY = 'limitless:admtab:v1';
+        var admTab = 'rest';
+        try { if (localStorage.getItem(TAB_KEY) === 'grant') admTab = 'grant'; } catch (_) {}
+        var tabBar = el('div', 'lb-adm-ptabs lb-adm-maintabs'); tabBar.id = 'lbAdmTabs'; tabBar.setAttribute('role', 'tablist'); tabBar.setAttribute('aria-label', 'Admin sections');
+        var secGrant = el('section', 'lb-adm-card lb-gr'); secGrant.id = 'lbAdmGrantTab'; secGrant.setAttribute('role', 'tabpanel');
+        var tabBtns = {};
+        [['grant', 'Grant plan', 'lbAdmTabGrant'], ['rest', 'Everything else', 'lbAdmTabRest']].forEach(function (t) {
+            var b = el('button', 'lb-adm-ptab', t[1]); b.type = 'button'; b.id = t[2]; b.setAttribute('role', 'tab');
+            b.addEventListener('click', function () { setAdmTab(t[0]); });
+            b.addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                e.preventDefault(); var n = t[0] === 'grant' ? 'rest' : 'grant'; setAdmTab(n); tabBtns[n].focus();
+            });
+            tabBtns[t[0]] = b; tabBar.appendChild(b);
+        });
+        secGrant.setAttribute('aria-labelledby', 'lbAdmTabGrant');
+        function setAdmTab(t) { admTab = t; try { localStorage.setItem(TAB_KEY, t); } catch (_) {} showAdmTab(); if (t === 'grant') { renderGrant(); loadGrantPlans(); } }
+        function showAdmTab() {
+            Object.keys(tabBtns).forEach(function (k) { var on = admTab === k; tabBtns[k].setAttribute('aria-selected', on ? 'true' : 'false'); tabBtns[k].tabIndex = on ? 0 : -1; });
+            CARDS.forEach(function (c) { if (c === top || c === toast || c === tabBar) return; c.hidden = admTab === 'grant' ? c !== secGrant : c === secGrant; });
+        }
+
+        var RANK = { ordinal: 0, cardinal: 1, prime: 2, executive: 3 }, DAYMS = 86400000, YEARMS = 365 * DAYMS;
+        var GR_ERR = {
+            number_required: 'That plan needs a member number. Type one below.',
+            number_taken: 'That number is taken. Pick another.', number_retired: 'That number is retired. Pick another.',
+            number_reserved: 'That number is reserved. Pick another.', number_wrong_tier: 'That number does not fit this plan.',
+            exec_seats_full: 'All 4 Executive seats are taken.', removed: 'That member is removed. Restore them first.'
+        };
+        var G;
+        function grantReset() { G = { q: '', seq: 0, results: null, active: -1, member: null, tier: null, term: 'year', custom: '', amount: '', how: 'cash', other: '', number: '', numShow: false, notes: '', armed: false, busy: false, err: '', receipt: null, plans: G ? G.plans : null }; }
+        grantReset();
+        async function loadGrantPlans() { var had = !!G.plans; var r = await api('GET', 'membership/plans'); if (r.status === 200) { G.plans = r.json; if (!had && admTab === 'grant' && !G.receipt) renderGrant(); } }
+        function fmtDay(ms) { return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); }
+        function money(v) { return '$' + Number(v).toFixed(2); }
+        function isActive(m) { return m.tier !== 'ordinal' && (m.paidUntil === null || m.paidUntil === undefined || m.paidUntil > Date.now()); }
+        function seats() { return (G.plans && G.plans.execSeats) || null; }
+        function listPrice(t) { var p = G.plans && G.plans.plans && G.plans.plans[t]; return p && typeof p.priceUsdYear === 'number' ? p.priceUsdYear : null; }
+        function dealPrice(t) { var p = G.plans && G.plans.plans && G.plans.plans[t]; return p && typeof p.dealUsdYear === 'number' && p.dealUsdYear > 0 ? p.dealUsdYear : null; }
+        // What the grant will do, from the member's plan before anything is sent.
+        function grantKind() {
+            var m = G.member, t = G.tier; if (!m || !t) return null;
+            if (t === 'ordinal') return { kind: 'plan', down: m.tier !== 'ordinal', text: m.tier === 'ordinal' ? 'They have no paid plan.' : 'This removes their paid plan.' };
+            if (isActive(m) && t === m.tier) {
+                var nu = m.paidUntil ? Math.min(Math.max(m.paidUntil, Date.now()) + YEARMS, Date.now() + 2 * YEARMS) : null;
+                return { kind: 'renewal', text: 'Renewal: adds a year.' + (nu ? ' New paid-until ' + fmtDay(nu) + '.' : '') };
+            }
+            if (isActive(m) && RANK[t] > RANK[m.tier]) return { kind: 'upgrade', text: 'Upgrade from ' + TIER_NAMES[m.tier] + (m.paidUntil ? ' (paid until ' + fmtDay(m.paidUntil) + ')' : '') + '. New year starts today.' };
+            if (isActive(m) && RANK[t] < RANK[m.tier]) return { kind: 'plan', down: true, text: 'This lowers their plan.' };
+            return { kind: 'plan', text: 'New plan, a year from today.' };
+        }
+        function prorated() {
+            var m = G.member, k = grantKind(); if (!k || k.kind !== 'upgrade') return null;
+            var nl = listPrice(G.tier), ol = listPrice(m.tier); if (nl === null || ol === null) return null;
+            var left = m.paidUntil ? Math.max(0, (m.paidUntil - Date.now()) / DAYMS) : 0;
+            return Math.max(0, Math.round(nl - ol * left / 365));
+        }
+        function paidUntilBody() {
+            var k = grantKind();
+            if (G.tier === 'ordinal') return undefined;
+            if (G.term === '30' || G.term === '90') { var d = new Date(Date.now() + Number(G.term) * DAYMS); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59); }
+            if (G.term === 'custom') { var p = /^(\d{4})-(\d{2})-(\d{2})$/.exec(G.custom); return p ? Date.UTC(+p[1], +p[2] - 1, +p[3], 23, 59, 59) : null; }
+            return undefined; // 1 year: the gate sets a year from today (Executive: no end), or stacks a renewal
+        }
+        function amountVal() { var v = String(G.amount).trim(); if (v === '') return null; var n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 1000 && /^\d+(\.\d{1,2})?$/.test(v) ? n : NaN; }
+        function howPaid() { return G.how === 'other' ? G.other.trim().slice(0, 80) : G.how === 'none' ? 'no charge' : 'cash'; }
+
+        var grantSearchT = null;
+        function searchMembers(q) {
+            clearTimeout(grantSearchT);
+            var my = ++G.seq;
+            if (q.trim().length < 2) { G.results = null; renderWhoList(); return; }
+            grantSearchT = setTimeout(async function () {
+                var r = await api('GET', 'membership/members?filter=all&q=' + encodeURIComponent(q.trim()));
+                if (my !== G.seq) return; // an older answer: dropped
+                G.results = r.status === 200 && Array.isArray(r.json.members) ? r.json.members.slice(0, 8) : [];
+                G.active = -1; renderWhoList();
+            }, 150);
+        }
+        var whoInput = null, whoList = null, whoHost = null;
+        function pickable(m) { return m.standing !== 'removed'; }
+        function pickMember(m) {
+            if (!pickable(m)) return;
+            G.member = m; G.results = null; G.q = ''; G.tier = null; G.err = ''; G.armed = false; G.numShow = false; G.number = '';
+            renderGrant();
+        }
+        function renderWhoList() {
+            if (!whoList) return;
+            whoList.replaceChildren();
+            var open = !!(G.results);
+            whoInput.setAttribute('aria-expanded', open ? 'true' : 'false');
+            whoList.hidden = !open;
+            if (!open) { whoInput.removeAttribute('aria-activedescendant'); return; }
+            if (!G.results.length) { var e = el('li', 'lb-gr-none', 'No member matches.'); e.setAttribute('role', 'option'); e.setAttribute('aria-disabled', 'true'); whoList.appendChild(e); return; }
+            G.results.forEach(function (m, i) {
+                var li = el('li', 'lb-gr-opt'); li.id = 'lbGrOpt-' + i; li.setAttribute('role', 'option');
+                li.setAttribute('aria-selected', i === G.active ? 'true' : 'false');
+                li.append(el('b', '', m.name || m.loginName || 'Account ' + String(m.sub).slice(0, 8)), el('span', 'lb-gr-login', m.loginName || ''), el('span', 'lb-gr-num', m.number || 'No number'), pill(m.plan || m.tier));
+                if (m.paidUntil) li.appendChild(el('span', 'lb-gr-until', 'until ' + fmtDay(m.paidUntil)));
+                if (!pickable(m)) { li.setAttribute('aria-disabled', 'true'); li.appendChild(el('span', 'lb-gr-warn', 'Removed: restore first')); }
+                li.addEventListener('mousedown', function (e) { e.preventDefault(); pickMember(m); });
+                whoList.appendChild(li);
+            });
+            if (G.active >= 0) whoInput.setAttribute('aria-activedescendant', 'lbGrOpt-' + G.active); else whoInput.removeAttribute('aria-activedescendant');
+        }
+
+        var summaryBox = null, goBtn = null, whatLine = null, errLine = null, amtInput = null, numWrap = null, numInput = null;
+        function updateSummary() {
+            if (!summaryBox) return;
+            var k = grantKind(), a = amountVal(), t = G.tier;
+            whatLine.textContent = k ? k.text : '';
+            summaryBox.replaceChildren();
+            if (!G.member || !t) { goBtn.disabled = true; goBtn.textContent = 'Pick a member and a plan'; return; }
+            var pu = paidUntilBody();
+            var rows = [['Member', (G.member.name || G.member.loginName || '') + (G.member.number ? ' (No. ' + G.member.number + ')' : '')], ['Plan', TIER_NAMES[t] + (k && k.kind !== 'plan' ? ' (' + k.kind + ')' : '')]];
+            if (t !== 'ordinal') {
+                rows.push(['Paid until', pu ? fmtDay(pu) : pu === null ? 'Pick a date' : t === 'executive' ? 'No end date' : k && k.kind === 'renewal' ? 'One year added' : 'A year from today']);
+                rows.push(['Amount', a === null ? 'Not set' : isNaN(a) ? 'Not a valid amount' : money(a) + (a === 0 ? ' (no charge)' : ', ' + howPaid())]);
+            }
+            rows.forEach(function (r) { var d = el('div'); d.append(el('dt', '', r[0]), el('dd', '', r[1])); summaryBox.appendChild(d); });
+            var bad = (t !== 'ordinal' && (a === null || isNaN(a) || pu === null)) || (G.how === 'other' && !G.other.trim()) || G.busy;
+            goBtn.disabled = !!bad;
+            var label = t === 'ordinal' ? 'Remove paid plan' : 'Grant ' + TIER_NAMES[t] + (a === null || isNaN(a) ? '' : ' for ' + money(a).replace(/\.00$/, ''));
+            goBtn.textContent = G.armed ? (a === 0 && t !== 'ordinal' ? 'No charge? Click again' : 'Lower the plan? Click again') : label;
+        }
+        async function checkNumber() {
+            G.numShow = false; G.number = '';
+            if (G.tier !== 'prime' && G.tier !== 'executive') return;
+            var r = await api('GET', 'membership/number-suggest?tier=' + G.tier + '&sub=' + encodeURIComponent(G.member.sub));
+            if (r.status === 200 && r.json && r.json.fits === false) { G.numShow = true; G.number = r.json.suggested || ''; }
+        }
+        async function sendGrant() {
+            var k = grantKind(), a = amountVal();
+            var needArm = (k && k.down) || (G.tier !== 'ordinal' && a === 0);
+            if (needArm && !G.armed) { G.armed = true; updateSummary(); setTimeout(function () { if (G.armed && !G.busy) { G.armed = false; updateSummary(); } }, 5000); return; }
+            G.armed = false;
+            var body = { sub: G.member.sub, tier: G.tier, kind: k.kind };
+            if (G.tier !== 'ordinal') {
+                var pu = paidUntilBody(); if (pu) body.paidUntil = pu;
+                body.amount = a; body.howPaid = a === 0 ? 'no charge' : howPaid();
+            }
+            if (G.numShow && /^\d{4}$/.test(G.number)) body.number = G.number;
+            if (G.notes.trim()) body.receiptNote = G.notes.trim().slice(0, 500);
+            G.busy = true; G.err = ''; errLine.textContent = ''; updateSummary();
+            var r = await write('membership/grant', body);
+            G.busy = false;
+            if (r.status === 200) { G.receipt = { receipt: r.json.receipt || null, cert: r.json.certificateCode || '', tier: G.tier }; renderGrant(); say('Granted.'); if (typeof loadMembers === 'function') loadMembers(); return; }
+            var code = r.json && r.json.error;
+            G.err = r.status === 0 ? 'Not sent. Nothing changed. Try again.' : GR_ERR[code] || xerr(r);
+            if (code === 'number_required' || /^number_/.test(code || '')) { G.numShow = true; renderGrant(); return; }
+            errLine.textContent = G.err; updateSummary();
+        }
+        function copyText(text, b, okLabel, area) {
+            var done = function () { b.textContent = okLabel; setTimeout(function () { b.textContent = b.dataset.label; }, 2500); };
+            var fail = function () { if (area) { area.focus(); area.select(); } b.textContent = 'Press Ctrl+C'; };
+            try { navigator.clipboard.writeText(text).then(done, fail); } catch (_) { fail(); }
+        }
+        function renderReceipt() {
+            var x = G.receipt, box = el('div', 'lb-gr-receipt'); box.id = 'lbGrReceipt';
+            box.appendChild(el('h3', '', TIER_NAMES[x.tier] + ' granted'));
+            if (!x.receipt) {
+                box.appendChild(el('p', 'lb-adm-note', 'Granted. Receipt needs the newer gate.'));
+            } else {
+                var ta = el('textarea', 'lb-gr-text'); ta.id = 'lbGrReceiptText'; ta.readOnly = true; ta.rows = 18; ta.value = x.receipt.text; ta.setAttribute('aria-label', 'Receipt text');
+                var acts = el('div', 'lb-adm-act');
+                var c1 = btn('Copy receipt', 'pri'); c1.id = 'lbGrCopy'; c1.dataset.label = 'Copy receipt';
+                c1.addEventListener('click', function () { copyText(x.receipt.text, c1, 'Copied', ta); });
+                var subj = 'Your Limitless receipt ' + x.receipt.number;
+                var c2 = btn('Copy subject'); c2.id = 'lbGrCopySubj'; c2.dataset.label = 'Copy subject';
+                c2.addEventListener('click', function () { copyText(subj, c2, 'Copied', null); });
+                acts.append(c1, c2);
+                box.append(el('p', 'lb-adm-hint', 'Subject: ' + subj), ta, acts);
+            }
+            if (x.cert) box.appendChild(el('p', 'lb-adm-note', 'Certificate code (for you): ' + x.cert));
+            var again = btn('Grant another'); again.id = 'lbGrAgain';
+            again.addEventListener('click', function () { grantReset(); renderGrant(); if (whoInput) whoInput.focus(); });
+            box.appendChild(again);
+            secGrant.appendChild(box);
+        }
+        function renderGrant() {
+            head(secGrant, 'Grant plan', 'Pick a member, the plan and what they paid. You get a receipt to copy into your own email.');
+            summaryBox = goBtn = whatLine = errLine = amtInput = numWrap = numInput = null; whoInput = whoList = null;
+            if (G.receipt) { renderReceipt(); return; }
+            var f = el('form', 'lb-adm-form lb-gr-form'); f.addEventListener('submit', function (e) { e.preventDefault(); });
+            // 1. who
+            var whoL = el('label', 'lb-gr-who', 'Who');
+            whoHost = el('div', 'lb-gr-combo');
+            whoInput = el('input'); whoInput.id = 'lbGrWho'; whoInput.type = 'text'; whoInput.autocomplete = 'off'; whoInput.placeholder = 'Login name, name or number'; whoInput.maxLength = 80;
+            whoInput.setAttribute('role', 'combobox'); whoInput.setAttribute('aria-autocomplete', 'list'); whoInput.setAttribute('aria-controls', 'lbGrList'); whoInput.setAttribute('aria-expanded', 'false');
+            whoInput.value = G.q;
+            whoList = el('ul', 'lb-gr-list'); whoList.id = 'lbGrList'; whoList.setAttribute('role', 'listbox'); whoList.setAttribute('aria-label', 'Members'); whoList.hidden = true;
+            whoInput.addEventListener('input', function () { G.q = whoInput.value; searchMembers(G.q); });
+            whoInput.addEventListener('keydown', function (e) {
+                var n = G.results ? G.results.length : 0;
+                if (e.key === 'ArrowDown' && n) { e.preventDefault(); G.active = (G.active + 1) % n; renderWhoList(); }
+                else if (e.key === 'ArrowUp' && n) { e.preventDefault(); G.active = (G.active - 1 + n) % n; renderWhoList(); }
+                else if (e.key === 'Enter') { e.preventDefault(); if (n && G.active >= 0) pickMember(G.results[G.active]); }
+                else if (e.key === 'Escape') { G.results = null; G.seq++; renderWhoList(); }
+            });
+            whoInput.addEventListener('blur', function () { setTimeout(function () { if (G.results) { G.results = null; renderWhoList(); } }, 150); });
+            whoHost.append(whoInput, whoList); whoL.appendChild(whoHost); f.appendChild(whoL);
+            var m = G.member;
+            if (m) {
+                var strip = el('div', 'lb-gr-strip'); strip.id = 'lbGrMember';
+                var dl = daysLeft(m.paidUntil);
+                strip.append(el('b', '', m.name || m.loginName || 'Account ' + String(m.sub).slice(0, 8)), el('span', 'lb-gr-login', m.loginName || ''), el('span', 'lb-gr-num', m.number || 'No number'), pill(m.plan || m.tier));
+                if (dl !== null && m.tier !== 'ordinal') strip.appendChild(el('span', 'lb-adm-days', dl < 0 ? 'EXPIRED' : dl + ' DAYS'));
+                strip.appendChild(el('span', 'lb-adm-chip' + (m.standing === 'good' ? ' ok' : ' err'), m.standing));
+                f.appendChild(strip);
+                if (m.standing === 'suspended') { var w = el('p', 'lb-adm-err lb-gr-susp', 'This member is suspended. The plan is granted, but they cannot use it until you lift the suspension.'); w.id = 'lbGrSuspended'; f.appendChild(w); }
+            }
+            // 2. plan
+            var tiles = el('div', 'lb-adm-tiles lb-gr-plan'); tiles.id = 'lbGrPlan'; tiles.setAttribute('role', 'radiogroup'); tiles.setAttribute('aria-label', 'Plan');
+            var st = seats();
+            [['cardinal', 'Cardinal'], ['prime', 'Prime'], ['executive', 'Executive'], ['ordinal', 'Remove paid plan']].forEach(function (p) {
+                var b = el('button', 'lb-adm-tile lb-gr-tile' + (p[0] === 'ordinal' ? ' quiet' : '')); b.type = 'button'; b.dataset.tier = p[0];
+                b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', G.tier === p[0] ? 'true' : 'false'); if (G.tier === p[0]) b.classList.add('on');
+                b.appendChild(el('b', '', p[1]));
+                var price = listPrice(p[0]);
+                if (p[0] === 'executive' && st) b.appendChild(el('span', '', 'Seats used: ' + st.used + ' of ' + st.cap));
+                else if (p[0] !== 'ordinal' && price !== null) b.appendChild(el('span', '', '$' + price + ' a year'));
+                var full = p[0] === 'executive' && st && st.used >= st.cap && !(m && m.tier === 'executive');
+                if (!m || full) b.disabled = true;
+                if (full) b.title = 'All Executive seats are taken';
+                b.addEventListener('click', async function () { G.tier = p[0]; G.armed = false; G.err = ''; G.amount = ''; await checkNumber(); renderGrant(); });
+                tiles.appendChild(b);
+            });
+            f.appendChild(tiles);
+            // 3. what happens
+            whatLine = el('p', 'lb-gr-what'); whatLine.id = 'lbGrWhat'; whatLine.setAttribute('aria-live', 'polite'); f.appendChild(whatLine);
+            if (m && G.tier && G.tier !== 'ordinal') {
+                // 4. term
+                var termL = el('div', 'lb-gr-row'); termL.appendChild(el('span', 'lb-gr-lab', 'Term'));
+                var tc = chipSet('Term', [['year', '1 year'], ['30', '30 days'], ['90', '90 days'], ['custom', 'Custom date']], G.term, function (v) { G.term = v; cd.hidden = v !== 'custom'; G.armed = false; updateSummary(); });
+                tc.id = 'lbGrTerm';
+                var cd = mkField('Paid until', 'grdate', 'date', G.custom); cd.hidden = G.term !== 'custom'; cd.id = 'lbGrDate';
+                cd.querySelector('input').addEventListener('input', function (e) { G.custom = e.target.value; updateSummary(); });
+                termL.append(tc, cd); f.appendChild(termL);
+                // 5. amount and how paid
+                var amtL = el('div', 'lb-gr-row'); amtL.appendChild(el('span', 'lb-gr-lab', 'Amount'));
+                var pb = el('div', 'lb-adm-chips'); pb.id = 'lbGrAmt'; pb.setAttribute('role', 'group'); pb.setAttribute('aria-label', 'Price');
+                var setAmt = function (v) { G.amount = String(v); amtInput.value = G.amount; G.armed = false; updateSummary(); };
+                var lp = listPrice(G.tier), dp = dealPrice(G.tier), pr = prorated();
+                if (lp !== null) { var b1 = btn('$' + lp + ' list', '', function () { setAmt(lp); }); b1.dataset.amt = String(lp); pb.appendChild(b1); }
+                if (dp !== null) { var b2 = btn('$' + dp + ' deal', '', function () { setAmt(dp); }); b2.dataset.amt = String(dp); pb.appendChild(b2); }
+                if (pr !== null) { var b3 = btn('Prorated $' + pr, '', function () { setAmt(pr); }); b3.dataset.amt = String(pr); b3.id = 'lbGrProrated'; pb.appendChild(b3); }
+                var b0 = btn('$0', '', function () { setAmt(0); }); b0.dataset.amt = '0'; pb.appendChild(b0);
+                var af = mkField('Amount in dollars', 'gramt', 'text', G.amount, '0.00', '8em'); amtInput = af.querySelector('input'); amtInput.id = 'lbGrAmtIn'; amtInput.inputMode = 'decimal';
+                amtInput.addEventListener('input', function () { G.amount = amtInput.value; G.armed = false; updateSummary(); });
+                var hc = chipSet('How paid', [['cash', 'Cash'], ['none', 'No charge'], ['other', 'Other']], G.how, function (v) { G.how = v; ot.hidden = v !== 'other'; updateSummary(); });
+                hc.id = 'lbGrHow';
+                var ot = mkField('How it was paid', 'grhow', 'text', G.other, '', '14em'); ot.hidden = G.how !== 'other'; ot.id = 'lbGrHowOther';
+                ot.querySelector('input').maxLength = 80;
+                ot.querySelector('input').addEventListener('input', function (e) { G.other = e.target.value; updateSummary(); });
+                amtL.append(pb, af, hc, ot); f.appendChild(amtL);
+            }
+            // 6. number (Prime and Executive, only when the current one does not fit)
+            if (m && G.numShow) {
+                numWrap = mkField('Member number', 'grnum', 'text', G.number, '4 digits', '6em'); numWrap.id = 'lbGrNum';
+                numInput = numWrap.querySelector('input'); numInput.maxLength = 4; numInput.inputMode = 'numeric'; numInput.pattern = '\\d{4}';
+                numInput.addEventListener('input', function () { G.number = numInput.value.replace(/\D/g, '').slice(0, 4); updateSummary(); });
+                f.appendChild(numWrap);
+            }
+            if (m && G.tier) {
+                // 7. private notes
+                var nl = el('label', 'lb-gr-notes', 'Notes (private)');
+                var ntx = el('textarea'); ntx.id = 'lbGrNotes'; ntx.maxLength = 500; ntx.rows = 3; ntx.value = G.notes;
+                ntx.addEventListener('input', function () { G.notes = ntx.value; });
+                nl.append(ntx, el('span', 'lb-adm-hint', 'Only you see this. Not on the receipt.'));
+                f.appendChild(nl);
+            }
+            // 8. confirm
+            summaryBox = el('dl', 'lb-adm-facts lb-gr-sum'); summaryBox.id = 'lbGrSummary';
+            goBtn = btn('', 'pri'); goBtn.id = 'lbGrGo';
+            goBtn.addEventListener('click', function () { if (!goBtn.disabled && !G.busy) sendGrant(); });
+            errLine = el('p', 'lb-adm-err'); errLine.id = 'lbGrErr'; errLine.setAttribute('role', 'alert'); errLine.textContent = G.err;
+            f.append(summaryBox, goBtn, errLine);
+            secGrant.appendChild(f);
+            updateSummary();
+        }
+
         var CARDS = [top, toast, secMembers, secInvites, secUsers, secUsage, secCharts, secHops, secPlans, secSw, secHealth, secNotices, secReports, secAudit];
         CARDS.splice(CARDS.indexOf(secInvites) + 1, 0, secQueue); CARDS.splice(CARDS.indexOf(secCharts), 0, secTransfer);
+        CARDS.splice(CARDS.indexOf(toast) + 1, 0, tabBar, secGrant);
         inner.replaceChildren.apply(inner, CARDS);
+        showAdmTab();
         var liveTimer = null;
         function loadExtra() {
             // Not part of the "could not be loaded" toast: sections report for themselves.
@@ -9352,6 +9638,9 @@ window._libcurlReady = true;
             if (res[3].status === 200) S.health = res[3].json;
             if (!quiet && res.some(function (r) { return r.status !== 200; })) say('Some of this page could not be loaded.', true);
             renderAll();
+            showAdmTab();
+            if (admTab === 'grant' && !secGrant.firstChild) renderGrant();
+            loadGrantPlans();
             loadExtra();
         }
         function busy() {
