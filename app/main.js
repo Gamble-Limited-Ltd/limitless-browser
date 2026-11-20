@@ -1787,6 +1787,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             const SEARCH_ENGINES = {
                 brave: "https://search.brave.com/search?q=",
                 ddg: "https://duckduckgo.com/?q=",
+                ddglite: "https://lite.duckduckgo.com/lite/?q=",   // LD-11: no scripts, no images, the fastest results page; an option, never the default
                 google: "https://www.google.com/search?q=",
                 bing: "https://www.bing.com/search?q=",
                 custom: "https://example.com/search?q={q}"
@@ -13125,7 +13126,7 @@ _VIEWER_DL_JS +
                             selectedEngine = 'ddg';
                             try { ls.setItem('limitless:engine:v1', 'ddg'); } catch { }
                         }
-                        const engineNames = { brave: 'Brave', ddg: 'DuckDuckGo', bing: 'Bing', custom: getCustomEngineName() };
+                        const engineNames = { brave: 'Brave', ddg: 'DuckDuckGo', ddglite: 'DuckDuckGo Lite (fastest)', bing: 'Bing', custom: getCustomEngineName() };
                         ntEngineLabel.textContent = engineNames[selectedEngine] || 'DuckDuckGo';
                         ntEngineDropdown.querySelectorAll('button').forEach(b => {
                             b.classList.toggle('active', b.dataset.engine === selectedEngine);
@@ -13553,6 +13554,7 @@ _VIEWER_DL_JS +
                 const engines = [
                     { key: "brave", name: "Brave", url: SEARCH_ENGINES.brave },
                     { key: "ddg", name: "DuckDuckGo", url: SEARCH_ENGINES.ddg },
+                    { key: "ddglite", name: "DuckDuckGo Lite (fastest)", url: SEARCH_ENGINES.ddglite },
                     { key: "bing", name: "Bing", url: SEARCH_ENGINES.bing },
                     { key: "custom", name: customName, url: customUrl || SEARCH_ENGINES.custom }
                 ];
