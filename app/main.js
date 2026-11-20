@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false, lazyFrames: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -5590,6 +5590,11 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             // Data saver (Settings > Connection, limitless:datasaver:v1, default off): Save-Data header, no image pre-warm,
             // lazy margin 50 %, preload none and no autoplay, image limit 100.
             window.LB_ls = ls; // read by app/ui.js (auto Data saver)
+            // LD-14 (features.lazyFrames): a cross-origin embed that is not loading=eager is started by the runtime when it nears the viewport
+            function lbLazyFrame(ifr, pageUrl) {
+                if (window.LB_features.lazyFrames !== true || ifr.getAttribute('loading') === 'eager') return false;
+                try { return new URL(ifr.getAttribute('src'), pageUrl).origin !== new URL(pageUrl).origin; } catch (_) { return false; }
+            }
             function lbDataSaver() { try { return ls.getItem('limitless:datasaver:v1') === '1'; } catch (_) { return false; } }
             // Read by makeProxyScript (the injected runtime): lazy offscreen images and the data saver media rules.
             // ── Popup bridge (1.2, features.popupBridge, docs/1.2/POPUP.md) ─────────────────────────────────
@@ -7815,6 +7820,27 @@ function _lazyArm() {
   addEventListener('resize', _lazySched);
   addEventListener('load', _lazySched, true);
   addEventListener('error', _lazySched, true);
+}
+
+// LD-14: embeds the app held back (data-lb-lazyframe) start near the viewport (LB_LAZY.margin percent) or 8 s after load.
+const LB_LAZYFRAMES = ${JSON.stringify(window.LB_features.lazyFrames === true)};
+if (LB_LAZYFRAMES) {
+  const pend = new Set(); let raf = 0;
+  const start = el => { pend.delete(el); const u = el.getAttribute('data-lb-lazyframe'); el.removeAttribute('data-lb-lazyframe'); if (u) el.src = u; };
+  const check = () => {
+    raf = 0;
+    const vh = innerHeight || 800, vw = innerWidth || 1200, m = LB_LAZY.margin / 100;
+    for (const el of [...pend]) {
+      if (!el.isConnected) { pend.delete(el); continue; }
+      const r = el.getBoundingClientRect();
+      if (r.bottom >= -vh * m && r.top <= vh * (1 + m) && r.right >= -vw * m && r.left <= vw * (1 + m)) start(el);
+    }
+  };
+  const sched = () => { if (!raf) raf = requestAnimationFrame(check); };
+  const scan = () => { document.querySelectorAll('iframe[data-lb-lazyframe]').forEach(el => pend.add(el)); sched(); };
+  addEventListener('scroll', sched, true); addEventListener('resize', sched);
+  addEventListener('load', () => { scan(); setTimeout(() => [...pend].forEach(start), 8000); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan); else scan();
 }
 
 function processEl(el) {
@@ -10184,7 +10210,7 @@ _VIEWER_DL_JS +
                 try {
                     return lbRwHash([blockEnabled, ls.getItem('limitless:adblock:allowlist:v1'), mediaPref('limitless:webrtc:block:v1'), ls.getItem('limitless:ua:page:v1'),
                         ls.getItem('limitless:spellcheck:v1'), ls.getItem('limitless:datasaver:v1'), JSON.stringify(getCustomFilters()), window.LB_BUILD_SHA,
-                        window.LB_features.lazyImg, window.LB_features.fontSwap, ls.getItem('limitless:render:imglimit')].join('|'));
+                        window.LB_features.lazyImg, window.LB_features.fontSwap, window.LB_features.lazyFrames, ls.getItem('limitless:render:imglimit')].join('|'));
                 } catch (_) { return 'x'; }
             }
             function lbPcWatch(pc) {   // note the first touch of the page by the member
@@ -11130,7 +11156,7 @@ _VIEWER_DL_JS +
                         cssLinks.slice(0, 60).forEach(l => kick(l.getAttribute('href'), PRIORITY.css));
                         const _sl = Math.max(1, parseInt((() => { try { return ls.getItem('limitless:render:scriptlimit'); } catch (e) { return null; } })() || '250', 10));
                         [...doc.querySelectorAll('script[src]')].slice(0, _sl).forEach(sc => kick(sc.getAttribute('src'), PRIORITY.js));
-                        doc.querySelectorAll('iframe[src]').forEach(f => kick(f.getAttribute('src'), PRIORITY.html));
+                        doc.querySelectorAll('iframe[src]').forEach(f => { if (!lbLazyFrame(f, url)) kick(f.getAttribute('src'), PRIORITY.html); });
                         const _il = Math.max(0, parseInt((() => { try { return ls.getItem('limitless:render:imglimit'); } catch (e) { return null; } })() || (_saver ? '100' : '300'), 10));
                         const _pre = (_saver || LB_imgLane.on()) ? 0 : (window.LB_features.lazyImg === false ? _il : Math.min(_il, 24));
                         // features.lazyPrefetch (with lazyImg): only the first LB_PREWARM_TOP images in document order (likely above the fold),
@@ -11534,7 +11560,7 @@ _VIEWER_DL_JS +
                     if (tabCtrl.signal.aborted || activeTabId !== initiatorTabId) return;
 
                     const _lazyOn = window.LB_features.lazyImg !== false;
-                    doc.querySelectorAll(_lazyOn ? 'iframe[loading="lazy"], source[loading="lazy"]' : 'img[loading="lazy"], iframe[loading="lazy"], source[loading="lazy"]').forEach(el => {
+                    doc.querySelectorAll(_lazyOn ? (window.LB_features.lazyFrames === true ? 'source[loading="lazy"]' : 'iframe[loading="lazy"], source[loading="lazy"]') : 'img[loading="lazy"], iframe[loading="lazy"], source[loading="lazy"]').forEach(el => {
                         el.setAttribute('loading', 'eager');
                     });
                     if (_saver) doc.querySelectorAll('video, audio').forEach(el => { el.removeAttribute('autoplay'); el.setAttribute('preload', 'none'); });
@@ -11563,6 +11589,7 @@ _VIEWER_DL_JS +
                             try {
                                 const iu = new URL(s, url).href;
                                 if (shouldSkip(iu)) ifr.removeAttribute('src');
+                                else if (lbLazyFrame(ifr, url)) { ifr.setAttribute('data-lb-lazyframe', iu); ifr.removeAttribute('src'); }   // the runtime sets .src later, through proxyIframe
                                 else _iframesToProxy.push({ ifr, iu });
                             } catch { ifr.removeAttribute('src'); }
                         }
