@@ -72,7 +72,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 
 | new id | item | status | spec |
 |---|---|---|---|
-| CL-15 | token-level rewriter with AST fallback | measure first (prototype) | 02 |
+| CL-15 | token-level rewriter with AST fallback | prototype done on `proto/cl15` (docs/1.3/CL15-PROTOTYPE.md): 148 of 148 byte-identical on 74 real bundles, 0 bailouts, about 18x faster than acorn/meriyah on the 5 biggest (node, 1x); golden 38-bundle corpus still to run, then build | 02 |
 | CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
 | LD-6 | connect to the search engine at boot | planned | 03 |
