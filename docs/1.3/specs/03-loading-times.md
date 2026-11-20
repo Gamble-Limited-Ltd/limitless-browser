@@ -75,7 +75,7 @@ section 2.
   signature includes the build sha and settings, not the plan; plan does not change page text).
 
 ## LD-6 Connect to the search engine at boot (new, brainstorm B1)
-- **Status:** planned. **Likely time:** 1 h. **Tiers:** all; skipped with Data saver and under the Ordinal cap.
+- **Status:** blocked 2026-11-20: libcurl.js 0.7.5 has no connect-only call (no HTTP request); Boss to choose HEAD as `warm` does, a libcurl change, or drop. **Likely time:** 1 h. **Tiers:** all; skipped with Data saver and under the Ordinal cap.
 - **Rules:** after the boot access check is `ok` and the libcurl session exists, open a connection (WISP stream + TLS handshake, no HTTP
   request) to the host of the selected start-page search engine. Use the same "connect only" helper as LD-4 and LD-7
   (`lbPreconnect(host)`: opens and keeps the connection in libcurl's pool, closes after 60 s unused). Never more than one boot preconnect.
@@ -83,7 +83,7 @@ section 2.
 - **Measure:** `firstBytes` of the first search from the start page, on vs off (A/B, spec 08).
 
 ## LD-7 Connect while typing (new, brainstorm B2)
-- **Status:** planned. **Likely time:** 2 h. **Tiers:** all; same skips as LD-6.
+- **Status:** blocked with LD-6 (same reason). **Likely time:** 2 h. **Tiers:** all; same skips as LD-6.
 - **Rules:** when the address bar text resolves to a host (a typed domain, or the top suggestion from history or favourites) and typing
   pauses for 150 ms, call `lbPreconnect(host)`. At most one pending preconnect; a new host cancels the old one if it has not connected.
   Never a request, never for IP literals or `limitless://` pages.
@@ -119,7 +119,7 @@ section 2.
 Only for Executive on devices with 8 GB or more, and only if LD-12 shows a hit rate over 40 percent. Not specified further until then.
 
 ## LD-11 Fast search option (Boss, 2026-11-19: yes, as an option)
-Planned: add "DuckDuckGo Lite (fastest)" to the start page engine list, pointing at its HTML endpoint; the default engine does
+Built 2026-11-20 (`item/ld11` `5fd0fed`, engine key `ddglite`, no switch), item gate not run. Was planned: add "DuckDuckGo Lite (fastest)" to the start page engine list, pointing at its HTML endpoint; the default engine does
 not change unless Boss says so. 1 h, e2e for the engine list.
 
 ## LD-12 Idle prefetch of likely next pages (later, brainstorm B3)
@@ -128,7 +128,7 @@ not change unless Boss says so. 1 h, e2e for the engine list.
   part of the page (largest link boxes first) with LD-2's safety rules; counts against the member's cap; never with Data saver.
 
 ## LD-13 Text before fonts arrive (new, brainstorm A4)
-- **Status:** planned. **Likely time:** 2 h. **Tiers:** all.
+- **Status:** built 2026-11-20 (`item/ld13` `10fe100`, `features.fontSwap` default off), item gate not run. **Likely time:** 2 h. **Tiers:** all.
 - **Rules:** `rewriteCssUrls` (and the inline `<style>` path) adds `font-display: swap` to every `@font-face` rule without a
   `font-display`, and replaces `block` or `auto` with `swap`; `optional` and `fallback` stay. With Data saver or under the Ordinal cap,
   faces over 150 KB are dropped after the first two faces of a page (text uses the fallback family). `FontFace` objects created by script
@@ -139,7 +139,7 @@ not change unless Boss says so. 1 h, e2e for the engine list.
 - **Rollback:** `LB_FEATURE_FONTSWAP=false`.
 
 ## LD-14 Lazy embeds (new, brainstorm A5)
-- **Status:** planned. **Likely time:** 2 to 3 h. **Tiers:** all.
+- **Status:** built 2026-11-20 (`item/ld14` `fba7406`, `features.lazyFrames` default off), item gate not run. **Likely time:** 2 to 3 h. **Tiers:** all.
 - **Rules:** in the `go()` kick-off, cross-origin iframes whose position cannot be known yet are marked `data-lb-lazyframe`; the runtime
   starts them when they come within 150 percent of the viewport (the `_lazyCheck` logic), or after 8 s idle. Same-origin iframes and
   iframes with `loading=eager` load at once. `loading=lazy` set by the site is no longer flipped to eager when `lazyImg` is on (line 11507

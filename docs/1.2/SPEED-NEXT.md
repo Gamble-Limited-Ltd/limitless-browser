@@ -75,15 +75,15 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | CL-15 | token-level rewriter with AST fallback | measure first (prototype) | 02 |
 | CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
-| LD-6 | connect to the search engine at boot | planned | 03 |
-| LD-7 | connect while typing | planned | 03 |
+| LD-6 | connect to the search engine at boot | needs Boss: libcurl.js 0.7.5 has no connect-only call; HEAD like `warm`, a libcurl change, or drop | 03 |
+| LD-7 | connect while typing | needs Boss: libcurl.js 0.7.5 has no connect-only call; HEAD like `warm`, a libcurl change, or drop | 03 |
 | LD-8 | Lite view (Readability) | planned (Boss yes) | 03 |
 | LD-9 | fast restore after tab discard | planned | 03 |
 | LD-10 | prerender on strong intent | later | 03 |
-| LD-11 | fast search option | planned (Boss yes, option only) | 03 |
+| LD-11 | fast search option | built 2026-11-20 (`item/ld11` `5fd0fed`, no switch), item gate not run | 03 |
 | LD-12 | idle prefetch of likely next pages | later (after LD-2) | 03 |
-| LD-13 | text before fonts (`font-display: swap`) | planned | 03 |
-| LD-14 | lazy embeds | planned | 03 |
+| LD-13 | text before fonts (`font-display: swap`) | built 2026-11-20 (`item/ld13` `10fe100`, `fontSwap` off), item gate not run | 03 |
+| LD-14 | lazy embeds | built 2026-11-20 (`item/ld14` `fba7406`, `lazyFrames` off), item gate not run | 03 |
 | SV-7 | native fetch lane for public files | planned (privacy line) | 04 |
 | SV-8 | stable lane URLs with a relay cookie | planned | 04 |
 | SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
