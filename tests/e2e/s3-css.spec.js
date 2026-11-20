@@ -81,3 +81,66 @@ test('one file per @font-face: woff2 wins, other formats are never fetched', asy
   const fonts = await page.evaluate(() => window.__fetched.filter((u) => /\/m\./.test(u)));
   expect(fonts).toEqual([O + '/m.woff2']);
 });
+
+// LD-13 (features.fontSwap): every @font-face gets font-display: swap unless it says optional or fallback; script-made FontFace too.
+async function fontPage(page, features, css, fonts = {}, saver = false) {
+  const { boot } = require('./helpers');
+  const { SETUP } = require('./s3-helpers');
+  await boot(page, { features: { ownRelay: true, ownSockets: 4, pageCache: true, warm: true, ...features } });
+  await page.evaluate(SETUP);
+  if (saver) await page.evaluate(() => LB_ls.setItem('limitless:datasaver:v1', '1'));
+  await page.evaluate(([o, css, fonts, saver]) => {
+    __respond(o + '/', { headers: { 'content-type': 'text/html' }, body: '<html><head><title>t</title><link rel="stylesheet" href="/s.css">'+ (saver ? '' : '<style>@font-face{font-family:I;src:url(/f/i.woff2)}</style>') + '</head><body><p id="ok">x</p></body></html>' });
+    __respond(o + '/s.css', { headers: { 'content-type': 'text/css' }, body: css });
+    for (const [n, size] of Object.entries(fonts)) __respond(o + '/f/' + n + '.woff2', { headers: { 'content-type': 'font/woff2' }, body: 'x'.repeat(size) });
+    __respond(o + '/f/i.woff2', { headers: { 'content-type': 'font/woff2' }, body: 'i' });
+  }, [O, css, fonts, saver]);
+  await page.evaluate((u) => { window.LB_go(u); }, O + '/');
+  await page.waitForFunction(() => { const c = window.__lbPerf.cur; return c && c.marks.shown != null; }, null, { timeout: 15000 });
+  const fr = await (await page.locator('#frame').elementHandle()).contentFrame();
+  return { fr, styles: await fr.evaluate(() => [...document.querySelectorAll('style')].map((s) => s.textContent).join('\n')) };
+}
+const FACES = [
+  '@font-face{font-family:M;src:url(/f/a.woff2)}',
+  '@font-face{font-family:B;src:url(/f/a.woff2);font-display:block}',
+  '@font-face{font-family:A;src:url(/f/a.woff2);font-display: auto}',
+  '@font-face{font-family:O;src:url(/f/a.woff2);font-display:optional}',
+  '@font-face{font-family:F;src:url(/f/a.woff2);font-display:fallback}',
+  '@font-face{font-family:S;src:url(/f/a.woff2);font-display:swap}',
+].join('\n');
+const face = (out, fam) => new RegExp('@font-face\\s*\\{[^}]*font-family:' + fam + ';[^}]*\\}').exec(out)[0];
+
+test('fontSwap: missing, block and auto become swap; optional, fallback and swap stay; inline style too', async ({ page }) => {
+  const { styles } = await fontPage(page, { fontSwap: true }, FACES, { a: 4 });
+  for (const fam of ['M', 'B', 'A', 'S', 'I']) { const f = face(styles, fam); expect(f).toContain('font-display:swap'); expect(f).not.toMatch(/font-display:\s*(block|auto)/); }
+  expect(face(styles, 'O')).toContain('font-display:optional');
+  expect(face(styles, 'F')).toContain('font-display:fallback');
+});
+
+test('fontSwap off: font faces are left as the site wrote them', async ({ page }) => {
+  const { styles } = await fontPage(page, { fontSwap: false }, FACES, { a: 4 });
+  expect(face(styles, 'M')).not.toContain('font-display');
+  expect(face(styles, 'B')).toContain('font-display:block');
+});
+
+test('fontSwap: script-made FontFace gets display swap unless it names one', async ({ page }) => {
+  const { fr } = await fontPage(page, { fontSwap: true }, FACES, { a: 4 });
+  expect(await fr.evaluate(() => [new FontFace('X', 'url(data:,)').display, new FontFace('Y', 'url(data:,)', { display: 'optional' }).display, new FontFace('Z', 'url(data:,)') instanceof FontFace])).toEqual(['swap', 'optional', true]);
+});
+
+test('fontSwap: with Data saver a face over 150 KB after the first two is dropped', async ({ page }) => {
+  const css = ['a', 'b', 'c', 'd'].map((n) => '@font-face{font-family:' + n + ';src:url(/f/' + n + '.woff2)}').join('\n');
+  const big = 200 * 1024;
+  const run = async (saverOn) => {
+    const ctx = await page.context().browser().newContext();
+    const p = await ctx.newPage();
+    const { styles } = await fontPage(p, { fontSwap: true }, css, { a: big, b: big, c: big, d: 10 }, saverOn);
+    await ctx.close();
+    return styles;
+  };
+  const s = await run(true);
+  expect(face(s, 'a')).toContain('blob:'); expect(face(s, 'b')).toContain('blob:');
+  expect(face(s, 'c')).toContain('url("data:,")');   // third face and big: fallback family
+  expect(face(s, 'd')).toContain('blob:');   // small faces stay
+  expect(face(await run(false), 'c')).toContain('blob:');
+});

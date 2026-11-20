@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false };
+            window.LB_features = { ownRelay: false, ownSockets: 4, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, fontSwap: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'fontSwap']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -2022,6 +2022,10 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 });
             }
             window.LB_fontRangeWanted = lbFontRangeWanted;
+            // LD-13 (features.fontSwap): text shows in the fallback font while a web font loads. Missing, block and auto become swap; optional and fallback stay.
+            function lbFontSwap(css) {
+                return css.replace(/@font-face\s*\{[^}]*\}/gi, ff => /font-display\s*:/i.test(ff) ? ff.replace(/font-display\s*:\s*(block|auto)\b/i, 'font-display:swap') : ff.replace(/;?\s*\}$/, ';font-display:swap}'));
+            }
             function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { if (window.LB_swDoc) window.LB_swDoc.drop(u); URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
@@ -6642,6 +6646,8 @@ ${window.LB_videoRuntime ? '(' + window.LB_videoRuntime + ')(' + JSON.stringify(
 const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
 ${window.LB_features.lockdown === true ? "addEventListener('securitypolicyviolation', e => { try { window.top.postMessage({ t: 'cspblock', u: e.blockedURI }, '*'); } catch (_) {} }, true);" : ''}
 const LB_RWGAPS = ${JSON.stringify(window.LB_features.rwGaps === true)};   // L3 (1.3, off by default): route runtime loads the older hooks missed (setAttribute srcset/src/preload, new Audio, CSS url())
+const LB_FONTSWAP = ${JSON.stringify(window.LB_features.fontSwap === true)};   // LD-13: script-made FontFace objects get display swap
+if (LB_FONTSWAP && window.FontFace) { const _FF = window.FontFace; window.FontFace = class FontFace extends _FF { constructor(f, s, d) { super(f, s, d && d.display ? d : Object.assign({}, d, { display: 'swap' })); } }; }
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
 const INIT_COOKIES = ${JSON.stringify((() => { try { return getCookieHeader(baseUrl, { forDocument: true }); } catch (e) { return ''; } })())};
 const INIT_LS = ${JSON.stringify((() => { try { return getPageLS(new URL(baseUrl).origin); } catch (e) { return {}; } })())};
@@ -10162,7 +10168,7 @@ _VIEWER_DL_JS +
                 try {
                     return lbRwHash([blockEnabled, ls.getItem('limitless:adblock:allowlist:v1'), mediaPref('limitless:webrtc:block:v1'), ls.getItem('limitless:ua:page:v1'),
                         ls.getItem('limitless:spellcheck:v1'), ls.getItem('limitless:datasaver:v1'), JSON.stringify(getCustomFilters()), window.LB_BUILD_SHA,
-                        window.LB_features.lazyImg, ls.getItem('limitless:render:imglimit')].join('|'));
+                        window.LB_features.lazyImg, window.LB_features.fontSwap, ls.getItem('limitless:render:imglimit')].join('|'));
                 } catch (_) { return 'x'; }
             }
             function lbPcWatch(pc) {   // note the first touch of the page by the member
@@ -11114,6 +11120,7 @@ _VIEWER_DL_JS +
                     // Fonts and images become blob: URLs (no base64 text: Discord's inline-style pass built a 1.28 GB heap), revoked
                     // with the page blob through lbScriptBlobs. shortcut: blobs of a load that is aborted are not revoked until the tab closes.
                     const _cssBlobs = [], _cssBlobByUrl = new Map();
+                    let _cssFaces = 0;
                     async function rewriteCssUrls(cssText, baseUrl, fontsOnly) {
                         const re = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi;
                         const todo = new Map();   // original url(...) text -> replacement text
@@ -11147,10 +11154,13 @@ _VIEWER_DL_JS +
                             const { abs, ext, isFont } = v;
                             todo.set(key, `url("${abs}")`);
                             let p = _cssBlobByUrl.get(abs);   // one fetch and one blob per absolute URL for the whole page
+                            const _faceNo = isFont ? ++_cssFaces : 0;
                             if (!p) _cssBlobByUrl.set(abs, p = (async () => {
                                 try {
                                     const r = await queueFetch(abs, isFont ? { signal: tabCtrl.signal } : { signal: tabCtrl.signal, __img: true }, PRIORITY.font);
                                     if (!r.buf || !r.buf.byteLength) return null;
+                                    // LD-13: Data saver or the speed cap: a big face after the first two is not worth the bytes, text uses the fallback family
+                                    if (isFont && _faceNo > 2 && r.buf.byteLength > 150 * 1024 && window.LB_features.fontSwap === true && (lbDataSaver() || (window.LB_speedCap && window.LB_speedCap.mbps() > 0))) return 'data:,';
                                     const fontMime = ext === 'woff2' ? 'font/woff2'
                                         : ext === 'woff' ? 'font/woff'
                                             : ext === 'ttf' ? 'font/ttf'
@@ -11168,7 +11178,8 @@ _VIEWER_DL_JS +
                             const u = await p;
                             if (u) todo.set(key, `url("${u}")`);
                         }));
-                        return cssText.replace(re, (m) => { const v = todo.get(m); return typeof v === 'string' ? v : m; });
+                        const out = cssText.replace(re, (m) => { const v = todo.get(m); return typeof v === 'string' ? v : m; });
+                        return window.LB_features.fontSwap === true ? lbFontSwap(out) : out;
                     }
 
                     // Stage: external CSS (with @import chains and font/image url()s), then inline <style> url()s. With the pipeline
