@@ -59,7 +59,7 @@ through `auth_request` (section 5 of that doc). Dev test server: 8599 (Playwrigh
 - Not offloaded to buildpc (no `.nvmrc`; stack tests unverified there).
 
 ## Deploy / release
-- `./deploy.sh [sha]` (Boss runs it): clean tree, builds from `git archive`, compose project `limitless-browser`, writes
+- `./deploy.sh [sha]` (Claude runs it via `gll ship limitless <sha>` once Boss says a release ships; auto-rollback on a failed check): clean tree, builds from `git archive`, compose project `limitless-browser`, writes
   `.last-deploy-hash` as soon as the containers are up (the daily rotation's preflight compares the lbgate image to it), then smoke
   tests with 30 s retries; a smoke failure prints the rollback command. Before 2026-11-09 the hash came after the smoke, and a
   failed smoke on 2026-11-08 left it stale and blocked the 06:00 rotation. After a deploy: `~/gll-planning/rotation/rotate.sh check`. Rollback: `./deploy.sh <previous sha>`; when that commit has no `sw.js` (0.2.x) `deploy.sh` runs `scripts/inject-sw-stub.sh`, which serves `scripts/sw-rollback-stub.js` (installs, clears `lb-shell-*` caches, unregisters, no fetch handler) so installed 0.3.0 workers remove themselves (`c88ce5e` nginx serves `/sw.js` as gated `application/javascript`, checked 2026-11-15). Needs `~/limitless-gate` and the gitignored
