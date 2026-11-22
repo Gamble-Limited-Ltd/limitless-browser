@@ -45,6 +45,11 @@ async function load(page, html) {
   await expect.poll(() => page.evaluate(() => (window.__lbPerf.cur ? window.__lbPerf.cur.marks.shown : 0) || 0), { timeout: 20000 }).toBeGreaterThan(0);
 }
 const pageFrame = (page) => page.frames().find((f) => /^blob:|\/~lb\/doc\//.test(f.url()));
+// the frame navigates a moment after shown: wait for its /~lb/doc/ URL before using it
+async function docFrame(page) {
+  await expect.poll(() => { const f = pageFrame(page); return f ? f.url() : ''; }, { timeout: 10000 }).toMatch(/\/~lb\/doc\/[a-z0-9]+\.[a-z0-9]+$/);
+  return pageFrame(page);
+}
 
 test('off by default: the frame is a blob: document and no lane starts', async ({ page, context }) => {
   const { direct } = await setup(page, context, {});
@@ -60,8 +65,7 @@ test('on: the frame is served from /~lb/doc/ and import() and inline CSS url() r
   const { direct, errors } = await setup(page, context, { swDoc: true });
   await expect.poll(() => page.evaluate(() => window.LB_swDoc.state), { timeout: 15000 }).toBe('ready');
   await load(page, PAGE);
-  const f = pageFrame(page);
-  expect(f.url()).toMatch(/\/~lb\/doc\/[a-z0-9]+\.[a-z0-9]+$/);
+  const f = await docFrame(page);
   await expect.poll(() => f.evaluate(() => window.__mod), { timeout: 15000 }).toBe(42);
   await expect.poll(() => page.evaluate(() => window.__count(/\/bg\.png/)), { timeout: 15000 }).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.__count(/\/mod\.js/))).toBeGreaterThan(0);
@@ -74,7 +78,7 @@ test('on: the document is not served to a top-level navigation, and a missing on
   await setup(page, context, { swDoc: true });
   await expect.poll(() => page.evaluate(() => window.LB_swDoc.state), { timeout: 15000 }).toBe('ready');
   await load(page, PAGE);
-  const url = pageFrame(page).url();
+  const url = (await docFrame(page)).url();
   const res = await page.request.get(url);
   expect(res.status()).toBe(404);   // fetch() from a page is not an iframe navigation: the worker leaves it to the server, which has no such file
   const tab = await context.newPage();
