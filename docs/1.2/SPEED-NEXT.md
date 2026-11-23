@@ -13,8 +13,8 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 
 | new id | old ids | item | status | spec |
 |---|---|---|---|---|
-| CL-1 | N2, N4, 2.2 | meriyah parser, acorn fallback | built (`speed/1.3-quick`); rerun gate alone | 02 |
-| CL-2 | N8, 2.5, R2 | 6 sockets for paid tiers | built (`speed/1.3-quick`); gate fail looked like noise, rerun alone | 02 |
+| CL-1 | N2, N4, 2.2 | meriyah parser, acorn fallback | ready in 1.2.6 (item gate PASS 2026-11-19) | 02 |
+| CL-2 | N8, 2.5, R2 | 6 sockets for paid tiers | ready in 1.2.6 (item gate PASS 2026-11-19) | 02 |
 | CL-3 | N3 | skip scripts with no `location`/`import(` | closed (exists since 1.0) | 02 |
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
@@ -27,11 +27,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
-| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF | 03 |
-| LD-2 | N7, 2.4 | hover prefetch | built (`speed/1.3-quick`); gate FAILED (fx-app, fx-frames +15 to +29 percent); 2026-11-20 code review: N7 is inert on those fixtures (no links, no hover), quiet 11-19 reruns are inside baseline; rerun fx-app and fx-frames alone on a quiet machine, on vs off, 7 reps; treat as noise unless that shows a delta | 03 |
+| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on item gate running 2026-11-23 | 03 |
+| LD-2 | N7, 2.4 | hover prefetch | ready in 1.2.7, on (2026-11-23: the 11-22 sites fail was a stale branch without the YouTube block, plus Quizlet bot-check flake on both sides; speed 0 fail) | 03 |
 | LD-3 | H2, 4.3 | streamed documents | measure first (LD-3a) | 03 |
 | LD-4 | H1 | warm connections | planned | 03 |
-| LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; measure | 03 |
+| LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; switch-on item gate running 2026-11-23 | 03 |
 | SV-0 | G6, 1.3 | VPS CPU and RAM budget | planned | 04 |
 | SV-1 | S1 | image lane (WebP, cache) | shipped 1.2.0, OFF | 04 |
 | SV-2 | 5.1, 5.2, G2 | image lane on, coverage | planned (privacy line first) | 04 |
@@ -65,8 +65,8 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | planned | 01 |
 | MS-6 | Phase 0 exit | "x native" table per Minor | planned | 01 |
 | MS-7 | S9b samples | field numbers per release | exists | 01 |
-| TS-1 to TS-8 | F, T1, T3 | gate runner, quiet machine, build cache, A/B early stop, tags, baselines | planned | 08 |
-| AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | built 2026-11-19 (gate `slice/1.3-grant`, app `slice/1.3-grant-tab`); not released | 09 |
+| TS-1 to TS-8 | F, T1, T3 | gate runner, quiet machine, build cache, A/B early stop, tags, baselines | TS-1, 2, 3, 4, 5, 6 built on `tools/1.3-test-speed` (in use since 2026-11-19); TS-7, TS-8 planned | 08 |
+| AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | ready in 1.2.6 (gate `2b346b0`) | 09 |
 
 New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 
@@ -80,14 +80,14 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | LD-8 | Lite view (Readability) | planned (Boss yes) | 03 |
 | LD-9 | fast restore after tab discard | planned | 03 |
 | LD-10 | prerender on strong intent | later | 03 |
-| LD-11 | fast search option | built 2026-11-20 (`item/ld11` `5fd0fed`, no switch), item gate not run | 03 |
+| LD-11 | fast search option | ready in 1.2.7 (item gate PASS 2026-11-21) | 03 |
 | LD-12 | idle prefetch of likely next pages | later (after LD-2) | 03 |
-| LD-13 | text before fonts (`font-display: swap`) | built 2026-11-20 (`item/ld13` `10fe100`, `fontSwap` off), item gate not run | 03 |
-| LD-14 | lazy embeds | built 2026-11-20 (`item/ld14` `fba7406`, `lazyFrames` off), item gate not run | 03 |
+| LD-13 | text before fonts (`font-display: swap`) | ready in 1.2.7, on (item gate PASS 2026-11-21 with it on) | 03 |
+| LD-14 | lazy embeds | ready in 1.2.7, on (item gate PASS 2026-11-21 with it on) | 03 |
 | SV-7 | native fetch lane for public files | planned (privacy line) | 04 |
 | SV-8 | stable lane URLs with a relay cookie | planned | 04 |
 | SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
-| SV-11 | Cloudflare free edge for lanes | spec written; go and DNS open (Boss) | 04 |
+| SV-11 | Cloudflare free edge for lanes | spec written; go given (Boss, 2026-11-23: Claude does the Cloudflare side when it can, else Boss later); waits on SV-7, SV-8 and SV-2 (image lane on) | 04 |
 | TL-6 | leak zoo fixture | built on `tools/1.3-leakzoo` (`31bad31`, 65 cases, 34 known leaks), not merged | 05 |
 | TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
 | BC-9 | site status hints | planned | 06 |
@@ -98,6 +98,13 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | TS-11 | automatic bisect | planned | 08 |
 | TS-12 | non-timing suites side by side | planned | 08 |
 | AD-4 | admin speed card | planned (after MS-8) | 09 |
+
+## Switches still off (checked 2026-11-23, Boss asked for every finished switch on in the next update)
+- lockdown + rwGaps (TL-1 B): the only on-run (2026-11-19 job C) lost images on 28 sites; needs TL-5 and TL-2 first.
+- curlWorker (CL-8): slice 1 of 5 built; slices 2 to 5 and a school-Chromebook run first.
+- swDoc (TL-3): TL-7 service worker guard (security) and the 5 lane gaps first.
+- imgLane (SV-2): HALL legal line (branch `legal/limitless-imglane-line`, approved), SV-0 VPS budget and an MS-4 run first; its own release.
+- visibleFirst (LD-1), pageCache + warm (LD-5): switch-on item gates 2026-11-23; on in 1.2.7 if they pass (LD-5 also needs the 30 percent warm rule, spec 03).
 
 ## Release pace (Boss, 2026-11-18)
 Speed items ship as each one is ready, in small releases over days and weeks, not saved up into one big release. Each item keeps its feature switch so a rollback is a build flag, and one item per release pins any speed regression to its change. The release rules still apply (24 h hold after a Minor, at most 2 deploys a day, Boss runs every deploy).
