@@ -101,3 +101,15 @@ test('page cache: a stored page never holds blob: script URLs (L6)', async ({ pa
   expect(html).toMatch(/src="data:text\/javascript/);
   expect(errors).toEqual([]);
 });
+
+// LD-5: the A/B "warm" visit is a second LB_go of the same URL in the same tab, with no reload. It must be answered from the page cache.
+test('page cache: a second visit in the same tab (the speed A/B warm visit) is served from the page cache', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(([o, h, b]) => { __respond(o + '/p', { headers: h, body: b }); }, [O, HEAD, DOC('One')]);
+  await visit(page, O + '/p');
+  await expect.poll(() => page.evaluate(() => LB_pc.kv.count())).toBe(1);   // stored after the first load
+  await page.evaluate(([o, h, b]) => { __respond(o + '/p', { headers: h, body: b, delay: 2500 }); }, [O, HEAD, DOC('One')]);
+  await page.evaluate((u) => { window.LB_go(u); }, O + '/p');
+  const m = await page.evaluate(() => window.__waitMark('shown', 2000));
+  expect(m.shown).toBeLessThan(1500);   // the document itself needs 2.5 s, so only the stored page can answer sooner
+});
