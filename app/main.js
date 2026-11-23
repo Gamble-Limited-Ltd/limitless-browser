@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false, lazyFrames: false, hoverPrefetch: true };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -770,7 +770,7 @@
                         if ('sw' in f) window.LB_features.sw = f.sw !== false && f.sw !== 0;
                         if ('pipeline' in f) window.LB_features.pipeline = f.pipeline !== false && f.pipeline !== 0;
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
-                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
+                        for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
                         for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
@@ -2374,6 +2374,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             }
 
             function updateTabUrl(url) {
+                if (window.LB_liteBtn) window.LB_liteBtn(url);
                 const tab = getActiveTab();
                 if (tab) {
                     tab.url = url;
@@ -4504,6 +4505,109 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 }
             }
             // Hooks for self-contained internal pages that live in their own script (the owner admin panel).
+            // ===== LD-8 Lite view (features.liteView, build LB_FEATURE_LITEVIEW): Mozilla Readability (vendor/readability/0.6.0, Apache-2.0,
+            // loaded on first use) over the HTML go() already fetched, shown at limitless://lite?u=<url>. No site script runs and nothing
+            // is fetched for the text; images go through doFetch. Readability output is untrusted: it is rebuilt through a tag/attribute allowlist.
+            {
+                const LITE = 'limitless://lite?u=';
+                const liteOn = () => window.LB_features.liteView === true;
+                const liteEl = document.createElement('div'); liteEl.className = 'lb-wn lb-lite'; liteEl.id = 'lbLite';
+                newtab.parentElement.appendChild(liteEl);
+                const liteBtn = $('lbLiteBtn');
+                let liteDoc = null, liteTimer = 0, liteLib = null, liteTok = 0, liteBlobs = [], liteOffered = null;
+                const liteOffer = document.createElement('div'); liteOffer.className = 'lb-lite-offer hidden'; liteOffer.id = 'lbLiteOffer'; liteOffer.setAttribute('role', 'status');
+                const liteOfferB = document.createElement('button'); liteOfferB.type = 'button'; liteOfferB.id = 'lbLiteOfferBtn'; liteOfferB.textContent = 'Open';
+                liteOffer.append(document.createTextNode('Taking long. Open Lite view? '), liteOfferB);
+                progressWrap.parentElement.appendChild(liteOffer);
+                const hideOffer = () => { liteOffer.classList.add('hidden'); };
+                const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = new URL(src, document.baseURI).href; s.onload = res; s.onerror = () => rej(new Error(src)); document.head.appendChild(s); });
+                const liteLoad = () => liteLib || (liteLib = Promise.all([loadScript('vendor/readability/0.6.0/Readability.js'), loadScript('vendor/readability/0.6.0/Readability-readerable.js')]).catch((e) => { liteLib = null; throw e; }));
+                const liteParse = (html, url) => {
+                    const d = new DOMParser().parseFromString(html, 'text/html');   // inert: no script runs, nothing loads
+                    const b = d.createElement('base'); b.href = url; d.head.prepend(b);
+                    return d;
+                };
+                const DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH', 'FORM', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'NOSCRIPT', 'TEMPLATE', 'LINK', 'META', 'VIDEO', 'AUDIO', 'CANVAS', 'BASE', 'FRAME', 'FRAMESET']);
+                const KEEP = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'CODE', 'EM', 'STRONG', 'B', 'I', 'A', 'IMG', 'FIGURE', 'FIGCAPTION', 'BR', 'HR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'SUP', 'SUB', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'DL', 'DT', 'DD', 'SMALL', 'U', 'S', 'MARK']);
+                const httpUrl = (h, base) => { try { const u = new URL(h, base); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (_) { return null; } };
+                const clean = (src, into, base) => {   // rebuilds, never adopts: unknown tags are unwrapped, attributes are not copied except href/src/alt/title
+                    for (const n of Array.from(src.childNodes)) {
+                        if (n.nodeType === 3) { into.appendChild(document.createTextNode(n.nodeValue)); continue; }
+                        if (n.nodeType !== 1) continue;
+                        const tag = n.tagName.toUpperCase();
+                        if (DROP.has(tag)) continue;
+                        if (!KEEP.has(tag)) { clean(n, into, base); continue; }
+                        const e = document.createElement(tag.toLowerCase());
+                        if (tag === 'A') { const h = httpUrl(n.getAttribute('href') || '', base); if (h) { e.setAttribute('href', h); e.dataset.lbHref = h; } }
+                        if (tag === 'IMG') { const s = httpUrl(n.getAttribute('src') || '', base); if (!s) continue; e.dataset.lbSrc = s; e.alt = n.getAttribute('alt') || ''; }
+                        if (tag !== 'IMG') clean(n, e, base);
+                        into.appendChild(e);
+                    }
+                    return into;
+                };
+                const liteState = (t, back, url) => {
+                    const d = document.createElement('div'); d.className = 'lb-wn-in lb-lite-in';
+                    const p = document.createElement('p'); p.className = 'lb-wn-state'; p.id = 'lbLiteMsg'; p.textContent = t; d.appendChild(p);
+                    if (back) d.appendChild(liteBack(url));
+                    liteEl.replaceChildren(d);
+                };
+                const liteBack = (url) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'lb-lite-back'; b.id = 'lbLiteBack'; b.textContent = 'Back to full page'; b.addEventListener('click', () => go(url, true)); return b; };
+                const liteFree = () => { for (const u of liteBlobs.splice(0)) URL.revokeObjectURL(u); };
+                const liteRender = async (url, my) => {
+                    liteState('Loading Lite view', false);
+                    const seen = liteDoc && liteDoc.url === url ? liteDoc : null;
+                    let art = null;
+                    if (seen) {
+                        try { await liteLoad(); const r = new Readability(liteParse(seen.html, url)).parse(); if (r && r.content && (r.textContent || '').trim().length >= 140) art = r; } catch (_) {}
+                    }
+                    if (my !== liteTok) return;
+                    if (!art) { liteState('Lite view is not available for this page.', true, url); return; }
+                    const inner = document.createElement('div'); inner.className = 'lb-wn-in lb-lite-in';
+                    const h = document.createElement('h1'); h.textContent = art.title || url; inner.appendChild(h);
+                    if (art.byline) { const p = document.createElement('p'); p.className = 'lb-lite-by'; p.textContent = art.byline; inner.appendChild(p); }
+                    inner.appendChild(liteBack(url));
+                    const body = document.createElement('div'); body.className = 'lb-lite-body';
+                    clean(new DOMParser().parseFromString(art.content, 'text/html').body, body, url);
+                    inner.appendChild(body);
+                    liteEl.replaceChildren(inner);
+                    setTabTitle(art.title || 'Lite view');
+                    body.addEventListener('click', (ev) => { const a = ev.target.closest && ev.target.closest('a[data-lb-href]'); if (a) { ev.preventDefault(); go(a.dataset.lbHref, true); } });
+                    Array.from(body.querySelectorAll('img[data-lb-src]')).slice(0, 40).forEach(async (img) => {
+                        try {
+                            if (shouldSkip(img.dataset.lbSrc)) { img.remove(); return; }   // ad block, blocklist and YouTube block, as for page images
+                            const r = await doFetch(img.dataset.lbSrc, { __img: true });
+                            if (my !== liteTok || !r || !r.buf || !r.buf.byteLength || !/^image\//i.test(r.mime || '')) return;
+                            const u = URL.createObjectURL(new Blob([r.buf], { type: r.mime })); liteBlobs.push(u); img.src = u;
+                        } catch (_) {}
+                    });
+                };
+                window.LB_liteRegister = (url) => {   // go() calls this for limitless://lite?u=...
+                    for (const k of Object.keys(SKIN_PAGES)) if (k.startsWith(LITE) && k !== url) delete SKIN_PAGES[k];
+                    const orig = httpUrl(decodeURIComponent(url.slice(LITE.length)), 'http://x/') || '';
+                    SKIN_PAGES[url] = { title: 'Lite view', open: () => { liteEl.classList.add('show'); hideOffer(); const my = ++liteTok; liteFree(); liteRender(orig, my); }, close: () => { liteTok++; liteEl.classList.remove('show'); } };
+                };
+                const liteGo = () => {
+                    hideOffer();
+                    const u = pageUrl;
+                    if (!liteOn() || !/^https?:\/\//i.test(u || '')) return;
+                    go(LITE + encodeURIComponent(u), true);
+                };
+                if (liteBtn) liteBtn.addEventListener('click', liteGo);
+                liteOfferB.addEventListener('click', liteGo);
+                window.LB_liteBtn = (url) => { if (liteBtn) liteBtn.classList.toggle('hidden', !(liteOn() && /^https?:\/\//i.test(url || ''))); };
+                window.LB_liteSeen = (url, html, status, method) => {   // go() calls this with the document text it already fetched
+                    clearTimeout(liteTimer); hideOffer();
+                    if (!liteOn() || method !== 'GET' || status >= 400) return;
+                    liteDoc = { url, html };
+                    window.LB_liteBtn(url);
+                    const run = window.__lbPerf.cur;
+                    const wait = Math.max(0, (window.LB_liteOfferMs || 6000) - (performance.now() - (run ? run.t0 : performance.now())));
+                    liteTimer = setTimeout(async () => {
+                        if (!run || run.marks.shown != null || liteOffered === run || pageUrl !== url) return;
+                        try { await liteLoad(); if (isProbablyReaderable(liteParse(html, url)) && run.marks.shown == null && pageUrl === url) { liteOffered = run; liteOffer.classList.remove('hidden'); } } catch (_) {}
+                    }, wait);
+                };
+            }
             window.LB_pages = SKIN_PAGES;
             window.LB_go = (u) => go(u, true);
             window.LB_goPost = (u, b) => go(u, true, 'POST', b);   // test hook
@@ -10520,6 +10624,7 @@ _VIEWER_DL_JS +
                     return;
                 }
 
+                if (url.startsWith("limitless://lite?u=")) window.LB_liteRegister(url);
                 if (SKIN_PAGES[url]) {
                     if (activeTabId === initiatorTabId) showSkinPage(url, push);
                     return;
@@ -10855,6 +10960,7 @@ _VIEWER_DL_JS +
                     // ────────────────────────────────────────────────────────
 
                     const html = new TextDecoder().decode(r.buf);
+                    window.LB_liteSeen(url, html, r.status, method);
                     if (window.LB_botCheck && window.LB_botCheck(r.status, html, r.headers)) {   // S6: plain card, never a way around it (UI.md, TESTING 10; 1.1: real interstitials only)
                         hideOverlay(); setStatus("error", "Error"); setTabTitle("Human check"); currentDoc = null;
                         renderErrorPage(url, 'Human Check', 'bot-check', '', []); tabAbortControllers.delete(initiatorTabId); return;

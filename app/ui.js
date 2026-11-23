@@ -61,6 +61,7 @@
         ['home', 'home', 'Start page', '', proxy('home')],
         ['history', 'history', 'History', 'Alt+H', proxy('historyBtn')],
         ['find', 'search', 'Find in page', 'Alt+F', proxy('findOmniBtn')],
+        ['lite', 'search', 'Lite view', '', proxy('lbLiteBtn')],
         ['bookmarks', 'bookmarks', 'Show bookmarks bar', '', function () { var w = $('bookmarksWrap'); if (!w) return; var hidden = w.classList.contains('hidden'); var b = hidden ? $('showBookmarksBtn') : $('bookmarksToggle'); if (b) b.click(); }, 'check'],
         '-',
         ['theme', 'palette', 'Theme', '', proxy('lbThemeBtn')],
@@ -95,6 +96,7 @@
     function openMenu() {
         paintHeader(); paintMeter(); applyDev();
         var bm = menu.querySelector('[data-id="bookmarks"]'); var w = $('bookmarksWrap'); if (bm) bm.setAttribute('aria-checked', w && !w.classList.contains('hidden') ? 'true' : 'false');
+        var lt = menu.querySelector('[data-id="lite"]'); if (lt) lt.style.display = (window.LB_features && window.LB_features.liteView === true) ? '' : 'none';
         menu.hidden = false; menuBtn.setAttribute('aria-expanded', 'true');
         var f = items()[0]; if (f) f.focus();
     }
