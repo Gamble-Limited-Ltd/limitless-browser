@@ -27,11 +27,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
-| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on item gate running 2026-11-23 | 03 |
+| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on gate 2026-11-23 FAIL (Discord stops showing with it on; cold shown on fx-news/fx-slow unchanged, rule asks 30 percent). Next: find the Discord break, then re-gate | 03 |
 | LD-2 | N7, 2.4 | hover prefetch | ready in 1.2.7, on (2026-11-23: the 11-22 sites fail was a stale branch without the YouTube block, plus Quizlet bot-check flake on both sides; speed 0 fail) | 03 |
 | LD-3 | H2, 4.3 | streamed documents | measure first (LD-3a) | 03 |
 | LD-4 | H1 | warm connections | planned | 03 |
-| LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; switch-on item gate running 2026-11-23 | 03 |
+| LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; switch-on gate 2026-11-23 no-break PASS but warm shown unchanged (rule asks 30 percent on 3 official sites). Next: check the A/B warm visit actually hits the cache, then measure on official sites | 03 |
 | SV-0 | G6, 1.3 | VPS CPU and RAM budget | planned | 04 |
 | SV-1 | S1 | image lane (WebP, cache) | shipped 1.2.0, OFF | 04 |
 | SV-2 | 5.1, 5.2, G2 | image lane on, coverage | planned (privacy line first) | 04 |
@@ -104,7 +104,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 - curlWorker (CL-8): slice 1 of 5 built; slices 2 to 5 and a school-Chromebook run first.
 - swDoc (TL-3): TL-7 service worker guard (security) and the 5 lane gaps first.
 - imgLane (SV-2): HALL legal line (branch `legal/limitless-imglane-line`, approved), SV-0 VPS budget and an MS-4 run first; its own release.
-- visibleFirst (LD-1), pageCache + warm (LD-5): switch-on item gates 2026-11-23; on in 1.2.7 if they pass (LD-5 also needs the 30 percent warm rule, spec 03).
+- visibleFirst (LD-1), pageCache + warm (LD-5): gated 2026-11-23, both stay off in 1.2.7 (see rows LD-1, LD-5 and docs/releases/1.2.7.md on release/1.2.7).
 
 ## Release pace (Boss, 2026-11-18)
 Speed items ship as each one is ready, in small releases over days and weeks, not saved up into one big release. Each item keeps its feature switch so a rollback is a build flag, and one item per release pins any speed regression to its change. The release rules still apply (24 h hold after a Minor, at most 2 deploys a day, Boss runs every deploy).
