@@ -77,7 +77,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
 | LD-6 | connect to the search engine at boot | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |
 | LD-7 | connect while typing | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |
-| LD-8 | Lite view (Readability) | planned (Boss yes) | 03 |
+| LD-8 | Lite view (Readability) | built 2026-11-23 on `item/ld8-lite` (`5dc3550`, switch `liteView`, build default on, e2e 6/6); item gate next | 03 |
 | LD-9 | fast restore after tab discard | planned | 03 |
 | LD-10 | prerender on strong intent | later | 03 |
 | LD-11 | fast search option | ready in 1.2.7 (item gate PASS 2026-11-21) | 03 |
