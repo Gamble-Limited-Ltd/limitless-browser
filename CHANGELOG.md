@@ -2,6 +2,13 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.7
+
+- A new search choice, "DuckDuckGo Lite (fastest)", gives plain, quick results on slow devices.
+- Page text shows right away while fancy fonts finish loading, instead of staying blank.
+- Videos, maps and other embeds lower down a page wait until you scroll near them, so the top of the page loads first.
+- Hovering a link on the same site starts loading it early, so the click feels faster.
+
 ## 1.2.6
 
 - The Plans page now shows prices and what each plan includes. Plans are not on sale yet.
