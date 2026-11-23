@@ -27,11 +27,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
-| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on gate 2026-11-23 FAIL (Discord stops showing with it on; cold shown on fx-news/fx-slow unchanged, rule asks 30 percent). Next: find the Discord break, then re-gate | 03 |
+| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on gate 2026-11-23 FAIL (Discord stops showing with it on; cold shown on fx-news/fx-slow unchanged, rule asks 30 percent). Next: find the Discord break, then re-gate. 2026-11-23 evening: code read rules out the obvious paths (in-view check is try/catch, 3.25 priority sorts like an image, no cache key change), no local repro; next a Discord-only on/off repeat to tell flake from break | 03 |
 | LD-2 | N7, 2.4 | hover prefetch | ready in 1.2.7, on (2026-11-23: the 11-22 sites fail was a stale branch without the YouTube block, plus Quizlet bot-check flake on both sides; speed 0 fail) | 03 |
 | LD-3 | H2, 4.3 | streamed documents | measure first (LD-3a) | 03 |
 | LD-4 | H1 | warm connections | planned | 03 |
-| LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; switch-on gate 2026-11-23 no-break PASS but warm shown unchanged (rule asks 30 percent on 3 official sites). Next: check the A/B warm visit actually hits the cache, then measure on official sites | 03 |
+| LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; switch-on gate 2026-11-23 no-break PASS but warm shown unchanged (rule asks 30 percent on 3 official sites). 2026-11-23 evening: the cache works (e2e on `item/ld5-cache`), the gate was at fault: `featureEnv()` built base and candidate with pageCache and warm on, so the A/B compared on vs on (fixed on `tools/1.3-test-speed` `d208e0e`); re-gate running with `--features pagecache=true,warm=true`. Only `fx-news-fresh` sends max-age, so other fixtures cannot show a page-cache gain | 03 |
 | SV-0 | G6, 1.3 | VPS CPU and RAM budget | planned | 04 |
 | SV-1 | S1 | image lane (WebP, cache) | shipped 1.2.0, OFF | 04 |
 | SV-2 | 5.1, 5.2, G2 | image lane on, coverage | planned (privacy line first) | 04 |
