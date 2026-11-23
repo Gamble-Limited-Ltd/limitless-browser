@@ -56,7 +56,9 @@ if [ -n "$bc" ]; then
   retry docker compose -p limitless-browser "${COMPOSE[@]}" exec -T lbgate wget -qO /dev/null "$bc/oidc/jwks" \
     || fail "check service cannot reach GLL ID at $bc"
 fi
-root_code="$(curl -s -o "$WORK/root.body" -w '%{http_code}' -H 'Accept: text/html' "$base/")"
+# The gate may still be starting (a data migration runs at boot): nginx answers 500 until it listens, so retry.
+root_get() { root_code="$(curl -s -o "$WORK/root.body" -w '%{http_code}' -H 'Accept: text/html' "$base/")"; case "$root_code" in 200|302|401|403|503) return 0;; esac; return 1; }
+retry root_get || true
 grep -q 'copyright_notice' "$WORK/root.body" && fail "/ served the app without a session (code $root_code)"
 case "$root_code" in 200|302|401|403|503) :;; *) fail "/ returned $root_code";; esac
 curl -s -o /dev/null -w '%{http_code}' "$base/index.html" | grep -qE '^(401|403|503)$' \
