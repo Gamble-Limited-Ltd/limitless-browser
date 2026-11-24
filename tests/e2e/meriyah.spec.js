@@ -40,7 +40,8 @@ test('meriyah on and off give identical rewrites; the fallback is counted', asyn
   expect(on.res.shadow).toBe(CASES.shadow + '\n' + PAD);   // a bound location shadows the global: untouched, same as acorn
   expect(on.res.bad).toBe(CASES.bad + '\n' + PAD);
   expect(on.stats.worker).toBe(Object.keys(CASES).length);
-  expect(on.stats.meriyahFallback).toBe(1);   // `both`: only acorn parses it (`bad` is parsed by nobody, not counted)
+  // `both`: only acorn parses it (`bad` is parsed by nobody, not counted); with CL-15 on the scanner answers it before any parser runs
+  expect(on.stats.meriyahFallback).toBe(process.env.LB_TEST_TOKREWRITE === '1' ? 0 : 1);
   expect(on.reqs.length).toBeGreaterThan(0);
   expect(off.reqs).toEqual([]);
   expect(off.stats.meriyahFallback || 0).toBe(0);

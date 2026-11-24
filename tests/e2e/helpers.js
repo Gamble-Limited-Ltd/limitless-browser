@@ -5,7 +5,7 @@ const { expect } = require('@playwright/test');
 // pre-0.3 feature set (the 1.0 path) at CONTEXT level, so a test's own page.route for version.json still wins.
 // Pass { features: null } to get the real 0.3.0 defaults (no version.json at all).
 const LEGACY_FEATURES = { ownRelay: true, ownSockets: 4, pageCache: true, warm: true };
-const legacyVersion = (f) => (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'dev', sha: 'dev', features: f }) });
+const legacyVersion = (f) => (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'dev', sha: 'dev', features: process.env.LB_TEST_TOKREWRITE === '1' ? { tokRewrite: true, ...f } : f }) });
 
 /** Load the app shell from the static server and dismiss the first-run overlays. Returns the page error list. */
 async function boot(page, { init, arg, tourTimeout = 12000, features = LEGACY_FEATURES } = {}) {

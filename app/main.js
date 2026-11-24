@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -772,7 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
-                        for (const k of ['visibleFirst', 'googleSignin']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
+                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -10293,8 +10293,10 @@ _VIEWER_DL_JS +
             // rewriter change invalidates everything at once. 50 MB, least recently used first.
             const lbRwKV = lbMakeKV('LimitlessRewrite', 50 * 1024 * 1024);
             let _lbRwVer = '';
+            // CL-15: the scanner's version is part of the key while the switch is on, so AST-path and scanner outputs never mix
+            const lbRwVer = () => lbRwHash(rewriteLocationRefs.toString()) + (lbTokOn() ? 'tok' + (typeof LB_TOKRW_VERSION !== 'undefined' ? LB_TOKRW_VERSION : '?') : '');
             async function lbRwKey(src) {
-                if (!_lbRwVer) _lbRwVer = lbRwHash(rewriteLocationRefs.toString());
+                if (!_lbRwVer || _lbRwVer.endsWith("?")) _lbRwVer = lbRwVer();   // "?" = scanner not loaded yet, read again
                 let h;
                 try {
                     const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src));
@@ -10310,7 +10312,7 @@ _VIEWER_DL_JS +
             // (ad blocking, allowlist, WebRTC, user agent, spellcheck, Data saver, custom filters, build) are part of `sig`.
             const lbPageKV = lbMakeKV('LimitlessPages', 64 * 1024 * 1024);
             const lbPcOn = () => { try { return window.LB_features.pageCache !== false && lbCacheOn(); } catch (_) { return false; } };
-            function lbPcKey(url) { if (!_lbRwVer) _lbRwVer = lbRwHash(rewriteLocationRefs.toString()); return url + '|' + _lbRwVer; }
+            function lbPcKey(url) { if (!_lbRwVer || _lbRwVer.endsWith("?")) _lbRwVer = lbRwVer(); return url + '|' + _lbRwVer; }
             function lbPcSig() {
                 try {
                     return lbRwHash([blockEnabled, ls.getItem('limitless:adblock:allowlist:v1'), mediaPref('limitless:webrtc:block:v1'), ls.getItem('limitless:ua:page:v1'),
@@ -10340,7 +10342,31 @@ _VIEWER_DL_JS +
             const lbRwPersistOn = () => { try { return window.LB_features.rewriteCache !== false && lbCacheOn(); } catch (_) { return false; } };
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
-                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0, meriyahFallback: 0 } };
+                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0, meriyahFallback: 0, tok: 0, tokFallback: 0 } };
+            // CL-15 (features.tokRewrite, default off): the token scanner (app/tokrw.js) answers first; null or a throw means the AST path.
+            // The file loads only with the switch on (script tag here, text for the Worker); until it is there the AST path answers.
+            const lbTokOn = () => window.LB_features.tokRewrite === true;
+            let lbTokP = null, lbTokText = '';
+            function lbTokLoad() {
+                if (lbTokP) return lbTokP;
+                const ms = document.querySelector('script[src$="main.js"][src*="app/"]');
+                const url = ms ? ms.src.replace(/main\.js$/, 'tokrw.js') : new URL('app/tokrw.js', document.baseURI).href;
+                lbTokP = Promise.all([
+                    new Promise(ok => { const el = document.createElement('script'); el.src = url; el.onload = el.onerror = () => ok(); document.head.appendChild(el); }),
+                    fetch(url).then(r => r.ok ? r.text() : '').then(t => { lbTokText = t; }).catch(() => {})
+                ]);
+                return lbTokP;
+            }
+            function lbRewrite(src, imp) {
+                if (lbTokOn()) {
+                    if (typeof LB_tokRewrite !== 'function') lbTokLoad();
+                    else {
+                        try { const o = LB_tokRewrite(src, imp); if (typeof o === 'string') { lbRw.stats.tok++; return o; } } catch (_) {}
+                        lbRw.stats.tokFallback++;
+                    }
+                }
+                return rewriteLocationRefs(src, imp);
+            }
             // L1 (1.3, features.lockdown, off by default): a wide CSP on the proxied page so the browser cannot load anything straight from the
             // internet. Our own origin plus blob:/data: (what the rewriter makes) are the only sources; the frame never opens a socket itself
             // (WebSocket is relayed to this window), so connect-src needs no relay host. Violations are counted per host in lbRw.stats.cspBlocked.
@@ -10396,6 +10422,7 @@ _VIEWER_DL_JS +
                                 if (m.indexOf('meriyah') >= 0) t += '\n;' + m + '\n';
                             } catch (_) {}
                         }
+                        if (lbTokOn()) { await lbTokLoad(); if (lbTokText) t += '\n;' + lbTokText + '\n'; }
                         lbRwLib = t; lbRwPump();
                     })
                     .catch(() => lbRwDisable());
@@ -10404,7 +10431,7 @@ _VIEWER_DL_JS +
                 const lib = lbRwLib;
                 if (!lib) throw new Error('acorn source not found');
                 return lib + '\n' + rewriteLocationRefs.toString() + '\n' +
-                    'onmessage = function (e) { var d = e.data; try { postMessage({ id: d.id, out: rewriteLocationRefs(d.src, d.imp), mf: rewriteLocationRefs.mf || 0 }); rewriteLocationRefs.mf = 0; } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
+                    'onmessage = function (e) { var d = e.data; try { var o = null, tk = 0, tf = 0; if (self.LB_tokRewrite) { try { o = LB_tokRewrite(d.src, d.imp); } catch (x) {} if (typeof o === \'string\') tk = 1; else { o = null; tf = 1; } } if (o === null) o = rewriteLocationRefs(d.src, d.imp); postMessage({ id: d.id, out: o, mf: rewriteLocationRefs.mf || 0, tk: tk, tf: tf }); rewriteLocationRefs.mf = 0; } catch (err) { postMessage({ id: d.id, err: String(err) }); } };';
             }
             function lbRwSpawn() {
                 const blob = new Blob([lbRwSource()], { type: 'text/javascript' });
@@ -10416,6 +10443,8 @@ _VIEWER_DL_JS +
                     const t = slot.busy; if (!t || e.data.id !== t.id) return;
                     clearTimeout(t.timer); slot.busy = null;
                     if (e.data.mf) lbRw.stats.meriyahFallback += e.data.mf;
+                    if (e.data.tk) lbRw.stats.tok++;
+                    if (e.data.tf) lbRw.stats.tokFallback++;
                     if (e.data.err) { t.fail(new Error(e.data.err)); } else { t.ok(e.data.out); }
                     lbRwPump();
                 };
@@ -10450,7 +10479,8 @@ _VIEWER_DL_JS +
             async function rewriteJsAsync(src) {
                 const imp = lbImpOn();
                 if (!src || !lbRwWants(src, imp)) return src;
-                if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return rewriteLocationRefs(src, imp); }
+                if (lbTokOn() && typeof LB_tokRewrite !== 'function') await lbTokLoad();
+                if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return lbRewrite(src, imp); }
                 const key = lbRwHash(src) + (imp ? 'i' : '');
                 const hit = lbRw.memo.get(key);
                 if (hit !== undefined) { lbRw.stats.memoHits++; return hit; }
@@ -10473,18 +10503,18 @@ _VIEWER_DL_JS +
                         // never rewrite a big script on the main thread (Kahoot: one 24 to 29 s task, "Page unresponsive")
                         // shortcut: it runs unrewritten, so its global location reads see the blob URL; meriyah or a size-aware queue if a site breaks
                         skipped = src.length > 256 * 1024;
-                        out = skipped ? src : rewriteLocationRefs(src, imp);
+                        out = skipped ? src : lbRewrite(src, imp);
                     }
                 } else {
                     lbRw.stats.sync++;
-                    out = rewriteLocationRefs(src, imp);
+                    out = lbRewrite(src, imp);
                 }
                 if (skipped) { lbRw.stats.skipped = (lbRw.stats.skipped || 0) + 1; return out; }   // not cached: the next visit tries the worker again
                 lbRwMemoPut(key, out);
                 if (pkey) lbRwKV.put(pkey, out, out.length * 2);
                 return out;
             }
-            window.LB_rewrite = { sync: rewriteLocationRefs, async: rewriteJsAsync, stats: () => ({ ...lbRw.stats, disabled: lbRw.disabled }),
+            window.LB_rewrite = { sync: lbRewrite, async: rewriteJsAsync, stats: () => ({ ...lbRw.stats, disabled: lbRw.disabled }),
                 get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; },
                 dropMemo() { lbRw.memo.clear(); lbRw.memoChars = 0; }, kv: lbRwKV };
 
@@ -11474,7 +11504,7 @@ _VIEWER_DL_JS +
                     // Expose the AST rewriter to the parent-scope message handler so
                     // dynamically-injected <script src> (fetched at runtime, not in the
                     // initial HTML) get the same location rewrite. See the 'qjs' handler.
-                    try { window.__lbRewriteJs = (s, u) => { const i = lbImpOn(), o = rewriteLocationRefs(s, i); return i && u ? lbImu(o, u) : o; }; } catch (e) {}
+                    try { window.__lbRewriteJs = (s, u) => { const i = lbImpOn(), o = lbRewrite(s, i); return i && u ? lbImu(o, u) : o; }; } catch (e) {}
                     window.__lbEsmDyn = (u) => proxyEsmModule(u, true);   // D2: the 'qmod' handler
                     // import / export … from "spec"   |   import "spec"   |   import("spec")
                     const _esmPatterns = [
