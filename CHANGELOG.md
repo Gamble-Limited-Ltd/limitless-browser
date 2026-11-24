@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.8
+
+- New Lite view: one tap shows a page as plain text and pictures, with nothing from the site running. Use the Lite view button next to the address bar or the menu.
+- If a page is still loading after a few seconds, Limitless offers to open it in Lite view.
+
 ## 1.2.7
 
 - A new search choice, "DuckDuckGo Lite (fastest)", gives plain, quick results on slow devices.
