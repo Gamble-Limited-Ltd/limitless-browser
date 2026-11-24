@@ -1,3 +1,6 @@
+// CL-15 token-level rewriter (spec docs/1.3/specs/02-client-speed.md CL-15). Loaded by the page and the rewrite Worker as a global
+// (LB_tokRewrite, LB_TOKRW_VERSION) and by node via module.exports. tokRewrite(src, imp, stats) returns a string or null (= use the AST path).
+(function (root) {
 'use strict';
 // CL-15 prototype: token-level rewriter, same output as rewriteLocationRefs (app/main.js) or null (= "unsure, use the AST path").
 // Standalone; not wired into the app. tokRewrite(src, imp, stats) returns a string, or null when it bails out.
@@ -260,4 +263,6 @@ function tokRewrite(src, imp, stats) {
     }
   }
 }
-module.exports = { tokRewrite, VERSION };
+if (typeof module !== 'undefined' && module.exports) module.exports = { tokRewrite, VERSION };
+else { root.LB_tokRewrite = tokRewrite; root.LB_TOKRW_VERSION = VERSION; }
+})(typeof self !== 'undefined' ? self : this);

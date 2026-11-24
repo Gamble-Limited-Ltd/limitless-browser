@@ -1,7 +1,7 @@
 'use strict';
 // CL-15 bench: node tools/cl15/bench.cjs [--reps N] [--fuzz N] [dir-or-file ...]   (no args: default corpus)
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto');
-const { tokRewrite } = require('./tokrw.js');
+const { tokRewrite } = require('../../app/tokrw.js');
 const root = path.resolve(__dirname, '../..');
 const ctx = {}; ctx.window = ctx; ctx.self = ctx;
 vm.runInNewContext(fs.readFileSync(path.join(root, 'vendor/acorn/8.14.0/acorn.min.js'), 'utf8'), ctx);
