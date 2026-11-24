@@ -23,11 +23,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-8 | C1, H5, Phase 3 | libcurl in a Worker, slices 2 to 5, then on | slice 1 shipped 1.2.0 OFF; rest planned | 02 |
 | CL-9 | N9, 3.6 | HTML parse in a Worker | measure first | 02 |
 | CL-10 | H6, 2.6 (Coolmath) | chunk remaining long tasks | planned | 02 |
-| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | planned | 02 |
+| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | planned; Discord first: 40 to 44 s to shown on chromebook, often past the 45 s site limit (2026-11-23) | 02 |
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
-| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on gate 2026-11-23 FAIL (Discord stops showing with it on; cold shown on fx-news/fx-slow unchanged, rule asks 30 percent). Next: find the Discord break, then re-gate. 2026-11-23 evening: code read rules out the obvious paths (in-view check is try/catch, 3.25 priority sorts like an image, no cache key change), no local repro; next a Discord-only on/off repeat to tell flake from break | 03 |
+| LD-1 | G1 | visible-first images | ready in 1.2.2, OFF; switch-on gate 2026-11-23 FAIL (Discord stops showing with it on; cold shown on fx-news/fx-slow unchanged, rule asks 30 percent). Next: find the Discord break, then re-gate. 2026-11-23 evening: code read rules out the obvious paths (in-view check is try/catch, 3.25 priority sorts like an image, no cache key change), no local repro; Discord-only repeats 2026-11-23 18:07 to 18:15: 0/3 shown with it ON and 0/2 with it OFF; earlier runs that day show Discord at 40 to 44 s when it does show. So the Discord fail is not LD-1: Discord sits at the 45 s limit on the chromebook profile either way (a CL-11 named-site item). LD-1 still fails its speed rule (no cold shown gain); parked until the `vpImages` mark from the spec is measured | 03 |
 | LD-2 | N7, 2.4 | hover prefetch | ready in 1.2.7, on (2026-11-23: the 11-22 sites fail was a stale branch without the YouTube block, plus Quizlet bot-check flake on both sides; speed 0 fail) | 03 |
 | LD-3 | H2, 4.3 | streamed documents | measure first (LD-3a) | 03 |
 | LD-4 | H1 | warm connections | planned | 03 |
