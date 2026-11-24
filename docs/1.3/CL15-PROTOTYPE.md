@@ -1,6 +1,6 @@
 # CL-15 prototype: token-level rewriter (measure-first result)
 
-Branch `proto/cl15` (off `speed/1.3-quick`). Not wired into the app, no release. Files: `tools/cl15/tokrw.js` (scanner, returns the rewritten
+Branch `proto/cl15` (off `speed/1.3-quick`). Not wired into the app, no release. Files: `app/tokrw.js` (scanner, returns the rewritten
 string or `null` = "unsure, use the AST path"), `tools/cl15/bench.cjs` (parity and timing, cuts `rewriteLocationRefs` verbatim out of
 `app/main.js`, acorn and meriyah baselines), `tools/cl15/fuzz.cjs`. Run: `node tools/cl15/bench.cjs --reps 5 --fuzz 6000`.
 (The TS-10 `rwbench` is not in the repo, so the bench is standalone.)
@@ -14,30 +14,50 @@ binding (`var|let|const|function|class location`), a parameter list or a `var a,
 drops all its `location` edits, so the scanner does too); any other bare `location` returns `null`. `import(` edits only with `imp`.
 Not done: `with` bail (AST path does not bail on it either, so output equals), `rwVer` hook, `features.tokRewrite`.
 
-## Parity
-- Corpus (this VM has no saved N2/N3 site bundles; `~/.cache/limitless-fixtures/bundles/` does not exist): 74 distinct JS files of 16 KB or more,
-  real minified browser bundles (monaco, elk, pdf.js worker, axe-core, react-dom dev builds, html/css workers) plus this repo's own scripts.
-  Each file with `imp` off and on: 148 comparisons, **148 byte-identical, 0 different, 0 bailouts**. Only 42 comparisons contain edits, the rest
-  are files where both paths return the source untouched or declared-`location` files.
-- Fuzz (generator of small programs with `location` in about 60 roles, wrapped in a class method; 6000 programs x 2): 0 different. About
-  58 percent bail by design (parenthesised receivers, bare `location =`, shorthand and the like), those are the AST path's cases.
-- Known gaps to close before a build: (1) a script that fails to parse is returned untouched by the AST path but would be rewritten by the
-  scanner (no syntax check); (2) the `declared` shape rules (`, location =` after a `var` found by a backward scan without a statement
-  boundary on ASI-only code) are heuristics; (3) real site bundles are missing from the corpus, which is where bare `location` reads and
-  odd regex/division spots show up; (4) `[` after `)` is assumed to be an index, not an array literal at statement start.
+## Parity (scanner VERSION 2)
+- **Golden corpus:** `~/.cache/limitless-fixtures/bundles/` (rebuild: `node tools/cl15/fetch-corpus.mjs`, public front pages only, plain fetch, no
+  cookies, manifest.json with url, size, sha256, date). 111 files of 16 KB or more from 24 sites (steam, discord app and site, kahoot, create.kahoot,
+  gimkit, coolmath, desmos, bbc, github, twitch, tumblr, duckduckgo, bing, medium, cnn, weather, spotify, notion, walmart, pinterest, netflix, roblox,
+  mdn, plus others). Blocked or script-less front pages (quizlet, nytimes, stackoverflow, canva, ebay, etsy, linkedin, npmjs: 403; reddit,
+  classroom, khan, wikipedia, amazon, imdb, espn, docs: no external script of 16 KB) were skipped. Run: `node tools/cl15/bench.cjs --reps 3 --fuzz 6000
+  [--max-mb 20] ~/.cache/limitless-fixtures/bundles` (default cap 9 MB per file; the 12.5 MB discord bundle needs `--max-mb 20`).
+- **Result (imp off and on, 220 comparisons):** 0 different from the acorn path, 0 different from the meriyah path, 154 comparisons with edits.
+  Fuzz 12000 comparisons (against acorn and meriyah): 0 different, about 30 percent bail by design. The 74-file repo corpus of the first prototype
+  is no longer needed for the gate (use `bench.cjs` with no path for it).
+- **Bail reasons:** golden corpus: none under 9 MB (0 of 220). Before the fixes 36 of 220 bailed (bare `typeof location`, `{hash} = location`, `get
+  location()`, `(a || b).location`, `["location"]` in an array, `(0, f)().location`). Reasons still produced by the scanner: `tokerr`
+  (unterminated string, template, regex or comment, dangling operator at EOF), `unbalanced` (bracket mismatch), `slash` (`/` after `}` or after
+  `of`/`yield`/`await` where regex or division is not provable), `htmlcomment`, `idescape`, `strescape` (octal escape in `["..."]`), `importparen`,
+  `importargs`, `importmethod`, `chain` (receiver is a template, regex, number, `}`, keyword or `new (...)`), `arraylit` (`}[`), and
+  `bare:<prev> _ <next>` for any bare `location` that is not provably a reference or binding (statement start `location = x`, `{location = 1}`, class
+  fields, `[a, location] =`, labels, `import location`).
+- **What changed in VERSION 2:** (1) the tokenizer keeps a real bracket stack (templates included): any mismatch, unterminated token or dangling
+  operator at EOF bails, so a script the AST path cannot parse is never rewritten; (2) `/` is classified by the token before it (`)` of an
+  if/while/for/with header, `}` block versus object literal, keywords, property names) and bails when unsure; (3) `declared` is decided per token:
+  keyword binding, parameter list (arrow, function, method, catch; a line break before `{` is unsure), a `, location` item of a var/let/const list
+  (walks the same bracket level, a line break not after a comma is unsure), `{location}` shorthand (object literal versus declaration pattern by the
+  token before the `{`); a bare reference is edited only in operand position (after an operator, `typeof`, `return`, `(`/`,` in a non-parameter
+  list, spread); everything else bails; (4) `[` and `(` after `)` is an index or call unless the `)` closes an if/while/for/with header, and
+  `[`/`(` after `}` bails; array literal, parenthesised and string receivers are handled (`(a || b).location`, `(0, f)().location`); (5) bracket
+  partners and enclosing openers are stored per token, so no backward scans (faster on big files); (6) `import(` that is a method name is skipped.
+  Fixed: the scanner looped forever when the source ended in an identifier (EOF at a bare `location`), now bounded and covered by a test for every
+  token kind at EOF.
+- Still open: the second page-thread caveat (Worker 4x CPU numbers), `with` statements (same output as the AST path, no bail needed), templates as
+  chain receivers (bail), and sources over 9 MB (one 12.5 MB bundle in the corpus is covered by `--max-mb 20`).
+- Tests: `node --test tests/unit/tokrw.test.mjs` (hand cases, EOF cases, corpus parity when the corpus dir exists, 1000-program fuzz, both imp modes).
 
-## Speed (node 22, 1x CPU, median of 3, machine at load 14 so absolutes are inflated, ratios hold)
+## Speed (VERSION 2, golden corpus, node 22, median of 3, shared machine so absolutes are inflated, ratios hold)
 | bundle | KB | acorn ms | meriyah ms | scanner ms | vs acorn | vs meriyah |
 |---|---|---|---|---|---|---|
-| monaco-setup | 6203 | 2726 | 2743 | 140 | 19.5x | 19.6x |
-| elk-worker | 4671 | 1251 | 1090 | 86 | 14.6x | 12.7x |
-| boot | 2177 | 1058 | 1117 | 55 | 19.2x | 20.3x |
-| css.worker | 1786 | 469 | 554 | 44 | 10.6x | 12.6x |
-| elk.bundled | 1569 | 1253 | 924 | 52 | 23.9x | 17.7x |
+| discord app (web.5233...) | 12556 | 6636 | 7107 | 807 | 8.2x | 8.8x |
+| discord-2022 chunk | 5890 | 1540 | 1143 | 213 | 7.2x | 5.4x |
+| desmos calculator | 5247 | 1871 | 1927 | 223 | 8.4x | 8.7x |
+| spotify web-player | 4519 | 2823 | 5173 | 214 | 13.2x | 24.2x |
+| netflix client | 3238 | 1628 | 1219 | 162 | 10.1x | 7.5x |
 
-Median over the 5 biggest: **19.2x vs acorn, 17.7x vs meriyah**; whole corpus 13579 ms (acorn) against 859 ms (scanner) = 15.8x. Slowest ratio
-5.3x (axe-core). 4x CPU in the page and the Worker round trip were not measured (node only); the ratio should carry since both are CPU bound.
+Median over the 5 biggest: **8.4x vs acorn, 8.7x vs meriyah**; whole golden corpus 23943 ms (acorn) against 2391 ms (scanner) = 10.0x, no bailouts.
+4x CPU in the page and the Worker round trip were not measured (node only).
 
 ## Verdict against the spec's exit criteria
-Median over the 5 big bundles at least 3x faster: met (about 18x). Zero parity failures: met on this corpus (not the 38 golden bundles).
-Build only after the golden corpus run and the gaps above; the saving is the parse share of the 3 to 4.6 s first visit at 4x CPU.
+Median over the 5 big bundles at least 3x faster: met (8.4x on the golden corpus). Zero parity failures: met on the 111-file golden corpus (acorn and meriyah paths) and the fuzz. The four known gaps are closed.
+The saving is the parse share of the 3 to 4.6 s first visit at 4x CPU.

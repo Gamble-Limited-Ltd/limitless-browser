@@ -6,7 +6,7 @@ const RECV = ['a', 'this', 'window', 'a.b', 'a[0]', 'a.b(c)', 'f(x)(y)', 'a?.b',
 const ACC = ['.location', '?.location', '["location"]', "['location']", '?.["location"]', '["loc" + "ation"]', '["locat\\u0069on"]'];
 const BARE = ['location', 'location.href', 'location["x"]', 'f(location)', 'x = location', 'location = 1', 'typeof location', 'var location = 2', 'function g(location) {}', '({ location: 1 })', '({ location })', 'class K { location() {} }', 'class K { static location = 1 }', 'x ? location : y',
   '[location]', '`${location.href}`', 'for (location of z);', 'let {location} = q', 'import("./m.js")', 'import(a, b)', 'a.import(x)', '/location/.test(s)', 'x = "location"; y = \'a.location\'', '// a.location\nz', '/* location */', 'a / b / location', 'a++ / 2 / location', 'x = {location: a.location}', 'lab: location.x', 'if (a) /re/.test(location)'];
-module.exports = function (ast, tok, count, acorn) {
+module.exports = function (ast, tok, count, acorn, astM) {
   let eq = 0, bail = 0, skip = 0, bad = 0;
   for (let c = 0; c < count; c++) {
     const stmts = [];
@@ -17,7 +17,7 @@ module.exports = function (ast, tok, count, acorn) {
       const parses = (() => { try { acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true, allowHashBang: true, allowImportExportEverywhere: true }); return true; } catch (e) { return false; } })();
       ref = ast(src, imp); const out = tok(src, imp, {});
       if (out === null) { bail++; continue; }
-      if (out === ref) eq++;
+      if (out === ref) { eq++; if (astM && astM(src, imp) !== out) { bad++; if (bad < 6) console.log('FUZZ DIFF vs meriyah\n' + src); } }
       else if (parses === false && ref === src) skip++;   // unparseable: AST leaves it alone
       else { bad++; if (bad < 6) console.log('FUZZ DIFF\n' + src + '\n--ast--\n' + ref + '\n--tok--\n' + out); }
     }
