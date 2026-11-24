@@ -72,7 +72,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 
 | new id | item | status | spec |
 |---|---|---|---|
-| CL-15 | token-level rewriter with AST fallback | prototype done on `proto/cl15` (`45a500c`, docs/1.3/CL15-PROTOTYPE.md): 148 of 148 byte-identical on 74 real bundles, about 18x faster than acorn/meriyah on the 5 biggest (node, 1x); golden 38-bundle corpus still to run, then build | 02 |
+| CL-15 | token-level rewriter with AST fallback | built on `item/cl15-tokrw` 2026-11-24, switch `tokRewrite` OFF: 0 parity differences on a 111-file golden corpus (24 sites) and 12000 fuzz programs, 8.4x faster than acorn on the 5 biggest bundles; rc gate with it on 2026-11-24 22:00 Central (Boss: ship it if it passes) | 02 |
 | CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
 | LD-6 | connect to the search engine at boot | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |

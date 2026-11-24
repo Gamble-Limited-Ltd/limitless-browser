@@ -113,7 +113,7 @@ release record; CL-1 ships only if it is not slower (its expected gain is first-
   must fit AGPL. Output: a table in this file. Nothing changes in the app from this item.
 
 ## CL-15 Token-level rewriter with AST fallback (new, brainstorm A1)
-- **Status:** measure first (prototype on `proto/tokrw`). **Likely time:** 8 to 12 h prototype, 6 h build. **Tiers:** all.
+- **Status:** built 2026-11-24 on `item/cl15-tokrw` (switch off; rc gate with it on 2026-11-24 22:00 Central). **Likely time:** 8 to 12 h prototype, 6 h build. **Tiers:** all.
 - **Why:** the rewriter builds a full AST to find a handful of `location` and `import(` uses; parse is most of the 3 to 4.6 s first-visit
   cost of a 5 MB bundle at 4x CPU. A scanner needs positions and a little context, not a tree.
 - **Rules:**
