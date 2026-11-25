@@ -22,9 +22,9 @@ if (!paths.length) paths.push(path.join(root, 'app'), path.join(root, 'vendor'),
   home + '/.nodeterm-server-app/out/renderer/assets', home + '/gll-id/node_modules/axe-core/axe.js', home + '/gll-id-e2e-mail/node_modules/react-dom/cjs',
   home + '/gll-id-e2e-mail/node_modules/elkjs/lib', home + '/Browser/node_modules/playwright-core/lib/vite');
 const files = [];
-(function walk(p) { let st; try { st = fs.statSync(p); } catch { return; } if (st.isDirectory()) { for (const f of fs.readdirSync(p)) walk(path.join(p, f)); } else if (/\.(c|m)?js$/.test(p) && st.size >= 16384 && st.size < maxMb * 1e6) files.push(p); })
+(function walk(p) { let st; try { st = fs.statSync(p); } catch { return; } if (st.isDirectory()) { for (const f of fs.readdirSync(p)) walk(path.join(p, f)); } else if (/\.(c|m)?js$/.test(p) && st.size >= +(process.env.CL15_MIN_BYTES || 16384) && st.size < maxMb * 1e6) files.push(p); })
   ;
-for (const p of paths) (function walk(p) { let st; try { st = fs.statSync(p); } catch { return; } if (st.isDirectory()) { for (const f of fs.readdirSync(p)) walk(path.join(p, f)); } else if (/\.(c|m)?js$/.test(p) && st.size >= 16384 && st.size < maxMb * 1e6) files.push(p); })(p);
+for (const p of paths) (function walk(p) { let st; try { st = fs.statSync(p); } catch { return; } if (st.isDirectory()) { for (const f of fs.readdirSync(p)) walk(path.join(p, f)); } else if (/\.(c|m)?js$/.test(p) && st.size >= +(process.env.CL15_MIN_BYTES || 16384) && st.size < maxMb * 1e6) files.push(p); })(p);
 const seen = new Set(), corpus = [];
 for (const f of files) { const s = fs.readFileSync(f, 'utf8'); const h = crypto.createHash('sha1').update(s).digest('hex'); if (seen.has(h)) continue; seen.add(h); corpus.push({ f, s }); }
 const med = xs => xs.slice().sort((x, y) => x - y)[xs.length >> 1];

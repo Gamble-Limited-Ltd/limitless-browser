@@ -115,7 +115,7 @@ FEAT_GOOGLESIGNIN="${LB_FEATURE_GOOGLESIGNIN:-true}"   # J5: on from 1.2.2 (Boss
 FEAT_RWGAPS="${LB_FEATURE_RWGAPS:-false}"   # rwGaps
 FEAT_LOCKDOWN="${LB_FEATURE_LOCKDOWN:-false}"   # lockdown
 FEAT_MERIYAH="${LB_FEATURE_MERIYAH:-true}"   # 1.2 N4
-FEAT_TOKREWRITE="${LB_FEATURE_TOKREWRITE:-false}"   # CL-15 token rewriter: opt-in, rollback LB_FEATURE_TOKREWRITE=false
+FEAT_TOKREWRITE="${LB_FEATURE_TOKREWRITE:-true}"   # CL-15 token rewriter: on since 1.2.9, rollback LB_FEATURE_TOKREWRITE=false
 FEAT_FONTSWAP="${LB_FEATURE_FONTSWAP:-true}"   # LD-13: font-display swap on every @font-face; on from 1.2.7, rollback LB_FEATURE_FONTSWAP=false
 FEAT_LAZYFRAMES="${LB_FEATURE_LAZYFRAMES:-true}"   # LD-14: cross-origin iframes load near the viewport; on from 1.2.7, rollback LB_FEATURE_LAZYFRAMES=false
 FEAT_LITEVIEW="${LB_FEATURE_LITEVIEW:-true}"   # LD-8: Lite view (reader mode) button and slow-load offer, rollback LB_FEATURE_LITEVIEW=false

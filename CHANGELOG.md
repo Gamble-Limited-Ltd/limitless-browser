@@ -2,6 +2,10 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.9
+
+- Pages with big scripts start faster: Limitless now prepares site scripts much more quickly, which helps most on slower devices and heavy sites.
+
 ## 1.2.8
 
 - New Lite view: one tap shows a page as plain text and pictures, with nothing from the site running. Use the Lite view button next to the address bar or the menu.
