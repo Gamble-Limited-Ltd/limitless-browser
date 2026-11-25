@@ -10292,11 +10292,13 @@ _VIEWER_DL_JS +
             // for scripts of 16 KB or more, keyed by SHA-256 of the source plus a hash of rewriteLocationRefs itself, so any
             // rewriter change invalidates everything at once. 50 MB, least recently used first.
             const lbRwKV = lbMakeKV('LimitlessRewrite', 50 * 1024 * 1024);
+            // CL-15: the cache keys use LB_TOKRW_V, so a cache hit never waits for the file; a loaded file of another version is not used
+            const LB_TOKRW_V = 2;   // must equal VERSION in app/tokrw.js (tests/unit/tokrw.test.mjs checks)
             let _lbRwVer = '';
             // CL-15: the scanner's version is part of the key while the switch is on, so AST-path and scanner outputs never mix
-            const lbRwVer = () => lbRwHash(rewriteLocationRefs.toString()) + (lbTokOn() ? 'tok' + (typeof LB_TOKRW_VERSION !== 'undefined' ? LB_TOKRW_VERSION : '?') : '');
+            const lbRwVer = () => lbRwHash(rewriteLocationRefs.toString()) + (lbTokOn() ? 'tok' + LB_TOKRW_V : '');
             async function lbRwKey(src) {
-                if (!_lbRwVer || _lbRwVer.endsWith("?")) _lbRwVer = lbRwVer();   // "?" = scanner not loaded yet, read again
+                if (!_lbRwVer) _lbRwVer = lbRwVer();
                 let h;
                 try {
                     const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src));
@@ -10312,7 +10314,7 @@ _VIEWER_DL_JS +
             // (ad blocking, allowlist, WebRTC, user agent, spellcheck, Data saver, custom filters, build) are part of `sig`.
             const lbPageKV = lbMakeKV('LimitlessPages', 64 * 1024 * 1024);
             const lbPcOn = () => { try { return window.LB_features.pageCache !== false && lbCacheOn(); } catch (_) { return false; } };
-            function lbPcKey(url) { if (!_lbRwVer || _lbRwVer.endsWith("?")) _lbRwVer = lbRwVer(); return url + '|' + _lbRwVer; }
+            function lbPcKey(url) { if (!_lbRwVer) _lbRwVer = lbRwVer(); return url + '|' + _lbRwVer; }
             function lbPcSig() {
                 try {
                     return lbRwHash([blockEnabled, ls.getItem('limitless:adblock:allowlist:v1'), mediaPref('limitless:webrtc:block:v1'), ls.getItem('limitless:ua:page:v1'),
@@ -10357,11 +10359,9 @@ _VIEWER_DL_JS +
                 ]);
                 return lbTokP;
             }
-            // load it at boot, so the first page script does not wait on this download before even checking the rewrite cache
-            window.LB_featuresReady.then(() => { if (lbTokOn()) lbTokLoad(); }).catch(() => {});
             function lbRewrite(src, imp) {
                 if (lbTokOn()) {
-                    if (typeof LB_tokRewrite !== 'function') lbTokLoad();
+                    if (typeof LB_tokRewrite !== 'function' || LB_TOKRW_VERSION !== LB_TOKRW_V) lbTokLoad();
                     else {
                         try { const o = LB_tokRewrite(src, imp); if (typeof o === 'string') { lbRw.stats.tok++; return o; } } catch (_) {}
                         lbRw.stats.tokFallback++;
@@ -10481,7 +10481,6 @@ _VIEWER_DL_JS +
             async function rewriteJsAsync(src) {
                 const imp = lbImpOn();
                 if (!src || !lbRwWants(src, imp)) return src;
-                if (lbTokOn() && typeof LB_tokRewrite !== 'function') await lbTokLoad();
                 if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return lbRewrite(src, imp); }
                 const key = lbRwHash(src) + (imp ? 'i' : '');
                 const hit = lbRw.memo.get(key);

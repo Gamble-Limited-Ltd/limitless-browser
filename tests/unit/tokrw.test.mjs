@@ -107,3 +107,9 @@ test('fuzz parity (fixed seed)', () => {
   try { require(path.join(root, 'tools/cl15/fuzz.cjs'))(ast, tokRewrite, 1000, acorn, astM); } finally { console.log = log; }
   assert.match(out, /DIFFERENT 0/, out);
 });
+
+test('main.js cache key version matches the scanner', () => {
+  const { VERSION } = require(path.join(root, 'app/tokrw.js'));
+  const m = fs.readFileSync(path.join(root, 'app/main.js'), 'utf8').match(/const LB_TOKRW_V = (\d+);/);
+  assert.equal(Number(m[1]), VERSION);
+});
