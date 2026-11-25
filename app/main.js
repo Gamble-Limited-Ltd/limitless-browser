@@ -10357,6 +10357,8 @@ _VIEWER_DL_JS +
                 ]);
                 return lbTokP;
             }
+            // load it at boot, so the first page script does not wait on this download before even checking the rewrite cache
+            window.LB_featuresReady.then(() => { if (lbTokOn()) lbTokLoad(); }).catch(() => {});
             function lbRewrite(src, imp) {
                 if (lbTokOn()) {
                     if (typeof LB_tokRewrite !== 'function') lbTokLoad();
