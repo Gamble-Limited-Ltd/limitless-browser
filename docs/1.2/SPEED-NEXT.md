@@ -72,7 +72,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 
 | new id | item | status | spec |
 |---|---|---|---|
-| CL-15 | token-level rewriter with AST fallback | built on `item/cl15-tokrw` 2026-11-24, switch `tokRewrite` OFF: 0 parity differences on a 111-file golden corpus (24 sites) and 12000 fuzz programs, 8.4x faster than acorn on the 5 biggest bundles; rc gate with it on 2026-11-24 22:00 Central (Boss: ship it if it passes) | 02 |
+| CL-15 | token-level rewriter with AST fallback | SHIPPED ON in 1.2.9 (`ddf9890`, deployed 2026-11-25 8:35 AM Central, rollback `LB_FEATURE_TOKREWRITE=false` or `./deploy.sh 443359b`): 0 parity differences on the golden corpus and official-site scripts, 8.4x faster than acorn on the 5 biggest bundles; sites rerun PASS; final speed A/B Chromebook 28/28 pass, Chromium 5 inconclusive near zero (shipped on Boss's override); record `docs/releases/1.2.9.md` on `release/1.2.9` | 02 |
 | CL-16 | adaptive defaults per device | planned (after MS-8) | 02 |
 | CL-17 | libcurl WASM compile check on the device | measure first | 02 |
 | LD-6 | connect to the search engine at boot | parked with LD-4 (Boss, 2026-11-20): no connect-only call in libcurl.js 0.7.5 | 03 |
