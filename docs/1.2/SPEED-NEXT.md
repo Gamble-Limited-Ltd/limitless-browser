@@ -23,7 +23,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-8 | C1, H5, Phase 3 | libcurl in a Worker, slices 2 to 5, then on | slice 1 shipped 1.2.0 OFF; rest planned | 02 |
 | CL-9 | N9, 3.6 | HTML parse in a Worker | measure first | 02 |
 | CL-10 | H6, 2.6 (Coolmath) | chunk remaining long tasks | planned | 02 |
-| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | planned; Discord first: 40 to 44 s to shown on chromebook, often past the 45 s site limit (2026-11-23) | 02 |
+| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | Discord built 2026-11-26 (`item/cl11-discord` `22b574c`, switch `cssImgLate`, default off): cause was the page waiting for all ~265 images named in its linked CSS (55 s); with it on shown 21 to 22 s, 3 of 3; item gate with it on overnight 2026-11-26/27; the rest of Discord's 21 s is 58 fonts and ~18 scripts. Kahoot, Khan, Steam, Tumblr still planned | 02 |
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
