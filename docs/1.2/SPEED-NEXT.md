@@ -18,7 +18,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-3 | N3 | skip scripts with no `location`/`import(` | closed (exists since 1.0) | 02 |
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
-| CL-6 | 2.1 | stable script URLs (blob reuse, then code cache via the lane) | step A (blob reuse, `item/cl6a-blob`) built 2026-11-25, item gate PASS 2026-11-25 (cb-low, cb-mid); step B planned | 02 |
+| CL-6 | 2.1 | stable script URLs (blob reuse, then code cache via the lane) | step A (blob reuse) SHIPPED ON in 1.2.10 (2026-11-26); step B planned | 02 |
 | CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold, investigate pool size under the 4-core profiles | 02 |
 | CL-8 | C1, H5, Phase 3 | libcurl in a Worker, slices 2 to 5, then on | slice 1 shipped 1.2.0 OFF; rest planned | 02 |
 | CL-9 | N9, 3.6 | HTML parse in a Worker | measure first | 02 |
@@ -91,7 +91,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | TL-6 | leak zoo fixture | built on `tools/1.3-leakzoo` (`31bad31`, 65 cases, 34 known leaks), not merged | 05 |
 | TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
 | BC-9 | site status hints | planned | 06 |
-| MS-8 | field breakdown samples | built 2026-11-25 (`item/ms8-field` + limitless-gate `ms8`); speed and sites pass; rwbench and e2e failures are noise (benched rewriter byte-identical to base, a different single flaky test each run); needs a clean e2e before ship | 01 |
+| MS-8 | field breakdown samples | SHIPPED in 1.2.10 (2026-11-26, combined e2e clean) | 01 |
 | MS-9 | "this page was slow" report | planned | 01 |
 | TS-9 | real-site recordings as fixtures | planned | 08 |
 | TS-10 | rewriter micro-bench per commit | planned | 08 |
