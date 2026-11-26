@@ -60,6 +60,7 @@ jobs:
         if: steps.key.outputs.have == 'true'
         run: |
           npm ci
+          npm ci --prefix limitless-gate  # the stack specs import gate code (jose and friends)
           npx playwright install --with-deps chromium
       - name: Sites smoke (12 public sites)
         if: steps.key.outputs.have == 'true'
@@ -106,6 +107,7 @@ jobs:
         if: steps.key.outputs.have == 'true'
         run: |
           npm ci
+          npm ci --prefix limitless-gate  # the stack specs import gate code (jose and friends)
           npx playwright install --with-deps chromium
       - name: Speed A/B (interleaved, informational)
         if: steps.key.outputs.have == 'true'
