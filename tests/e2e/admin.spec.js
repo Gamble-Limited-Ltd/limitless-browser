@@ -380,6 +380,9 @@ test.describe('admin panel S7', () => {
     await expect.poll(() => st.calls).toContain('POST membership/signout');
     await p.getByRole('button', { name: 'Re-issue certificate' }).click();
     await expect.poll(() => st.calls).toContain('POST membership/certificate/reissue');
+    // the reissue reloads the profile and redraws the form; selecting before that lands loses the choice (seen on CI)
+    await expect.poll(() => st.calls.slice(st.calls.lastIndexOf('POST membership/certificate/reissue')).some((c) => c.startsWith('GET membership/members/'))).toBe(true);
+    await expect(p.locator('select[name=days]')).toBeVisible();
     await p.locator('select[name=days]').selectOption('30');
     await p.getByRole('button', { name: 'Suspend', exact: true }).click();
     await expect.poll(() => st.bodies.filter((b) => b.action === 'suspend').length).toBe(1);

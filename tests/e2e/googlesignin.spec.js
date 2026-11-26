@@ -28,7 +28,8 @@ test('on: the sign-in page is a card, nothing is fetched, and the button opens t
   await expect(f.locator('body')).not.toContainText('YouTube');
   expect(await page.evaluate(() => __net.filter((u) => u.startsWith('https://accounts.google.com/')))).toEqual([]);
   await f.locator('#outside').click();
-  expect(await page.evaluate(() => __opened)).toEqual([[SIGNIN, '_blank', 'noopener']]);
+  // the card's button reaches the parent page asynchronously, so poll (an immediate read raced on CI)
+  await expect.poll(() => page.evaluate(() => __opened)).toEqual([[SIGNIN, '_blank', 'noopener']]);
 });
 
 test('on: other Google pages and other sites still load; the matcher knows the sign-in paths', async ({ page }) => {
