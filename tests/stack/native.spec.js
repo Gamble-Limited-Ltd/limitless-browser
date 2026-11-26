@@ -40,7 +40,7 @@ async function load(page, bytes, url) {
 test('native, official sites', async ({ browser }, testInfo) => {
   test.setTimeout(60 * 60 * 1000);
   const { looksBlocked } = await import('../../scripts/lib/xnative.mjs');
-  const out = { tier: 'native', date: new Date().toISOString(), reps: REPS, profile: 'chromebook', sites: {} };
+  const out = { tier: 'native', date: new Date().toISOString(), reps: REPS, profile: testInfo.project.name, sites: {} };
   for (const site of SITES) {
     const runs = { cold: [], warm: [] };
     let errors = 0, blocked = false;
@@ -63,7 +63,7 @@ test('native, official sites', async ({ browser }, testInfo) => {
   }
   const dir = path.join(__dirname, '..', '..', 'test-results');
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `native-${out.date.slice(0, 10)}-chromebook.json`);
+  const file = path.join(dir, `native-${out.date.slice(0, 10)}-${testInfo.project.name}.json`);
   fs.writeFileSync(file, JSON.stringify(out, null, 2));
   console.log(`native: wrote ${file}`);
   expect(Object.keys(out.sites).length).toBeGreaterThan(0);
