@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, blobReuse: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -772,7 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
-                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
+                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -2005,6 +2005,27 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             // L6: script blob: URLs of a page blob, revoked with it. A stored page (page cache) must not hold blob: URLs,
             // so lbBlobsToData swaps them for data: URLs first (same bytes the pre-blob path made).
             const lbScriptBlobs = new Map();
+            // CL-6 step A (features.blobReuse): one blob: URL per script content hash, counted by the page blobs that use it. It is revoked
+            // when the last of them is revoked (lbRevoke only runs for a page blob no Instant Back entry holds, so a stored entry keeps its scripts).
+            // shortcut: no LRU eviction at 64 MB, since a referenced blob can never be revoked; past 64 MB new scripts just get their own per-page blob.
+            const lbSb = { map: new Map(), byUrl: new Map(), bytes: 0, MAX: 64 * 1024 * 1024 };
+            window.LB_sb = lbSb;
+            async function lbSbAcquire(bytes, blob) {
+                if (window.LB_features.blobReuse !== true) return URL.createObjectURL(blob);
+                const sha = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), b => b.toString(16).padStart(2, '0')).join('');
+                let e = lbSb.map.get(sha);
+                if (!e) {
+                    if (lbSb.bytes + blob.size > lbSb.MAX) return URL.createObjectURL(blob);
+                    e = { u: URL.createObjectURL(blob), refs: 0, size: blob.size, sha }; lbSb.map.set(sha, e); lbSb.byUrl.set(e.u, sha); lbSb.bytes += e.size;
+                }
+                e.refs++; return e.u;
+            }
+            function lbSbRelease(u) {
+                const e = lbSb.map.get(lbSb.byUrl.get(u));
+                if (e && --e.refs > 0) return;
+                if (e) { lbSb.map.delete(e.sha); lbSb.byUrl.delete(u); lbSb.bytes -= e.size; }
+                URL.revokeObjectURL(u);
+            }
             async function lbBlobsToData(html, blobs) {
                 for (const { u, blob } of blobs) {
                     const bin = new Uint8Array(await blob.arrayBuffer());
@@ -2030,7 +2051,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             function lbFontSwap(css) {
                 return css.replace(/@font-face\s*\{[^}]*\}/gi, ff => /font-display\s*:/i.test(ff) ? ff.replace(/font-display\s*:\s*(block|auto)\b/i, 'font-display:swap') : ff.replace(/;?\s*\}$/, ';font-display:swap}'));
             }
-            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { if (window.LB_swDoc) window.LB_swDoc.drop(u); URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
+            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { if (window.LB_swDoc) window.LB_swDoc.drop(u); URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(lbSbRelease); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
                 if (!tab) return;
@@ -11720,7 +11741,7 @@ _VIEWER_DL_JS +
                                 const jsText = lbImu(await rewriteJsAsync(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf))), jsUrl);
                                 const bytes = new TextEncoder().encode(jsText);
                                 scr.removeAttribute('integrity');   // SRI hash won't match a data: URL; bytes already came via our proxy
-                                if (_blobOn) { scr.removeAttribute('src'); _blobScr.push({ scr, blob: new Blob([bytes], { type: 'text/javascript' }) }); return; }
+                                if (_blobOn) { scr.removeAttribute('src'); const blob = new Blob([bytes], { type: 'text/javascript' }); _blobScr.push({ scr, blob, u: await lbSbAcquire(bytes, blob) }); return; }
                                 let bin = '';
                                 const chunk = 32768;
                                 for (let j = 0; j < bytes.length; j += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + chunk));
@@ -11913,7 +11934,7 @@ _VIEWER_DL_JS +
 
                     if (!tabs.find(t => t.id === initiatorTabId)) return;
 
-                    const _scriptBlobs = _blobScr.map(({ scr, blob }) => { const u = URL.createObjectURL(blob); scr.setAttribute('src', u); return { u, blob }; });
+                    const _scriptBlobs = _blobScr.map(({ scr, blob, u }) => { scr.setAttribute('src', u); return { u, blob }; });
                     const finalHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
                     const prevBlobUrl = frame.src;
                     const _newBlob = new Blob([finalHtml], { type: "text/html;charset=utf-8" });
