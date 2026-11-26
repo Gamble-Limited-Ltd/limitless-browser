@@ -109,7 +109,8 @@ async function siteRep(browser, testInfo, cookies, site) {
     const used0 = (await me(ctx)).plan.used.todayBytes;
     let cold, warm, failed = null;
     try { cold = await navigate(page, bytes, site.url); warm = await navigate(page, bytes, site.url); } catch (e) { failed = String(e).slice(0, 120); }
-    await page.waitForTimeout(1500); // let the gate's usage counter catch up with the last frames
+    // let the gate's usage counter catch up with the last frames; a crashed tab (seen at cb-mid) counts as a failed rep, not a dead run
+    await page.waitForTimeout(1500).catch((e) => { failed = failed || String(e).slice(0, 120); });
     const after = await me(ctx);
     return { cold, warm, failed, usedDelta: after.plan.used.todayBytes - used0, me: after };
   } finally { await ctx.close(); }
