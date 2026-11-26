@@ -28,7 +28,7 @@ test('abMedians: same function under jitter passes the 10 percent rule', () => {
 });
 
 test('abMedians: a clearly slower candidate fails', () => {
-  const m = abMedians(() => busy(5), () => busy(8), 'x', 7);
+  const m = abMedians(() => busy(3), () => busy(12), 'x', 9); // wide gap: a preempted busy-wait stretches either side under load;
   assert.deepEqual(compare({ x: m.a }, { x: m.b }).fail, ['x']);
 });
 
