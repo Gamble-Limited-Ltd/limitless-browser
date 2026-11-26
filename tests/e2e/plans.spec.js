@@ -266,9 +266,28 @@ async function perfRun(page, { rand = 0.1, member = true, features, datasaver = 
 test('perf sample: signed-in member, sampled, sends only metric, ms and device; at most one per 10 s', async ({ page }) => {
   const posts = await perfRun(page, { marks: 3 });
   expect(posts).toHaveLength(1);
-  expect(Object.keys(posts[0]).sort()).toEqual(['device', 'metric', 'ms']);
+  expect(Object.keys(posts[0])).toEqual(expect.arrayContaining(['device', 'metric', 'ms']));   // a longtask during the run may add longMs
   expect(posts[0].metric).toBe('page_shown');
   expect(['desktop', 'chromebook', 'tablet', 'phone', 'other']).toContain(posts[0].device);
+  expect(JSON.stringify(posts)).not.toContain('secret');
+});
+
+test('perf sample (MS-8): breakdown numbers only, exactly the allowed keys, never a URL', async ({ page }) => {
+  const posts = [];
+  await page.route('**/_lb/perf', (route) => { posts.push(route.request().postDataJSON()); route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+  await mock(page, () => baseMe());
+  await boot(page, { init: ([r]) => { Math.random = () => r; }, arg: [0.1] });
+  await page.evaluate(() => window.LB_meRefresh());
+  await page.evaluate(() => {
+    const c = window.__lbPerf.start('https://secret.example/path');
+    c.marks.firstBytes = 321; c.rwMs = 45.6; c.rwN = 3; c.long = 88.4; c.bytes = 2048 * 1024 + 5; c.fetches = 10; c.hits = 4;
+    window.__lbPerf.mark('shown');
+  });
+  await page.waitForTimeout(400);
+  expect(posts).toHaveLength(1);
+  expect(Object.keys(posts[0]).sort()).toEqual(['device', 'docMs', 'hit', 'kb', 'longMs', 'metric', 'ms', 'rwMs', 'rwN']);
+  expect(posts[0]).toMatchObject({ docMs: 321, rwMs: 46, rwN: 3, longMs: 88, kb: 2048, hit: 4 });
+  for (const k of Object.keys(posts[0])) if (k !== 'metric' && k !== 'device') expect(Number.isInteger(posts[0][k])).toBe(true);
   expect(JSON.stringify(posts)).not.toContain('secret');
 });
 
