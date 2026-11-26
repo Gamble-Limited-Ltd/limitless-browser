@@ -614,6 +614,7 @@ test.describe('admin panel 1.1 WP5', () => {
     const m = sec(page, 'Members');
     await expect(m.locator('.lb-adm-plan').first()).toContainText(/Ordinal|Cardinal|Prime|Executive/);
     await m.getByRole('button', { name: 'Alice <b>A</b>' }).click();
+    await expect(m.locator('#lbAdmProfile')).toBeVisible(); // boundingBox does not wait (null on CI)
     const t = await m.locator('.lb-adm-mlist').boundingBox(), pr = await m.locator('#lbAdmProfile').boundingBox();
     expect(pr.x).toBeGreaterThan(t.x + t.width - 2);
     await page.setViewportSize({ width: 390, height: 800 });
