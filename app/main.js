@@ -772,7 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
-                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
+                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse', 'cssImgLate']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -6800,6 +6800,21 @@ ${window.LB_videoRuntime ? '(' + window.LB_videoRuntime + ')(' + JSON.stringify(
 const LB_BLOBSCRIPTS = ${JSON.stringify(window.LB_features.blobScripts !== false)};
 ${window.LB_features.lockdown === true ? "addEventListener('securitypolicyviolation', e => { try { window.top.postMessage({ t: 'cspblock', u: e.blockedURI }, '*'); } catch (_) {} }, true);" : ''}
 const LB_RWGAPS = ${JSON.stringify(window.LB_features.rwGaps === true)};   // L3 (1.3, off by default): route runtime loads the older hooks missed (setAttribute srcset/src/preload, new Audio, CSS url())
+const LB_CSSLATE = ${JSON.stringify(window.LB_features.cssImgLate === true)};   // CL-11: CSS images marked about:blank#lbci= are fetched here, after the page is shown
+if (LB_CSSLATE) addEventListener('DOMContentLoaded', () => {
+  const MK = 'about:blank#lbci=';
+  document.querySelectorAll('style').forEach(st => {
+    const txt = st.textContent;
+    if (!txt || !txt.includes(MK)) return;
+    const seen = new Set();
+    for (const m of txt.matchAll(/about:blank#lbci=([^"')\\s]+)/g)) {
+      if (seen.has(m[0])) continue;
+      seen.add(m[0]);
+      let abs; try { abs = decodeURIComponent(m[1]); } catch (e) { continue; }
+      fetchBlob(abs).then(b => { if (b) st.textContent = st.textContent.split(m[0]).join(b); }).catch(() => {});
+    }
+  });
+});
 const LB_FONTSWAP = ${JSON.stringify(window.LB_features.fontSwap === true)};   // LD-13: script-made FontFace objects get display swap
 if (LB_FONTSWAP && window.FontFace) { const _FF = window.FontFace; window.FontFace = class FontFace extends _FF { constructor(f, s, d) { super(f, s, d && d.display ? d : Object.assign({}, d, { display: 'swap' })); } }; }
 const LB_NODIRECT = ${JSON.stringify(window.LB_features.noDirect !== false)};   // L1: a script the proxy cannot fetch is never loaded directly
@@ -11408,6 +11423,7 @@ _VIEWER_DL_JS +
                     const _cssBlobs = [], _cssBlobByUrl = new Map();
                     let _cssFaces = 0;
                     async function rewriteCssUrls(cssText, baseUrl, fontsOnly) {
+                        const lateImg = window.LB_features.cssImgLate === true;   // CL-11: Discord's CSS names about 265 images; waiting for all of them before showing took 55 s
                         const re = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi;
                         const todo = new Map();   // original url(...) text -> replacement text
                         const keepFont = new Set();
@@ -11432,7 +11448,8 @@ _VIEWER_DL_JS +
                                 const ext = absUrl.split('?')[0].split('.').pop().toLowerCase();
                                 const isFont = /woff2?|ttf|otf|eot/.test(ext);
                                 const isImg = /png|jpg|jpeg|gif|svg|webp|ico/.test(ext);
-                                if (isFont || (isImg && !fontsOnly)) todo.set(m[0], { abs: absUrl, ext, isFont });
+                                if (isImg && !fontsOnly && !isFont && lateImg) todo.set(m[0], `url("about:blank#lbci=${encodeURIComponent(absUrl)}")`);   // CL-11: the frame fetches it after the page is shown
+                                else if (isFont || (isImg && !fontsOnly)) todo.set(m[0], { abs: absUrl, ext, isFont });
                             } catch { todo.delete(m[0]); }
                         }
                         await Promise.all([...todo.entries()].map(async ([key, v]) => {
