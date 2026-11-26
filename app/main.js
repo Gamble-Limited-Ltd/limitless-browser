@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, rwPool: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, blobReuse: false, rwPool: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -772,7 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
-                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'rwPool']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
+                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse', 'rwPool']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -2005,6 +2005,27 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             // L6: script blob: URLs of a page blob, revoked with it. A stored page (page cache) must not hold blob: URLs,
             // so lbBlobsToData swaps them for data: URLs first (same bytes the pre-blob path made).
             const lbScriptBlobs = new Map();
+            // CL-6 step A (features.blobReuse): one blob: URL per script content hash, counted by the page blobs that use it. It is revoked
+            // when the last of them is revoked (lbRevoke only runs for a page blob no Instant Back entry holds, so a stored entry keeps its scripts).
+            // shortcut: no LRU eviction at 64 MB, since a referenced blob can never be revoked; past 64 MB new scripts just get their own per-page blob.
+            const lbSb = { map: new Map(), byUrl: new Map(), bytes: 0, MAX: 64 * 1024 * 1024 };
+            window.LB_sb = lbSb;
+            async function lbSbAcquire(bytes, blob) {
+                if (window.LB_features.blobReuse !== true) return URL.createObjectURL(blob);
+                const sha = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), b => b.toString(16).padStart(2, '0')).join('');
+                let e = lbSb.map.get(sha);
+                if (!e) {
+                    if (lbSb.bytes + blob.size > lbSb.MAX) return URL.createObjectURL(blob);
+                    e = { u: URL.createObjectURL(blob), refs: 0, size: blob.size, sha }; lbSb.map.set(sha, e); lbSb.byUrl.set(e.u, sha); lbSb.bytes += e.size;
+                }
+                e.refs++; return e.u;
+            }
+            function lbSbRelease(u) {
+                const e = lbSb.map.get(lbSb.byUrl.get(u));
+                if (e && --e.refs > 0) return;
+                if (e) { lbSb.map.delete(e.sha); lbSb.byUrl.delete(u); lbSb.bytes -= e.size; }
+                URL.revokeObjectURL(u);
+            }
             async function lbBlobsToData(html, blobs) {
                 for (const { u, blob } of blobs) {
                     const bin = new Uint8Array(await blob.arrayBuffer());
@@ -2030,7 +2051,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             function lbFontSwap(css) {
                 return css.replace(/@font-face\s*\{[^}]*\}/gi, ff => /font-display\s*:/i.test(ff) ? ff.replace(/font-display\s*:\s*(block|auto)\b/i, 'font-display:swap') : ff.replace(/;?\s*\}$/, ';font-display:swap}'));
             }
-            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { if (window.LB_swDoc) window.LB_swDoc.drop(u); URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(x => URL.revokeObjectURL(x)); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
+            function lbRevoke(u, ms) { if (u && !lbBF.holds(u)) setTimeout(() => { try { if (!lbBF.holds(u)) { if (window.LB_swDoc) window.LB_swDoc.drop(u); URL.revokeObjectURL(u); (lbScriptBlobs.get(u) || []).forEach(lbSbRelease); lbScriptBlobs.delete(u); } } catch (e) {} }, ms); }
             let _tabActivitySeq = 0;
             function freeTabBlob(tab) {
                 if (!tab) return;
@@ -3983,7 +4004,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             window.__lbPerf = {
                 runs: [], cur: null,
                 start(url) { window.LB_pagesFirst.begin(); const c = { url, t0: performance.now(), marks: {} }; this.cur = c; this.runs.push(c); if (this.runs.length > 60) this.runs.shift(); return c; },
-                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') { window.LB_pagesFirst.end(); lbPerfSample(c.marks.shown); } } }
+                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') { window.LB_pagesFirst.end(); lbPerfSample(c.marks.shown, c); } } }
             };
             // S9b: anonymous load-time sample (docs/1.0/PAID-TIERS-PLAN.md): signed-in members on a membership server only, 1 in 5 page
             // loads, at most one per 10 s, never with Data saver, never the URL or host. features.perf = false is the kill switch.
@@ -3995,14 +4016,25 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 if (/Mobi|iPhone|Android/.test(ua)) return 'phone';
                 return /Windows|Macintosh|Linux/.test(ua) ? 'desktop' : 'other';
             }
-            function lbPerfSample(ms) {
+            // MS-8: longest main-thread task of the current load (the breakdown's longMs)
+            try { new PerformanceObserver((l) => { const c = window.__lbPerf.cur; if (c) for (const e of l.getEntries()) c.long = Math.max(c.long || 0, e.duration); }).observe({ type: 'longtask' }); } catch (_) {}
+            // MS-8 breakdown: whole numbers only, a field is left out when the load did not measure it. Never a URL, host or id.
+            function lbPerfBody(ms, run) {
+                const c = run || {}, cap = (v, max) => Math.min(max, Math.max(0, Math.round(v)));
+                const f = { ms, docMs: c.marks && c.marks.firstBytes, rwMs: c.rwMs, rwN: c.rwN, longMs: c.long, kb: c.bytes / 1024, hit: c.fetches ? (c.hits || 0) / c.fetches * 10 : NaN };
+                const max = { rwN: 1000, kb: 1000000, hit: 10 };
+                const b = { metric: 'page_shown', device: lbPerfDevice() };
+                for (const k in f) if (typeof f[k] === 'number' && Number.isFinite(f[k])) b[k] = cap(f[k], max[k] || 120000);
+                return b;
+            }
+            function lbPerfSample(ms, run) {
                 try {
                     if (!window.LB_member || window.LB_member.membership !== 'on' || window.LB_features.perf === false) return;
                     if (ls.getItem('limitless:datasaver:v1') === '1') return;
                     const t = Date.now();
                     if (t - lbPerfLast < 10000 || Math.random() >= 0.2) return;
                     lbPerfLast = t;
-                    fetch('/_lb/perf', { method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ metric: 'page_shown', ms: Math.min(120000, Math.max(0, Math.round(ms))), device: lbPerfDevice() }) }).catch(() => {});
+                    fetch('/_lb/perf', { method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify(lbPerfBody(ms, run)) }).catch(() => {});
                 } catch (_) {}
             }
             const LB_WHATS_NEW = 'limitless://whats-new';
@@ -5791,7 +5823,13 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 lbPrewarm.delete(url);
                 return p;
             }
-            async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
+            // MS-8: bytes received and response cache hits for the current load (kb, hit in the field sample)
+            async function queueFetch(url, opts, priority) {
+                const r = await queueFetchRaw(url, opts, priority), c = window.__lbPerf.cur;
+                if (c && r && r.buf) { c.fetches = (c.fetches || 0) + 1; if (r.fromCache) c.hits = (c.hits || 0) + 1; else c.bytes = (c.bytes || 0) + r.buf.byteLength; }
+                return r;
+            }
+            async function queueFetchRaw(url, opts = {}, priority = PRIORITY.other) {
                 if (priority === PRIORITY.image && !opts.__img) opts = { ...opts, __img: true };
                 // 1.2 2c (features.qPrio): an image known to be near the top of the page sorts before the other images; a request that is not
                 // an image tells runQueue to keep a few slots free for it (lbCritAt), so the document's CSS, scripts and fonts never wait behind a full set of images
@@ -10345,11 +10383,13 @@ _VIEWER_DL_JS +
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
                 stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0, meriyahFallback: 0, tok: 0, tokFallback: 0 }, peak: 0, idleMs: 60000 };
-            // CL-7 (features.rwPool): pool size from the device, one more only while 4+ scripts of 256 KB or more wait; workers above 2 close after 60 s idle. Off = fixed 2.
+            // CL-7 (features.rwPool): pool size from the device (2 on 4 cores or fewer), one more only while 4+ scripts of 256 KB or more wait; workers above 2 close after 60 s idle. Off = fixed 2.
             const lbRwCap = () => {
                 if (window.LB_features.rwPool !== true) return 2;
-                const base = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
-                return base + (lbRw.queue.filter(t => t.src.length >= 256 * 1024).length >= 4 ? 1 : 0);
+                // 4 cores or fewer: the fixed 2 (hc-1 workers starved the page thread and libcurl on 4-core Chromebooks, gate 2026-11-26); more cores: hc-2, max 4, one extra under a big-script queue
+                const hc = navigator.hardwareConcurrency || 2;
+                if (hc <= 4) return 2;
+                return Math.min(4, hc - 2) + (lbRw.queue.filter(t => t.src.length >= 256 * 1024).length >= 4 ? 1 : 0);
             };
             function lbRwIdle(slot) {
                 clearTimeout(slot.idle);
@@ -10494,7 +10534,12 @@ _VIEWER_DL_JS +
             const lbImpOn = () => window.LB_features.importHelper !== false;
             const lbRwWants = (src, imp) => src.indexOf('location') !== -1 || (imp && /\bimport\s*\(/.test(src));
             const lbImu = (out, url) => out.indexOf('__LB_IMU__') === -1 ? out : out.split('"__LB_IMU__"').join(JSON.stringify(url));
+            // MS-8: rewrites that did real work during this load: count (rwN) and total wait (rwMs, overlapping waits add up)
             async function rewriteJsAsync(src) {
+                const c = window.__lbPerf.cur, t = performance.now();
+                try { return await rewriteJsRun(src); } finally { if (c && src && lbRwWants(src, lbImpOn())) { c.rwN = (c.rwN || 0) + 1; c.rwMs = (c.rwMs || 0) + performance.now() - t; } }
+            }
+            async function rewriteJsRun(src) {
                 const imp = lbImpOn();
                 if (!src || !lbRwWants(src, imp)) return src;
                 if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return lbRewrite(src, imp); }
@@ -10534,7 +10579,7 @@ _VIEWER_DL_JS +
             window.LB_rewrite = { sync: lbRewrite, async: rewriteJsAsync, stats: () => ({ ...lbRw.stats, disabled: lbRw.disabled }),
                 get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; },
                 dropMemo() { lbRw.memo.clear(); lbRw.memoChars = 0; },
-                poolSize: () => lbRw.pool.length, poolPeak: () => lbRw.peak, set idleMs(v) { lbRw.idleMs = v; }, kv: lbRwKV };
+                poolSize: () => lbRw.pool.length, poolCap: lbRwCap, poolPeak: () => lbRw.peak, set idleMs(v) { lbRw.idleMs = v; }, kv: lbRwKV };
 
             // 1.2 N7 (features.hoverPrefetch, test hook LB_pf): a link hovered for 100 ms in the page (frame click router) fetches its
             // document at the lowest queue priority; the click then takes that response instead of fetching again. Same site only
@@ -11737,7 +11782,7 @@ _VIEWER_DL_JS +
                                 const jsText = lbImu(await rewriteJsAsync(new TextDecoder('utf-8').decode(new Uint8Array(jsR.buf))), jsUrl);
                                 const bytes = new TextEncoder().encode(jsText);
                                 scr.removeAttribute('integrity');   // SRI hash won't match a data: URL; bytes already came via our proxy
-                                if (_blobOn) { scr.removeAttribute('src'); _blobScr.push({ scr, blob: new Blob([bytes], { type: 'text/javascript' }) }); return; }
+                                if (_blobOn) { scr.removeAttribute('src'); const blob = new Blob([bytes], { type: 'text/javascript' }); _blobScr.push({ scr, blob, u: await lbSbAcquire(bytes, blob) }); return; }
                                 let bin = '';
                                 const chunk = 32768;
                                 for (let j = 0; j < bytes.length; j += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + chunk));
@@ -11930,7 +11975,7 @@ _VIEWER_DL_JS +
 
                     if (!tabs.find(t => t.id === initiatorTabId)) return;
 
-                    const _scriptBlobs = _blobScr.map(({ scr, blob }) => { const u = URL.createObjectURL(blob); scr.setAttribute('src', u); return { u, blob }; });
+                    const _scriptBlobs = _blobScr.map(({ scr, blob, u }) => { scr.setAttribute('src', u); return { u, blob }; });
                     const finalHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
                     const prevBlobUrl = frame.src;
                     const _newBlob = new Blob([finalHtml], { type: "text/html;charset=utf-8" });

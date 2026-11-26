@@ -148,14 +148,19 @@ async function poolPeak(page, hc, on, sizeKB, n) {
     return LB_rewrite.poolPeak();
   }, { hc, sizeKB, n });
 }
-test('rwPool: pool size follows hardwareConcurrency, clamped to 1..4', async ({ page }) => {
-  expect(await poolPeak(page, 3, true, 120, 8)).toBe(2);
-  expect(await poolPeak(page, 16, true, 120, 12)).toBe(4);
-  expect(await poolPeak(page, 1, true, 120, 4)).toBe(1);
+test('rwPool: 4 cores or fewer keep the 2 workers; more cores hc-2, max 4', async ({ page }) => {
+  await boot(page, { features: { rwPool: true } });
+  const cap = (hc) => page.evaluate((hc) => { Object.defineProperty(navigator, 'hardwareConcurrency', { value: hc, configurable: true }); return LB_rewrite.poolCap(); }, hc);
+  for (const [hc, want] of [[1, 2], [2, 2], [4, 2], [5, 3], [6, 4], [16, 4]]) expect(await cap(hc)).toBe(want);
 });
-test('rwPool: one extra worker only with 4+ queued scripts of 256 KB or more', async ({ page }) => {
-  expect(await poolPeak(page, 2, true, 300, 6)).toBe(2);
-  expect(await poolPeak(page, 2, true, 100, 6)).toBe(1);
+test('rwPool: workers spawn lazily, one job uses one worker', async ({ page }) => {
+  expect(await poolPeak(page, 16, true, 120, 0)).toBe(1);
+});
+test('rwPool: above 4 cores, 4+ queued scripts of 256 KB or more allow one extra worker', async ({ page }) => {
+  expect(await poolPeak(page, 6, true, 300, 8)).toBe(5);
+});
+test('rwPool: on 4 cores a big-script queue still stays at 2 workers', async ({ page }) => {
+  expect(await poolPeak(page, 4, true, 300, 8)).toBe(2);
 });
 test('rwPool off: the fixed pool of 2', async ({ page }) => {
   expect(await poolPeak(page, 16, false, 120, 12)).toBe(2);

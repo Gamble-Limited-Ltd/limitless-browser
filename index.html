@@ -8328,7 +8328,7 @@ window._libcurlReady = true;
         // Runs before anything reads storage. Old keys are copied, never removed (removal is a
         // later release). Per-session keys look like "gi_<id>:gust:<name>", so the optional
         // instance prefix is kept. Existing limitless:* keys always win over old values.
-        var LB_VERSION = '1.2.9';
+        var LB_VERSION = '1.2.10';
         (function () {
             try {
                 var st = window.localStorage;
@@ -9097,9 +9097,10 @@ window._libcurlReady = true;
                 var days = {};
                 Q.perf.forEach(function (x) { if (x.metric === 'page_shown' && (!days[x.day] || x.p90 > days[x.day])) days[x.day] = x.p90; });
                 secCharts.appendChild(barChart('Page load time, slowest device p90 per day', Object.keys(days).sort().map(function (k) { return { k: k, v: days[k] }; }), msText));
-                var pt = table(['Day', 'Device', 'Samples', 'p50', 'p90']);
+                var pt = table(['Day', 'Device', 'Measure', 'Samples', 'p50', 'p90']);
+                var pv = function (x, v) { return /ms$|_shown$/i.test(x.metric) ? msText(v) : String(v); };
                 Q.perf.slice().sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; }).forEach(function (x) {
-                    var tr = el('tr'); tr.append(el('td', '', x.day), el('td', '', x.device), el('td', '', String(x.n)), el('td', '', msText(x.p50)), el('td', '', msText(x.p90))); pt.body.appendChild(tr);
+                    var tr = el('tr'); tr.append(el('td', '', x.day), el('td', '', x.device), el('td', '', x.metric || 'page_shown'), el('td', '', String(x.n)), el('td', '', pv(x, x.p50)), el('td', '', pv(x, x.p90))); pt.body.appendChild(tr);
                 });
                 secCharts.appendChild(pt.wrap);
             }
