@@ -366,6 +366,11 @@ test.describe('admin panel S7', () => {
     const m = sec(page, 'Members');
     await m.getByRole('button', { name: 'Alice <b>A</b>' }).click();
     const p = m.locator('#lbAdmProfile');
+    // each write reloads the profile and redraws the form; typing before that lands loses the input (seen on CI)
+    const redrawn = async (call, sel) => {
+      await expect.poll(() => { const i = st.calls.lastIndexOf(call); return i >= 0 && st.calls.slice(i).some((c) => c.startsWith('GET membership/members/')); }).toBe(true);
+      await expect(p.locator(sel)).toBeVisible();
+    };
     await p.getByRole('tab', { name: 'Standing and access' }).click();
     await p.locator('input[name=article]').fill('4.2');
     await p.locator('input[name=note]').fill('Loud');
@@ -380,17 +385,17 @@ test.describe('admin panel S7', () => {
     await expect.poll(() => st.calls).toContain('POST membership/signout');
     await p.getByRole('button', { name: 'Re-issue certificate' }).click();
     await expect.poll(() => st.calls).toContain('POST membership/certificate/reissue');
-    // the reissue reloads the profile and redraws the form; selecting before that lands loses the choice (seen on CI)
-    await expect.poll(() => st.calls.slice(st.calls.lastIndexOf('POST membership/certificate/reissue')).some((c) => c.startsWith('GET membership/members/'))).toBe(true);
-    await expect(p.locator('select[name=days]')).toBeVisible();
+    await redrawn('POST membership/certificate/reissue', 'select[name=days]');
     await p.locator('select[name=days]').selectOption('30');
     await p.getByRole('button', { name: 'Suspend', exact: true }).click();
     await expect.poll(() => st.bodies.filter((b) => b.action === 'suspend').length).toBe(1);
     const sus = st.bodies.find((b) => b.action === 'suspend');
     expect(sus.until).toBeGreaterThan(Date.now() + 29 * 86400000);
+    await redrawn('POST membership/standing', '#lbAdmNumber input');
     await p.locator('#lbAdmNumber input').fill('0042');
     await p.locator('#lbAdmNumber button').click();
     await expect.poll(() => st.calls).toContain('POST membership/assign-number');
+    await redrawn('POST membership/assign-number', '#lbAdmNumber input');
     const n = st.calls.filter((c) => c === 'POST membership/standing').length;
     await p.getByRole('button', { name: 'Remove', exact: true }).click();
     expect(st.calls.filter((c) => c === 'POST membership/standing').length).toBe(n);
