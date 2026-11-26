@@ -14,6 +14,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { applyProfile } = require('../lib/profile');
 const { selectSites, shardSites, repOrder } = require('../../scripts/lib/gate-sites.mjs');
+const VANTAGE = process.env.LB_SITES_VANTAGE || 'rehearsal-home';   // TS-7: where the run starts from (the VPS lane sets `vps`)
 
 const BASE = process.env.REHEARSAL_BASE || 'http://127.0.0.1:8590';
 const MOCK = process.env.REHEARSAL_MOCK || 'http://127.0.0.1:8591';
@@ -91,7 +92,8 @@ async function tryOnceInner(browser, testInfo, site, st) {
   const page = await ctx.newPage();
   const cons = [];
   page.on('console', (m) => { const x = m.text(); if (/Content Security Policy|Refused to|X-Frame|frame-ancestors/i.test(x)) cons.push(x.slice(0, 160)); });
-  const res = { loaded: false, shown: null, load: null, category: null, detail: null };
+  const res = { loaded: false, shown: null, load: null, category: null, detail: null, challenge: 'none' };
+  const { classifyChallenge } = await import('../../scripts/lib/challenge.mjs');
   // at 100 s, look at what the app is doing (a stuck page makes evaluate hang, so it is raced against 5 s)
   const wd = setTimeout(async () => {
     st.diag = await Promise.race([
@@ -123,7 +125,7 @@ async function tryOnceInner(browser, testInfo, site, st) {
       if (!res.loaded) { res.category = 'unblocked'; res.detail = outcome.err.slice(0, 160); }
       return res;
     }
-    if (outcome.err) { res.category = classifyError(outcome.err); res.detail = outcome.err.slice(0, 160); return res; }
+    if (outcome.err) { res.challenge = classifyChallenge(outcome.err, ''); res.category = classifyError(outcome.err); res.detail = outcome.err.slice(0, 160); return res; }
     if (site.expect === 'blocked') { res.category = 'unblocked'; res.detail = 'page loaded, expected the blocked card'; return res; }
     const fh = await page.locator('#frame').elementHandle();
     const frame = await fh.contentFrame();
@@ -139,6 +141,7 @@ async function tryOnceInner(browser, testInfo, site, st) {
     const probe = await frame.evaluate(() => ({ len: (document.body ? document.body.innerText : '').trim().length, head: (document.title + ' | ' + (document.body ? document.body.innerText : '')).replace(/\s+/g, ' ').slice(0, 200) })).catch(() => ({ len: 0, head: null }));
     const BLOCKED = /just a moment|access denied|captcha|verify you are (a )?human|unusual traffic|request blocked|attention required|are you a robot|pardon our interruption|enable javascript|forbidden/i;
     if (!found && probe.len >= 400 && !BLOCKED.test(probe.head || '')) { found = true; via = 'text'; }
+    res.challenge = classifyChallenge('', await frame.evaluate(() => (document.documentElement ? document.documentElement.outerHTML : '').slice(0, 300000)).catch(() => ''));
     res.loaded = found; res.via = via; res.textLen = probe.len;
     if (!found) res.snippet = probe.head;
     if (!found) {
@@ -180,7 +183,7 @@ function writeSite(site, runs) {
   const ok = runs.filter((r) => r.loaded), fails = runs.filter((r) => !r.loaded), cats = {};
   for (const f of fails) cats[f.category] = (cats[f.category] || 0) + 1;
   const rec = {
-    url: site.url, cat: site.cat, sel: site.sel, tags: site.tags, reps: REPS, loadedCount: ok.length,
+    vantage: VANTAGE, url: site.url, cat: site.cat, sel: site.sel, tags: site.tags, reps: REPS, loadedCount: ok.length,
     shownMedian: median(ok.map((r) => r.shown)), loadMedian: median(ok.map((r) => r.load)),
     failures: cats, detail: fails[0] ? fails[0].detail : null, snippet: fails[0] ? fails[0].snippet : null, runs,
   };

@@ -4,6 +4,7 @@
 // Usage: node scripts/sites-merge.mjs [sha]   (default: the newest sites-* directory)
 import fs from 'fs';
 import path from 'path';
+import { challengeSummary } from './lib/challenge.mjs';
 
 const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'test-results');
 let sha = process.argv[2];
@@ -30,6 +31,7 @@ const summary = {
   sha, sites: all.length, reps, loaded, successRate: +(loaded / reps).toFixed(3),
   allRepsLoaded: all.filter((s) => s.loadedCount === s.reps).length,
   shownMedianOfMedians: med(all.map((s) => s.shownMedian)), loadMedianOfMedians: med(all.map((s) => s.loadMedian)), failures: cats,
+  challenges: challengeSummary(sites, all[0]?.vantage || 'rehearsal-home'),
 };
 fs.writeFileSync(path.join(root, `sites-${sha}.json`), JSON.stringify({ summary, sites }, null, 2));
 console.log(JSON.stringify(summary, null, 2));

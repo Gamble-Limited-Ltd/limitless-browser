@@ -2,6 +2,7 @@
 // Stack rehearsal: real nginx + gate + relay against a mock GATE. Run through deploy/rehearsal/run.sh
 // (it starts the stack and sets REHEARSAL_BASE / REHEARSAL_MOCK). `npm test` does not touch this.
 const { defineConfig, devices } = require('@playwright/test');
+const { cbProjects } = require('./tests/lib/profile');
 
 module.exports = defineConfig({
   testDir: 'tests/stack',
@@ -22,5 +23,7 @@ module.exports = defineConfig({
       testMatch: /(speed|boot-size|sites|profile)\.spec\.js/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' },
     },
+    // Realistic school-Chromebook classes (docs/1.3/PROFILES.md), same specs as `chromebook`.
+    ...cbProjects(devices, { testMatch: /(speed|boot-size|sites|profile)\.spec\.js/ }),
   ],
 });

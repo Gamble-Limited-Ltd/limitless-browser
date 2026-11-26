@@ -61,12 +61,12 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | MS-1 | 0.1 | native column | built 2026-11-20 (`tools/1.3-measure`, `npm run test:native`) | 01 |
 | MS-2 | 0.2 | in-app bench for the school Chromebook | planned | 01 |
 | MS-3 | 0.3 | steadier gate | moved to TS-2, TS-4 | 08 |
-| MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | planned (Boss creates accounts) | 01 |
+| MS-4 | 0.4, 1.1, B2 | real-VPS lane (`lbtest`) | built 2026-11-19 (`tools/1.3-vps`, on `tools/1.3-profiles`), not yet run | 01 |
 | MS-5 | 1.3, 1.4 | VPS sampler, meter alerts | built 2026-11-20, sampler live on VPS, Kuma push disabled (needs monitor url) | 01 |
 | MS-6 | Phase 0 exit | "x native" table per Minor | planned | 01 |
 | MS-7 | S9b samples | field numbers per release | exists | 01 |
 | TS-1, TS-2, TS-3, TS-5, TS-6 | F, T1 | gate runner, quiet machine, build cache, tagged e2e, tagged sites | built 2026-11-19 on `tools/1.3-test-speed`; first item run (CL-1) 37.5 min, was about 2 to 2.5 h (e2e 25.2 to 3.9 min, sites about 60 to 9.1 min measured) | 08 |
-| TS-4, TS-7, TS-8 | F, T3 | A/B early stop, bot-check metric, baselines | planned. TS-4 is now the blocker for releases: the 3-rep and 7-rep gate runs on CL-1 failed on different rows each time (noise and base/candidate drift) | 08 |
+| TS-4, TS-7, TS-8 | F, T3 | A/B early stop, bot-check metric, baselines | TS-4 built 2026-11-19; TS-7 and TS-8 built 2026-11-25 (`tools/1.3-profiles`), not run yet. TS-4 was the blocker for releases: the 3-rep and 7-rep gate runs on CL-1 failed on different rows each time (noise and base/candidate drift) | 08 |
 | AD-0 to AD-3 | K3 gate line | catalog prices, receipt, number suggest, Grant plan tab | planned (Boss, 2026-11-19) | 09 |
 
 New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
@@ -95,7 +95,8 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | MS-8 | field breakdown samples | planned (Boss yes) | 01 |
 | MS-9 | "this page was slow" report | planned | 01 |
 | TS-9 | real-site recordings as fixtures | planned | 08 |
-| TS-10 | rewriter micro-bench per commit | built 2026-11-19, skips until bundles exist | 08 |
+| TS-10 | rewriter micro-bench per commit | built 2026-11-19; bundles in cache and base file written 2026-11-25 | 08 |
+| PR-1 | realistic Chromebook profiles cb-low, cb-mid, cb-high, `--profiles`, CPU calibration | built 2026-11-25 (`tools/1.3-profiles`, docs/1.3/PROFILES.md) | 01, 08 |
 | TS-11 | automatic bisect | planned | 08 |
 | TS-12 | non-timing suites side by side | partial 2026-11-19: built, rc tier not run yet | 08 |
 | AD-4 | admin speed card | planned (after MS-8) | 09 |

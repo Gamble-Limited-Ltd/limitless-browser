@@ -16,7 +16,7 @@ published number is dated, names the device profile and the median and n (SPEED-
 ---
 
 ## MS-1 Native column in the harness (was 0.1)
-- **Status:** built 2026-11-20 on `tools/1.3-measure` (smoke: example, wikipedia, 1 rep). Deviation: its own `tests/stack/native.spec.js` (`npm run test:native`, no stack) instead of an `LB_NATIVE` switch in profile.spec and speed.spec; `scripts/x-native.mjs` as specified. Khan Academy added to speed-sites.json (MS-D1). **Likely time:** 1.5 h.
+- **Status:** built 2026-11-20 on `tools/1.3-measure` (smoke: example, wikipedia, 1 rep; on `tools/1.3-profiles` since); profiles cb-low, cb-mid, cb-high added 2026-11-25 (docs/1.3/PROFILES.md). Deviation: its own `tests/stack/native.spec.js` (`npm run test:native`, no stack) instead of an `LB_NATIVE` switch in profile.spec and speed.spec; `scripts/x-native.mjs` as specified. Khan Academy added to speed-sites.json (MS-D1). **Likely time:** 1.5 h.
 - **Rules:**
   1. `profile.spec.js` and `speed.spec.js` accept `LB_NATIVE=1`: the same Chromium, profile and throttle load the site directly (no app,
      no relay), same marks where they exist (`shown` = first contentful paint after navigation start, `load` = load event).
@@ -44,7 +44,7 @@ published number is dated, names the device profile and the median and n (SPEED-
 - Moved to spec 08 TS-2 and TS-4.
 
 ## MS-4 Real-VPS test lane (was 0.4, 1.1, B2)
-- **Status:** built (2026-11-19, `tools/1.3-vps`), not yet run. **Likely time:** 3 h + Boss 15 min. **Decision:** MS-D2.
+- **Status:** built 2026-11-19 (`tools/1.3-vps`, now on `tools/1.3-profiles`), not yet run; since 2026-11-25 the lane runs under the `cb-low`, `cb-mid`, `cb-high` projects too (docs/1.3/PROFILES.md; output file gets the profile name, `chromebook` keeps its old name). **Likely time:** 3 h + Boss 15 min. **Decision:** MS-D2.
 - **Rules:**
   1. Boss creates a prod GLL ID account `lbtest` and grants it Cardinal with amount 0 and the note "test account" (with the new Grant tab,
      spec 09). Its credentials live in `~/.config/gll-cloud/lbtest.env` (gitignored, never printed, never on the build PC).

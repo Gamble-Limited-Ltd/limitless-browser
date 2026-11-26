@@ -1,6 +1,7 @@
 // @ts-check
 // MS-4 real-VPS lane: prod, no rehearsal stack. Run with `npm run test:vps` (see tests/stack/vps.spec.js).
 const { defineConfig, devices } = require('@playwright/test');
+const { cbProjects } = require('./tests/lib/profile');
 
 module.exports = defineConfig({
   testDir: 'tests/stack',
@@ -9,5 +10,5 @@ module.exports = defineConfig({
   workers: 1,
   reporter: 'list',
   outputDir: 'test-results-stack',
-  projects: [{ name: 'chromebook', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' } }],
+  projects: [{ name: 'chromebook', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, lbProfile: 'chromebook' } }, ...cbProjects(devices)],
 });

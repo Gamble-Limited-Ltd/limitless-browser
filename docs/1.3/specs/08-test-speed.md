@@ -132,14 +132,14 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Saving [est]:** 1 h to about 15 min (rc), about 5 min (item). **Rollback:** `LB_SITES_WORKERS=1`, no tag filter.
 
 ## TS-7 Bot-check metric in the site run (was T3)
-- **Status:** planned. **Likely time:** 1.5 h.
+- **Status:** built 2026-11-25 (`tools/1.3-profiles`; `scripts/lib/challenge.mjs`, `sites.spec.js` records `challenge` per rep and `vantage` per site, `sites-merge.mjs` adds `summary.challenges`, the gate's sites note prints "challenges N per 100 loads (vantage)"; unit tests `challenge-baseline.test.mjs`). Deviation: `card` = the app's Human Check card showed (so `LB_botCheck` said yes) and `vendor` = a challenge widget or vendor script in the loaded page, found by pattern, not by hooking `LB_botCheck`. Vantage `rehearsal-home` unless `LB_SITES_VANTAGE=vps`. Not run on real sites yet. **Likely time:** 1.5 h.
 - **Rules:** per site and rep the suite records `challenge: none|card|vendor` from `LB_botCheck` and the vantage (`rehearsal-home`,
   `vps`); `SUMMARY.md` gets "challenges per 100 loads" per vantage. Never retries a challenged load more than once and never interacts
   with a challenge (spec 06 rules).
 - **Measured by:** the table; spec 06 BC-7 uses it.
 
 ## TS-8 Baseline per release (was SPEED-NEXT F "keep baselines")
-- **Status:** planned. **Likely time:** 1 h.
+- **Status:** built 2026-11-25 (`tools/1.3-profiles`; `scripts/lib/baseline.mjs`, written by `gate.mjs` at the end of a passing `--tier rc` run that measured speed, version from the ref's `package.json`, harness = the tools checkout's HEAD; unit test). Not run yet. **Likely time:** 1 h.
 - **Rules:** after each release, `gate.sh <release sha> --tier rc` writes `docs/1.3/baseline/<version>.md` (one table, medians, date,
   harness hash). It is the reference for the "x native" table and for ads (SPEED-AUDIT 4b). TS-4 makes it unnecessary for item gates.
 
@@ -158,7 +158,7 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 - **Tests:** a recording of a local fixture page round-trips (served page loads with zero requests outside the fixture hosts).
 
 ## TS-10 Rewriter micro-bench per commit (new, brainstorm H2)
-- **Status:** built 2026-11-19 (`scripts/rw-bench.mjs`, extraction of `rewriteLocationRefs` from `app/main.js`, 5 reps, 10 percent rule with one retry because a single pass flaked on a loaded VM). The bundles do not exist yet (`~/.cache/limitless-fixtures/bundles/` is empty, TS-9 or Boss provides them), so the gate step prints SKIPPED; tested on synthetic bundles only. **Likely time:** 2 h.
+- **Status:** built 2026-11-19 (`scripts/rw-bench.mjs`, extraction of `rewriteLocationRefs` from `app/main.js`, 5 reps, 10 percent rule with one retry because a single pass flaked on a loaded VM). 2026-11-25: `~/.cache/limitless-fixtures/bundles/` holds 112 real site bundles (bbc, walmart, weather, bing and more, 52 MB, cache only, filled 2026-11-24, not by this item); `--save-base` was run on `tools/1.3-profiles` and `rw-bench-base.json` exists, so the gate step no longer skips. **Likely time:** 2 h.
 - **Rules:** `node scripts/rw-bench.mjs` runs the rewriter (the `app/rewriter.js` module once SV-4's G4-1 exists, before that the
   extraction harness) on the bundles in `~/.cache/limitless-fixtures/bundles/`, 5 reps, median ms per bundle, and compares with
   `~/.cache/limitless-fixtures/rw-bench-base.json`; more than 10 percent slower on any bundle fails. Runs in `gate.sh` before the stack

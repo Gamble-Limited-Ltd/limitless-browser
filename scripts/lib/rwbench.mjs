@@ -22,8 +22,9 @@ export function loadRewriter(root) {
 export const median = (a) => { const v = [...a].sort((x, y) => x - y), m = Math.floor(v.length / 2); return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 
 // base/cur: { bundleName: medianMs }. A bundle fails when it is more than pct percent slower than the base.
-export function compare(base, cur, pct = 10) {
+// floorMs: a bundle that takes a few ms moves more than 10 percent on noise alone, so it must also be floorMs slower
+export function compare(base, cur, pct = 10, floorMs = 5) {
   const fail = [], added = [];
-  for (const [n, ms] of Object.entries(cur)) { if (!(n in base)) added.push(n); else if (ms > base[n] * (1 + pct / 100)) fail.push(n); }
+  for (const [n, ms] of Object.entries(cur)) { if (!(n in base)) added.push(n); else if (ms > base[n] * (1 + pct / 100) && ms - base[n] > floorMs) fail.push(n); }
   return { fail, added };
 }

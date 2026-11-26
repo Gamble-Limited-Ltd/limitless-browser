@@ -122,7 +122,7 @@ test('real VPS, official sites', async ({ browser }, testInfo) => {
   if (METERED && !mayStart(readMeter())) throw new Error(`refused: ${monthGb(readMeter()).toFixed(1)} GB used this month (limit to start 45 GB)`);
 
   const cookies = await signIn(browser, readAccount());
-  const out = { tier: TIER, base: BASE, date: new Date().toISOString(), reps: REPS, profile: 'chromebook', sites: {}, stopped: null, runBytes: 0 };
+  const out = { tier: TIER, base: BASE, date: new Date().toISOString(), reps: REPS, profile: testInfo.project.name, sites: {}, stopped: null, runBytes: 0 };
   let meter = readMeter();
 
   outer: for (const site of SITES) {
@@ -145,7 +145,7 @@ test('real VPS, official sites', async ({ browser }, testInfo) => {
   out.meter = METERED ? { month: monthKey(), gbThisMonth: Math.round(monthGb(meter) * 100) / 100, runGb: Math.round(out.runBytes / 1e7) / 100 } : 'not counted (ordinal)';
   const dir = path.join(__dirname, '..', '..', 'test-results');
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `vps-${TIER}-${out.date.slice(0, 10)}.json`);
+  const file = path.join(dir, `vps-${TIER}-${out.date.slice(0, 10)}${testInfo.project.name === 'chromebook' ? '' : `-${testInfo.project.name}`}.json`);
   fs.writeFileSync(file, JSON.stringify(out, null, 2));
   console.log(`vps: wrote ${file}${out.stopped ? `  STOPPED: ${out.stopped}` : ''}`);
   expect(out.stopped, out.stopped || '').toBeNull();

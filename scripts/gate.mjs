@@ -6,11 +6,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs, stepsFor, cacheKey } from './lib/gate-args.mjs';
+import { parseArgs, stepsFor, cacheKey, projectsFor } from './lib/gate-args.mjs';
 import { prune, cacheable } from './lib/gate-cache.mjs';
 import { selectSpecs, tagsFromDiff } from './lib/gate-tags.mjs';
 import { pauseAction, inQuietWindow, sideBySide } from './lib/gate-quiet.mjs';
 import { abVerdict } from './lib/abstat.mjs';
+import { baselineMd } from './lib/baseline.mjs';
 
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
@@ -23,10 +24,16 @@ const git = (...a) => spawnSync('git', ['-C', TOOLS, ...a], { encoding: 'utf8' }
 const rev = (r) => { const x = git('rev-parse', '--short=7', `${r}^{commit}`); if (x.status) { console.error(`gate: unknown ref ${r}`); process.exit(2); } return x.stdout.trim(); };
 const sha = rev(args.ref), baseSha = rev(args.base);
 const steps = stepsFor(args.tier, args.steps);
+const PROJ = projectsFor(args.profiles, args.tier, process.env);
+if (!PROJ.run.length) { console.error(`gate: every profile asked for (${args.profiles}) is CI-only on this VM; LB_PROFILES_FORCE=1 forces them`); process.exit(2); }
+const projFlags = (list) => list.map((p) => `--project=${p}`).join(' ');
+// sites and profile write results keyed by sha only, so they run under one profile: the first that is not plain chromium
+const ONE = PROJ.run.find((p) => p !== 'chromium') || PROJ.run[0];
 const stamp = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' }).format(new Date()).replace(' ', '_').replace(':', '');
 const OUT = path.join(HOME, 'gll-planning/reports/limitless-speed', `${stamp}-${args.ref.replace(/[^\w.-]/g, '_')}`);
 
 console.log(`gate: ref ${args.ref} (${sha}) base ${args.base} (${baseSha}) tier ${args.tier}${args.tags.length ? ` tags ${args.tags}` : ''}`);
+console.log(`gate: profiles ${PROJ.run.join(', ')}${PROJ.skipped.length ? ` (skipped, CI-only on this VM: ${PROJ.skipped.join(', ')}; LB_PROFILES_FORCE=1 forces)` : ''}`);
 console.log(`gate: steps ${steps.join(', ')}${steps.includes('speed') ? (args.ab ? ' (speed: interleaved A/B, TS-4)' : ' (speed: base then candidate, --no-ab)') : ''}`);
 if (args.dryRun) { console.log('gate: dry run, nothing started'); process.exit(0); }
 
@@ -136,9 +143,9 @@ const STEP = {
   e2e: (wt) => { const cmd = E2E_CMD(wt); const r = sh(cmd, { cwd: wt, env: { LB_E2E_PORT: freePort() }, log: 'e2e.log' }); return { r, ok: r.code === 0, note: e2eNote }; },
   // TS-4 (default): base (A) and candidate (B) interleaved in one stack, verdict per row from scripts/lib/abstat.mjs. Never reuses an old base run.
   speedab: (wt) => quiet(() => {
-    const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
+    const rc = args.tier === 'rc', projects = PROJ.run;
     const env = { LB_SPEED: '1', LB_SPEED_AB: '1', LB_DIST: DIST.base.dir, LB_DIST_B: DIST.cand.dir, LB_SPEED_SHA_A: baseSha, LB_SPEED_SHA_B: sha, ...(rc ? {} : { LB_SPEED_PUBLIC: '0' }) };
-    const r = sh(`deploy/rehearsal/run.sh ${rc ? '' : '--project=chromebook '}tests/stack/speed.spec.js`, { cwd: wt, env, log: 'speed-ab.log' });
+    const r = sh(`deploy/rehearsal/run.sh ${projFlags(projects)} tests/stack/speed.spec.js`, { cwd: wt, env, log: 'speed-ab.log' });
     const sums = projects.map((p) => {
       const f = path.join(wt, `test-results/abtest-${baseSha}-${sha}-${p}.json`);
       try { fs.copyFileSync(f, path.join(OUT, path.basename(f))); for (const s of [baseSha, sha]) fs.copyFileSync(path.join(wt, `test-results/speed-${s}-${p}.json`), path.join(OUT, `speed-${s}-${p}.json`)); return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
@@ -148,10 +155,10 @@ const STEP = {
     return { r, ok: r.code === 0 && v.ok, note: `${v.note}; noisy reps ${noisyN}` };
   }),
   speed: (wt) => quiet(() => {
-    const rc = args.tier === 'rc', projects = rc ? ['chromium', 'chromebook'] : ['chromebook'];
+    const rc = args.tier === 'rc', projects = PROJ.run;
     const env = rc ? { LB_SPEED: '1' } : { LB_SPEED: '1', LB_SPEED_REPS: '3', LB_SPEED_PUBLIC: '0' };
     if (args.speedReps) env.LB_SPEED_REPS = String(args.speedReps);
-    const proj = rc ? '' : '--project=chromebook ';
+    const proj = `${projFlags(projects)} `;
     const run = (dist, s, log) => sh(`deploy/rehearsal/run.sh ${proj}tests/stack/speed.spec.js`, { cwd: wt, env: { ...env, LB_DIST: dist, LB_SPEED_SHA: s }, log });
     const c = run(DIST.cand.dir, sha, 'speed-cand.log');
     // Base result reused when a run of the same base build, feature set and tier is under 12 h old (no drift across a night).
@@ -171,7 +178,7 @@ const STEP = {
   }),
   sites: (wt) => {
     const env = siteEnv(), w = process.env.LB_SITES_WORKERS || '4';
-    const run = (dist, s, extra, log) => sh(`LB_SITES=1 deploy/rehearsal/run.sh --project=chromebook --workers=${w} tests/stack/sites.spec.js`, { cwd: wt, env: { ...env, ...extra, LB_SITES_WORKERS: w, LB_DIST: dist, LB_SPEED_SHA: s }, log });
+    const run = (dist, s, extra, log) => sh(`LB_SITES=1 deploy/rehearsal/run.sh --project=${ONE} --workers=${w} tests/stack/sites.spec.js`, { cwd: wt, env: { ...env, ...extra, LB_SITES_WORKERS: w, LB_DIST: dist, LB_SPEED_SHA: s }, log });
     const merge = (s) => { sh(`node scripts/sites-merge.mjs ${s} > ${OUT}/sites-summary-${s}.txt`, { cwd: wt, log: 'sites-merge.log' }); try { return JSON.parse(fs.readFileSync(path.join(wt, `test-results/sites-${s}.json`), 'utf8')); } catch { return null; } };
     let min = 0;
     const c = run(DIST.cand.dir, sha, {}, 'sites.log'); min += c.min;
@@ -189,11 +196,12 @@ const STEP = {
     if (bj) fs.writeFileSync(path.join(OUT, `sites-${baseSha}.json`), JSON.stringify(bj));
     // Pass/fail only (timing is reported, never gated): the suite ran, no site regressed against the base, the YouTube blocked card shows.
     let ok = c.code === 0 && !!cj && !!bj && reg.length === 0, rate = '?';
-    if (cj) { rate = `cand ${cj.summary.loaded}/${cj.summary.reps}${bj ? `, base ${bj.summary.loaded}/${bj.summary.reps}` : ''} loads over ${cj.summary.sites} sites`; const y = cj.sites.youtube; if (y && y.loadedCount < y.reps) ok = false; }
+    const ch = cj?.summary?.challenges;
+    if (cj) { rate = `cand ${cj.summary.loaded}/${cj.summary.reps}${bj ? `, base ${bj.summary.loaded}/${bj.summary.reps}` : ''} loads over ${cj.summary.sites} sites${ch ? `, challenges ${ch.per100 ?? '?'} per 100 loads (${ch.vantage})` : ''}`; const y = cj.sites.youtube; if (y && y.loadedCount < y.reps) ok = false; }
     return { r: { min }, ok, note: `${rate}${reg.length ? `; regressed vs base: ${reg.join(' ')}` : ''}; ${env.LB_SITES_REPS} rep, ${env.LB_SITES_TAGS || 'all sites'}, ${w} workers` };
   },
-  profile: (wt) => { const r = sh('LB_PROFILE=1 deploy/rehearsal/run.sh --project=chromebook --workers=1 tests/stack/profile.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'profile.log' }); return { r, ok: r.code === 0 }; },
-  bootsize: (wt) => { const r = sh('LB_BOOT=1 deploy/rehearsal/run.sh tests/stack/boot-size.spec.js', { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'bootsize.log' }); return { r, ok: r.code === 0 }; },
+  profile: (wt) => { const r = sh(`LB_PROFILE=1 deploy/rehearsal/run.sh --project=${ONE} --workers=1 tests/stack/profile.spec.js`, { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'profile.log' }); return { r, ok: r.code === 0 }; },
+  bootsize: (wt) => { const r = sh(`LB_BOOT=1 deploy/rehearsal/run.sh ${projFlags(PROJ.run)} tests/stack/boot-size.spec.js`, { cwd: wt, env: { LB_DIST: DIST.cand.dir, LB_SPEED_SHA: sha }, log: 'bootsize.log' }); return { r, ok: r.code === 0 }; },
   // TS-12: full e2e (no stack, own port) beside the site suite, only with 4 GB or more free; else one after the other.
   'e2e+sites': async (wt) => {
     if (!sideBySide(fs.readFileSync('/proc/meminfo', 'utf8'))) { const e = STEP.e2e(wt); const s = STEP.sites(wt); return { r: { min: e.r.min + s.r.min }, ok: e.ok && s.ok, note: 'serial (under 4 GB free)' }; }
@@ -228,6 +236,17 @@ try {
   }
 } finally { cleanup(); }
 
+// TS-8: a release candidate run that measured speed leaves its medians in the repo as the baseline for that version.
+if (args.tier === 'rc' && steps.includes('speed') && !rows.some((r) => r.step === 'speed' && r.verdict === 'FAIL')) {
+  try {
+    const speeds = Object.fromEntries(PROJ.run.map((p) => [p, JSON.parse(fs.readFileSync(path.join(OUT, `speed-${sha}-${p}.json`), 'utf8'))]));
+    const version = JSON.parse(git('show', `${sha}:package.json`).stdout).version;
+    const harness = git('rev-parse', '--short=7', 'HEAD').stdout.trim();
+    fs.mkdirSync(path.join(TOOLS, 'docs/1.3/baseline'), { recursive: true });
+    fs.writeFileSync(path.join(TOOLS, `docs/1.3/baseline/${version}.md`), baselineMd({ version, sha, date: stamp, harness, speeds }));
+    console.log(`gate: baseline written docs/1.3/baseline/${version}.md`);
+  } catch (e) { console.warn(`gate: baseline not written: ${e.message}`); }
+}
 const total = (Date.now() - T0) / 60000;
 const failed = rows.some((r) => r.verdict === 'FAIL');
 const md = [`# Gate ${args.ref} (${sha}) vs ${args.base} (${baseSha}), tier ${args.tier}`, '', `Started ${stamp} Chicago, total ${total.toFixed(1)} min. Verdict: ${failed ? 'FAIL' : 'PASS'}.`, '',
