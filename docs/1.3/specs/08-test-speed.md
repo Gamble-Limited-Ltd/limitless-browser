@@ -160,8 +160,10 @@ Each item has: **id** (old ids), **status**, **why**, **rules** (numbered, testa
 ## TS-10 Rewriter micro-bench per commit (new, brainstorm H2)
 - **Status:** built 2026-11-19 (`scripts/rw-bench.mjs`, extraction of `rewriteLocationRefs` from `app/main.js`, 5 reps, 10 percent rule with one retry because a single pass flaked on a loaded VM). The bundles do not exist yet (`~/.cache/limitless-fixtures/bundles/` is empty, TS-9 or Boss provides them), so the gate step prints SKIPPED; tested on synthetic bundles only. **Likely time:** 2 h.
 - **Rules:** `node scripts/rw-bench.mjs` runs the rewriter (the `app/rewriter.js` module once SV-4's G4-1 exists, before that the
-  extraction harness) on the bundles in `~/.cache/limitless-fixtures/bundles/`, 5 reps, median ms per bundle, and compares with
-  `~/.cache/limitless-fixtures/rw-bench-base.json`; more than 10 percent slower on any bundle fails. Runs in `gate.sh` before the stack
+  extraction harness) on the bundles in `~/.cache/limitless-fixtures/bundles/`, and, with `--base <dir>` (the gate passes its base worktree),
+  times base and candidate interleaved in one run (7 reps, A,B then B,A, medians); more than 10 percent slower than base on any bundle
+  fails, a byte-identical rewriter skips the compare. Without `--base` it falls back to the saved
+  `~/.cache/limitless-fixtures/rw-bench-base.json` (load-sensitive, fixed 2026-11-26). Runs in `gate.sh` before the stack
   starts (seconds). Skipped with a note when the bundles are absent.
 
 ## TS-11 Automatic bisect (new, brainstorm H3)
