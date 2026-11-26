@@ -75,7 +75,7 @@ const noisy = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')).env?.
 const CACHE = path.join(HOME, '.cache/limitless-gate');
 // --features apply to the candidate only; the base is built with the rehearsal defaults (what prod runs), so A/B shows the switch.
 const featureEnv = (base = false) => {
-  const e = { ...(process.env.LB_REHEARSAL_RELAYOFF === '1' ? {} : { LB_FEATURE_OWNRELAY: 'true', LB_FEATURE_OWNSOCKETS: '4', LB_FEATURE_PAGECACHE: 'true', LB_FEATURE_WARM: 'true' }) };
+  const e = { ...(process.env.LB_REHEARSAL_RELAYOFF === '1' ? {} : { LB_FEATURE_OWNRELAY: 'true', LB_FEATURE_OWNSOCKETS: '4' }) };   // pageCache and warm stay at the build default (off, as in prod); a switch gate turns them on with --features
   for (const [k, v] of Object.entries(process.env)) if (k.startsWith('LB_FEATURE_')) e[k] = v;   // same defaults run.sh applies, then the caller's
   if (!base) for (const [k, v] of Object.entries(args.features)) e[`LB_FEATURE_${k.toUpperCase()}`] = v;
   return e;
@@ -214,6 +214,7 @@ try {
   const needBase = steps.some((x) => /speed|sites/.test(x));
   const cand = (() => { const t = Date.now(); const d = ensureDist(sha, wt); rows.push({ step: 'build', min: (Date.now() - t) / 60000, verdict: d.hit ? 'cached' : 'built', note: d.key }); return d; })();
   const base = { key: cacheKey(baseSha, featureEnv(true)) };
+  if (needBase && base.key === cacheKey(sha, featureEnv())) console.warn('gate: WARNING base and candidate are the same build (same ref, same features): this A/B measures noise only');
   DIST.cand = cand;
   if (needBase) {
     if (!fs.existsSync(path.join(CACHE, 'dist', base.key))) baseWt = mk(baseSha, 'base');
