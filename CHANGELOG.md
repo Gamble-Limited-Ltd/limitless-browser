@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.10
+
+- Pages that load the same script more than once now reuse it instead of preparing it again, so busy sites start a little faster.
+- Speed reports from members now include a breakdown (page, scripts, and slow moments), so we can see where time goes on real devices.
+
 ## 1.2.9
 
 - Pages with big scripts start faster: Limitless now prepares site scripts much more quickly, which helps most on slower devices and heavy sites.
