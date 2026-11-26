@@ -31,7 +31,7 @@ release record; CL-1 ships only if it is not slower (its expected gain is first-
 ---
 
 ## CL-6 Stable script URLs: reuse per session, then code cache across visits (was 2.1, new from research)
-- **Status:** planned. **Likely time:** step A 2 h, step B 4 to 6 h (needs the SW lane, spec 05 TL-3). **Tiers:** all.
+- **Status:** step A built 2026-11-25, item gate pass; step B planned. **Likely time:** step A 2 h, step B 4 to 6 h (needs the SW lane, spec 05 TL-3). **Tiers:** all.
 - **Why:** the 1.2.0 gate flagged +100 to 130 ms on `fx-app` warm from ES module `blob:` URLs, and big scripts are compiled on every visit.
 - **Step A (`features.blobReuse`):** one `blob:` URL per content hash per app session (`Map sha -> url`), revoked only when no tab
   document uses it (reference count) or at 64 MB of live script blobs (LRU). Modules and classic scripts both.
@@ -49,7 +49,7 @@ release record; CL-1 ships only if it is not slower (its expected gain is first-
 - **Rollback:** the switches.
 
 ## CL-7 Rewrite Worker pool from the device (was 2.3)
-- **Status:** planned. **Likely time:** 1 h. **Tiers:** all.
+- **Status:** built 2026-11-25, on hold: item gate failed sites twice (heavy apps time out). **Likely time:** 1 h. **Tiers:** all.
 - **Rules:** pool size = `clamp(navigator.hardwareConcurrency - 1, 1, 4)` (today a fixed 2); one Worker more only when a page has 4 or
   more scripts of 256 KB or more waiting; idle Workers above 2 close after 60 s.
 - **Measure:** `fx-app` cold and the Steam profile row, 2 vs pool, chromebook. Note CDP cannot throttle Workers, so the device run (MS-2)

@@ -81,7 +81,7 @@ published number is dated, names the device profile and the median and n (SPEED-
   release. Only aggregate numbers; no change to what is collected.
 
 ## MS-8 Field breakdown samples (new, brainstorm G1)
-- **Status:** planned. **Likely time:** 3 h (app + gate). **Tiers:** members (same rules as S9b samples).
+- **Status:** built 2026-11-25 (app + gate branch); speed and sites pass, needs one clean e2e. **Likely time:** 3 h (app + gate). **Tiers:** members (same rules as S9b samples).
 - **Rules:**
   1. The existing sample (`lbPerfSample`, 1 in 5, at most one per 10 s, members only, off with Data saver or `features.perf=false`) adds:
      `docMs` (document fetch to last byte), `rwMs` (total rewrite wait), `rwN` (scripts rewritten), `scriptMs` (script stage), `longMs`
