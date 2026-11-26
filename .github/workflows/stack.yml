@@ -1,0 +1,128 @@
+name: stack
+# Full-stack rehearsal on a runner: real nginx + gate + relay against the mock GATE, local to the runner.
+# The gate is a PRIVATE repo (Gamble-Limited-Ltd/limitless-gate): the stack specs sign in through its mock GATE and the
+# real gate image, which the stub gate of deploy/dev-up.sh cannot do. Needs the deploy key secret LBGATE_DEPLOY_KEY;
+# without it the jobs skip with a notice. No prod host, VPS, test account or .env is used. Public repo: logs are public.
+on:
+  workflow_dispatch:
+    inputs:
+      projects:
+        description: 'Playwright projects for the speed A/B (cb-low,cb-mid,cb-high exist once the profiles branch is merged)'
+        default: 'chromium,chromebook'
+      base:
+        description: 'Speed A/B base ref (A side)'
+        default: 'origin/main'
+      speed_reps:
+        description: 'Speed reps per side'
+        default: '3'
+  # schedule:
+  #   - cron: '0 8 * * *'   # nightly, 02:00 Chicago in winter; enable once the trial is trusted
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stack-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GATE_CONTEXT: ${{ github.workspace }}/limitless-gate
+
+jobs:
+  sites-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check gate key
+        id: key
+        env:
+          K: ${{ secrets.LBGATE_DEPLOY_KEY }}
+        run: |
+          if [ -z "$K" ]; then echo "::notice::LBGATE_DEPLOY_KEY is not set, stack jobs skipped"; echo "have=false" >> "$GITHUB_OUTPUT"; else echo "have=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.have == 'true'
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.have == 'true'
+        with:
+          repository: Gamble-Limited-Ltd/limitless-gate
+          ssh-key: ${{ secrets.LBGATE_DEPLOY_KEY }}
+          path: limitless-gate
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.have == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        if: steps.key.outputs.have == 'true'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Sites smoke (12 public sites)
+        if: steps.key.outputs.have == 'true'
+        run: npm run test:sites:smoke
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.key.outputs.have == 'true'
+        with:
+          name: sites-smoke
+          path: |
+            test-results/
+            test-results-stack/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  speed-ab-trial:
+    # TRIAL: informational only. Never a release gate; the VM's verdicts stay the truth.
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    continue-on-error: true
+    steps:
+      - name: Check gate key
+        id: key
+        env:
+          K: ${{ secrets.LBGATE_DEPLOY_KEY }}
+        run: |
+          if [ -z "$K" ]; then echo "::notice::LBGATE_DEPLOY_KEY is not set, stack jobs skipped"; echo "have=false" >> "$GITHUB_OUTPUT"; else echo "have=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.have == 'true'
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.have == 'true'
+        with:
+          repository: Gamble-Limited-Ltd/limitless-gate
+          ssh-key: ${{ secrets.LBGATE_DEPLOY_KEY }}
+          path: limitless-gate
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.have == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        if: steps.key.outputs.have == 'true'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Speed A/B (interleaved, informational)
+        if: steps.key.outputs.have == 'true'
+        env:
+          PROJECTS: ${{ inputs.projects || 'chromium,chromebook' }}
+          BASE: ${{ inputs.base || 'origin/main' }}
+          REPS: ${{ inputs.speed_reps || '3' }}
+        run: |
+          # --profiles exists only once the profiles branch is merged; pass it then, else the gate's own default.
+          extra=(); grep -q -- '--profiles' scripts/lib/gate-args.mjs && extra=(--profiles "$PROJECTS")
+          scripts/gate.sh HEAD --base "$BASE" --tier item --steps speed --speed-reps "$REPS" "${extra[@]}"
+      - name: Collect A/B JSON
+        if: always() && steps.key.outputs.have == 'true'
+        run: |
+          mkdir -p ab-out
+          find "$HOME/gll-planning/reports/limitless-speed" -type f \( -name 'abtest-*.json' -o -name 'SUMMARY.md' \) -exec cp --backup=numbered {} ab-out/ \; 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.key.outputs.have == 'true'
+        with:
+          name: speed-ab-trial
+          path: ab-out/
+          if-no-files-found: ignore
+          retention-days: 30

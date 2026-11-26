@@ -23,7 +23,7 @@ Read both before touching names, credits, license text or features.
 - Remotes: `origin` = Gamble-Limited-Ltd/limitless-browser (renamed from `Browser` 2026-10-18; GitHub redirects the old URL), `upstream` = nautilus-os/GUST.
 
 ## Run / dev
-No build system, lint or CI. `package.json` exists only for the Playwright test harness (nothing ships from it).
+No build system or lint. CI (GitHub Actions, public repo so free; `docs/1.3/CI.md`): `test.yml` on every push runs unit tests and the full e2e suite in 4 shards; `stack.yml` (manual) runs the sites smoke and an informational speed A/B trial and needs the `LBGATE_DEPLOY_KEY` secret (the gate is a private repo). CI never deploys and is never a release gate. `package.json` exists only for the Playwright test harness (nothing ships from it).
 - `index.html` (~0.6 MB since 1.0 S3, was 3.6 MB): the markup, CSS, the libcurl.js glue and small head scripts. The ~1.1 MB application script is `app/main.js` (`<script src="app/main.js">`; the build rewrites it to `app/<sha>/main.js`, immutable). The libcurl WASM binary, acorn/acorn-walk and the skin-scoped CSS moved out earlier (see "Startup" below). No CDN or font-service requests remain.
 - `patcher.html` (renamed from `GUST-Patcher.html`, 2026-10-19): standalone patcher page. Its patch definitions match
   identifiers and storage keys in `index.html`; when you rename code there, update them too. It fetches only our own
