@@ -135,7 +135,8 @@ const E2E_CMD = (wt) => {
 const STEP = {
   // TS-10: seconds, before any stack starts. No bundles or no base file: skipped with a note.
   rwbench: (wt) => {
-    const r = sh('node scripts/rw-bench.mjs', { cwd: wt, log: 'rwbench.log' });
+    if (baseSha) baseWt ||= mk(baseSha, 'base'); // interleaved A/B needs the base tree even when its dist is cached
+    const r = sh(`node scripts/rw-bench.mjs${baseWt ? ` --base ${baseWt}` : ''}`, { cwd: wt, log: 'rwbench.log' });
     const out = fs.readFileSync(path.join(OUT, 'rwbench.log'), 'utf8');
     const skip = /SKIPPED[^\n]*/.exec(out);
     return skip && r.code === 0 ? { skipped: skip[0].replace('rw-bench: ', '') } : { r, ok: r.code === 0 };
