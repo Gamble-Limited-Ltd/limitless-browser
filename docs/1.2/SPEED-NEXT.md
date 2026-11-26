@@ -19,7 +19,7 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
 | CL-6 | 2.1 | stable script URLs (blob reuse, then code cache via the lane) | step A (blob reuse) SHIPPED ON in 1.2.10 (2026-11-26); step B planned | 02 |
-| CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold, investigate pool size under the 4-core profiles | 02 |
+| CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold; 2026-11-26 fix: pool stays at 2 workers on 4 cores or fewer (hc-1 starved the page thread), hc-2 max 4 above (`ccb49fd`, merged with 1.2.10); item gate re-run overnight 2026-11-26/27 | 02 |
 | CL-8 | C1, H5, Phase 3 | libcurl in a Worker, slices 2 to 5, then on | slice 1 shipped 1.2.0 OFF; rest planned | 02 |
 | CL-9 | N9, 3.6 | HTML parse in a Worker | measure first | 02 |
 | CL-10 | H6, 2.6 (Coolmath) | chunk remaining long tasks | planned | 02 |
@@ -130,13 +130,12 @@ Free (Ordinal) traffic stays off our VPS. Relay-side work is paid only, as a lad
 - Past the data budget the limits are uplink (`TOTAL_UPLINK_MBPS=300` set on the relay; check the RackNerd port speed) and 2 CPU cores (server rewrite, image shrink); at 50 members with about 25 online at once, about 12 Mbit/s each.
 
 ### K3. Pricing (Claude proposal 2026-11-18; APPROVED by Boss 2026-11-19, not open for sale yet)
-- **Status (Boss, 2026-11-19):** the prices below are final. Plans stay closed (`plansOpen` false) until Boss opens them; the gate catalog placeholders ($15 Cardinal, $35 Prime, Executive null) still need changing to $15 / $25 / $50 in its own gate release before opening.
+- **Status (Boss, 2026-11-19):** the prices below are final. Plans stay closed (`plansOpen` false) until Boss opens them; the gate catalog already carries $15 / $25 / $50 and deals $10 / $20 / $40 (merged with 1.2.7, checked 2026-11-26).
 - Cost: VPS $40 a year, about $1.33 per TB of transfer; a full-cap seat costs $0.83 (Cardinal) to $3.47 (Executive) a year (research job E, PLAN-NOTES K). Price is set by what members will pay, not cost; capacity (K2) is the real limit.
 - Evidence: beta testers said about $12 a year for Cardinal and $20 to $25 for Prime.
 - Proposal, round $5 steps for cash: **Cardinal $15 a year (deal $10), Prime $25 (deal $20), Executive $50 (deal $40), Executive max 4 seats.** Deals $5 each, stackable to a floor ($10 / $15 / $30): early or beta members, bring a friend ($5 off both), pay 2 years at once, seasonal sales.
 - **Top-ups**: $5 = 20 GB, $10 = 50 GB, any paid tier, last until used or renewal; sales pause automatically at 80 percent of the VPS month.
 - Revenue at 50 members (23 C, 23 P, 4 E): list $1,120 a year, all at deal price $850, against $40 VPS; room for a second VPS ($40) when uplink or CPU runs out.
-- Gate placeholders (`src/membership.ts`) still hold the old numbers; changing them is its own gate release.
 
 ### N2 result: parser bench (R3, 2026-11-18, Chromium 4x CPU throttle on the page thread, medians of 5, ms)
 Method: the app's own `rewriteLocationRefs` (extracted from `app/main.js`, `imp` on) with only the parse call swapped; parse ms is the parse alone, rewrite ms is parse + the `acorn.walk.ancestor` walk + the edit join. Real bundles fetched on 2026-11-18 from this VM (not committed): Steam `store/main.js`, a Discord web app chunk, Kahoot's controller and one app chunk, one Reddit chunk. Bench deps (acorn 8.14.0, meriyah 7.4.2, `@oxc-parser/wasm` 0.60.0) installed only in a scratch directory, not in `package.json`.
@@ -177,7 +176,7 @@ Worker parser swap behind `features.meriyah` (build `LB_FEATURE_MERIYAH`, defaul
 Last verified: 2026-11-19
 
 ## Overnight 2026-11-25/26 notes
-- rw-bench compares against a saved base, so machine load alone fails it (MS-8 and CL-7 benched the same rewriter as base and still failed with different files each run). Fix: interleave base and candidate in one run, like TS-4.
+- rw-bench compares against a saved base, so machine load alone fails it (MS-8 and CL-7 benched the same rewriter as base and still failed with different files each run). FIXED 2026-11-26 on `tools/1.3-test-speed` (merged into `tools/1.3-profiles`): the gate passes the base tree, base and candidate are timed interleaved in one run, an identical rewriter skips the compare; saved base is the fallback only.
 - 1.2.9 rc speed rerun (Chromium profile, quiet window): 25 of 28 rows clean, 3 inconclusive (boot cold +41 ms, fx-news cold -105 ms), 0 fail.
-- First x-native table (paid tier, real VPS, cb-low and cb-mid, 8 sites, 3 reps): cold shown about 2.5x native (1.8x to 3.5x), warm shown 1x to 1.7x. Table: `~/gll-planning/reports/limitless-speed/x-native-2026-11-26.md`. VPS byte counter read near zero: check before trusting the budget meter.
+- First x-native table (paid tier, real VPS, cb-low and cb-mid, 8 sites, 3 reps): cold shown about 2.5x native (1.8x to 3.5x), warm shown 1x to 1.7x. Table: `~/gll-planning/reports/limitless-speed/x-native-2026-11-26.md`. VPS byte counter read near zero: cause found 2026-11-26, `/_lb/me` read the store copy that is flushed every 30 s, so a short run read before the flush (caps were never affected, they use the live count). Fixed in limitless-gate `b5ab930`, ships with the next deploy.
 - CI (GitHub Actions, public repo) approved 2026-11-25: unit + e2e run there on push (`.github/workflows/test.yml`); this replaces "gate runs on the VM only" for pass/fail tests. Speed A/B on CI is a trial only.
