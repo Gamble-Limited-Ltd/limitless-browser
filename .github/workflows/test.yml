@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+# Date-based e2e tests assume the VM's time zone (CI runners are UTC)
+env:
+  TZ: America/Chicago
+
 concurrency:
   group: test-${{ github.ref }}
   cancel-in-progress: true
