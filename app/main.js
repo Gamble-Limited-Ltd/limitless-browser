@@ -3983,7 +3983,7 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
             window.__lbPerf = {
                 runs: [], cur: null,
                 start(url) { window.LB_pagesFirst.begin(); const c = { url, t0: performance.now(), marks: {} }; this.cur = c; this.runs.push(c); if (this.runs.length > 60) this.runs.shift(); return c; },
-                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') { window.LB_pagesFirst.end(); lbPerfSample(c.marks.shown); } } }
+                mark(name) { const c = this.cur; if (c && c.marks[name] == null) { c.marks[name] = Math.round(performance.now() - c.t0); if (name === 'shown') { window.LB_pagesFirst.end(); lbPerfSample(c.marks.shown, c); } } }
             };
             // S9b: anonymous load-time sample (docs/1.0/PAID-TIERS-PLAN.md): signed-in members on a membership server only, 1 in 5 page
             // loads, at most one per 10 s, never with Data saver, never the URL or host. features.perf = false is the kill switch.
@@ -3995,14 +3995,25 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 if (/Mobi|iPhone|Android/.test(ua)) return 'phone';
                 return /Windows|Macintosh|Linux/.test(ua) ? 'desktop' : 'other';
             }
-            function lbPerfSample(ms) {
+            // MS-8: longest main-thread task of the current load (the breakdown's longMs)
+            try { new PerformanceObserver((l) => { const c = window.__lbPerf.cur; if (c) for (const e of l.getEntries()) c.long = Math.max(c.long || 0, e.duration); }).observe({ type: 'longtask' }); } catch (_) {}
+            // MS-8 breakdown: whole numbers only, a field is left out when the load did not measure it. Never a URL, host or id.
+            function lbPerfBody(ms, run) {
+                const c = run || {}, cap = (v, max) => Math.min(max, Math.max(0, Math.round(v)));
+                const f = { ms, docMs: c.marks && c.marks.firstBytes, rwMs: c.rwMs, rwN: c.rwN, longMs: c.long, kb: c.bytes / 1024, hit: c.fetches ? (c.hits || 0) / c.fetches * 10 : NaN };
+                const max = { rwN: 1000, kb: 1000000, hit: 10 };
+                const b = { metric: 'page_shown', device: lbPerfDevice() };
+                for (const k in f) if (typeof f[k] === 'number' && Number.isFinite(f[k])) b[k] = cap(f[k], max[k] || 120000);
+                return b;
+            }
+            function lbPerfSample(ms, run) {
                 try {
                     if (!window.LB_member || window.LB_member.membership !== 'on' || window.LB_features.perf === false) return;
                     if (ls.getItem('limitless:datasaver:v1') === '1') return;
                     const t = Date.now();
                     if (t - lbPerfLast < 10000 || Math.random() >= 0.2) return;
                     lbPerfLast = t;
-                    fetch('/_lb/perf', { method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ metric: 'page_shown', ms: Math.min(120000, Math.max(0, Math.round(ms))), device: lbPerfDevice() }) }).catch(() => {});
+                    fetch('/_lb/perf', { method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify(lbPerfBody(ms, run)) }).catch(() => {});
                 } catch (_) {}
             }
             const LB_WHATS_NEW = 'limitless://whats-new';
@@ -5791,7 +5802,13 @@ ${gs ? '' : `<button class="${bot ? 'p' : ''}" id="report" onclick="window.paren
                 lbPrewarm.delete(url);
                 return p;
             }
-            async function queueFetch(url, opts = {}, priority = PRIORITY.other) {
+            // MS-8: bytes received and response cache hits for the current load (kb, hit in the field sample)
+            async function queueFetch(url, opts, priority) {
+                const r = await queueFetchRaw(url, opts, priority), c = window.__lbPerf.cur;
+                if (c && r && r.buf) { c.fetches = (c.fetches || 0) + 1; if (r.fromCache) c.hits = (c.hits || 0) + 1; else c.bytes = (c.bytes || 0) + r.buf.byteLength; }
+                return r;
+            }
+            async function queueFetchRaw(url, opts = {}, priority = PRIORITY.other) {
                 if (priority === PRIORITY.image && !opts.__img) opts = { ...opts, __img: true };
                 // 1.2 2c (features.qPrio): an image known to be near the top of the page sorts before the other images; a request that is not
                 // an image tells runQueue to keep a few slots free for it (lbCritAt), so the document's CSS, scripts and fonts never wait behind a full set of images
@@ -10478,7 +10495,12 @@ _VIEWER_DL_JS +
             const lbImpOn = () => window.LB_features.importHelper !== false;
             const lbRwWants = (src, imp) => src.indexOf('location') !== -1 || (imp && /\bimport\s*\(/.test(src));
             const lbImu = (out, url) => out.indexOf('__LB_IMU__') === -1 ? out : out.split('"__LB_IMU__"').join(JSON.stringify(url));
+            // MS-8: rewrites that did real work during this load: count (rwN) and total wait (rwMs, overlapping waits add up)
             async function rewriteJsAsync(src) {
+                const c = window.__lbPerf.cur, t = performance.now();
+                try { return await rewriteJsRun(src); } finally { if (c && src && lbRwWants(src, lbImpOn())) { c.rwN = (c.rwN || 0) + 1; c.rwMs = (c.rwMs || 0) + performance.now() - t; } }
+            }
+            async function rewriteJsRun(src) {
                 const imp = lbImpOn();
                 if (!src || !lbRwWants(src, imp)) return src;
                 if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return lbRewrite(src, imp); }
