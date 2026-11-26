@@ -22,14 +22,13 @@ permissions:
   contents: read
 
 # Date-based e2e tests assume the VM's time zone (CI runners are UTC)
-env:
-  TZ: America/Chicago
 
 concurrency:
   group: stack-${{ github.ref }}
   cancel-in-progress: false
 
 env:
+  TZ: America/Chicago
   GATE_CONTEXT: ${{ github.workspace }}/limitless-gate
 
 jobs:
