@@ -2,6 +2,11 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.11
+
+- Sites with lots of background pictures in their design, like Discord, now show the page first and fill those pictures in right after, instead of waiting for every one of them. Discord opens in about half the time on a Chromebook.
+- Your data used today now updates right away instead of up to 30 seconds late.
+
 ## 1.2.10
 
 - Pages that load the same script more than once now reuse it instead of preparing it again, so busy sites start a little faster.

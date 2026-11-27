@@ -117,7 +117,7 @@ FEAT_LOCKDOWN="${LB_FEATURE_LOCKDOWN:-false}"   # lockdown
 FEAT_MERIYAH="${LB_FEATURE_MERIYAH:-true}"   # 1.2 N4
 FEAT_TOKREWRITE="${LB_FEATURE_TOKREWRITE:-true}"   # CL-15 token rewriter: on since 1.2.9, rollback LB_FEATURE_TOKREWRITE=false
 FEAT_BLOBREUSE="${LB_FEATURE_BLOBREUSE:-true}"   # CL-6 step A: one script blob URL per content hash, rollback LB_FEATURE_BLOBREUSE=false
-FEAT_CSSIMGLATE="${LB_FEATURE_CSSIMGLATE:-false}"   # CL-11: CSS background images load after the page is shown (Discord); off until gated, switch on with LB_FEATURE_CSSIMGLATE=true
+FEAT_CSSIMGLATE="${LB_FEATURE_CSSIMGLATE:-true}"   # CL-11: CSS background images load after the page is shown (Discord); on since 1.2.11, rollback LB_FEATURE_CSSIMGLATE=false
 FEAT_FONTSWAP="${LB_FEATURE_FONTSWAP:-true}"   # LD-13: font-display swap on every @font-face; on from 1.2.7, rollback LB_FEATURE_FONTSWAP=false
 FEAT_LAZYFRAMES="${LB_FEATURE_LAZYFRAMES:-true}"   # LD-14: cross-origin iframes load near the viewport; on from 1.2.7, rollback LB_FEATURE_LAZYFRAMES=false
 FEAT_LITEVIEW="${LB_FEATURE_LITEVIEW:-true}"   # LD-8: Lite view (reader mode) button and slow-load offer, rollback LB_FEATURE_LITEVIEW=false
