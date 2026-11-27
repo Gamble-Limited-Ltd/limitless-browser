@@ -772,7 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
-                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse', 'cssImgLate']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
+                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse', 'cssImgLate', 'chunkTasks']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -10354,7 +10354,7 @@ _VIEWER_DL_JS +
                 if (!_lbRwVer) _lbRwVer = lbRwVer();
                 let h;
                 try {
-                    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src));
+                    const d = await crypto.subtle.digest('SHA-256', lbChunkOn() && src.length > LB_CHUNK_MIN ? await lbEncodeSliced(src, true) : new TextEncoder().encode(src));
                     h = Array.from(new Uint8Array(d), b => b.toString(16).padStart(2, '0')).join('');
                 } catch (_) { h = lbRwHash(src); }
                 return h + ':' + _lbRwVer;
@@ -10438,6 +10438,30 @@ _VIEWER_DL_JS +
                 c[h] = (c[h] || 0) + 1;
                 const r = (window.LB_lockdown || (window.LB_lockdown = { recent: [] })).recent;
                 r.push(String(u).slice(0, 300)); if (r.length > 20) r.shift();
+            }
+            // CL-10 (features.chunkTasks): big strings are hashed and UTF-8 encoded in slices with a yield between, so no long task of ours
+            const lbChunkOn = () => window.LB_features.chunkTasks === true, LB_CHUNK_MIN = 400000, LB_CHUNK_STEP = 262144;
+            const lbYield = () => (typeof scheduler !== 'undefined' && scheduler.yield) ? scheduler.yield() : new Promise(r => setTimeout(r, 0));
+            async function lbEncodeSliced(str, concat) {
+                const enc = new TextEncoder(), parts = []; let total = 0;
+                for (let i = 0; i < str.length;) {
+                    let e = Math.min(i + LB_CHUNK_STEP, str.length);
+                    if (e < str.length) { const c = str.charCodeAt(e - 1); if (c >= 0xD800 && c <= 0xDBFF) e++; }   // never split a surrogate pair
+                    const b = enc.encode(str.slice(i, e)); parts.push(b); total += b.length; i = e;
+                    if (i < str.length) await lbYield();
+                }
+                if (!concat) return parts;
+                const all = new Uint8Array(total); let o = 0;
+                for (const b of parts) { all.set(b, o); o += b.length; }
+                return all;
+            }
+            async function lbRwHashSliced(str) {   // same result as lbRwHash
+                let h1 = 0x811c9dc5, h2 = 0x01000193;
+                for (let i = 0; i < str.length; i++) {
+                    const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 + c, 2246822519) ^ (h2 >>> 13);
+                    if ((i & 262143) === 262143) await lbYield();
+                }
+                return str.length + ':' + (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
             }
             function lbRwHash(str) {
                 let h1 = 0x811c9dc5, h2 = 0x01000193;
@@ -10540,7 +10564,7 @@ _VIEWER_DL_JS +
                 const imp = lbImpOn();
                 if (!src || !lbRwWants(src, imp)) return src;
                 if (src.length < LB_RW_MIN) { lbRw.stats.sync++; return lbRewrite(src, imp); }
-                const key = lbRwHash(src) + (imp ? 'i' : '');
+                const key = (lbChunkOn() && src.length > LB_CHUNK_MIN ? await lbRwHashSliced(src) : lbRwHash(src)) + (imp ? 'i' : '');
                 const hit = lbRw.memo.get(key);
                 if (hit !== undefined) { lbRw.stats.memoHits++; return hit; }
                 let out, pkey = null, skipped = false;
@@ -11590,6 +11614,11 @@ _VIEWER_DL_JS +
                         for (let j = 0; j < bytes.length; j += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + chunk));
                         return 'data:text/javascript;charset=utf-8;base64,' + Base64.encode(bin);
                     }
+                    async function _toBlobSliced(text) {   // CL-10: same blob as _toDataModule, encoded in slices
+                        const blob = new Blob(await lbEncodeSliced(text, false), { type: 'text/javascript' }), u = URL.createObjectURL(blob);
+                        _cssBlobs.push({ u, blob });
+                        return u;
+                    }
                     async function transformModuleSource(src, moduleUrl, embed) {
                         const specs = new Set();
                         for (const re of _esmPatterns) { re.lastIndex = 0; let m; while ((m = re.exec(src))) specs.add(m[3]); }
@@ -11649,7 +11678,8 @@ _VIEWER_DL_JS +
                             // reason classic proxied scripts already use data:. Import specifiers
                             // stay as real URLs (see transformModuleSource) so data: URLs never
                             // nest; the injected import map maps each real URL -> its data: URL.
-                            const dataUrl = _toDataModule(out);
+                            const dataUrl = lbChunkOn() && out.length > LB_CHUNK_MIN && location.protocol !== 'file:' && window.LB_features.blobScripts !== false
+                                ? await _toBlobSliced(out) : _toDataModule(out);
                             _esmBlobCache.set(absUrl, dataUrl);
                             return dataUrl;
                         })();
