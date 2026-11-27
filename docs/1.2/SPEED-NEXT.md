@@ -19,11 +19,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
 | CL-6 | 2.1 | stable script URLs (blob reuse, then code cache via the lane) | step A (blob reuse) SHIPPED ON in 1.2.10 (2026-11-26); step B planned | 02 |
-| CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold; 2026-11-26 fix: pool stays at 2 workers on 4 cores or fewer (hc-1 starved the page thread), hc-2 max 4 above (`ccb49fd`, merged with 1.2.10); item gate re-run overnight 2026-11-26/27 | 02 |
+| CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold; 2026-11-26 fix: pool stays at 2 workers on 4 cores or fewer (hc-1 starved the page thread), hc-2 max 4 above (`ccb49fd`, merged with 1.2.10); item gate 2026-11-26 21:30: sites 35/45 = base, speed 0 fail, e2e 1 throttle-timing flake (5/5 on rerun); held: equal to the old pool on 4 cores or fewer, so no gain shown; needs a >4-core measurement | 02 |
 | CL-8 | C1, H5, Phase 3 | libcurl in a Worker, slices 2 to 5, then on | slice 1 shipped 1.2.0 OFF; rest planned | 02 |
 | CL-9 | N9, 3.6 | HTML parse in a Worker | measure first | 02 |
 | CL-10 | H6, 2.6 (Coolmath) | chunk remaining long tasks | planned | 02 |
-| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | Discord built 2026-11-26 (`item/cl11-discord` `22b574c`, switch `cssImgLate`, default off): cause was the page waiting for all ~265 images named in its linked CSS (55 s); with it on shown 21 to 22 s, 3 of 3; item gate with it on overnight 2026-11-26/27; the rest of Discord's 21 s is 58 fonts and ~18 scripts. Kahoot, Khan, Steam, Tumblr still planned | 02 |
+| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | Discord built 2026-11-26 (`item/cl11-discord` `22b574c`, switch `cssImgLate`, default off): cause was the page waiting for all ~265 images named in its linked CSS (55 s); with it on shown 21 to 22 s, 3 of 3; item gate with it on 2026-11-26 23:10 PASS (sites 37/45 vs 35/45, speed 0 fail); ready ON in 1.2.11 (`release/1.2.11`); the rest of Discord's 21 s is 58 fonts and ~18 scripts. Kahoot, Khan, Steam, Tumblr still planned | 02 |
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
