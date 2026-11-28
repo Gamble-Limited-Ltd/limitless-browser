@@ -108,7 +108,7 @@ FEAT_SITEREPORT="${LB_FEATURE_SITEREPORT:-true}"
 FEAT_VIDEOSOCK="${LB_FEATURE_VIDEOSOCK:-true}"
 FEAT_BOTCARD="${LB_FEATURE_BOTCARD:-true}"
 FEAT_REQHYGIENE="${LB_FEATURE_REQHYGIENE:-true}"
-FEAT_IMGLANE="${LB_FEATURE_IMGLANE:-false}"   # 1.2 native image lane: opt-in, off until Boss turns it on (docs/1.2/IMGLANE.md)
+FEAT_IMGLANE="${LB_FEATURE_IMGLANE:-true}"   # 1.2 native image lane: build on since 1.2.12 (Boss 2026-11-27); members still opt in (Settings, off by default), rollback LB_FEATURE_IMGLANE=false (docs/1.2/IMGLANE.md)
 FEAT_POPUPBRIDGE="${LB_FEATURE_POPUPBRIDGE:-true}"
 FEAT_VISIBLEFIRST="${LB_FEATURE_VISIBLEFIRST:-false}"   # 1.2 G1: opt-in until measured on a real site
 FEAT_GOOGLESIGNIN="${LB_FEATURE_GOOGLESIGNIN:-true}"   # J5: on from 1.2.2 (Boss 2026-11-19); rollback LB_FEATURE_GOOGLESIGNIN=false
@@ -119,7 +119,7 @@ FEAT_TOKREWRITE="${LB_FEATURE_TOKREWRITE:-true}"   # CL-15 token rewriter: on si
 FEAT_RWPOOL="${LB_FEATURE_RWPOOL:-true}"   # CL-7: rewrite Worker pool from the device, rollback LB_FEATURE_RWPOOL=false
 FEAT_BLOBREUSE="${LB_FEATURE_BLOBREUSE:-true}"   # CL-6 step A: one script blob URL per content hash, rollback LB_FEATURE_BLOBREUSE=false
 FEAT_CSSIMGLATE="${LB_FEATURE_CSSIMGLATE:-true}"   # CL-11: CSS background images load after the page is shown (Discord); on since 1.2.11, rollback LB_FEATURE_CSSIMGLATE=false
-FEAT_CHUNKTASKS="${LB_FEATURE_CHUNKTASKS:-false}"   # CL-10: long tasks of ours (big-script hashing, module encoding) run in slices; off until measured live
+FEAT_CHUNKTASKS="${LB_FEATURE_CHUNKTASKS:-true}"   # CL-10: long tasks of ours (big-script hashing, module encoding) run in slices; on since 1.2.12, rollback LB_FEATURE_CHUNKTASKS=false
 FEAT_FONTSWAP="${LB_FEATURE_FONTSWAP:-true}"   # LD-13: font-display swap on every @font-face; on from 1.2.7, rollback LB_FEATURE_FONTSWAP=false
 FEAT_LAZYFRAMES="${LB_FEATURE_LAZYFRAMES:-true}"   # LD-14: cross-origin iframes load near the viewport; on from 1.2.7, rollback LB_FEATURE_LAZYFRAMES=false
 FEAT_LITEVIEW="${LB_FEATURE_LITEVIEW:-true}"   # LD-8: Lite view (reader mode) button and slow-load offer, rollback LB_FEATURE_LITEVIEW=false

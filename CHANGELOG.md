@@ -2,6 +2,13 @@
 
 What changed, in plain language. Newest first.
 
+## 1.2.12
+
+- New for Cardinal plans and above: Faster images, in Settings. It loads pictures through the Limitless image server so they arrive smaller and sooner. It is off until you turn it on.
+- Big sites with heavy scripts, like Kahoot, freeze less while they load: our own preparation work now runs in small pieces instead of one long block.
+- Computers with more than 4 cores now use more of them to prepare pages.
+- Websites can no longer install their own background helpers inside Limitless, which keeps sites from interfering with how Limitless runs.
+
 ## 1.2.11
 
 - Sites with lots of background pictures in their design, like Discord, now show the page first and fill those pictures in right after, instead of waiting for every one of them. Discord opens in about half the time on a Chromebook.
