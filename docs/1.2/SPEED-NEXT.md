@@ -19,11 +19,11 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | CL-4 | N1 | compact blocklist | shipped 1.2.0 | 02 |
 | CL-5 | H4 | ad and tracker blocking on | shipped 1.0 | 02 |
 | CL-6 | 2.1 | stable script URLs (blob reuse, then code cache via the lane) | step A (blob reuse) SHIPPED ON in 1.2.10 (2026-11-26); step B planned | 02 |
-| CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold; 2026-11-26 fix: pool stays at 2 workers on 4 cores or fewer (hc-1 starved the page thread), hc-2 max 4 above (`ccb49fd`, merged with 1.2.10); item gate 2026-11-26 21:30: sites 35/45 = base, speed 0 fail, e2e 1 throttle-timing flake (5/5 on rerun); held: equal to the old pool on 4 cores or fewer, so no gain shown; needs a >4-core measurement | 02 |
+| CL-7 | 2.3 | rewrite Worker pool from the device | built 2026-11-25 (`item/cl7-pool`); item gate FAIL twice 2026-11-26: sites 32/45 then 29/45 vs base 35/45, Discord and Kahoot time out, Twitch slow; hold; 2026-11-26 fix: pool stays at 2 workers on 4 cores or fewer (hc-1 starved the page thread), hc-2 max 4 above (`ccb49fd`, merged with 1.2.10); item gate 2026-11-26 21:30: sites 35/45 = base, speed 0 fail, e2e 1 throttle-timing flake (5/5 on rerun); held: equal to the old pool on 4 cores or fewer, so no gain shown; needs a >4-core measurement; 2026-11-27 19:30 item gate on 8 cores (cb-high, forced): speed 26 pass, 0 fail, 2 inconclusive, cold loads equal or a little faster; IN 1.2.12 (on) | 02 |
 | CL-8 | C1, H5, Phase 3 | libcurl in a Worker, slices 2 to 5, then on | slice 1 shipped 1.2.0 OFF; rest planned | 02 |
 | CL-9 | N9, 3.6 | HTML parse in a Worker | measure first | 02 |
-| CL-10 | H6, 2.6 (Coolmath) | chunk remaining long tasks | planned | 02 |
-| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | Discord built 2026-11-26 (`item/cl11-discord` `22b574c`, switch `cssImgLate`, default off): cause was the page waiting for all ~265 images named in its linked CSS (55 s); with it on shown 21 to 22 s, 3 of 3; item gate with it on 2026-11-26 23:10 PASS (sites 37/45 vs 35/45, speed 0 fail); SHIPPED ON in 1.2.11 (`773a35f`, deployed 2026-11-27 1:06 AM Central, rollback `LB_FEATURE_CSSIMGLATE=false` or `./deploy.sh 409dcd7`); the rest of Discord's 21 s is 58 fonts and ~18 scripts. Kahoot, Khan, Steam, Tumblr still planned | 02 |
+| CL-10 | H6, 2.6 (Coolmath) | chunk remaining long tasks | built 2026-11-27 (`item/cl10-longtasks` `4ccd741`, switch `chunkTasks`): our worst Kahoot task 1.4 s to 0.7 s; still over 200 ms: `transformModuleSource` 192 ms, `lbImu` 152 ms, cache put 134 ms, Coolmath `_lazyCheck` 554 ms (site code mostly); item gate 2026-11-27 21:48 FAIL on noise only (2 known load flakes passed alone, Spotify miss passed alone), speed 0 fail; IN 1.2.12 (on); next: the three remaining tasks | 02 |
+| CL-11 | 2.6 | named-site fixes (Steam app, Discord, Kahoot, Khan, Tumblr) | Discord built 2026-11-26 (`item/cl11-discord` `22b574c`, switch `cssImgLate`, default off): cause was the page waiting for all ~265 images named in its linked CSS (55 s); with it on shown 21 to 22 s, 3 of 3; item gate with it on 2026-11-26 23:10 PASS (sites 37/45 vs 35/45, speed 0 fail); SHIPPED ON in 1.2.11 (`773a35f`, deployed 2026-11-27 1:06 AM Central, rollback `LB_FEATURE_CSSIMGLATE=false` or `./deploy.sh 409dcd7`); the rest of Discord's 21 s is 58 fonts and ~18 scripts. Kahoot, Khan, Steam, Tumblr still planned; 2026-11-27 Khan: Fastly bot check from the data-centre address, outside our control (no code fix); Steam: shown 9.5 s vs 16.6 s, the 22 to 26 s freeze is gone, the rest is queue wait (148 queued, 9.7 s average wait), image lane work helps | 02 |
 | CL-12 | G8 | device cache that survives | planned | 02 |
 | CL-13 | H7 | lighter app shell | measure first | 02 |
 | CL-14 | N10, H3 | transport bench (epoxy-tls vs libcurl.js) | planned (research) | 02 |
@@ -34,13 +34,13 @@ Status words: **shipped** (in prod, version), **ready** (in a prepared release),
 | LD-5 | pageCache, warm | instant repeat visits back on | built, OFF since 0.3.0; switch-on gate 2026-11-23 no-break PASS but warm shown unchanged (rule asks 30 percent on 3 official sites). 2026-11-23 evening: the cache works (e2e on `item/ld5-cache`), the gate was at fault: `featureEnv()` built base and candidate with pageCache and warm on, so the A/B compared on vs on (fixed on `tools/1.3-test-speed` `d208e0e`); re-gate with a real off base (`2026-11-23_1645-release_1.2.7/`): FAIL, no gain. fx-news-fresh warm shown 214 ms off vs 254 ms on (response cache and Instant Back already make it fast), warm load 209 ms slower with it on (the only gated fail); every other row within noise. Stays OFF; proposal: close LD-5 (the existing caches already deliver the instant repeat visit) | 03 |
 | SV-0 | G6, 1.3 | VPS CPU and RAM budget | planned | 04 |
 | SV-1 | S1 | image lane (WebP, cache) | shipped 1.2.0, OFF | 04 |
-| SV-2 | 5.1, 5.2, G2 | image lane on, coverage | planned (privacy line first) | 04 |
+| SV-2 | 5.1, 5.2, G2 | image lane on, coverage | VPS `imglane` service up 2026-11-27 (gate `b5ab930`); HALL privacy "Faster images" line live 2026-11-27; build switch on in 1.2.12 (members opt in, off by default); real-pair lbtest check after deploy, coverage next | 04 |
 | SV-3 | N6, G2, 5.3 | resize to shown width, WebP only | planned | 04 |
 | SV-4 | S2, G3, G4, 5.4 | shared rewrite cache, server rewrite | planned (design done) | 04 |
 | SV-5 | G5, 5.5 | URL mode and overnight prewarm | planned | 04 |
 | SV-6 | G7 | home second-layer cache | later (parked) | 04 |
 | TL-1 | L1, L3 | lockdown CSP and 3 rewriter gaps | release A shipped in 1.2.5 (`cec4d6f`, 2026-11-19 14:28, switches OFF); release B (on) planned | 05 |
-| TL-2 | L3 rest | remaining rewriter gaps | planned | 05 |
+| TL-2 | L3 rest | remaining rewriter gaps | built 2026-11-27 (`item/tl2-gaps` `1fe9035`, inside `rwGaps`; insertRule keeps rule order and index); item gate with it on 2026-11-27 19:55 PASS (sites 29/45 vs 28/45, speed 0 fail); in 1.2.12 with the switch off until lockdown; open: `_sanitizeMediaHTML` `\b` in a template literal | 05 |
 | TL-3 | L2, N5, 4.1, 4.2 | SW lane gaps, then lane on | lane shipped 1.2.0 OFF; gaps planned | 05 |
 | TL-4 | L4 | out of scope, documented | documented (`docs/1.3/OUT-OF-SCOPE.md`), wording for Boss | 05 |
 | TL-5 | (new) | direct-load table | planned | 05 |
@@ -89,7 +89,7 @@ New from the brainstorm (2026-11-19, `docs/1.3/BRAINSTORM-2026-11-19.md`):
 | SV-9 | VPS network tuning (BBR, buffers, unbound) | planned | 04 |
 | SV-11 | Cloudflare free edge for lanes | spec written; go given (Boss, 2026-11-23: Claude does the Cloudflare side when it can, else Boss later); waits on SV-7, SV-8 and SV-2 (image lane on) | 04 |
 | TL-6 | leak zoo fixture | built on `tools/1.3-leakzoo` (`31bad31`, 65 cases, 34 known leaks), not merged | 05 |
-| TL-7 | no real service worker from proxied code (security) | planned, before TL-3 on | 05 |
+| TL-7 | no real service worker from proxied code (security) | built 2026-11-27 (`item/tl7-swguard` `d0c601d`, no switch); item gate 2026-11-27 23:45 PASS (sites 32/45 vs 28/45, speed 0 fail); IN 1.2.12 | 05 |
 | BC-9 | site status hints | planned | 06 |
 | MS-8 | field breakdown samples | SHIPPED in 1.2.10 (2026-11-26, combined e2e clean) | 01 |
 | MS-9 | "this page was slow" report | planned | 01 |

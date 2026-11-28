@@ -47,19 +47,18 @@ Every Minor reports these sites in an "x native" table (spec 01 MS-6).
 | Prime | 1.5x | under 100 ms | plus WebP and resize, server rewrite, prefetch |
 | Executive | 1.3x, faster than native on Steam, Discord, Kahoot | under 100 ms | plus favourites prewarmed, Load Now, highest weight |
 
-## 3. Where we are (2026-11-19)
-- **Prod:** 1.2.5 (`cec4d6f`, deployed 2026-11-19 14:28: TL-1 release A, lockdown CSP and three rewriter gaps, switches OFF), on top of
-  1.2.2 (`5615cb6`, 07:35: YouTube block, Google sign-in card on, G1 visible-first built OFF; VPS relaygate `f9f7040`). 1.2.3 (CL-1) and
-  1.2.4 (CL-2) are held for the gate verdict (TS-4).
-- **Built, not released:** meriyah parser (CL-1), 6 sockets for paid (CL-2), hover prefetch (LD-2) on `speed/1.3-quick`; lockdown CSP and
-  three rewriter gaps (TL-1) on `speed/l1-lockdown` (speed gate passed with no regression row, 42-site run 95 of 126 reps against 94, 28
-  sites lost some images). Overnight gate 2026-11-18/19: N8 noise, **N7 slowed fx-app and fx-frames by 15 to 29 percent**, N4 no gain
-  over N7; each is rerun alone on a quiet machine before a record.
-- **Shipped OFF:** libcurl Worker slice 1 (CL-8), SW document lane (TL-3), image lane (SV-1).
-- **Numbers (1.2.0, chromebook, VPS stand-in on this VM):** Steam front shown about 14.3 to 15.0 s, Kahoot 23.6 to 26.8 s, Discord about 55
-  s, Reddit 2.5 to 3.5 s, Coolmath about 5 s (one rep with a 7.9 s task). Native column and real-VPS numbers do not exist yet (spec 01).
-- **Bot checks:** 8 of 42 sites showed the Human Check card from this VM's address; from the VPS address the 2026-11-16 probe saw 20 of 48
-  front pages challenged. The data-centre address is the main factor (spec 06).
+## 3. Where we are (2026-11-28)
+- **Prod:** 1.2.11 (`773a35f`, 2026-11-27 1:06 AM: CL-11 Discord `cssImgLate` on). 1.2.12 is prepared on `release/1.2.12` (TL-7 service
+  worker guard, CL-7 Worker pool from the device on, CL-10 sliced long tasks on, TL-2 rewriter gaps inside `rwGaps` off, image lane build switch
+  on with member opt-in off); the release record `docs/releases/1.2.12.md` says when it ships. Per-release history: `docs/releases/`.
+- **Live switches since 2026-11-19:** meriyah (CL-1), 6 sockets for paid (CL-2), hover prefetch (LD-2), Lite view (LD-8), font swap and lazy
+  embeds (LD-13, LD-14), token rewriter (CL-15), blob reuse (CL-6 A), CSS images after shown (CL-11).
+- **Still OFF:** lockdown CSP and `rwGaps` (TL-1, TL-2; on together after the real-site run), libcurl Worker (CL-8), SW document lane (TL-3).
+- **Image lane (SV-1/SV-2):** VPS `imglane` service up 2026-11-27, HALL privacy "Faster images" line live 2026-11-27; real-pair lbtest check
+  after the 1.2.12 deploy, coverage next.
+- **Open long tasks (CL-10):** `transformModuleSource` about 192 ms, `lbImu` 152 ms, the cache put 134 ms; the rest are the sites' own code.
+- **Bot checks:** the data-centre address is the main factor (spec 06); Khan's Fastly check from the VPS address is outside our control.
+- Ledger with every item's state: `docs/1.2/SPEED-NEXT.md`.
 
 ## 4. The specs
 Every item uses one template: **id** (old ids), **status**, **why**, **rules** (numbered, testable), **how**, **state** (files, storage keys,
