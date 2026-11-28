@@ -127,6 +127,8 @@ async function laneOrPass(e, req) {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
+  // TL-7: the document lane lives only here. A worker (ours or a planted one) never gets anything under /~lb/.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/~lb/') && /^(serviceworker|sharedworker|worker)$/.test(req.destination)) { e.respondWith(new Response('', { status: 404 })); return; }
   if (url.origin === self.location.origin) {
     const m = DOC.exec(url.pathname);
     if (m && req.method === 'GET') { if (req.destination === 'iframe') e.respondWith(serveDoc(url.pathname)); return; }

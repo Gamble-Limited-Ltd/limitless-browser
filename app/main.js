@@ -798,6 +798,22 @@
                     await navigator.serviceWorker.register(new URL('sw.js', location.href).href, { scope: new URL('./', location.href).pathname });
                 } catch (_) {}
             };
+            // TL-7: at boot, unregister every registration whose script is not our /sw.js (a worker planted by an older build's gap).
+            window.LB_swGuard = {
+                removed: 0, patchedFrames: 0,
+                stats() { return { removed: this.removed, patchedFrames: this.patchedFrames }; },
+                async sweep() {
+                    try {
+                        if (!('serviceWorker' in navigator) || (location.protocol !== 'http:' && location.protocol !== 'https:')) return;
+                        const ours = new URL('sw.js', location.href).href;
+                        for (const r of await navigator.serviceWorker.getRegistrations()) {
+                            const w = r.active || r.waiting || r.installing;
+                            if (w && w.scriptURL !== ours && await r.unregister()) this.removed++;
+                        }
+                    } catch (_) {}
+                },
+            };
+            window.LB_swGuard.sweep();
             window.LB_featuresReady.then((f) => {
                 const go = () => setTimeout(() => window.LB_swSync(f), window.LB_SW_DELAY != null ? window.LB_SW_DELAY : 8000);
                 if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
@@ -8108,6 +8124,7 @@ const observer = new MutationObserver(muts => {
         if (node.nodeType !== 1) continue;
         processEl(node);
         node.querySelectorAll?.('*').forEach(processEl);
+        if (window.__lbSwGuardEl) { window.__lbSwGuardEl(node); node.querySelectorAll?.('iframe,frame').forEach(window.__lbSwGuardEl); }
       }
     }
   }
@@ -9148,6 +9165,39 @@ try { document.querySelectorAll('input, textarea').forEach(el => el.spellcheck =
   };
   try { Object.defineProperty(navigator, 'serviceWorker', { get: function(){ return swContainer; }, configurable: true }); } catch(e) {}
   try { if (window.ServiceWorkerRegistration && !window.ServiceWorkerRegistration.prototype.showNotification) window.ServiceWorkerRegistration.prototype.showNotification = function(){ return Promise.resolve(); }; } catch(e) {}
+  // TL-7: every same-origin child window (iframe, srcdoc, nested, window.open result) gets the same fake container, so proxied code never
+  // reaches the real navigator.serviceWorker through a fresh about:blank. Cross-origin windows throw on access and are skipped.
+  const _swSeenProto = new WeakSet();
+  function _swGuard(w){
+    try {
+      if (!w || w === window) return w;
+      const nav = w.navigator;
+      if (nav.serviceWorker !== swContainer) {
+        Object.defineProperty(nav, 'serviceWorker', { get: function(){ return swContainer; }, configurable: true });
+        try { window.top.LB_swGuard.patchedFrames++; } catch(e) {}
+      }
+      const P = w.HTMLIFrameElement && w.HTMLIFrameElement.prototype;
+      if (P && !_swSeenProto.has(P)) {
+        _swSeenProto.add(P);
+        const d = Object.getOwnPropertyDescriptor(P, 'contentWindow');
+        if (d && d.get) Object.defineProperty(P, 'contentWindow', { get: function(){ return _swGuard(d.get.call(this)); }, configurable: true, enumerable: d.enumerable });
+        const o = w.open;
+        w.open = function(){ return _swGuard(o.apply(this, arguments)); };
+      }
+    } catch(e) {}
+    return w;
+  }
+  window.__lbSwGuardEl = function(n){
+    if (n.tagName === 'IFRAME' || n.tagName === 'FRAME') {
+      n.addEventListener('load', function(){ _swGuard(n.contentWindow); });
+      _swGuard(n.contentWindow);
+    }
+  };
+  _swGuard.call(null, window);
+  const _po = window.open;
+  window.open = function(){ return _swGuard(_po.apply(this, arguments)); };
+  const _pd = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
+  if (_pd && _pd.get) Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', { get: function(){ return _swGuard(_pd.get.call(this)); }, configurable: true, enumerable: _pd.enumerable });
 })();
 
 parent.postMessage({ t: 'ready' }, '*');
