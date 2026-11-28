@@ -11,7 +11,7 @@ async function run(page, script, features) {
   await page.evaluate(SETUP);
   await page.evaluate((html) => {
     __respond('https://gap.test/', { headers: { 'content-type': 'text/html' }, body: html });
-    for (const [u, t] of [['a.jpg', 'image/jpeg'], ['b.jpg', 'image/jpeg'], ['a.mp3', 'audio/mpeg'], ['a.js', 'text/javascript'], ['bg.png', 'image/png'], ['f.woff2', 'font/woff2']]) {
+    for (const [u, t] of [['a.jpg', 'image/jpeg'], ['b.jpg', 'image/jpeg'], ['a.mp3', 'audio/mpeg'], ['a.js', 'text/javascript'], ['bg.png', 'image/png'], ['f.woff2', 'font/woff2'], ['a.css', 'text/css']]) {
       __respond('https://cdn.gap.test/' + u, { headers: { 'content-type': t }, body: 'x' });
     }
   }, page_(script));
@@ -48,6 +48,47 @@ test('rwGaps: CSS url() from script (setProperty, style element text) goes throu
   await page.waitForTimeout(500);
   expect(await blocked(page)).toBe(0);
   expect(await fr.locator('#ok').textContent()).toBe('hello');
+});
+
+test('rwGaps: srcset and imagesrcset in innerHTML markup go through the proxy', async ({ page }) => {
+  await run(page, 'var h=document.getElementById("d");h.innerHTML="<link rel=preload as=image imagesrcset=\\"https://cdn.gap.test/a.jpg 1x\\" href=\\"https://cdn.gap.test/a.jpg\\"><img srcset=\\"https://cdn.gap.test/b.jpg 1x\\">";', { rwGaps: true });
+  await expect.poll(() => page.evaluate(() => window.__count(/b\.jpg/))).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  expect(await blocked(page)).toBe(0);
+});
+
+test('rwGaps: CSS url() in insertRule, replaceSync and style text nodes goes through the proxy', async ({ page }) => {
+  const fr = await run(page, 'var st=document.createElement("style");document.head.appendChild(st);st.sheet.insertRule("#ok{background:url(https://cdn.gap.test/bg.png)}",0);' +
+    'var cs=new CSSStyleSheet();cs.replaceSync("#d{background:url(https://cdn.gap.test/a.jpg)}");document.adoptedStyleSheets=[cs];' +
+    'var s2=document.createElement("style");s2.appendChild(document.createTextNode("#d{border-image:url(https://cdn.gap.test/b.jpg)}"));document.head.appendChild(s2);' +
+    'var s3=document.createElement("style");s3.innerHTML="@font-face{font-family:G;src:url(https://cdn.gap.test/f.woff2)}";document.head.appendChild(s3);', { rwGaps: true });
+  await fr.evaluate(() => getComputedStyle(document.getElementById('d')).backgroundImage);
+  for (const f of ['bg.png', 'a.jpg', 'b.jpg', 'f.woff2']) await expect.poll(() => page.evaluate((f) => window.__count(new RegExp(f)), f)).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  expect(await blocked(page)).toBe(0);
+});
+
+test('rwGaps: insertRule with url() keeps rule order and the returned index (CSS-in-JS)', async ({ page }) => {
+  const fr = await run(page, 'var st=document.createElement("style");document.head.appendChild(st);var sh=st.sheet;' +
+    'window.ix=[sh.insertRule("#ok{color:red}",0),sh.insertRule("#ok{background:url(https://cdn.gap.test/bg.png)}",1),sh.insertRule("#ok{color:blue}",2)];window.sh=sh;', { rwGaps: true });
+  expect(await fr.evaluate(() => window.ix)).toEqual([0, 1, 2]);
+  await expect.poll(() => page.evaluate(() => window.__count(/bg\.png/))).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  const rules = await fr.evaluate(() => Array.from(window.sh.cssRules, (r) => r.cssText));
+  expect(rules.length).toBe(3);
+  expect(rules[0]).toContain('red');
+  expect(rules[1]).toContain('background');
+  expect(rules[1]).not.toContain('cdn.gap.test');
+  expect(rules[2]).toContain('blue');
+  expect(await fr.evaluate(() => getComputedStyle(document.getElementById('ok')).color)).toBe('rgb(0, 0, 255)');
+});
+
+test('rwGaps: link href set before rel still goes through the proxy', async ({ page }) => {
+  await run(page, 'var l=document.createElement("link");l.href="https://cdn.gap.test/a.css";l.rel="stylesheet";document.head.appendChild(l);' +
+    'var p=document.createElement("link");p.href="https://cdn.gap.test/b.jpg";p.rel="preload";p.as="image";document.head.appendChild(p);', { rwGaps: true });
+  await expect.poll(() => page.evaluate(() => window.__count(/a\.css/))).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  expect(await blocked(page)).toBe(0);
 });
 
 test('switch off: the same runtime loads still go direct (and are blocked under lockdown)', async ({ page }) => {

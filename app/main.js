@@ -7658,7 +7658,7 @@ this.removeAttribute('data-srcset-loading'); }, configurable: true }); });
 // MutationObserver + processEl() route them through the proxy once they land
 // in the real document, exactly like any other lazy image.
 function _sanitizeMediaHTML(html) {
-  if (!html || !/<(img|video|audio|source|iframe)\b/i.test(html)) return html;
+  if (!html || !(LB_RWGAPS ? /<(img|video|audio|source|iframe|link)[\\s>\\/]/i : /<(img|video|audio|source|iframe)\b/i).test(html)) return html;
   try {
     const tpl = document.createElement('template');
     tpl.innerHTML = html;
@@ -7669,6 +7669,11 @@ function _sanitizeMediaHTML(html) {
       });
       const srcset = el.getAttribute('srcset');
       if (srcset && !/^(data:|blob:)/i.test(srcset)) { el.removeAttribute('srcset'); el.setAttribute('data-lb-srcset', srcset); }
+    });
+    // L3 (rwGaps): a parser-made preload/prefetch link starts its fetch (href, imagesrcset) on insertion; keep the URL, load nothing (as the href setter does)
+    if (LB_RWGAPS) tpl.content.querySelectorAll('link[imagesrcset],link[rel~=preload],link[rel~=modulepreload],link[rel~=prefetch]').forEach(l => {
+      const h = l.getAttribute('href'); if (h) l.setAttribute('data-original-href', h);
+      l.removeAttribute('href'); l.removeAttribute('imagesrcset');
     });
     // Strip iframe src so a parser-inserted frame (innerHTML/insertAdjacentHTML —
     // e.g. DuckDuckGo's html.duckduckgo.com results fallback) can't load directly
@@ -7928,7 +7933,27 @@ if (LB_RWGAPS) {
   const _spOrig = styleProto.setProperty;
   styleProto.setProperty = function(n, v, pr) { if (typeof v === 'string' && v.includes('url(')) { rewriteCss(v, BASE).then(r => _spOrig.call(this, n, r, pr)).catch(() => _spOrig.call(this, n, v, pr)); return; } return _spOrig.call(this, n, v, pr); };
   const _tcOrig = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+  // CSS url() written into a stylesheet by script: insertRule, replace/replaceSync, style text nodes and innerHTML (cheap url( check first)
+  const _cssU = v => typeof v === 'string' && v.includes('url(');
+  const _ruleOrig = CSSStyleSheet.prototype.insertRule;
+  // insert now with url() blanked (keeps order and the returned index), swap the rewritten rule into the same slot later
+  CSSStyleSheet.prototype.insertRule = function(r, i) { if (!_cssU(r)) return _ruleOrig.call(this, r, i); const idx = _ruleOrig.call(this, r.replace(/url\\([^)]*\\)/gi, 'url("data:,")'), i); const ph = this.cssRules[idx]; rewriteCss(r, BASE).then(x => { const at = Array.prototype.indexOf.call(this.cssRules, ph); if (at < 0) return; this.deleteRule(at); try { _ruleOrig.call(this, x, at); } catch { _ruleOrig.call(this, r.replace(/url\\([^)]*\\)/gi, 'url("data:,")'), at); } }).catch(() => {}); return idx; };
+  ['replace', 'replaceSync'].forEach(m => { const o = CSSStyleSheet.prototype[m]; if (!o) return; CSSStyleSheet.prototype[m] = function(t) { if (_cssU(t)) { const p = rewriteCss(t, BASE).catch(() => t).then(x => o.call(this, x)); return m === 'replace' ? p : undefined; } return o.call(this, t); }; });
+  const _tnDesc = Object.getOwnPropertyDescriptor(CharacterData.prototype, 'data');
+  const _appOrig = Node.prototype.appendChild;
+  Node.prototype.appendChild = function(c) { if (this.tagName === 'STYLE' && c && c.nodeType === 3 && _cssU(c.data)) { const d = c.data; _tnDesc.set.call(c, ''); const r = _appOrig.call(this, c); rewriteCss(d, BASE).then(x => _tnDesc.set.call(c, x)).catch(() => _tnDesc.set.call(c, d)); return r; } return _appOrig.call(this, c); };
+  const _ihOrig = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  if (_ihOrig && _ihOrig.set) Object.defineProperty(Element.prototype, 'innerHTML', { get: _ihOrig.get, set(v) { if (this.tagName === 'STYLE' && _cssU(v)) { rewriteCss(v, BASE).then(r => _ihOrig.set.call(this, r)).catch(() => _ihOrig.set.call(this, v)); return; } _ihOrig.set.call(this, v); }, configurable: true });
   if (_tcOrig && _tcOrig.set) Object.defineProperty(Node.prototype, 'textContent', { get: _tcOrig.get, set(v) { if (this.tagName === 'STYLE' && typeof v === 'string' && (v.includes('url(') || v.includes('@import'))) { rewriteCss(v, BASE).then(r => _tcOrig.set.call(this, r)).catch(() => _tcOrig.set.call(this, v)); return; } _tcOrig.set.call(this, v); }, configurable: true });
+}
+
+// L3 (features.rwGaps): href set before rel went native (the href setter above only knows the rel once it is set): when rel lands, re-route a stored href
+if (LB_RWGAPS) {
+  const _relDesc = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'rel');
+  const _relFix = l => { const h = l.hasAttribute('href') && !l.hasAttribute('data-original-href') && l.getAttribute('href'); if (h && !/^(data:|blob:)/i.test(h) && (_isStylesheetLink(l) || /(^|\\s)(preload|modulepreload|prefetch|prerender)(\\s|$)/i.test(l.getAttribute('rel') || ''))) { l.removeAttribute('href'); l.href = h; } };
+  if (_relDesc && _relDesc.set) Object.defineProperty(HTMLLinkElement.prototype, 'rel', { get: _relDesc.get, set(v) { _relDesc.set.call(this, v); _relFix(this); }, configurable: true });
+  const _sa = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(n, v) { _sa.call(this, n, v); if (this.tagName === 'LINK' && n === 'rel') _relFix(this); };
 }
 
 const origAppend = Node.prototype.appendChild;
