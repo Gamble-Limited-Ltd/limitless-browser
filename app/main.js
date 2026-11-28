@@ -730,7 +730,7 @@
             // scripts/build-static.sh writes {"features": {ownSockets, worker, respCache}} into version.json so a bad
             // feature can be turned off on the server without shipping code. Missing file (file://, dev, offline) or
             // missing keys keep the defaults, which are all on. Read once at boot; consulted at use time.
-            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, blobReuse: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
+            window.LB_features = { ownRelay: false, ownSockets: 6, worker: true, respCache: true, sw: true, pipeline: true, lazyImg: true, tabSleep: true, rewriteCache: true, pageCache: false, warm: false, instantBack: true, noDirect: true, blobScripts: true, errClass: true, deadlines: true, transfer: true, downloads: true, perf: true, compress: true, imgAccept: true, lazyPrefetch: true, noPrefetch: true, dlSplit: true, dlClass: true, pagesFirst: true, videoCap: true, oneVideo: true, autoSaver: true, dataMeter: true, siteReport: true, videoSock: true, botCard: true, reqHygiene: true, speedCap: true, cssBlobs: true, blocklistYield: true, compactBlocklist: true, memBudget: true, importHelper: true, qPrio: true, errCard: true, ytBlock: true, scriptDedup: true, curlWorker: false, swDoc: false, imgLane: false, popupBridge: true, visibleFirst: false, googleSignin: false, lockdown: false, rwGaps: false, meriyah: true, tokRewrite: false, blobReuse: false, rwPool: false, fontSwap: false, lazyFrames: false, hoverPrefetch: true, liteView: false };
             window.LB_access = 'pending';   // 'ok' | 'signin' | 'invite' | 'offline'
             window.LB_featuresReady = (async function () {
                 if (location.protocol !== 'http:' && location.protocol !== 'https:') { window.LB_access = 'ok'; return window.LB_features; }
@@ -772,7 +772,7 @@
                         if ('lazyImg' in f) window.LB_features.lazyImg = f.lazyImg !== false && f.lazyImg !== 0;
                         for (const k of ['tabSleep', 'rewriteCache', 'pageCache', 'warm', 'instantBack', 'noDirect', 'blobScripts', 'errClass', 'deadlines', 'transfer', 'downloads', 'perf', 'compress', 'imgAccept', 'lazyPrefetch', 'noPrefetch', 'dlSplit', 'dlClass', 'pagesFirst', 'videoCap', 'oneVideo', 'autoSaver', 'dataMeter', 'siteReport', 'videoSock', 'botCard', 'reqHygiene', 'speedCap', 'cssBlobs', 'blocklistYield', 'compactBlocklist', 'memBudget', 'importHelper', 'qPrio', 'errCard', 'ytBlock', 'scriptDedup', 'curlWorker', 'swDoc', 'popupBridge', 'lockdown', 'rwGaps', 'meriyah', 'fontSwap', 'lazyFrames', 'hoverPrefetch', 'liteView']) if (k in f) window.LB_features[k] = f[k] !== false && f[k] !== 0;
                         if ('imgLane' in f) window.LB_features.imgLane = f.imgLane === true;   // opt-in: only an explicit true turns the image lane on
-                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse', 'cssImgLate']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
+                        for (const k of ['visibleFirst', 'googleSignin', 'tokRewrite', 'blobReuse', 'cssImgLate', 'rwPool']) if (k in f) window.LB_features[k] = f[k] === true;   // opt-in switches: only an explicit true
                     }
                 } catch (_) { if (window.LB_access === 'pending') window.LB_access = 'offline'; }
                 return window.LB_features;
@@ -10397,7 +10397,24 @@ _VIEWER_DL_JS +
             const lbRwPersistOn = () => { try { return window.LB_features.rewriteCache !== false && lbCacheOn(); } catch (_) { return false; } };
             const LB_RW_MIN = 16 * 1024;
             const lbRw = { pool: [], queue: [], disabled: false, timeoutMs: 3000, memo: new Map(), memoChars: 0,
-                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0, meriyahFallback: 0, tok: 0, tokFallback: 0 } };
+                stats: { worker: 0, sync: 0, memoHits: 0, fallback: 0, persistHits: 0, meriyahFallback: 0, tok: 0, tokFallback: 0 }, peak: 0, idleMs: 60000 };
+            // CL-7 (features.rwPool): pool size from the device (2 on 4 cores or fewer), one more only while 4+ scripts of 256 KB or more wait; workers above 2 close after 60 s idle. Off = fixed 2.
+            const lbRwCap = () => {
+                if (window.LB_features.rwPool !== true) return 2;
+                // 4 cores or fewer: the fixed 2 (hc-1 workers starved the page thread and libcurl on 4-core Chromebooks, gate 2026-11-26); more cores: hc-2, max 4, one extra under a big-script queue
+                const hc = navigator.hardwareConcurrency || 2;
+                if (hc <= 4) return 2;
+                return Math.min(4, hc - 2) + (lbRw.queue.filter(t => t.src.length >= 256 * 1024).length >= 4 ? 1 : 0);
+            };
+            function lbRwIdle(slot) {
+                clearTimeout(slot.idle);
+                if (window.LB_features.rwPool !== true) return;
+                slot.idle = setTimeout(() => {
+                    if (slot.busy || lbRw.pool.length <= 2 || lbRw.pool.indexOf(slot) === -1) return;
+                    try { slot.w.terminate(); } catch (_) {}
+                    lbRw.pool = lbRw.pool.filter(x => x !== slot);
+                }, lbRw.idleMs);
+            }
             // CL-15 (features.tokRewrite, default off): the token scanner (app/tokrw.js) answers first; null or a throw means the AST path.
             // The file loads only with the switch on (script tag here, text for the Worker); until it is there the AST path answers.
             const lbTokOn = () => window.LB_features.tokRewrite === true;
@@ -10502,6 +10519,7 @@ _VIEWER_DL_JS +
                     if (e.data.tf) lbRw.stats.tokFallback++;
                     if (e.data.err) { t.fail(new Error(e.data.err)); } else { t.ok(e.data.out); }
                     lbRwPump();
+                    if (!slot.busy) lbRwIdle(slot);
                 };
                 w.onerror = () => { const t = slot.busy; slot.busy = null; if (t) { clearTimeout(t.timer); t.fail(new Error('worker error')); } else lbRwDisable(); };
                 return slot;
@@ -10512,10 +10530,10 @@ _VIEWER_DL_JS +
                 if (!lbRwLib) { lbRwLoadLib(); return; }
                 while (lbRw.queue.length) {
                     let slot = lbRw.pool.find(s => !s.busy);
-                    if (!slot && lbRw.pool.length < 2) { try { slot = lbRwSpawn(); lbRw.pool.push(slot); } catch (e) { lbRwDisable(); break; } }
+                    if (!slot && lbRw.pool.length < lbRwCap()) { try { slot = lbRwSpawn(); lbRw.pool.push(slot); lbRw.peak = Math.max(lbRw.peak, lbRw.pool.length); } catch (e) { lbRwDisable(); break; } }
                     if (!slot) return;
                     const t = lbRw.queue.shift();
-                    slot.busy = t;
+                    slot.busy = t; clearTimeout(slot.idle);
                     // timeout grows with size (8 ms per KB, the measured Chromebook rate); a stuck worker is replaced, the others stay on
                     t.timer = setTimeout(() => {
                         if (slot.busy !== t) return;
@@ -10575,7 +10593,8 @@ _VIEWER_DL_JS +
             }
             window.LB_rewrite = { sync: lbRewrite, async: rewriteJsAsync, stats: () => ({ ...lbRw.stats, disabled: lbRw.disabled }),
                 get timeoutMs() { return lbRw.timeoutMs; }, set timeoutMs(v) { lbRw.timeoutMs = v; },
-                dropMemo() { lbRw.memo.clear(); lbRw.memoChars = 0; }, kv: lbRwKV };
+                dropMemo() { lbRw.memo.clear(); lbRw.memoChars = 0; },
+                poolSize: () => lbRw.pool.length, poolCap: lbRwCap, poolPeak: () => lbRw.peak, set idleMs(v) { lbRw.idleMs = v; }, kv: lbRwKV };
 
             // 1.2 N7 (features.hoverPrefetch, test hook LB_pf): a link hovered for 100 ms in the page (frame click router) fetches its
             // document at the lowest queue priority; the click then takes that response instead of fetching again. Same site only
